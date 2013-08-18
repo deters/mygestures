@@ -71,35 +71,15 @@
 /* Define to 1 if `vfork' works. */
 #define HAVE_WORKING_VFORK 1
 
-/* Name of package */
-#define PACKAGE "mygestures"
-
-/* Define to the address where bug reports for this package should be sent. */
-#define PACKAGE_BUGREPORT "lucasdeters@users.sourceforge.net"
-
-/* Define to the full name of this package. */
-#define PACKAGE_NAME "mygestures"
-
-/* Define to the full name and version of this package. */
-#define PACKAGE_STRING "mygestures 0.5"
-
-/* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "mygestures"
-
 /* Define to the home page for this package. */
 /* #undef PACKAGE_URL */
 
-/* Define to the version of this package. */
-#define PACKAGE_VERSION "0.5"
 
 /* Define as the return type of signal handlers (`int' or `void'). */
 #define RETSIGTYPE void
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
-
-/* Version number of package */
-#define VERSION "0.5"
 
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */

@@ -97,7 +97,7 @@ int stack_size(struct stack *stack)
         return stack->size;
 }
 
-Window get_window(XButtonEvent *ev, int get_frame)
+/*Window get_window(XButtonEvent *ev, int get_frame)
 {
         Window target_win = ev->subwindow;
         if (get_frame)
@@ -116,6 +116,6 @@ Window get_window(XButtonEvent *ev, int get_frame)
         
         
         return target_win;
-}
+}*/
 
 

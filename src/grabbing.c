@@ -45,7 +45,7 @@
 #include "wm.h"
 #include "brush-image.h"
 
-#define DELTA_MIN	30
+#define DELTA_MIN	10
 #define MOUSEGESTURE_MAX_VARIANCE  10
 
 #define M_UP    'u'
@@ -135,11 +135,14 @@ void clear_stroke_sequence(struct stack *stroke_sequence) {
 /**
  * add a stroke to the stroke sequence.
  */
-void push_stroke(int stroke, struct stack* stroke_sequence) {
+int push_stroke(int stroke, struct stack* stroke_sequence) {
 	int last_stroke = (int) peek(stroke_sequence);
-	if (last_stroke != stroke)
+	if (last_stroke != stroke) {
 		push((void *) stroke, stroke_sequence);
-	return;
+		return 1;
+	} else {
+		return 0;
+	}
 }
 
 /**
@@ -207,7 +210,6 @@ void stop_grab(XButtonEvent *e) {
 			&accurate_stroke_sequence);
 	char * fuzzy_stroke_str = stroke_sequence_to_str(&fuzzy_stroke_sequence);
 
-
 	if ((strcmp("", fuzzy_stroke_str) == 0)
 			&& (strcmp("", accurate_stroke_str) == 0)) {
 
@@ -219,10 +221,10 @@ void stop_grab(XButtonEvent *e) {
 
 	} else {
 
-		struct window_info * activeWindow = getWindowInfo(&first_click);
+		struct window_info * activeWindow = getWindowInfo(first_click.display);
 
 		// sends the both strings to process.
-		process_movement_sequences(&first_click, activeWindow,
+		process_movement_sequences(first_click.display, activeWindow,
 				accurate_stroke_str, fuzzy_stroke_str);
 
 	}
@@ -255,12 +257,13 @@ void process_move(XMotionEvent *e) {
 
 	int square_distance = x_delta * x_delta + y_delta * y_delta;
 
-	// check minimum delta
+	// verifica se mudou de direção
+
 	if (square_distance > DELTA_MIN * DELTA_MIN) {
 
 		float axes_proximity_value = 0.0;
 
-		float AXES_PROXIMITY_THREADSHOLD = 2;
+		float AXES_PROXIMITY_THREADSHOLD = 4;
 
 		if (x_delta == 0) { 		// cursor is moving only on Y axis
 			axes_proximity_value = (float) AXES_PROXIMITY_THREADSHOLD;
@@ -270,13 +273,15 @@ void process_move(XMotionEvent *e) {
 			axes_proximity_value = ((float) x_delta / (float) y_delta);
 		}
 
+		int change = 0;
+
 		// if x is more than 10 times the value of y, the cursor is considered moving on the X axe.
 		if (fabs(axes_proximity_value) >= AXES_PROXIMITY_THREADSHOLD) {
 
 			if (x_delta > 0) {
-				push_stroke(RIGHT, &accurate_stroke_sequence);
+				change = push_stroke(RIGHT, &accurate_stroke_sequence);
 			} else if (x_delta < 0) {
-				push_stroke(LEFT, &accurate_stroke_sequence);
+				change = push_stroke(LEFT, &accurate_stroke_sequence);
 			}
 
 			//  if Y is more than 10 times the value of X, the cursor is considered moving on the Y axe.
@@ -284,9 +289,9 @@ void process_move(XMotionEvent *e) {
 				<= 1) {
 
 			if (y_delta > 0) {
-				push_stroke(DOWN, &accurate_stroke_sequence);
+				change = push_stroke(DOWN, &accurate_stroke_sequence);
 			} else if (y_delta < 0) {
-				push_stroke(UP, &accurate_stroke_sequence);
+				change = push_stroke(UP, &accurate_stroke_sequence);
 			}
 
 			// diagonal movement
@@ -294,19 +299,24 @@ void process_move(XMotionEvent *e) {
 
 			if (y_delta < 0) {
 				if (x_delta < 0) {
-					push_stroke(SEVEN, &accurate_stroke_sequence);
+					change = push_stroke(SEVEN, &accurate_stroke_sequence);
 				} else if (x_delta > 0) { // RIGHT
-					push_stroke(NINE, &accurate_stroke_sequence);
+					change = push_stroke(NINE, &accurate_stroke_sequence);
 				}
 			} else if (y_delta > 0) { // DOWN
 				if (x_delta < 0) { // RIGHT
-					push_stroke(ONE, &accurate_stroke_sequence);
+					change = push_stroke(ONE, &accurate_stroke_sequence);
 				} else if (x_delta > 0) {
-					push_stroke(THREE, &accurate_stroke_sequence);
+					change = push_stroke(THREE, &accurate_stroke_sequence);
 				}
 			}
 
 		}
+
+	}
+
+	/// se mudou de direção, então reseta o old
+	if ((abs(new_x) < abs(old_x)) || (abs(new_y) < abs(old_y))) {
 
 		old_x = new_x;
 		old_y = new_y;
@@ -603,7 +613,7 @@ int handle_args(int argc, char**argv) {
 	char opt;
 	char *home;
 	static struct option opts[] = { { "help", 0, 0, 'h' },
-			{ "button", 1, 0, 'b' }, /*{ "modifier", 1, 0, 'm' },*/ {
+			{ "button", 1, 0, 'b' }, /*{ "modifier", 1, 0, 'm' },*/{
 					"without-brush", 0, 0, 'w' }, { "config", 1, 0, 'c' }, {
 					"daemonize", 0, 0, 'd' }, { "brush-color", 1, 0, 'l' }, { 0,
 					0, 0, 0 } };
@@ -627,9 +637,9 @@ int handle_args(int argc, char**argv) {
 		case 'b':
 			button = atoi(optarg);
 			break;
-		/*case 'm':
-			button_modifier_str = strdup(optarg);
-			break;*/
+			/*case 'm':
+			 button_modifier_str = strdup(optarg);
+			 break;*/
 		case 'c':
 			strncpy(conf_file, optarg, 4096);
 			break;

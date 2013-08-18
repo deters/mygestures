@@ -29,13 +29,60 @@
 #include <X11/Xutil.h>
 #include <X11/extensions/XTest.h>
 
+Window I18N_get_parent_win(Display *dpy, Window w) {
+	Window root_return, parent_return, *child_return;
+	unsigned int nchildren_return;
+	int ret;
+	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return,
+			&nchildren_return);
+
+	return parent_return;
+}
+
+Status I18N_FetchName(Display *dpy, Window w, char **winname) {
+	int status;
+	XTextProperty text_prop;
+	char **list;
+	int num;
+
+	status = XGetWMName(dpy, w, &text_prop);
+	if (!status || !text_prop.value || !text_prop.nitems) {
+		printf("getwmname error ");
+		*winname = NULL;
+		return 0;
+	}
+	status = Xutf8TextPropertyToTextList(dpy, &text_prop, &list, &num);
+	if (status < Success || !num || !*list) {
+		*winname = NULL;
+		return 0;
+	}
+	XFree(text_prop.value);
+	*winname = (char *) strdup(*list);
+	XFreeStringList(list);
+	return 1;
+}
+
+Window focused_window(Display *dpy) {
+
+	Window win = 0;
+	int ret, val;
+	ret = XGetInputFocus(dpy, &win, &val);
+
+	if (val == RevertToParent) {
+		win = I18N_get_parent_win(dpy, win);
+	}
+
+	return win;
+
+}
+
 /**
  * Iconize a window from event.
  */
-void generic_iconify(XButtonEvent *ev) {
-	Window w = get_window(ev, 0);
+void generic_iconify(Display *dpy) {
+	Window w = focused_window(dpy);
 	if (w != None)
-		XIconifyWindow(ev->display, w, 0);
+		XIconifyWindow(dpy, w, 0);
 
 	return;
 }
@@ -43,46 +90,46 @@ void generic_iconify(XButtonEvent *ev) {
 /**
  * Kill a window from event.
  */
-void generic_kill(XButtonEvent *ev) {
-	Window w = get_window(ev, 0);
+void generic_kill(Display *dpy) {
+	Window w = focused_window(dpy);
 
 	/* dont kill root window */
-	if (w == RootWindow(ev->display, DefaultScreen(ev->display)))
+	if (w == RootWindow(dpy, DefaultScreen(dpy)))
 		return;
 
-	XSync(ev->display, 0);
-	XKillClient(ev->display, w);
-	XSync(ev->display, 0);
+	XSync(dpy, 0);
+	XKillClient(dpy, w);
+	XSync(dpy, 0);
 	return;
 }
 
 /**
  * Raise a window from event.
  */
-void generic_raise(XButtonEvent *ev) {
-	Window w = get_window(ev, 0);
-	XRaiseWindow(ev->display, w);
+void generic_raise(Display *dpy) {
+	Window w = focused_window(dpy);
+	XRaiseWindow(dpy, w);
 	return;
 }
 
 /**
  * Lower a window from event.
  */
-void generic_lower(XButtonEvent *ev) {
-	Window w = get_window(ev, 0);
-	XLowerWindow(ev->display, w);
+void generic_lower(Display *dpy) {
+	Window w = focused_window(dpy);
+	XLowerWindow(dpy, w);
 	return;
 }
 
 /**
  * Maximize a window from event.
  */
-void generic_maximize(XButtonEvent *ev) {
-	Window w = get_window(ev, 0);
-	int width = XDisplayWidth(ev->display, DefaultScreen(ev->display));
-	int heigth = XDisplayHeight(ev->display, DefaultScreen(ev->display));
+void generic_maximize(Display *dpy) {
+	Window w = focused_window(dpy);
+	int width = XDisplayWidth(dpy, DefaultScreen(dpy));
+	int heigth = XDisplayHeight(dpy, DefaultScreen(dpy));
 
-	XMoveResizeWindow(ev->display, w, 0, 0, width, heigth - 50);
+	XMoveResizeWindow(dpy, w, 0, 0, width, heigth - 50);
 
 	return;
 }
@@ -137,54 +184,21 @@ void *compile_key_action(char *str_ptr) {
 	return base.next;
 }
 
-Window I18N_get_parent_win(Display *dpy, Window w) {
-	Window root_return, parent_return, *child_return;
-	unsigned int nchildren_return;
-	int ret;
-	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return,
-			&nchildren_return);
-
-	return parent_return;
-}
-
-Status I18N_FetchName(Display *dpy, Window w, char **winname) {
-	int status;
-	XTextProperty text_prop;
-	char **list;
-	int num;
-
-	status = XGetWMName(dpy, w, &text_prop);
-	if (!status || !text_prop.value || !text_prop.nitems) {
-		printf("getwmname error ");
-		*winname = NULL;
-		return 0;
-	}
-	status = Xutf8TextPropertyToTextList(dpy, &text_prop, &list, &num);
-	if (status < Success || !num || !*list) {
-		*winname = NULL;
-		return 0;
-	}
-	XFree(text_prop.value);
-	*winname = (char *) strdup(*list);
-	XFreeStringList(list);
-	return 1;
-}
-
 /*
  * Returns an struct identifying name and class of a window from and XButtonEvent
  */
-struct window_info *getWindowInfo(XButtonEvent *e) {
+struct window_info *getWindowInfo(Display *dpy) {
 
 	Window win = 0;
 	int ret, val;
-	ret = XGetInputFocus(e->display, &win, &val);
+	ret = XGetInputFocus(dpy, &win, &val);
 
 	if (val == RevertToParent) {
-		win = I18N_get_parent_win(e->display, win);
+		win = I18N_get_parent_win(dpy, win);
 	}
 
 	char *win_title;
-	ret = I18N_FetchName(e->display, win, &win_title);
+	ret = I18N_FetchName(dpy, win, &win_title);
 
 	struct window_info *ans = malloc(sizeof(struct window_info));
 	bzero(ans, sizeof(struct window_info));
@@ -193,7 +207,7 @@ struct window_info *getWindowInfo(XButtonEvent *e) {
 
 	XClassHint class_hints;
 
-	int result = XGetClassHint(e->display, win, &class_hints);
+	int result = XGetClassHint(dpy, win, &class_hints);
 
 	if (class_hints.res_class != NULL)
 		win_class = class_hints.res_class;
@@ -208,9 +222,3 @@ struct window_info *getWindowInfo(XButtonEvent *e) {
 	return ans;
 
 }
-
-
-
-// TODO: the right click doesn't work with some Java Applications.
-// TODO: create a method that classifies some window (Toolbar | Utility | Dialog | Normal | Unknown)
-

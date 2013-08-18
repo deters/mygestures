@@ -16,22 +16,22 @@ GNU General Public License for more details.  */
 #include <X11/Xlib.h>
 
 struct wm_helper {
-  void (*kill)(XButtonEvent *ev);
-  void (*iconify)(XButtonEvent *ev);
-  void (*raise)(XButtonEvent *ev);
-  void (*lower)(XButtonEvent *ev);
-  void (*maximize)(XButtonEvent *ev);
+  void (*kill)(Display *dpy);
+  void (*iconify)(Display *dpy);
+  void (*raise)(Display *dpy);
+  void (*lower)(Display *dpy);
+  void (*maximize)(Display *dpy);
 };
 
 
 extern struct wm_helper generic_wm_helper;
 extern struct wm_helper *wm_helper;
 
-void generic_iconify(XButtonEvent *ev);
-void generic_kill(XButtonEvent *ev);
-void generic_raise(XButtonEvent *ev);
-void generic_lower(XButtonEvent *ev);
-void generic_maximize(XButtonEvent *ev);
+void generic_iconify(Display *dpy);
+void generic_kill(Display *dpy);
+void generic_raise(Display *dpy);
+void generic_lower(Display *dpy);
+void generic_maximize(Display *dpy);
 void mouseClick(Display *display, Window w, int button);
 
 #endif
