@@ -39,11 +39,11 @@
 #include <strings.h>
 #include <string.h>
 #include <getopt.h>
-#include "brush.h"
+#include "drawing-brush.h"
 #include "helpers.h"
 #include "gestures.h"
 #include "wm.h"
-#include "brush-image.h"
+#include "drawing-brush-image.h"
 
 #define DELTA_MIN	20
 #define MOUSEGESTURE_MAX_VARIANCE  10

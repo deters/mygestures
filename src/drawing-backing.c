@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <X11/Xlib.h>
 
-#include "backing.h"
+#include "drawing-backing.h"
 
 #ifdef DMALLOC
 #include "dmalloc.h"

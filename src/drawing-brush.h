@@ -18,7 +18,7 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrender.h>
 
-#include "backing.h"
+#include "drawing-backing.h"
 
 struct brush
 {

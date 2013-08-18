@@ -92,9 +92,10 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_mygestures_OBJECTS = backing.$(OBJEXT) brush.$(OBJEXT) \
-	brush-image.$(OBJEXT) bresenham.$(OBJEXT) helpers.$(OBJEXT) \
-	gestures.$(OBJEXT) generic_wm.$(OBJEXT) grabbing.$(OBJEXT)
+am_mygestures_OBJECTS = helpers.$(OBJEXT) gestures.$(OBJEXT) \
+	generic_wm.$(OBJEXT) grabbing.$(OBJEXT) \
+	drawing-backing.$(OBJEXT) drawing-brush.$(OBJEXT) \
+	drawing-brush-image.$(OBJEXT) drawing-bresenham.$(OBJEXT)
 mygestures_OBJECTS = $(am_mygestures_OBJECTS)
 mygestures_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_$(V))
@@ -249,14 +250,19 @@ top_build_prefix = ../
 top_builddir = ..
 top_srcdir = ..
 mygestures_SOURCES = \
-	backing.c backing.h \
-	brush.c brush.h brush-image.h brush-shadow.h \
-	brush-image.c \
-	bresenham.c bresenham.h\
 	helpers.c helpers.h \
 	gestures.c gestures.h \
 	generic_wm.c wm.h \
-	grabbing.c 
+	grabbing.c \
+	drawing-backing.c \
+	drawing-backing.h \
+	drawing-brush.c \
+	drawing-brush.h \
+	drawing-brush-image.h \
+	drawing-brush-shadow.h \
+	drawing-brush-image.c \
+	drawing-bresenham.c \
+	drawing-bresenham.h
 
 all: all-am
 
@@ -345,10 +351,10 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-include ./$(DEPDIR)/backing.Po
-include ./$(DEPDIR)/bresenham.Po
-include ./$(DEPDIR)/brush-image.Po
-include ./$(DEPDIR)/brush.Po
+include ./$(DEPDIR)/drawing-backing.Po
+include ./$(DEPDIR)/drawing-bresenham.Po
+include ./$(DEPDIR)/drawing-brush-image.Po
+include ./$(DEPDIR)/drawing-brush.Po
 include ./$(DEPDIR)/generic_wm.Po
 include ./$(DEPDIR)/gestures.Po
 include ./$(DEPDIR)/grabbing.Po

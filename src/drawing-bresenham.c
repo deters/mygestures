@@ -13,7 +13,7 @@
    GNU General Public License for more details.
 */
 
-#include "bresenham.h"
+#include "drawing-bresenham.h"
 
 #ifdef DMALLOC
 #include "dmalloc.h"

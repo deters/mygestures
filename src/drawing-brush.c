@@ -25,11 +25,11 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrender.h>
 
-#include "bresenham.h"
-#include "brush.h"
+#include "drawing-bresenham.h"
+#include "drawing-brush.h"
 #define const
-#include "brush-image.h"
-#include "brush-shadow.h"
+#include "drawing-brush-image.h"
+#include "drawing-brush-shadow.h"
 #undef const
 
 #ifdef DMALLOC
