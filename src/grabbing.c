@@ -48,15 +48,6 @@
 #define DELTA_MIN	20
 #define MOUSEGESTURE_MAX_VARIANCE  10
 
-#define M_UP    'u'
-#define M_RIGHT 'r'
-#define M_DOWN  'd'
-#define M_LEFT  'l'
-#define M_9     '9'
-#define M_3     '3'
-#define M_1     '1'
-#define M_7     '7'
-
 /* the movements */
 enum DIRECTIONS {
 	NONE, LEFT, RIGHT, UP, DOWN, ONE, THREE, SEVEN, NINE
@@ -106,8 +97,6 @@ int old_y = -1;
 /* Initial position of the movement (algorithm 2) */
 int old_x_2 = -1;
 int old_y_2 = -1;
-
-int last_direction = -1;
 
 /* display */
 Display *dpy;
@@ -169,8 +158,6 @@ void start_grab(XButtonEvent *e) {
 	old_x_2 = e->x_root;
 	old_y_2 = e->y_root;
 
-	last_direction = NONE;
-
 	if (!without_brush) {
 		backing_save(&backing, e->x_root - brush.image_width,
 				e->y_root - brush.image_height);
@@ -212,8 +199,6 @@ void stop_grab(XButtonEvent *e) {
 		XSync(e->display, False);
 	};
 
-	last_direction = NONE;
-
 	char * accurate_stroke_str = stroke_sequence_to_str(
 			&accurate_stroke_sequence);
 	char * fuzzy_stroke_str = stroke_sequence_to_str(&fuzzy_stroke_sequence);
@@ -240,7 +225,7 @@ void stop_grab(XButtonEvent *e) {
 	return;
 }
 
-int calc_direction(int x_delta, int y_delta) {
+int get_accurated_stroke(int x_delta, int y_delta) {
 
 	if ((x_delta == 0) && (y_delta == 0)) {
 		return NONE;
@@ -291,6 +276,26 @@ int calc_direction(int x_delta, int y_delta) {
 
 }
 
+int get_fuzzy_stroke(int x_delta, int y_delta) {
+
+	if (abs(y_delta) > abs(x_delta)) {
+		if (y_delta > 0) {
+			return DOWN;
+		} else {
+			return UP;
+		}
+
+	} else {
+		if (x_delta > 0) {
+			return RIGHT;
+		} else {
+			return LEFT;
+		}
+
+	}
+
+}
+
 void process_move(XMotionEvent *e) {
 
 	// se for o caso, desenha o movimento na tela
@@ -308,58 +313,37 @@ void process_move(XMotionEvent *e) {
 	int x_delta = new_x - old_x;
 	int y_delta = new_y - old_y;
 
-	int direction = calc_direction(x_delta, y_delta);
+	int stroke = get_accurated_stroke(x_delta, y_delta);
 
-	/*if (direction != last_direction) {
+	// check minimum distance
+	int square_distance = x_delta * x_delta + y_delta * y_delta;
 
+	if (square_distance > DELTA_MIN * DELTA_MIN) {
 
-		last_direction = direction;
+		// grab stroke
+		push_stroke(stroke, &accurate_stroke_sequence);
 
-	} else {*/
+		// reset start position
+		old_x = new_x;
+		old_y = new_y;
 
-		int square_distance = x_delta * x_delta + y_delta * y_delta;
+	}
 
-		if (square_distance > DELTA_MIN * DELTA_MIN) {
-			push_stroke(direction, &accurate_stroke_sequence);
+	int x_delta_2 = new_x - old_x_2;
+	int y_delta_2 = new_y - old_y_2;
 
-			old_x = new_x;
-			old_y = new_y;
+	int fuzzy_stroke = get_fuzzy_stroke(x_delta_2, y_delta_2);
 
-		}
+	int square_distance_2 = x_delta_2 * x_delta_2 + y_delta_2 * y_delta_2;
 
-	//}
+	if ( DELTA_MIN * DELTA_MIN < square_distance_2) {
+		// grab stroke
 
-	// verifica se mudou de direção
+		push_stroke(fuzzy_stroke, &fuzzy_stroke_sequence);
 
-	int x_delta_2, y_delta_2;
-
-	x_delta_2 = new_x - old_x_2;
-	y_delta_2 = new_y - old_y_2;
-
-	int square_distance2 = x_delta_2 * x_delta_2 + y_delta_2 * y_delta_2;
-
-	if ( DELTA_MIN * DELTA_MIN < square_distance2) {
-
-		if (2 * x_delta_2 * x_delta_2 <= square_distance2) {
-			if (y_delta_2 > 0) {
-				push_stroke(DOWN, &fuzzy_stroke_sequence);
-			} else {
-				push_stroke(UP, &fuzzy_stroke_sequence);
-			}
-
-		} else {
-			if (x_delta_2 > 0) {
-				push_stroke(RIGHT, &fuzzy_stroke_sequence);
-			} else {
-				push_stroke(LEFT, &fuzzy_stroke_sequence);
-			}
-
-		}
-
-		// armazena a última posição do movimento
+		// reset start position
 		old_x_2 = new_x;
 		old_y_2 = new_y;
-
 	}
 
 	return;
