@@ -45,7 +45,7 @@
 #include "wm.h"
 #include "brush-image.h"
 
-#define DELTA_MIN	10
+#define DELTA_MIN	20
 #define MOUSEGESTURE_MAX_VARIANCE  10
 
 #define M_UP    'u'
@@ -59,11 +59,11 @@
 
 /* the movements */
 enum DIRECTIONS {
-	LEFT = 1, RIGHT, UP, DOWN, ONE, THREE, SEVEN, NINE
+	NONE, LEFT, RIGHT, UP, DOWN, ONE, THREE, SEVEN, NINE
 };
 
 /* Names of movements (will consider the initial letters on the config file) */
-char *gesture_names[] = { "NULL", "LEFT", "RIGHT", "UP", "DOWN", "1", "3", "7",
+char *gesture_names[] = { "NONE", "LEFT", "RIGHT", "UP", "DOWN", "1", "3", "7",
 		"9" };
 
 /* close xgestures */
@@ -107,6 +107,8 @@ int old_y = -1;
 int old_x_2 = -1;
 int old_y_2 = -1;
 
+int last_direction = -1;
+
 /* display */
 Display *dpy;
 
@@ -138,7 +140,9 @@ void clear_stroke_sequence(struct stack *stroke_sequence) {
 int push_stroke(int stroke, struct stack* stroke_sequence) {
 	int last_stroke = (int) peek(stroke_sequence);
 	if (last_stroke != stroke) {
-		push((void *) stroke, stroke_sequence);
+		if (stroke != NONE) {
+			push((void *) stroke, stroke_sequence);
+		}
 		return 1;
 	} else {
 		return 0;
@@ -164,6 +168,8 @@ void start_grab(XButtonEvent *e) {
 
 	old_x_2 = e->x_root;
 	old_y_2 = e->y_root;
+
+	last_direction = NONE;
 
 	if (!without_brush) {
 		backing_save(&backing, e->x_root - brush.image_width,
@@ -206,6 +212,8 @@ void stop_grab(XButtonEvent *e) {
 		XSync(e->display, False);
 	};
 
+	last_direction = NONE;
+
 	char * accurate_stroke_str = stroke_sequence_to_str(
 			&accurate_stroke_sequence);
 	char * fuzzy_stroke_str = stroke_sequence_to_str(&fuzzy_stroke_sequence);
@@ -232,6 +240,57 @@ void stop_grab(XButtonEvent *e) {
 	return;
 }
 
+int calc_direction(int x_delta, int y_delta) {
+
+	if ((x_delta == 0) && (y_delta == 0)) {
+		return NONE;
+	}
+
+	// check if the movement is near main axes
+	if ((x_delta == 0) || (y_delta == 0) || (x_delta / y_delta > 3)
+			|| (y_delta / x_delta > 3)) {
+
+		// x axes
+		if (abs(x_delta) > abs(y_delta)) {
+
+			if (x_delta > 0) {
+				return RIGHT;
+			} else if (x_delta < 0) {
+				return LEFT;
+			}
+
+			// y axes
+		} else {
+
+			if (y_delta > 0) {
+				return DOWN;
+			} else if (y_delta < 0) {
+				return UP;
+			}
+
+		}
+
+		// diagonal axes
+	} else {
+
+		if (y_delta < 0) {
+			if (x_delta < 0) {
+				return SEVEN;
+			} else if (x_delta > 0) { // RIGHT
+				return NINE;
+			}
+		} else if (y_delta > 0) { // DOWN
+			if (x_delta < 0) { // RIGHT
+				return ONE;
+			} else if (x_delta > 0) {
+				return THREE;
+			}
+		}
+
+	}
+
+}
+
 void process_move(XMotionEvent *e) {
 
 	// se for o caso, desenha o movimento na tela
@@ -243,85 +302,34 @@ void process_move(XMotionEvent *e) {
 		brush_line_to(&brush, e->x_root, e->y_root);
 	}
 
-	int x_delta, y_delta;
-	int new_x, new_y;
+	int new_x = e->x_root;
+	int new_y = e->y_root;
 
-	// guarda o local de inicio do movimento atual
-	new_x = e->x_root;
-	new_y = e->y_root;
+	int x_delta = new_x - old_x;
+	int y_delta = new_y - old_y;
 
-	// obtém os deslocamentos
+	int direction = calc_direction(x_delta, y_delta);
 
-	x_delta = new_x - old_x;
-	y_delta = new_y - old_y;
+	/*if (direction != last_direction) {
 
-	int square_distance = x_delta * x_delta + y_delta * y_delta;
+
+		last_direction = direction;
+
+	} else {*/
+
+		int square_distance = x_delta * x_delta + y_delta * y_delta;
+
+		if (square_distance > DELTA_MIN * DELTA_MIN) {
+			push_stroke(direction, &accurate_stroke_sequence);
+
+			old_x = new_x;
+			old_y = new_y;
+
+		}
+
+	//}
 
 	// verifica se mudou de direção
-
-	if (square_distance > DELTA_MIN * DELTA_MIN) {
-
-		float axes_proximity_value = 0.0;
-
-		float AXES_PROXIMITY_THREADSHOLD = 4;
-
-		if (x_delta == 0) { 		// cursor is moving only on Y axis
-			axes_proximity_value = (float) AXES_PROXIMITY_THREADSHOLD;
-		} else if (y_delta == 0) { 	// cursor is moving only on X axis
-			axes_proximity_value = (float) AXES_PROXIMITY_THREADSHOLD;
-		} else { 					// calculate the
-			axes_proximity_value = ((float) x_delta / (float) y_delta);
-		}
-
-		int change = 0;
-
-		// if x is more than 10 times the value of y, the cursor is considered moving on the X axe.
-		if (fabs(axes_proximity_value) >= AXES_PROXIMITY_THREADSHOLD) {
-
-			if (x_delta > 0) {
-				change = push_stroke(RIGHT, &accurate_stroke_sequence);
-			} else if (x_delta < 0) {
-				change = push_stroke(LEFT, &accurate_stroke_sequence);
-			}
-
-			//  if Y is more than 10 times the value of X, the cursor is considered moving on the Y axe.
-		} else if (fabs(axes_proximity_value) * AXES_PROXIMITY_THREADSHOLD
-				<= 1) {
-
-			if (y_delta > 0) {
-				change = push_stroke(DOWN, &accurate_stroke_sequence);
-			} else if (y_delta < 0) {
-				change = push_stroke(UP, &accurate_stroke_sequence);
-			}
-
-			// diagonal movement
-		} else {
-
-			if (y_delta < 0) {
-				if (x_delta < 0) {
-					change = push_stroke(SEVEN, &accurate_stroke_sequence);
-				} else if (x_delta > 0) { // RIGHT
-					change = push_stroke(NINE, &accurate_stroke_sequence);
-				}
-			} else if (y_delta > 0) { // DOWN
-				if (x_delta < 0) { // RIGHT
-					change = push_stroke(ONE, &accurate_stroke_sequence);
-				} else if (x_delta > 0) {
-					change = push_stroke(THREE, &accurate_stroke_sequence);
-				}
-			}
-
-		}
-
-	}
-
-	/// se mudou de direção, então reseta o old
-	if ((abs(new_x) < abs(old_x)) || (abs(new_y) < abs(old_y))) {
-
-		old_x = new_x;
-		old_y = new_y;
-
-	}
 
 	int x_delta_2, y_delta_2;
 
