@@ -46,7 +46,6 @@
 #include "drawing-brush-image.h"
 
 #define DELTA_MIN	20
-#define MOUSEGESTURE_MAX_VARIANCE  10
 
 /* the movements */
 enum DIRECTIONS {
@@ -204,19 +203,18 @@ void stop_grab(XButtonEvent *e) {
 
 	char * fuzzy_stroke_str = stroke_sequence_to_str(&fuzzy_stroke_sequence);
 
-
 	if ((strcmp("", fuzzy_stroke_str) == 0)
 			&& (strcmp("", accurate_stroke_str) == 0)) {
 
 		XUngrabButton(e->display, 3, button_modifier,
-					RootWindow (e->display, 0));
+		RootWindow (e->display, 0));
 		mouse_click(e->display, button);
 		grab_pointer(e->display);
 
 	} else {
 
-		struct window_info * activeWindow = get_window_info(first_click.display);
-
+		struct window_info * activeWindow = get_window_info(
+				first_click.display);
 
 		// sends the both strings to process.
 		process_movement_sequences(first_click.display, activeWindow,
@@ -234,24 +232,25 @@ int get_accurated_stroke(int x_delta, int y_delta) {
 	}
 
 	// check if the movement is near main axes
-	if ((x_delta == 0) || (y_delta == 0) || (x_delta / y_delta > 3)
-			|| (y_delta / x_delta > 3)) {
+	if ((x_delta == 0) || (y_delta == 0)
+			|| ((float) x_delta / (float) y_delta > 2.0)
+			|| ((float) y_delta / (float) x_delta > 2.0)) {
 
-		// x axes
+		// x axe
 		if (abs(x_delta) > abs(y_delta)) {
 
 			if (x_delta > 0) {
 				return RIGHT;
-			} else if (x_delta < 0) {
+			} else {
 				return LEFT;
 			}
 
-			// y axes
+			// y axe
 		} else {
 
 			if (y_delta > 0) {
 				return DOWN;
-			} else if (y_delta < 0) {
+			} else {
 				return UP;
 			}
 
@@ -314,18 +313,15 @@ void process_move(XMotionEvent *e) {
 	int new_x = e->x_root;
 	int new_y = e->y_root;
 
-	int x_delta = new_x - old_x;
-	int y_delta = new_y - old_y;
+	int x_delta = (new_x - old_x);
+	int y_delta = (new_y - old_y);
 
-	int stroke = get_accurated_stroke(x_delta, y_delta);
+	if ((abs(x_delta) > DELTA_MIN) || (abs(y_delta) > DELTA_MIN)) {
 
-	// check minimum distance
-	int square_distance = x_delta * x_delta + y_delta * y_delta;
-
-	if (square_distance > DELTA_MIN * DELTA_MIN) {
+		int stroke = get_accurated_stroke(x_delta, y_delta);
 
 		// grab stroke
-		push_stroke(stroke, &accurate_stroke_sequence);
+		int added = push_stroke(stroke, &accurate_stroke_sequence);
 
 		// reset start position
 		old_x = new_x;
@@ -374,8 +370,6 @@ void event_loop(Display *dpy) {
 			break;
 
 		}
-
-
 
 	}
 
@@ -545,17 +539,15 @@ int init(Display *dpy) {
 		}
 	}
 
-
 	printf("Loading gestures from %s\n", conf_file);
 
 	err = init_gestures(conf_file);
 
 	if (err) {
-		fprintf(stderr,
-				"Error %d loading gestures file '%s' \n",err,conf_file);
+		fprintf(stderr, "Error %d loading gestures file '%s' \n", err,
+				conf_file);
 		return err;
 	}
-
 
 	/* choose a wm helper */
 	init_wm_helper();
