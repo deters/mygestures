@@ -29,7 +29,12 @@
 #include <X11/Xutil.h>
 #include <X11/extensions/XTest.h>
 
-Window I18N_get_parent_win(Display *dpy, Window w) {
+/*
+ * Get the parent window.
+ *
+ * PRIVATE
+ */
+Window get_parent_window(Display *dpy, Window w) {
 	Window root_return, parent_return, *child_return;
 	unsigned int nchildren_return;
 	int ret;
@@ -39,7 +44,12 @@ Window I18N_get_parent_win(Display *dpy, Window w) {
 	return parent_return;
 }
 
-Status I18N_FetchName(Display *dpy, Window w, char **winname) {
+/*
+ * Get the title of a given window at out_window_title.
+ *
+ * PRIVATE
+ */
+Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
 	int status;
 	XTextProperty text_prop;
 	char **list;
@@ -48,50 +58,71 @@ Status I18N_FetchName(Display *dpy, Window w, char **winname) {
 	status = XGetWMName(dpy, w, &text_prop);
 	if (!status || !text_prop.value || !text_prop.nitems) {
 		printf("getwmname error ");
-		*winname = NULL;
+		*out_window_title = NULL;
 		return 0;
 	}
 	status = Xutf8TextPropertyToTextList(dpy, &text_prop, &list, &num);
 	if (status < Success || !num || !*list) {
-		*winname = NULL;
+		*out_window_title = NULL;
 		return 0;
 	}
 	XFree(text_prop.value);
-	*winname = (char *) strdup(*list);
+	*out_window_title = (char *) strdup(*list);
 	XFreeStringList(list);
 	return 1;
 }
 
-Window focused_window(Display *dpy) {
+/*
+ * Return the focused window at the given display.
+ *
+ * PRIVATE
+ */
+Window get_focused_window(Display *dpy) {
 
 	Window win = 0;
 	int ret, val;
 	ret = XGetInputFocus(dpy, &win, &val);
 
 	if (val == RevertToParent) {
-		win = I18N_get_parent_win(dpy, win);
+		win = get_parent_window(dpy, win);
 	}
 
 	return win;
 
 }
 
-/**
- * Iconize a window from event.
+/*
+ * Iconify the focused window at given display.
+ *
+ * PUBLIC
  */
 void generic_iconify(Display *dpy) {
-	Window w = focused_window(dpy);
+	Window w = get_focused_window(dpy);
 	if (w != None)
 		XIconifyWindow(dpy, w, 0);
 
 	return;
 }
 
+/*
+ * Emulate a mouse click at the given display.
+ *
+ * PRIVATE
+ */
+void mouse_click(Display *display, int button)
+{
+	XTestFakeButtonEvent(display, button, True, CurrentTime);
+	XTestFakeButtonEvent(display, button, False, CurrentTime + 100);
+}
+
+
 /**
- * Kill a window from event.
+ * Kill focused window at the given Display.
+ *
+ * PUBLIC
  */
 void generic_kill(Display *dpy) {
-	Window w = focused_window(dpy);
+	Window w = get_focused_window(dpy);
 
 	/* dont kill root window */
 	if (w == RootWindow(dpy, DefaultScreen(dpy)))
@@ -104,28 +135,34 @@ void generic_kill(Display *dpy) {
 }
 
 /**
- * Raise a window from event.
+ * Raise the focused window at the given Display.
+ *
+ * PUBLIC
  */
 void generic_raise(Display *dpy) {
-	Window w = focused_window(dpy);
+	Window w = get_focused_window(dpy);
 	XRaiseWindow(dpy, w);
 	return;
 }
 
 /**
- * Lower a window from event.
+ * Lower the focused window at the given Display.
+ *
+ * PUBLIC
  */
 void generic_lower(Display *dpy) {
-	Window w = focused_window(dpy);
+	Window w = get_focused_window(dpy);
 	XLowerWindow(dpy, w);
 	return;
 }
 
 /**
- * Maximize a window from event.
+ * Maximize the focused window at the given Display.
+ *
+ * PUBLIC
  */
 void generic_maximize(Display *dpy) {
-	Window w = focused_window(dpy);
+	Window w = get_focused_window(dpy);
 	int width = XDisplayWidth(dpy, DefaultScreen(dpy));
 	int heigth = XDisplayHeight(dpy, DefaultScreen(dpy));
 
@@ -133,22 +170,16 @@ void generic_maximize(Display *dpy) {
 
 	return;
 }
+
 struct wm_helper generic_wm_helper = { .iconify = generic_iconify, .kill =
 		generic_kill, .raise = generic_raise, .lower = generic_lower,
 		.maximize = generic_maximize, };
 
-/*
- * Sends a fake mouse button event to a window.
- */
-
-void mouseClick(Display *display, Window w, int button) // THE BUTTON STILL UNUSED
-{
-	XTestFakeButtonEvent(display, button, True, CurrentTime);
-	XTestFakeButtonEvent(display, button, False, CurrentTime + 100);
-}
 
 /**
  * Creates a Keysym from a char sequence
+ *
+ * PRIVATE
  */
 void *compile_key_action(char *str_ptr) {
 	struct key_press base;
@@ -173,7 +204,7 @@ void *compile_key_action(char *str_ptr) {
 			fprintf(stderr, "error converting %s to keysym\n", token);
 			exit(-1);
 		}
-		key->next = alloc_key_press();
+		key->next = (struct key_press * ) alloc_key_press();
 		key = key->next;
 		key->key = k;
 		token = strsep(&str_ptr, "+\n ");
@@ -185,20 +216,22 @@ void *compile_key_action(char *str_ptr) {
 }
 
 /*
- * Returns an struct identifying name and class of a window from and XButtonEvent
+ * Return a window_info struct for the focused window at a given Display.
+ *
+ * PRIVATE
  */
-struct window_info *getWindowInfo(Display *dpy) {
+struct window_info *get_window_info(Display *dpy) {
 
 	Window win = 0;
 	int ret, val;
 	ret = XGetInputFocus(dpy, &win, &val);
 
 	if (val == RevertToParent) {
-		win = I18N_get_parent_win(dpy, win);
+		win = get_parent_window(dpy, win);
 	}
 
 	char *win_title;
-	ret = I18N_FetchName(dpy, win, &win_title);
+	ret = fetch_window_title(dpy, win, &win_title);
 
 	struct window_info *ans = malloc(sizeof(struct window_info));
 	bzero(ans, sizeof(struct window_info));

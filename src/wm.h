@@ -32,6 +32,5 @@ void generic_kill(Display *dpy);
 void generic_raise(Display *dpy);
 void generic_lower(Display *dpy);
 void generic_maximize(Display *dpy);
-void mouseClick(Display *display, Window w, int button);
 
 #endif

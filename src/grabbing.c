@@ -201,20 +201,22 @@ void stop_grab(XButtonEvent *e) {
 
 	char * accurate_stroke_str = stroke_sequence_to_str(
 			&accurate_stroke_sequence);
+
 	char * fuzzy_stroke_str = stroke_sequence_to_str(&fuzzy_stroke_sequence);
+
 
 	if ((strcmp("", fuzzy_stroke_str) == 0)
 			&& (strcmp("", accurate_stroke_str) == 0)) {
 
-		int err = XUngrabButton(e->display, 3, button_modifier,
-		RootWindow (e->display, 0));
-
-		mouseClick(e->display, e->window, button);
+		XUngrabButton(e->display, 3, button_modifier,
+					RootWindow (e->display, 0));
+		mouse_click(e->display, button);
 		grab_pointer(e->display);
 
 	} else {
 
-		struct window_info * activeWindow = getWindowInfo(first_click.display);
+		struct window_info * activeWindow = get_window_info(first_click.display);
+
 
 		// sends the both strings to process.
 		process_movement_sequences(first_click.display, activeWindow,
@@ -273,6 +275,8 @@ int get_accurated_stroke(int x_delta, int y_delta) {
 		}
 
 	}
+
+	return NONE;
 
 }
 
@@ -370,6 +374,8 @@ void event_loop(Display *dpy) {
 			break;
 
 		}
+
+
 
 	}
 
@@ -539,11 +545,17 @@ int init(Display *dpy) {
 		}
 	}
 
+
+	printf("Loading gestures from %s\n", conf_file);
+
 	err = init_gestures(conf_file);
+
 	if (err) {
-		fprintf(stderr, "cannot init gestures.... \n");
+		fprintf(stderr,
+				"Error %d loading gestures file '%s' \n",err,conf_file);
 		return err;
 	}
+
 
 	/* choose a wm helper */
 	init_wm_helper();
@@ -696,7 +708,7 @@ int main(int argc, char **argv) {
 	event_loop(dpy);
 
 	end();
-	XUngrabPointer(dpy, CurrentTime);
+	//XUngrabPointer(dpy, CurrentTime);
 	XCloseDisplay(dpy);
 	return 0;
 

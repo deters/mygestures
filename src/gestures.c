@@ -67,9 +67,6 @@ int global_gestures_count = 0;
 /* a temporary stack - it remains necessary?) */
 EMPTY_STACK(temp_general_stack);
 
-/* conf file: */
-extern char conf_file[];
-
 /* shutdown? */
 extern int shut_down;
 
@@ -152,7 +149,7 @@ void free_action(struct action *free_me) {
 }
 
 /* alloc a key_press struct ???? */
-struct key_press *alloc_key_press(void) {
+struct key_press * alloc_key_press(void) {
 	struct key_press *ans = malloc(sizeof(struct key_press));
 	bzero(ans, sizeof(struct key_press));
 	return ans;
@@ -257,9 +254,6 @@ void execute_action(Display *dpy, struct action *action) {
 		case ACTION_KILL:
 			wm_helper->kill(dpy);
 			break;
-		case ACTION_RECONF:
-			init_gestures(conf_file);
-			break;
 		case ACTION_RAISE:
 			wm_helper->raise(dpy);
 			break;
@@ -279,6 +273,27 @@ void execute_action(Display *dpy, struct action *action) {
 	return;
 }
 
+struct gesture * lookup_gesture(char * captured_sequence,
+		struct window_info * current_context, struct gesture **gesture_list,
+		int gesture_list_count) {
+
+	struct gesture * gest = NULL;
+	int i;
+
+	for (i = 0; i < gesture_list_count; i++) {
+		if (!match_gesture(captured_sequence, current_context,
+				gesture_list[i])) {
+
+			gest = gesture_list[i];
+			break;
+
+		}
+	}
+
+	return gest;
+
+}
+
 /**
  * Receives captured movement from two diferent algoritms: a simple and a complex.
  * 
@@ -291,107 +306,57 @@ void execute_action(Display *dpy, struct action *action) {
  * and only then will consider the global gestures.
  */
 void process_movement_sequences(Display * dpy,
-		const struct window_info *activeWindow, char *complex_sequence,
-		char *simple_sequence) {
+		const struct window_info *current_context, char *complex_sequence,
+		char * simple_sequence) {
 
 	struct gesture *gest = NULL;
-	int i;
 
 	printf("\n\n");
-	printf("Window class: %s\n", activeWindow->class);
-	printf("Window title: %s\n", activeWindow->title);
+	printf("Window class: %s\n", current_context->class);
+	printf("Window title: %s\n", current_context->title);
+
 	printf("Searching gesture for sequence: '%s'\n", complex_sequence);
 
-	// searching the complex sequence on the application specific gestures
-	for (i = 0; i < specific_gestures_count; i++) {
-		if (!match_gesture(complex_sequence, activeWindow,
-				specific_gestures[i])) {
+	gest = lookup_gesture(complex_sequence, current_context, specific_gestures,
+			specific_gestures_count);
 
-			gest = specific_gestures[i];
-
-			printf("Gesture found");
-			if (strcmp("", gest->context->class) != 0) {
-				printf(" @class=%s\n", gest->context->class);
-			}
-
-			if (strcmp("", gest->context->title) != 0) {
-				printf(" @title=%s\n", gest->context->title);
-			}
-
-			printf(":\n");
-
-			break;
-		}
+	if (gest == NULL) {
+		gest = lookup_gesture(complex_sequence, current_context,
+				global_gestures, global_gestures_count);
 	}
 
-	// searching the complex sequence on the global gestures
 	if (gest == NULL) {
 
-		for (i = 0; i < global_gestures_count; i++) {
-			if (!match_gesture(complex_sequence, activeWindow,
-					global_gestures[i])) {
-				gest = global_gestures[i];
+		printf("Searching gesture for sequence: '%s'\n", simple_sequence);
 
-				printf("Global gesture found:");
-				printf("\n");
-
-				break;
-			}
-		}
+		gest = lookup_gesture(simple_sequence, current_context,
+				specific_gestures, specific_gestures_count);
 	}
 
-	// searching the simple sequence on the application specific gestures
 	if (gest == NULL) {
-
-		printf("Gesture not found.\n");
-		printf("Searching gesture for alternative sequence: '%s'\n",
-				simple_sequence);
-		for (i = 0; i < specific_gestures_count; i++) {
-			if (!match_gesture(simple_sequence, activeWindow,
-					specific_gestures[i])) {
-
-				printf("Gesture found");
-				if (strcmp("", gest->context->class) != 0) {
-					printf(" @class=%s\n", gest->context->class);
-				}
-
-				if (strcmp("", gest->context->title) != 0) {
-					printf(" @title=%s\n", gest->context->title);
-				}
-
-				printf(":\n");
-
-				gest = specific_gestures[i];
-				break;
-			}
-		}
-	}
-
-	// searching the simple sequence on the global gestures
-	if (gest == NULL) {
-		for (i = 0; i < global_gestures_count; i++) {
-			if (!match_gesture(simple_sequence, activeWindow,
-					global_gestures[i])) {
-				gest = global_gestures[i];
-
-				printf("Global gesture found:\n");
-
-				break;
-			}
-		}
+		gest = lookup_gesture(simple_sequence, current_context, global_gestures,
+				global_gestures_count);
 	}
 
 	// execute the action
 	if (gest == NULL) {
 
-		printf("Gesture not found.");
-		printf("\n");
+		printf("Gesture not found.\n");
 
 		execute_action(dpy, NULL);
 
 	} else {
 
-		printf("    %s\n", gest->movement->name);
+		printf("Gesture found.\n");
+
+		if ((gest->context->class == NULL) && (gest->context->title == NULL)) {
+			printf("   ALL\n");
+		} else {
+			printf("    Class: %s\n", gest->context->class);
+			printf("    Title: %s\n", gest->context->title);
+		}
+
+		printf("   Action: %s\n", gest->movement->name);
 
 		execute_action(dpy, gest->action);
 
@@ -422,8 +387,6 @@ char *remove_new_line(char *str) {
  * Reads the conf file
  */
 int read_config(char *conf_file) {
-
-	printf("Reading gestures from %s\n", conf_file);
 
 	FILE *conf = fopen(conf_file, "r");
 
@@ -459,17 +422,17 @@ int read_config(char *conf_file) {
 
 		currentline = currentline + 1;
 
-		// ignore comments
+// ignore comments
 		if (buff[0] == '#')
 			continue;
 
-		// remove line breaks
+// remove line breaks
 		remove_new_line(buff);
 
 		buff_ptr = buff;
 		buff_ptr_ptr = &buff_ptr;
 
-		// ignoring white spaces
+// ignoring white spaces
 		token = strsep(buff_ptr_ptr, " \t");
 		while ((token != NULL) && (strcmp(token, "") == 0)) {
 			token = strsep(buff_ptr_ptr, " \t");
@@ -477,7 +440,7 @@ int read_config(char *conf_file) {
 		if ((token == NULL) || (strlen(token) == 0))
 			continue; // go to next line
 
-		// found a TITLE token
+// found a TITLE token
 
 		if (strcasecmp(token, "TITLE") == 0) {
 			// get the window title
@@ -501,7 +464,7 @@ int read_config(char *conf_file) {
 			continue; // go to next line
 		}
 
-		// found a CLASS token
+// found a CLASS token
 		if (strcasecmp(token, "CLASS") == 0) {
 			// get the window class
 			token = strsep(buff_ptr_ptr, " \t");
@@ -524,7 +487,7 @@ int read_config(char *conf_file) {
 			continue;
 		}
 
-		// found a ALL token
+// found a ALL token
 		if (strcasecmp(token, "ALL") == 0) {
 			// next lines configuration will be valid to any window
 			window_class = NULL;
@@ -538,7 +501,7 @@ int read_config(char *conf_file) {
 			continue;
 		}
 
-		// found a MOVEMENT token
+// found a MOVEMENT token
 		if (strcasecmp(token, "MOVEMENT") == 0) {
 			// get the name of the movement
 			token = strsep(buff_ptr_ptr, " \t");
@@ -578,19 +541,19 @@ int read_config(char *conf_file) {
 			continue;
 		}
 
-		// If not found a token, then this line is a GESTURE definition
-		// A GESTURE contains a MOVEMENT name, a ACTION name and the PARAMS to the action
+// If not found a token, then this line is a GESTURE definition
+// A GESTURE contains a MOVEMENT name, a ACTION name and the PARAMS to the action
 
 		struct movement *gesture_movement;
 
 		char *movementused = token;
 
-		// TODO remove this variables:
+// TODO remove this variables:
 		char *mov_name = "";
 		char *mov_value = "";
 
-		// Try to get the Movement from the known movements
-		// TODO: create a separated method to do this
+// Try to get the Movement from the known movements
+// TODO: create a separated method to do this
 		for (i = 0; i < known_movements_num; i++) {
 
 			char *movement_name =
@@ -600,7 +563,7 @@ int read_config(char *conf_file) {
 
 			if (strcmp(movementused, movement_name) == 0) {
 				gesture_movement = ((struct movement *) (known_movements[i]));
-				// TODO remove this variables	
+				// TODO remove this variables
 				mov_value = movement_value;
 				mov_name = movement_name;
 				continue;
@@ -611,13 +574,13 @@ int read_config(char *conf_file) {
 			continue; //ingores the movement.
 		}
 
-		// get the ACTION name
+// get the ACTION name
 		token = strsep(buff_ptr_ptr, " \t");
 		if (token == NULL)
 			continue;
 		gesture_action = token;
 
-		// get the PARAMS of the action
+// get the PARAMS of the action
 		gesture_params = *buff_ptr_ptr; // the remainder chars on the line
 
 		for (i = 1; i < ACTION_LAST; i++) {
@@ -659,14 +622,14 @@ int read_config(char *conf_file) {
 			if (mov_name != "") {
 				gest = alloc_gesture(gesture_window, action, gesture_movement);
 			} else {
-				//gest = alloc_gesture(sequence, action, window_title, window_class, 
+				//gest = alloc_gesture(sequence, action, window_title, window_class,
 				//"Unknown movement");
 				printf("Warning: Invalid gesture name at line %i: %s \n",
 						currentline, sequence);
 				continue;
 			}
 
-			// push the gesture to a temporary stack 
+			// push the gesture to a temporary stack
 			// TODO: the temp_stack remain's necessary??? the is no more sort...
 			if ((window_title == NULL) && (window_class == NULL)) {
 				push(gest, &temp_general_stack);
@@ -679,6 +642,7 @@ int read_config(char *conf_file) {
 		}
 
 	}
+
 	// closes the file
 	fclose(conf);
 	return 0;
@@ -729,7 +693,7 @@ int init_gestures(char *config_file) {
 		global_gestures[i] = (struct gesture *) pop(&temp_general_stack);
 	}
 	// the gesture sequences are now regular expressions.
-	// since there are no method to know if a regular expression is greatest to other, there 
+	// since there are no method to know if a regular expression is greatest to other, there
 	// aren't way to sort the gestures array.
 	// It is necessary to try to match the recognized pattern with all the patterns on the array.
 

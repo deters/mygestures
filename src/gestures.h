@@ -56,7 +56,7 @@ struct gesture {
 
 struct key_press {
 	KeySym key;
-	struct key_press *next;
+	struct key_press * next;
 	char *original_str;
 };
 
