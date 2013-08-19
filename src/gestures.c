@@ -422,17 +422,17 @@ int read_config(char *conf_file) {
 
 		currentline = currentline + 1;
 
-// ignore comments
+		// ignore comments
 		if (buff[0] == '#')
 			continue;
 
-// remove line breaks
+		// remove line breaks
 		remove_new_line(buff);
 
 		buff_ptr = buff;
 		buff_ptr_ptr = &buff_ptr;
 
-// ignoring white spaces
+		// ignoring white spaces
 		token = strsep(buff_ptr_ptr, " \t");
 		while ((token != NULL) && (strcmp(token, "") == 0)) {
 			token = strsep(buff_ptr_ptr, " \t");
@@ -440,7 +440,7 @@ int read_config(char *conf_file) {
 		if ((token == NULL) || (strlen(token) == 0))
 			continue; // go to next line
 
-// found a TITLE token
+		// found a TITLE token
 
 		if (strcasecmp(token, "TITLE") == 0) {
 			// get the window title
@@ -464,7 +464,7 @@ int read_config(char *conf_file) {
 			continue; // go to next line
 		}
 
-// found a CLASS token
+		// found a CLASS token
 		if (strcasecmp(token, "CLASS") == 0) {
 			// get the window class
 			token = strsep(buff_ptr_ptr, " \t");
@@ -487,7 +487,7 @@ int read_config(char *conf_file) {
 			continue;
 		}
 
-// found a ALL token
+		// found a ALL token
 		if (strcasecmp(token, "ALL") == 0) {
 			// next lines configuration will be valid to any window
 			window_class = NULL;
@@ -501,7 +501,7 @@ int read_config(char *conf_file) {
 			continue;
 		}
 
-// found a MOVEMENT token
+		// found a MOVEMENT token
 		if (strcasecmp(token, "MOVEMENT") == 0) {
 			// get the name of the movement
 			token = strsep(buff_ptr_ptr, " \t");
@@ -527,7 +527,7 @@ int read_config(char *conf_file) {
 			// compile the regular expression for the movement
 			regex_t movement_compiled;
 			if (regcomp(&movement_compiled, movement_value,
-			REG_EXTENDED | REG_NOSUB) != 0) {
+					REG_EXTENDED | REG_NOSUB) != 0) {
 				printf("Warning: Invalid movement sequence: %s\tat line %i",
 						movement_value, currentline - 1);
 				exit(1); // exit
@@ -541,19 +541,19 @@ int read_config(char *conf_file) {
 			continue;
 		}
 
-// If not found a token, then this line is a GESTURE definition
-// A GESTURE contains a MOVEMENT name, a ACTION name and the PARAMS to the action
+		// If not found a token, then this line is a GESTURE definition
+		// A GESTURE contains a MOVEMENT name, a ACTION name and the PARAMS to the action
 
 		struct movement *gesture_movement;
 
 		char *movementused = token;
 
-// TODO remove this variables:
+		// TODO remove this variables:
 		char *mov_name = "";
 		char *mov_value = "";
 
-// Try to get the Movement from the known movements
-// TODO: create a separated method to do this
+		// Try to get the Movement from the known movements
+		// TODO: create a separated method to do this
 		for (i = 0; i < known_movements_num; i++) {
 
 			char *movement_name =
@@ -574,13 +574,13 @@ int read_config(char *conf_file) {
 			continue; //ingores the movement.
 		}
 
-// get the ACTION name
+		// get the ACTION name
 		token = strsep(buff_ptr_ptr, " \t");
 		if (token == NULL)
 			continue;
 		gesture_action = token;
 
-// get the PARAMS of the action
+		// get the PARAMS of the action
 		gesture_params = *buff_ptr_ptr; // the remainder chars on the line
 
 		for (i = 1; i < ACTION_LAST; i++) {
