@@ -176,51 +176,14 @@ struct wm_helper generic_wm_helper = { .iconify = generic_iconify, .kill =
 		.maximize = generic_maximize, };
 
 
-/**
- * Creates a Keysym from a char sequence
- *
- * PRIVATE
- */
-void *compile_key_action(char *str_ptr) {
-	struct key_press base;
-	struct key_press *key;
-	KeySym k;
-	char *str = str_ptr;
-	char *token = str;
-	char *str_dup;
 
-	if (str == NULL)
-		return NULL;
-
-	/* do this before strsep.. */
-	str_dup = strdup(str);
-
-	key = &base;
-	token = strsep(&str_ptr, "+\n ");
-	while (token != NULL) {
-		/* printf("found : %s\n", token); */
-		k = XStringToKeysym(token);
-		if (k == NoSymbol) {
-			fprintf(stderr, "error converting %s to keysym\n", token);
-			exit(-1);
-		}
-		key->next = (struct key_press * ) alloc_key_press();
-		key = key->next;
-		key->key = k;
-		token = strsep(&str_ptr, "+\n ");
-	}
-
-	base.next->original_str = str_dup;
-	;
-	return base.next;
-}
 
 /*
  * Return a window_info struct for the focused window at a given Display.
  *
  * PRIVATE
  */
-struct window_info *get_window_info(Display *dpy) {
+struct window_info * get_window_info(Display *dpy) {
 
 	Window win = 0;
 	int ret, val;

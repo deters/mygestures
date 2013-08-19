@@ -161,6 +161,45 @@ void free_key_press(struct key_press *free_me) {
 	return;
 }
 
+/**
+ * Creates a Keysym from a char sequence
+ *
+ * PRIVATE
+ */
+void * compile_key_action(char *str_ptr) {
+	struct key_press base;
+	struct key_press *key;
+	KeySym k;
+	char *str = str_ptr;
+	char *token = str;
+	char *str_dup;
+
+	if (str == NULL)
+		return NULL;
+
+	/* do this before strsep.. */
+	str_dup = strdup(str);
+
+	key = &base;
+	token = strsep(&str_ptr, "+\n ");
+	while (token != NULL) {
+		/* printf("found : %s\n", token); */
+		k = XStringToKeysym(token);
+		if (k == NoSymbol) {
+			fprintf(stderr, "error converting %s to keysym\n", token);
+			exit(-1);
+		}
+		key->next = (struct key_press * ) alloc_key_press();
+		key = key->next;
+		key->key = k;
+		token = strsep(&str_ptr, "+\n ");
+	}
+
+	base.next->original_str = str_dup;
+
+	return base.next;
+}
+
 /*
  * Match the window, the class and the grabbed gesture with a known gesture
  */
@@ -306,7 +345,7 @@ struct gesture * lookup_gesture(char * captured_sequence,
  * and only then will consider the global gestures.
  */
 void process_movement_sequences(Display * dpy,
-		const struct window_info *current_context, char *complex_sequence,
+		struct window_info *current_context, char *complex_sequence,
 		char * simple_sequence) {
 
 	struct gesture *gest = NULL;
@@ -453,8 +492,7 @@ int read_config(char *conf_file) {
 			regex_t reg;
 
 			if (regcomp(&reg, window_title, REG_EXTENDED | REG_NOSUB) != 0) {
-				printf("Error on compiling a regular expression: \t");
-				printf(window_title);
+				printf("Error on compiling a regular expression: \t%s\n",window_title);
 				exit(1); // exit
 			}
 
@@ -476,8 +514,7 @@ int read_config(char *conf_file) {
 			regex_t reg;
 
 			if (regcomp(&reg, window_class, REG_EXTENDED | REG_NOSUB) != 0) {
-				printf("Error on compiling a regular expression: \t");
-				printf(window_class);
+				printf("Error on compiling a regular expression: \t%s\n",window_class);
 				exit(1); // exit
 			}
 
@@ -619,7 +656,7 @@ int read_config(char *conf_file) {
 			// creates the gesture
 			sequence = strdup(movementused);
 
-			if (mov_name != "") {
+			if (!strcmp(mov_name,"")) {
 				gest = alloc_gesture(gesture_window, action, gesture_movement);
 			} else {
 				//gest = alloc_gesture(sequence, action, window_title, window_class,

@@ -39,6 +39,7 @@
 #include <strings.h>
 #include <string.h>
 #include <getopt.h>
+#include <math.h>
 #include "drawing-brush.h"
 #include "helpers.h"
 #include "gestures.h"
@@ -579,7 +580,7 @@ void parse_brush_color(char *color) {
 	else if (strcmp(color, "blue") == 0)
 		brush_image = &brush_image_blue;
 	else
-		printf("no such color, %s. using \"blue\"\n");
+		printf("no such color, %s. using \"blue\"\n",color);
 	return;
 
 }

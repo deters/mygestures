@@ -97,25 +97,3 @@ int stack_size(struct stack *stack)
         return stack->size;
 }
 
-/*Window get_window(XButtonEvent *ev, int get_frame)
-{
-        Window target_win = ev->subwindow;
-        if (get_frame)
-                return target_win;
-        
-        if (target_win != None){
-                Window root;
-                int dummyi;
-                unsigned int dummy;
-                
-                if (XGetGeometry (ev->display, target_win, &root, &dummyi, &dummyi,
-                                  &dummy, &dummy, &dummy, &dummy)
-                    && target_win != root)
-                        target_win = XmuClientWindow (ev->display, target_win);
-        }
-        
-        
-        return target_win;
-}*/
-
-

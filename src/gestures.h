@@ -65,9 +65,12 @@ struct window_info {
 	char *class;
 };
 
-void process_movement_sequences(Display * dpy,
-		const struct window_info *activeWindow, char *complex_sequence,
-		char *simple_sequence);
 int init_gestures(char *config_file);
+
+void * compile_key_action(char *str_ptr);
+
+void process_movement_sequences(Display * dpy,
+		struct window_info *current_context, char *complex_sequence,
+		char * simple_sequence); 
 
 #endif
