@@ -45,7 +45,7 @@
 #include "wm.h"
 #include "drawing-brush-image.h"
 
-#define DELTA_MIN	20
+#define DELTA_MIN	30
 
 /* the movements */
 enum DIRECTIONS {
@@ -233,8 +233,8 @@ int get_accurated_stroke(int x_delta, int y_delta) {
 
 	// check if the movement is near main axes
 	if ((x_delta == 0) || (y_delta == 0)
-			|| ((float) x_delta / (float) y_delta > 2.0)
-			|| ((float) y_delta / (float) x_delta > 2.0)) {
+			|| (fabs((float) x_delta / (float) y_delta) > 3)
+			|| (fabs((float) y_delta / (float) x_delta) > 3)) {
 
 		// x axe
 		if (abs(x_delta) > abs(y_delta)) {
