@@ -1,5 +1,7 @@
 bin_PROGRAMS=mygestures
 
+CC=clang
+
 mygestures_SOURCES = \
 	helpers.c helpers.h \
 	gestures.c gestures.h \
