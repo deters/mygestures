@@ -189,7 +189,7 @@ void * compile_key_action(char *str_ptr) {
 			fprintf(stderr, "error converting %s to keysym\n", token);
 			exit(-1);
 		}
-		key->next = (struct key_press * ) alloc_key_press();
+		key->next = (struct key_press *) alloc_key_press();
 		key = key->next;
 		key->key = k;
 		token = strsep(&str_ptr, "+\n ");
@@ -288,19 +288,19 @@ void execute_action(Display *dpy, struct action *action) {
 			}
 			break;
 		case ACTION_ICONIFY:
-			wm_helper->iconify(dpy,get_focused_window(dpy));
+			wm_helper->iconify(dpy, get_focused_window(dpy));
 			break;
 		case ACTION_KILL:
-			wm_helper->kill(dpy,get_focused_window(dpy));
+			wm_helper->kill(dpy, get_focused_window(dpy));
 			break;
 		case ACTION_RAISE:
-			wm_helper->raise(dpy,get_focused_window(dpy));
+			wm_helper->raise(dpy, get_focused_window(dpy));
 			break;
 		case ACTION_LOWER:
-			wm_helper->lower(dpy,get_focused_window(dpy));
+			wm_helper->lower(dpy, get_focused_window(dpy));
 			break;
 		case ACTION_MAXIMIZE:
-			wm_helper->maximize(dpy,get_focused_window(dpy));
+			wm_helper->maximize(dpy, get_focused_window(dpy));
 			break;
 		case ACTION_ROOT_SEND:
 			root_send(dpy, action);
@@ -401,8 +401,6 @@ struct gesture * process_movement_sequences(Display * dpy,
 
 	}
 
-	free(complex_sequence);
-	free(simple_sequence);
 }
 
 /**
@@ -492,7 +490,8 @@ int read_config(char *conf_file) {
 			regex_t reg;
 
 			if (regcomp(&reg, window_title, REG_EXTENDED | REG_NOSUB) != 0) {
-				printf("Error on compiling a regular expression: \t%s\n",window_title);
+				printf("Error on compiling a regular expression: \t%s\n",
+						window_title);
 				exit(1); // exit
 			}
 
@@ -514,7 +513,8 @@ int read_config(char *conf_file) {
 			regex_t reg;
 
 			if (regcomp(&reg, window_class, REG_EXTENDED | REG_NOSUB) != 0) {
-				printf("Error on compiling a regular expression: \t%s\n",window_class);
+				printf("Error on compiling a regular expression: \t%s\n",
+						window_class);
 				exit(1); // exit
 			}
 
@@ -564,7 +564,7 @@ int read_config(char *conf_file) {
 			// compile the regular expression for the movement
 			regex_t movement_compiled;
 			if (regcomp(&movement_compiled, movement_value,
-					REG_EXTENDED | REG_NOSUB) != 0) {
+			REG_EXTENDED | REG_NOSUB) != 0) {
 				printf("Warning: Invalid movement sequence: %s\tat line %i",
 						movement_value, currentline - 1);
 				exit(1); // exit
@@ -656,7 +656,7 @@ int read_config(char *conf_file) {
 			// creates the gesture
 			sequence = strdup(movementused);
 
-			if (strcmp(mov_name,"")!=0) {
+			if (strcmp(mov_name, "") != 0) {
 				gest = alloc_gesture(gesture_window, action, gesture_movement);
 			} else {
 				//gest = alloc_gesture(sequence, action, window_title, window_class,

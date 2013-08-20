@@ -48,6 +48,7 @@
 #include "drawing-brush-image.h"
 
 #define DELTA_MIN	30
+#define MAX_STROKE_SEQUENCE 63
 
 /* the movements */
 enum DIRECTION {
@@ -55,8 +56,7 @@ enum DIRECTION {
 };
 
 /* Names of movements (will consider the initial letters on the config file) */
-char *gesture_names[] = { "NONE", "LEFT", "RIGHT", "UP", "DOWN", "1", "3", "7",
-		"9" };
+char gesture_names[] = { 'N', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
 
 /* close xgestures */
 int shut_down = 0;
@@ -103,10 +103,10 @@ int old_y_2 = -1;
 Display *dpy;
 
 /* movements stack (first capture algoritm) */
-EMPTY_STACK(accurate_stroke_sequence);
+char * accurate_stroke_sequence;
 
 /* movements stack (secound capture algoritm) */
-EMPTY_STACK(fuzzy_stroke_sequence);
+char * fuzzy_stroke_sequence;
 
 XButtonEvent first_click;
 struct wm_helper *wm_helper;
@@ -115,32 +115,6 @@ struct wm_helper *wm_helper;
 backing_t backing;
 brush_t brush;
 
-/**
- * clear the two gesture stacks
- */
-void clear_stroke_sequence(struct stack *stroke_sequence) {
-	while (!is_empty(stroke_sequence))
-		pop(stroke_sequence);
-	return;
-}
-
-/**
- * add a stroke to the stroke sequence.
- */
-int push_stroke(int stroke, struct stack* stroke_sequence) {
-	int last_stroke = (int) peek(stroke_sequence);
-	if (last_stroke != stroke) {
-		if (stroke != NONE) {
-			push(
-					(void *) stroke,
-					stroke_sequence
-					);
-		}
-		return 1;
-	} else {
-		return 0;
-	}
-}
 
 /**
  * clean variables and get a transparent background to draw the movement
@@ -148,9 +122,11 @@ int push_stroke(int stroke, struct stack* stroke_sequence) {
 
 void start_grab(XButtonEvent *e) {
 
+
 	// clear captured sequences
-	clear_stroke_sequence(&accurate_stroke_sequence);
-	clear_stroke_sequence(&fuzzy_stroke_sequence);
+	accurate_stroke_sequence[0] = '\0';
+	fuzzy_stroke_sequence[0] = '\0';
+
 
 	// guarda o evento inicial
 	memcpy(&first_click, e, sizeof(XButtonEvent));
@@ -173,40 +149,15 @@ void start_grab(XButtonEvent *e) {
 	return;
 }
 
-char * stroke_sequence_to_str(struct stack * stroke_sequence) {
-
-	int gest_num = stack_size(stroke_sequence);
-
-	char * gest_str = (char *) malloc(sizeof(char) * (gest_num + 1));
-	bzero(gest_str, sizeof(char) * (gest_num + 1));
-
-	int i;
-	for (i = 0; i < gest_num && !is_empty(stroke_sequence); i++) {
-		int stroke = (int) pop(stroke_sequence);
-		gest_str[gest_num - i - 1] = gesture_names[stroke][0];
-	};
-
-	gest_str[gest_num] = '\0';
-
-	return gest_str;
-
-}
-
-
-
-
-
 /*
  * Emulate a mouse click at the given display.
  *
  * PRIVATE
  */
-void mouse_click(Display *display, int button)
-{
+void mouse_click(Display *display, int button) {
 	XTestFakeButtonEvent(display, button, True, CurrentTime);
 	XTestFakeButtonEvent(display, button, False, CurrentTime + 100);
 }
-
 
 /**
  * Obtém o resultado dos dois algoritmos de captura de movimentos, e envia para serem processadas.
@@ -219,13 +170,8 @@ void stop_grab(XButtonEvent *e) {
 		XSync(e->display, False);
 	};
 
-	char * accurate_stroke_str = stroke_sequence_to_str(
-			&accurate_stroke_sequence);
-
-	char * fuzzy_stroke_str = stroke_sequence_to_str(&fuzzy_stroke_sequence);
-
-	if ((strcmp("", fuzzy_stroke_str) == 0)
-			&& (strcmp("", accurate_stroke_str) == 0)) {
+	if ((strlen(fuzzy_stroke_sequence) == 0)
+			&& (strlen(accurate_stroke_sequence) == 0)) {
 
 		// temporary ungrab button
 		XUngrabButton(e->display, 3, button_modifier,
@@ -243,21 +189,19 @@ void stop_grab(XButtonEvent *e) {
 				first_click.display);
 
 		// sends the both strings to process.
-		struct gesture * gest = process_movement_sequences(first_click.display, activeWindow,
-				accurate_stroke_str, fuzzy_stroke_str);
-
+		struct gesture * gest = process_movement_sequences(first_click.display,
+				activeWindow, accurate_stroke_sequence, fuzzy_stroke_sequence);
 		execute_action(first_click.display, gest->action);
-
 
 	}
 
 	return;
 }
 
-int get_accurated_stroke(int x_delta, int y_delta) {
+char get_accurated_stroke(int x_delta, int y_delta) {
 
 	if ((x_delta == 0) && (y_delta == 0)) {
-		return NONE;
+		return gesture_names[NONE];
 	}
 
 	// check if the movement is near main axes
@@ -269,18 +213,18 @@ int get_accurated_stroke(int x_delta, int y_delta) {
 		if (abs(x_delta) > abs(y_delta)) {
 
 			if (x_delta > 0) {
-				return RIGHT;
+				return gesture_names[RIGHT];
 			} else {
-				return LEFT;
+				return gesture_names[LEFT];
 			}
 
 			// y axe
 		} else {
 
 			if (y_delta > 0) {
-				return DOWN;
+				return gesture_names[DOWN];
 			} else {
-				return UP;
+				return gesture_names[UP];
 			}
 
 		}
@@ -290,42 +234,57 @@ int get_accurated_stroke(int x_delta, int y_delta) {
 
 		if (y_delta < 0) {
 			if (x_delta < 0) {
-				return SEVEN;
+				return gesture_names[SEVEN];
 			} else if (x_delta > 0) { // RIGHT
-				return NINE;
+				return gesture_names[NINE];
 			}
 		} else if (y_delta > 0) { // DOWN
 			if (x_delta < 0) { // RIGHT
-				return ONE;
+				return gesture_names[ONE];
 			} else if (x_delta > 0) {
-				return THREE;
+				return gesture_names[THREE];
 			}
 		}
 
 	}
 
-	return NONE;
+	return gesture_names[NONE];
 
 }
 
-int get_fuzzy_stroke(int x_delta, int y_delta) {
+char get_fuzzy_stroke(int x_delta, int y_delta) {
 
 	if (abs(y_delta) > abs(x_delta)) {
 		if (y_delta > 0) {
-			return DOWN;
+			return gesture_names[DOWN];
 		} else {
-			return UP;
+			return gesture_names[UP];
 		}
 
 	} else {
 		if (x_delta > 0) {
-			return RIGHT;
+			return gesture_names[RIGHT];
 		} else {
-			return LEFT;
+			return gesture_names[LEFT];
 		}
 
 	}
 
+}
+
+void push_stroke(char stroke, char* stroke_sequence) {
+	// grab stroke
+	int len = strlen(stroke_sequence);
+	if ((len == 0) || (stroke_sequence[len] == stroke)) {
+
+		if ( len < MAX_STROKE_SEQUENCE ){
+
+			stroke_sequence[len] = stroke;
+			stroke_sequence[len + 1] = '\0';
+
+		}
+
+	}
 }
 
 void process_move(XMotionEvent *e) {
@@ -347,10 +306,10 @@ void process_move(XMotionEvent *e) {
 
 	if ((abs(x_delta) > DELTA_MIN) || (abs(y_delta) > DELTA_MIN)) {
 
-		int stroke = get_accurated_stroke(x_delta, y_delta);
+		char stroke = get_accurated_stroke(x_delta, y_delta);
 
-		// grab stroke
-		int added = push_stroke(stroke, &accurate_stroke_sequence);
+		push_stroke(stroke, accurate_stroke_sequence);
+
 
 		// reset start position
 		old_x = new_x;
@@ -361,14 +320,14 @@ void process_move(XMotionEvent *e) {
 	int x_delta_2 = new_x - old_x_2;
 	int y_delta_2 = new_y - old_y_2;
 
-	int fuzzy_stroke = get_fuzzy_stroke(x_delta_2, y_delta_2);
+	char fuzzy_stroke = get_fuzzy_stroke(x_delta_2, y_delta_2);
 
 	int square_distance_2 = x_delta_2 * x_delta_2 + y_delta_2 * y_delta_2;
 
 	if ( DELTA_MIN * DELTA_MIN < square_distance_2) {
 		// grab stroke
 
-		push_stroke(fuzzy_stroke, &fuzzy_stroke_sequence);
+		push_stroke(fuzzy_stroke, fuzzy_stroke_sequence);
 
 		// reset start position
 		old_x_2 = new_x;
@@ -380,6 +339,7 @@ void process_move(XMotionEvent *e) {
 
 void event_loop(Display *dpy) {
 	XEvent e;
+
 	while ((!shut_down)) {
 
 		XNextEvent(dpy, &e);
@@ -608,7 +568,7 @@ void parse_brush_color(char *color) {
 	else if (strcmp(color, "blue") == 0)
 		brush_image = &brush_image_blue;
 	else
-		printf("no such color, %s. using \"blue\"\n",color);
+		printf("no such color, %s. using \"blue\"\n", color);
 	return;
 
 }
@@ -710,6 +670,12 @@ int main(int argc, char **argv) {
 
 	char *s;
 
+	accurate_stroke_sequence = (char *) malloc(sizeof(char) * (MAX_STROKE_SEQUENCE+1));
+	accurate_stroke_sequence[0] = '\0';
+
+	fuzzy_stroke_sequence = (char *) malloc(sizeof(char) * (MAX_STROKE_SEQUENCE+1));
+	fuzzy_stroke_sequence[0] = '\0';
+
 	handle_args(argc, argv);
 	if (is_daemonized)
 		daemonize();
@@ -729,6 +695,10 @@ int main(int argc, char **argv) {
 	event_loop(dpy);
 
 	end();
+
+	free(fuzzy_stroke_sequence);
+	free(accurate_stroke_sequence);
+
 	//XUngrabPointer(dpy, CurrentTime);
 	XCloseDisplay(dpy);
 	return 0;
