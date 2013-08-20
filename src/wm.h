@@ -16,21 +16,23 @@ GNU General Public License for more details.  */
 #include <X11/Xlib.h>
 
 struct wm_helper {
-  void (*kill)(Display *dpy);
-  void (*iconify)(Display *dpy);
-  void (*raise)(Display *dpy);
-  void (*lower)(Display *dpy);
-  void (*maximize)(Display *dpy);
+  void (*kill)(Display *dpy, Window w);
+  void (*iconify)(Display *dpy, Window w);
+  void (*raise)(Display *dpy, Window w);
+  void (*lower)(Display *dpy, Window w);
+  void (*maximize)(Display *dpy, Window w);
 };
 
 
 extern struct wm_helper generic_wm_helper;
 extern struct wm_helper *wm_helper;
 
-void generic_iconify(Display *dpy);
-void generic_kill(Display *dpy);
-void generic_raise(Display *dpy);
-void generic_lower(Display *dpy);
-void generic_maximize(Display *dpy);
+void generic_iconify(Display *dpy, Window w);
+void generic_kill(Display *dpy, Window w);
+void generic_raise(Display *dpy, Window w);
+void generic_lower(Display *dpy, Window w);
+void generic_maximize(Display *dpy, Window w);
+
+
 
 #endif

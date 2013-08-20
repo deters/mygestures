@@ -27,7 +27,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <X11/Xutil.h>
-#include <X11/extensions/XTest.h>
+
+
 
 /*
  * Get the parent window.
@@ -72,118 +73,13 @@ Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
 	return 1;
 }
 
-/*
- * Return the focused window at the given display.
- *
- * PRIVATE
- */
-Window get_focused_window(Display *dpy) {
-
-	Window win = 0;
-	int ret, val;
-	ret = XGetInputFocus(dpy, &win, &val);
-
-	if (val == RevertToParent) {
-		win = get_parent_window(dpy, win);
-	}
-
-	return win;
-
-}
-
-/*
- * Iconify the focused window at given display.
- *
- * PUBLIC
- */
-void generic_iconify(Display *dpy) {
-	Window w = get_focused_window(dpy);
-	if (w != None)
-		XIconifyWindow(dpy, w, 0);
-
-	return;
-}
-
-/*
- * Emulate a mouse click at the given display.
- *
- * PRIVATE
- */
-void mouse_click(Display *display, int button)
-{
-	XTestFakeButtonEvent(display, button, True, CurrentTime);
-	XTestFakeButtonEvent(display, button, False, CurrentTime + 100);
-}
-
-
-/**
- * Kill focused window at the given Display.
- *
- * PUBLIC
- */
-void generic_kill(Display *dpy) {
-	Window w = get_focused_window(dpy);
-
-	/* dont kill root window */
-	if (w == RootWindow(dpy, DefaultScreen(dpy)))
-		return;
-
-	XSync(dpy, 0);
-	XKillClient(dpy, w);
-	XSync(dpy, 0);
-	return;
-}
-
-/**
- * Raise the focused window at the given Display.
- *
- * PUBLIC
- */
-void generic_raise(Display *dpy) {
-	Window w = get_focused_window(dpy);
-	XRaiseWindow(dpy, w);
-	return;
-}
-
-/**
- * Lower the focused window at the given Display.
- *
- * PUBLIC
- */
-void generic_lower(Display *dpy) {
-	Window w = get_focused_window(dpy);
-	XLowerWindow(dpy, w);
-	return;
-}
-
-/**
- * Maximize the focused window at the given Display.
- *
- * PUBLIC
- */
-void generic_maximize(Display *dpy) {
-	Window w = get_focused_window(dpy);
-	int width = XDisplayWidth(dpy, DefaultScreen(dpy));
-	int heigth = XDisplayHeight(dpy, DefaultScreen(dpy));
-
-	XMoveResizeWindow(dpy, w, 0, 0, width, heigth - 50);
-
-	return;
-}
-
-struct wm_helper generic_wm_helper = { .iconify = generic_iconify, .kill =
-		generic_kill, .raise = generic_raise, .lower = generic_lower,
-		.maximize = generic_maximize, };
-
-
-
 
 /*
  * Return a window_info struct for the focused window at a given Display.
  *
  * PRIVATE
  */
-struct window_info * get_window_info(Display *dpy) {
+struct window_info * get_window_context(Display *dpy) {
 
 	Window win = 0;
 	int ret, val;
@@ -218,3 +114,95 @@ struct window_info * get_window_info(Display *dpy) {
 	return ans;
 
 }
+
+/*
+ * Return the focused window at the given display.
+ *
+ * PRIVATE
+ */
+Window get_focused_window(Display *dpy) {
+
+	Window win = 0;
+	int ret, val;
+	ret = XGetInputFocus(dpy, &win, &val);
+
+	if (val == RevertToParent) {
+		win = get_parent_window(dpy, win);
+	}
+
+	return win;
+
+}
+
+/*
+ * Iconify the focused window at given display.
+ *
+ * PUBLIC
+ */
+void generic_iconify(Display *dpy, Window w) {
+	if (w != None)
+		XIconifyWindow(dpy, w, 0);
+
+	return;
+}
+
+
+/**
+ * Kill focused window at the given Display.
+ *
+ * PUBLIC
+ */
+void generic_kill(Display *dpy, Window w) {
+
+	/* dont kill root window */
+	if (w == RootWindow(dpy, DefaultScreen(dpy)))
+		return;
+
+	XSync(dpy, 0);
+	XKillClient(dpy, w);
+	XSync(dpy, 0);
+	return;
+}
+
+/**
+ * Raise the focused window at the given Display.
+ *
+ * PUBLIC
+ */
+void generic_raise(Display *dpy, Window w) {
+	XRaiseWindow(dpy, w);
+	return;
+}
+
+/**
+ * Lower the focused window at the given Display.
+ *
+ * PUBLIC
+ */
+void generic_lower(Display *dpy, Window w) {
+	XLowerWindow(dpy, w);
+	return;
+}
+
+/**
+ * Maximize the focused window at the given Display.
+ *
+ * PUBLIC
+ */
+void generic_maximize(Display *dpy, Window w) {
+
+	int width = XDisplayWidth(dpy, DefaultScreen(dpy));
+	int heigth = XDisplayHeight(dpy, DefaultScreen(dpy));
+
+	XMoveResizeWindow(dpy, w, 0, 0, width, heigth - 50);
+
+	return;
+}
+
+struct wm_helper generic_wm_helper = { .iconify = generic_iconify, .kill =
+		generic_kill, .raise = generic_raise, .lower = generic_lower,
+		.maximize = generic_maximize, };
+
+
+
+

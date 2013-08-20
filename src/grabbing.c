@@ -34,6 +34,7 @@
 #include <unistd.h>
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
+#include <X11/extensions/XTest.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -49,7 +50,7 @@
 #define DELTA_MIN	30
 
 /* the movements */
-enum DIRECTIONS {
+enum DIRECTION {
 	NONE, LEFT, RIGHT, UP, DOWN, ONE, THREE, SEVEN, NINE
 };
 
@@ -130,7 +131,10 @@ int push_stroke(int stroke, struct stack* stroke_sequence) {
 	int last_stroke = (int) peek(stroke_sequence);
 	if (last_stroke != stroke) {
 		if (stroke != NONE) {
-			push((void *) stroke, stroke_sequence);
+			push(
+					(void *) stroke,
+					stroke_sequence
+					);
 		}
 		return 1;
 	} else {
@@ -188,6 +192,22 @@ char * stroke_sequence_to_str(struct stack * stroke_sequence) {
 
 }
 
+
+
+
+
+/*
+ * Emulate a mouse click at the given display.
+ *
+ * PRIVATE
+ */
+void mouse_click(Display *display, int button)
+{
+	XTestFakeButtonEvent(display, button, True, CurrentTime);
+	XTestFakeButtonEvent(display, button, False, CurrentTime + 100);
+}
+
+
 /**
  * Obtém o resultado dos dois algoritmos de captura de movimentos, e envia para serem processadas.
  */
@@ -207,19 +227,27 @@ void stop_grab(XButtonEvent *e) {
 	if ((strcmp("", fuzzy_stroke_str) == 0)
 			&& (strcmp("", accurate_stroke_str) == 0)) {
 
+		// temporary ungrab button
 		XUngrabButton(e->display, 3, button_modifier,
 		RootWindow (e->display, 0));
+
+		// emulate the click
 		mouse_click(e->display, button);
+
+		// restart grabbing
 		grab_pointer(e->display);
 
 	} else {
 
-		struct window_info * activeWindow = get_window_info(
+		struct window_info * activeWindow = get_window_context(
 				first_click.display);
 
 		// sends the both strings to process.
-		process_movement_sequences(first_click.display, activeWindow,
+		struct gesture * gest = process_movement_sequences(first_click.display, activeWindow,
 				accurate_stroke_str, fuzzy_stroke_str);
+
+		execute_action(first_click.display, gest->action);
+
 
 	}
 

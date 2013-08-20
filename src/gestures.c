@@ -288,19 +288,19 @@ void execute_action(Display *dpy, struct action *action) {
 			}
 			break;
 		case ACTION_ICONIFY:
-			wm_helper->iconify(dpy);
+			wm_helper->iconify(dpy,get_focused_window(dpy));
 			break;
 		case ACTION_KILL:
-			wm_helper->kill(dpy);
+			wm_helper->kill(dpy,get_focused_window(dpy));
 			break;
 		case ACTION_RAISE:
-			wm_helper->raise(dpy);
+			wm_helper->raise(dpy,get_focused_window(dpy));
 			break;
 		case ACTION_LOWER:
-			wm_helper->lower(dpy);
+			wm_helper->lower(dpy,get_focused_window(dpy));
 			break;
 		case ACTION_MAXIMIZE:
-			wm_helper->maximize(dpy);
+			wm_helper->maximize(dpy,get_focused_window(dpy));
 			break;
 		case ACTION_ROOT_SEND:
 			root_send(dpy, action);
@@ -344,7 +344,7 @@ struct gesture * lookup_gesture(char * captured_sequence,
  * The system will also prioritize the gestures defined for the current application, 
  * and only then will consider the global gestures.
  */
-void process_movement_sequences(Display * dpy,
+struct gesture * process_movement_sequences(Display * dpy,
 		struct window_info *current_context, char *complex_sequence,
 		char * simple_sequence) {
 
@@ -382,7 +382,7 @@ void process_movement_sequences(Display * dpy,
 
 		printf("Gesture not found.\n");
 
-		execute_action(dpy, NULL);
+		return NULL;
 
 	} else {
 
@@ -397,7 +397,7 @@ void process_movement_sequences(Display * dpy,
 
 		printf("   Action: %s\n", gest->movement->name);
 
-		execute_action(dpy, gest->action);
+		return gest;
 
 	}
 
@@ -656,7 +656,7 @@ int read_config(char *conf_file) {
 			// creates the gesture
 			sequence = strdup(movementused);
 
-			if (!strcmp(mov_name,"")) {
+			if (strcmp(mov_name,"")!=0) {
 				gest = alloc_gesture(gesture_window, action, gesture_movement);
 			} else {
 				//gest = alloc_gesture(sequence, action, window_title, window_class,

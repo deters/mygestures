@@ -69,8 +69,8 @@ int init_gestures(char *config_file);
 
 void * compile_key_action(char *str_ptr);
 
-void process_movement_sequences(Display * dpy,
+struct gesture * process_movement_sequences(Display * dpy,
 		struct window_info *current_context, char *complex_sequence,
-		char * simple_sequence); 
+		char * simple_sequence);
 
 #endif
