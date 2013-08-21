@@ -58,7 +58,6 @@ enum DIRECTION {
 /* Names of movements (will consider the initial letters on the config file) */
 char gesture_names[] = { 'N', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
 
-
 /* the modifier key (TODO: Re-use this parameter) */
 int button_modifier;
 
@@ -122,11 +121,9 @@ int shut_down = 0;
 
 void start_grab(XButtonEvent *e) {
 
-
 	// clear captured sequences
 	accurate_stroke_sequence[0] = '\0';
 	fuzzy_stroke_sequence[0] = '\0';
-
 
 	// guarda o evento inicial
 	memcpy(&first_click, e, sizeof(XButtonEvent));
@@ -149,9 +146,6 @@ void start_grab(XButtonEvent *e) {
 	return;
 }
 
-
-
-
 void create_masks(unsigned int *arr) {
 	unsigned int i, j;
 
@@ -167,7 +161,6 @@ void create_masks(unsigned int *arr) {
 
 	return;
 }
-
 
 int grab_pointer(Display *dpy) {
 	int err = 0, i = 0;
@@ -191,7 +184,6 @@ int grab_pointer(Display *dpy) {
 
 	return 0;
 }
-
 
 /**
  * Obtém o resultado dos dois algoritmos de captura de movimentos, e envia para serem processadas.
@@ -219,14 +211,14 @@ void stop_grab(XButtonEvent *e) {
 
 	} else {
 
-		struct window_info * activeWindow =  generic_get_window_context(
+		struct window_info * activeWindow = generic_get_window_context(
 				first_click.display);
 
 		// sends the both strings to process.
 		struct gesture * gest = process_movement_sequences(first_click.display,
 				activeWindow, accurate_stroke_sequence, fuzzy_stroke_sequence);
 
-		if (gest != NULL){
+		if (gest != NULL) {
 
 			if (gest->action->type == ACTION_EXIT_GEST) {
 				shut_down = 1;
@@ -234,8 +226,6 @@ void stop_grab(XButtonEvent *e) {
 
 			execute_action(first_click.display, gest->action);
 		}
-
-
 
 	}
 
@@ -319,9 +309,9 @@ char get_fuzzy_stroke(int x_delta, int y_delta) {
 void push_stroke(char stroke, char* stroke_sequence) {
 	// grab stroke
 	int len = strlen(stroke_sequence);
-	if ((len == 0) || (stroke_sequence[len-1] != stroke)) {
+	if ((len == 0) || (stroke_sequence[len - 1] != stroke)) {
 
-		if ( len < MAX_STROKE_SEQUENCE ){
+		if (len < MAX_STROKE_SEQUENCE) {
 
 			stroke_sequence[len] = stroke;
 			stroke_sequence[len + 1] = '\0';
@@ -342,8 +332,6 @@ void process_move(XMotionEvent *e) {
 		brush_line_to(&brush, e->x_root, e->y_root);
 	}
 
-
-
 	int new_x = e->x_root;
 	int new_y = e->y_root;
 
@@ -355,7 +343,6 @@ void process_move(XMotionEvent *e) {
 		char stroke = get_accurated_stroke(x_delta, y_delta);
 
 		push_stroke(stroke, accurate_stroke_sequence);
-
 
 		// reset start position
 		old_x = new_x;
@@ -430,12 +417,9 @@ int x_key_mask_get(KeySym sym, Display *dpy) {
 		for (i = 0; i < (8 * mod->max_keypermod); i++) {
 			for (j = 0; j < 8; j++) {
 
-
 				//sym2 = XKeycodeToKeysym(dpy, mod->modifiermap[i], j);
 
 				sym2 = XkbKeycodeToKeysym(dpy, mod->modifiermap[i], j, 0);
-
-
 
 				if (sym2 != 0)
 					break;
@@ -497,9 +481,6 @@ void print_bin(unsigned int a) {
 	printf("%s\n", str);
 }
 
-
-
-
 unsigned int str_to_modifier(char *str) {
 	int i;
 
@@ -544,8 +525,6 @@ int init(Display *dpy) {
 			return err;
 		}
 	}
-
-	printf("Loading gestures from %s\n", conf_file);
 
 	err = init_gestures(conf_file);
 
@@ -687,10 +666,12 @@ int main(int argc, char **argv) {
 
 	char *s;
 
-	accurate_stroke_sequence = (char *) malloc(sizeof(char) * (MAX_STROKE_SEQUENCE+1));
+	accurate_stroke_sequence = (char *) malloc(
+			sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
 	accurate_stroke_sequence[0] = '\0';
 
-	fuzzy_stroke_sequence = (char *) malloc(sizeof(char) * (MAX_STROKE_SEQUENCE+1));
+	fuzzy_stroke_sequence = (char *) malloc(
+			sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
 	fuzzy_stroke_sequence[0] = '\0';
 
 	handle_args(argc, argv);
@@ -707,9 +688,11 @@ int main(int argc, char **argv) {
 	}
 	init_masks(dpy);
 
-	init(dpy);
+	int err = init(dpy);
 
-	event_loop(dpy);
+	if (!err) {
+		event_loop(dpy);
+	}
 
 	end();
 

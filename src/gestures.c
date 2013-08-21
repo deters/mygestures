@@ -36,6 +36,8 @@
 #include <fcntl.h>
 #include <errno.h>
 
+#define TEMPLATE_FILE "/usr/share/mygestures/mygestures.conf"
+
 
 /* The name from the actions, to read in .gestures file. */
 char *action_names[] = { "NONE", "exit", "exec", "minimize", "kill", "reconf",
@@ -431,7 +433,6 @@ int read_config(char *conf_file) {
 	char *window_class = NULL;
 
 	if (conf == NULL) {
-		fprintf(stderr, "Error reading file from %s\n.", conf_file);
 		return -1;
 	}
 
@@ -628,7 +629,7 @@ int read_config(char *conf_file) {
 				}
 				// try to compile the key
 				str = strdup(gesture_params);
-				data = compile_key_action(str);
+				data = compile_key_action(strdup(str));
 				if (data == NULL) {
 					fprintf(stderr, "error reading config file: root_send\n");
 					exit(-1);
@@ -681,16 +682,30 @@ int init_gestures(char *config_file) {
 	int err = 0;
 	int i;
 
+	printf("Loading gestures from %s\n", config_file);
+
 	err = read_config(config_file);
+
+	if (err){
+		printf("Creating file '%s' from default config at '%s'\n",
+				config_file, TEMPLATE_FILE);
+
+		err = cp(config_file,"/usr/share/mygestures/mygestures.conf");
+
+		printf("Done.\n");
+	}
+
 	if (err) {
-		fprintf(stderr,
-				"Cannot open config file: %s. Falling back to /etc/mygestures.conf  \n",
-				config_file);
-		err = read_config("/etc/mygestures.conf");
-		if (err) {
-			fprintf(stderr, "Cannot open config file: /etc/gestures.");
-			return err;
-		}
+		printf("Error trying to create config file %s.\n",
+						config_file);
+		return err;
+	}
+
+	err = read_config(config_file);
+
+	if (err){
+		printf("Error reading configuration file.\n");
+		return err;
 	}
 
 	/* now, fill the gesture array */
@@ -716,10 +731,8 @@ int init_gestures(char *config_file) {
 	for (i = 0; i < global_gestures_count; i++) {
 		global_gestures[i] = (struct gesture *) pop(&temp_general_stack);
 	}
-	// the gesture sequences are now regular expressions.
-	// since there are no method to know if a regular expression is greatest to other, there
-	// aren't way to sort the gestures array.
-	// It is necessary to try to match the recognized pattern with all the patterns on the array.
+
+	printf("%d gestures loaded.\n", specific_gestures_count + global_gestures_count );
 
 	return err;
 }
