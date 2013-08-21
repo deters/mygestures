@@ -159,6 +159,48 @@ void mouse_click(Display *display, int button) {
 	XTestFakeButtonEvent(display, button, False, CurrentTime + 100);
 }
 
+
+void create_masks(unsigned int *arr) {
+	unsigned int i, j;
+
+	for (i = 0; i < (1 << (MOD_END)); i++) {
+		arr[i] = 0;
+		for (j = 0; j < MOD_END; j++) {
+			if ((1 << j) & i) {
+				arr[i] |= valid_masks[j];
+			}
+		}
+		/* print_bin(arr[i]); */
+	}
+
+	return;
+}
+
+
+int grab_pointer(Display *dpy) {
+	int err = 0, i = 0;
+	int screen = 0;
+	unsigned int masks[(1 << (MOD_END))];
+	bzero(masks, (1 << (MOD_END)) * sizeof(unsigned int));
+
+	if (button_modifier != AnyModifier)
+		create_masks(masks);
+// em todas as telas ativas
+	for (screen = 0; screen < ScreenCount (dpy); screen++) {
+		for (i = 1; i < (1 << (MOD_END)); i++)
+			// aguarda que o botão direito seja clicado em alguma janela...
+			err = XGrabButton(dpy, button, /*AnyModifier */
+			button_modifier | masks[i],
+			RootWindow (dpy, screen),
+			False,
+			PointerMotionMask | ButtonReleaseMask | ButtonPressMask,
+			GrabModeAsync, GrabModeAsync, None, None);
+	}
+
+	return 0;
+}
+
+
 /**
  * Obtém o resultado dos dois algoritmos de captura de movimentos, e envia para serem processadas.
  */
@@ -191,7 +233,12 @@ void stop_grab(XButtonEvent *e) {
 		// sends the both strings to process.
 		struct gesture * gest = process_movement_sequences(first_click.display,
 				activeWindow, accurate_stroke_sequence, fuzzy_stroke_sequence);
-		execute_action(first_click.display, gest->action);
+
+		if (gest != NULL){
+			execute_action(first_click.display, gest->action);
+		}
+
+
 
 	}
 
@@ -275,7 +322,7 @@ char get_fuzzy_stroke(int x_delta, int y_delta) {
 void push_stroke(char stroke, char* stroke_sequence) {
 	// grab stroke
 	int len = strlen(stroke_sequence);
-	if ((len == 0) || (stroke_sequence[len] == stroke)) {
+	if ((len == 0) || (stroke_sequence[len-1] != stroke)) {
 
 		if ( len < MAX_STROKE_SEQUENCE ){
 
@@ -444,44 +491,8 @@ void print_bin(unsigned int a) {
 	printf("%s\n", str);
 }
 
-void create_masks(unsigned int *arr) {
-	unsigned int i, j;
 
-	for (i = 0; i < (1 << (MOD_END)); i++) {
-		arr[i] = 0;
-		for (j = 0; j < MOD_END; j++) {
-			if ((1 << j) & i) {
-				arr[i] |= valid_masks[j];
-			}
-		}
-		/* print_bin(arr[i]); */
-	}
 
-	return;
-}
-
-int grab_pointer(Display *dpy) {
-	int err = 0, i = 0;
-	int screen = 0;
-	unsigned int masks[(1 << (MOD_END))];
-	bzero(masks, (1 << (MOD_END)) * sizeof(unsigned int));
-
-	if (button_modifier != AnyModifier)
-		create_masks(masks);
-// em todas as telas ativas
-	for (screen = 0; screen < ScreenCount (dpy); screen++) {
-		for (i = 1; i < (1 << (MOD_END)); i++)
-			// aguarda que o botão direito seja clicado em alguma janela...
-			err = XGrabButton(dpy, button, /*AnyModifier */
-			button_modifier | masks[i],
-			RootWindow (dpy, screen),
-			False,
-			PointerMotionMask | ButtonReleaseMask | ButtonPressMask,
-			GrabModeAsync, GrabModeAsync, None, None);
-	}
-
-	return 0;
-}
 
 unsigned int str_to_modifier(char *str) {
 	int i;
