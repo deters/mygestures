@@ -33,6 +33,7 @@ enum {
 struct action {
 	int type;
 	void *data;
+	char *original_str;
 };
 
 struct key_press {

@@ -33,7 +33,8 @@
 #include "wm.h"
 #include <regex.h>
 #include <X11/Xutil.h>
-
+#include <fcntl.h>
+#include <errno.h>
 
 
 /* The name from the actions, to read in .gestures file. */
@@ -54,9 +55,6 @@ struct gesture **global_gestures = NULL;
 int global_gestures_count = 0;
 /* a temporary stack - it remains necessary?) */
 EMPTY_STACK(temp_general_stack);
-
-/* shutdown? */
-extern int shut_down;
 
 /* alloc a window struct */
 struct context *alloc_context(char *window_title, char *window_class,
@@ -121,11 +119,12 @@ void free_gesture(struct gesture *free_me) {
 }
 
 /* alloc an action struct */
-struct action *alloc_action(int action_type, void *action_data) {
+struct action *alloc_action(int action_type, void *action_data, char * original_str) {
 	struct action *ans = malloc(sizeof(struct action));
 	bzero(ans, sizeof(struct action));
 	ans->type = action_type;
 	ans->data = action_data;
+	ans->original_str = original_str;
 
 	return ans;
 }
@@ -257,11 +256,11 @@ struct gesture * process_movement_sequences(Display * dpy,
 
 	struct gesture *gest = NULL;
 
-	printf("\n\n");
-	printf("Window class: %s\n", current_context->class);
-	printf("Window title: %s\n", current_context->title);
-
-	printf("Searching gesture for sequence: '%s'\n", complex_sequence);
+	printf("\n");
+	printf("Captured sequence: %s\n", complex_sequence);
+	printf("Simplified       : %s\n", simple_sequence);
+	printf("Class            : %s\n", current_context->class);
+	printf("Title            : %s\n", current_context->title);
 
 	gest = lookup_gesture(complex_sequence, current_context, specific_gestures,
 			specific_gestures_count);
@@ -272,8 +271,6 @@ struct gesture * process_movement_sequences(Display * dpy,
 	}
 
 	if (gest == NULL) {
-
-		printf("Searching gesture for sequence: '%s'\n", simple_sequence);
 
 		gest = lookup_gesture(simple_sequence, current_context,
 				specific_gestures, specific_gestures_count);
@@ -287,22 +284,28 @@ struct gesture * process_movement_sequences(Display * dpy,
 	// execute the action
 	if (gest == NULL) {
 
-		printf("Gesture not found.\n");
+		printf("No gesture matches captured sequences.\n");
 
 		return NULL;
 
 	} else {
 
-		printf("Gesture found.\n");
+		printf("Matched          : %s\n",gest->movement->expression);
 
 		if ((gest->context->class == NULL) && (gest->context->title == NULL)) {
-			printf("   ALL\n");
+    	printf("Context          : All applications\n");
 		} else {
-			printf("    Class: %s\n", gest->context->class);
-			printf("    Title: %s\n", gest->context->title);
+			printf("Context          : Class = %s\n", gest->context->class);
+			printf("                   Title = %s\n", gest->context->title);
 		}
 
-		printf("   Action: %s\n", gest->movement->name);
+			if (gest->action != NULL){
+				char * str = gest->action->original_str;
+				printf("Action           : %s %s\n", action_names[gest->action->type],str );
+			} else {
+				printf("Null action.\n");
+			}
+
 
 		return gest;
 
@@ -326,6 +329,79 @@ char *remove_new_line(char *str) {
 	return str;
 
 }
+
+
+
+
+
+
+
+/** 
+ * Copy a file
+ */
+int cp(const char *to, const char *from)
+{
+    int fd_to, fd_from;
+    char buf[4096];
+    ssize_t nread;
+    int saved_errno;
+
+    fd_from = open(from, O_RDONLY);
+    if (fd_from < 0)
+        return -1;
+
+    fd_to = open(to, O_WRONLY | O_CREAT | O_EXCL, 0666);
+    if (fd_to < 0)
+        goto out_error;
+
+    while (nread = read(fd_from, buf, sizeof buf), nread > 0)
+    {
+        char *out_ptr = buf;
+        ssize_t nwritten;
+
+        do {
+            nwritten = write(fd_to, out_ptr, nread);
+
+            if (nwritten >= 0)
+            {
+                nread -= nwritten;
+                out_ptr += nwritten;
+            }
+            else if (errno != EINTR)
+            {
+                goto out_error;
+            }
+        } while (nread > 0);
+    }
+
+    if (nread == 0)
+    {
+        if (close(fd_to) < 0)
+        {
+            fd_to = -1;
+            goto out_error;
+        }
+        close(fd_from);
+
+        /* Success! */
+        return 0;
+    }
+
+  out_error:
+    saved_errno = errno;
+
+    close(fd_from);
+    if (fd_to >= 0)
+        close(fd_to);
+
+    errno = saved_errno;
+    return -1;
+}
+
+
+
+
+
 
 /**
  * Reads the conf file
@@ -528,6 +604,8 @@ int read_config(char *conf_file) {
 		gesture_params = *buff_ptr_ptr; // the remainder chars on the line
 
 		for (i = 1; i < ACTION_LAST; i++) {
+			char * str = NULL;
+
 			if (strncasecmp(action_names[i], token, strlen(action_names[i]))
 					!= 0)
 				continue;
@@ -539,7 +617,8 @@ int read_config(char *conf_file) {
 					fprintf(stderr, "error in exec action\n");
 					continue;
 				}
-				data = strdup(gesture_params);
+				str = strdup(gesture_params);
+				data = str;
 				// ACTION_ROOT_SEND
 			} else if (i == ACTION_ROOT_SEND) {
 				// parameters mandatory
@@ -548,7 +627,8 @@ int read_config(char *conf_file) {
 					continue;
 				}
 				// try to compile the key
-				data = compile_key_action(gesture_params);
+				str = strdup(gesture_params);
+				data = compile_key_action(str);
 				if (data == NULL) {
 					fprintf(stderr, "error reading config file: root_send\n");
 					exit(-1);
@@ -558,7 +638,7 @@ int read_config(char *conf_file) {
 				data = NULL;
 
 			// creates an ACTION
-			action = alloc_action(i, data);
+			action = alloc_action(i, data, str);
 
 			// creates the gesture
 			sequence = strdup(movementused);
