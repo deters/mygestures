@@ -12,6 +12,10 @@ AM_INIT_AUTOMAKE()
 AC_CHECK_LIB([X11], [XGrabButton],,
         AC_MSG_ERROR([*** libX11 not found. Check 'config.log' for more details.]),
         $x_libs_for_checks)
+        
+AC_CHECK_LIB(X11, XkbKeycodeToKeysym,,
+        AC_MSG_ERROR([*** XkbKeycodeToKeysym not found in libX11. Check 'config.log' for more details.]),	        
+        $x_libs_for_checks)
 AC_CHECK_LIB([Xmu], [XmuClientWindow],,
         AC_MSG_ERROR([*** libXmu not found. Check 'config.log' for more details.]),
         [$x_libs_for_checks])
@@ -21,6 +25,7 @@ AC_CHECK_LIB([Xrender], [XRenderComposite],,
 AC_CHECK_LIB([Xtst], [XTestFakeKeyEvent],,
         AC_MSG_ERROR([*** libXtst not found. Check 'config.log' for more details.]),
         [$x_libs_for_checks])
+        
 
 AC_PROG_CC
 

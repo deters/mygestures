@@ -34,7 +34,7 @@
 #include <unistd.h>
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
-#include <X11/extensions/XTest.h>
+#include <X11/XKBlib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -58,8 +58,6 @@ enum DIRECTION {
 /* Names of movements (will consider the initial letters on the config file) */
 char gesture_names[] = { 'N', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
 
-/* close xgestures */
-int shut_down = 0;
 
 /* the modifier key (TODO: Re-use this parameter) */
 int button_modifier;
@@ -109,12 +107,14 @@ char * accurate_stroke_sequence;
 char * fuzzy_stroke_sequence;
 
 XButtonEvent first_click;
-struct wm_helper *wm_helper;
+struct action_helper *action_helper;
 
 /* back of the draw */
 backing_t backing;
 brush_t brush;
 
+/* close xgestures */
+int shut_down = 0;
 
 /**
  * clean variables and get a transparent background to draw the movement
@@ -149,15 +149,7 @@ void start_grab(XButtonEvent *e) {
 	return;
 }
 
-/*
- * Emulate a mouse click at the given display.
- *
- * PRIVATE
- */
-void mouse_click(Display *display, int button) {
-	XTestFakeButtonEvent(display, button, True, CurrentTime);
-	XTestFakeButtonEvent(display, button, False, CurrentTime + 100);
-}
+
 
 
 void create_masks(unsigned int *arr) {
@@ -227,7 +219,7 @@ void stop_grab(XButtonEvent *e) {
 
 	} else {
 
-		struct window_info * activeWindow = get_window_context(
+		struct window_info * activeWindow =  generic_get_window_context(
 				first_click.display);
 
 		// sends the both strings to process.
@@ -235,6 +227,11 @@ void stop_grab(XButtonEvent *e) {
 				activeWindow, accurate_stroke_sequence, fuzzy_stroke_sequence);
 
 		if (gest != NULL){
+
+			if (gest->action->type == ACTION_EXIT_GEST) {
+				shut_down = 1;
+			}
+
 			execute_action(first_click.display, gest->action);
 		}
 
@@ -345,6 +342,8 @@ void process_move(XMotionEvent *e) {
 		brush_line_to(&brush, e->x_root, e->y_root);
 	}
 
+
+
 	int new_x = e->x_root;
 	int new_y = e->y_root;
 
@@ -412,7 +411,7 @@ void event_loop(Display *dpy) {
 }
 
 int init_wm_helper(void) {
-	wm_helper = &generic_wm_helper;
+	action_helper = &generic_action_helper;
 
 	return 1;
 }
@@ -430,7 +429,14 @@ int x_key_mask_get(KeySym sym, Display *dpy) {
 	if ((mod) && (mod->max_keypermod > 0)) {
 		for (i = 0; i < (8 * mod->max_keypermod); i++) {
 			for (j = 0; j < 8; j++) {
-				sym2 = XKeycodeToKeysym(dpy, mod->modifiermap[i], j);
+
+
+				//sym2 = XKeycodeToKeysym(dpy, mod->modifiermap[i], j);
+
+				sym2 = XkbKeycodeToKeysym(dpy, mod->modifiermap[i], j, 0);
+
+
+
 				if (sym2 != 0)
 					break;
 			}

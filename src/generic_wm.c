@@ -16,6 +16,7 @@
 #endif
 
 #include <X11/Xlib.h>
+#include <X11/extensions/XTest.h>
 #include <stdio.h>
 #include "wm.h"
 #include "helpers.h"
@@ -27,6 +28,17 @@
 #include <string.h>
 #include <unistd.h>
 #include <X11/Xutil.h>
+
+
+/*
+ * Emulate a mouse click at the given display.
+ *
+ * PRIVATE
+ */
+void mouse_click(Display *display, int button) {
+	XTestFakeButtonEvent(display, button, True, CurrentTime);
+	XTestFakeButtonEvent(display, button, False, CurrentTime + 100);
+}
 
 
 
@@ -79,7 +91,7 @@ Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
  *
  * PRIVATE
  */
-struct window_info * get_window_context(Display *dpy) {
+struct window_info * generic_get_window_context(Display *dpy) {
 
 	Window win = 0;
 	int ret, val;
@@ -199,9 +211,87 @@ void generic_maximize(Display *dpy, Window w) {
 	return;
 }
 
-struct wm_helper generic_wm_helper = { .iconify = generic_iconify, .kill =
+
+/**
+ * Fake key event
+ */
+void press_key(Display *dpy, KeySym key, Bool is_press) {
+
+	XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, key), is_press, CurrentTime);
+	return;
+}
+
+/**
+ * Fake sequence key events
+ */
+void generic_root_send(Display *dpy, struct key_press *data) {
+	struct key_press *first_key;
+	struct key_press *tmp;
+
+	first_key = (struct key_press *) data;
+
+	if (first_key == NULL) {
+		fprintf(stderr, " internal error in %s, key is null\n", __func__);
+		return;
+	}
+
+	for (tmp = first_key; tmp != NULL; tmp = tmp->next)
+		press_key(dpy, tmp->key, True);
+
+	for (tmp = first_key; tmp != NULL; tmp = tmp->next)
+		press_key(dpy, tmp->key, False);
+
+	return;
+}
+
+
+
+
+/**
+ * Execute an action
+ */
+void execute_action(Display *dpy, struct action *action) {
+	int id;
+
+	// if there is an action
+	if (action != NULL) {
+
+		switch (action->type) {
+		case ACTION_EXECUTE:
+			id = fork();
+			if (id == 0) {
+				int i = system(action->data);
+				exit(i);
+			}
+			break;
+		case ACTION_ICONIFY:
+			action_helper->iconify(dpy, get_focused_window(dpy));
+			break;
+		case ACTION_KILL:
+			action_helper->kill(dpy, get_focused_window(dpy));
+			break;
+		case ACTION_RAISE:
+			action_helper->raise(dpy, get_focused_window(dpy));
+			break;
+		case ACTION_LOWER:
+			action_helper->lower(dpy, get_focused_window(dpy));
+			break;
+		case ACTION_MAXIMIZE:
+			action_helper->maximize(dpy, get_focused_window(dpy));
+			break;
+		case ACTION_ROOT_SEND:
+			action_helper->root_send(dpy, action->data);
+			break;
+		default:
+			fprintf(stderr, "found an unknown gesture \n");
+		}
+	}
+	return;
+}
+
+struct action_helper generic_action_helper = { .iconify = generic_iconify, .kill =
 		generic_kill, .raise = generic_raise, .lower = generic_lower,
-		.maximize = generic_maximize, };
+		.maximize = generic_maximize, .root_send = generic_root_send, };
 
 
 

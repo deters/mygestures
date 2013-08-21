@@ -34,22 +34,10 @@
 #include <regex.h>
 #include <X11/Xutil.h>
 
-/* Actions */
-enum {
-	ACTION_EXIT_GEST = 1,
-	ACTION_EXECUTE,
-	ACTION_ICONIFY,
-	ACTION_KILL,
-	ACTION_RECONF,
-	ACTION_RAISE,
-	ACTION_LOWER,
-	ACTION_MAXIMIZE,
-	ACTION_ROOT_SEND,
-	ACTION_LAST
-};
+
 
 /* The name from the actions, to read in .gestures file. */
-char *gestures_names[] = { "NONE", "exit", "exec", "minimize", "kill", "reconf",
+char *action_names[] = { "NONE", "exit", "exec", "minimize", "kill", "reconf",
 		"raise", "lower", "maximize", "root_send" };
 
 /* this holds all known gestures */
@@ -230,87 +218,6 @@ int match_gesture(char *stroke_sequence,
 
 }
 
-/**
- * Fake key event
- */
-void press_key(Display *dpy, KeySym key, Bool is_press) {
-
-	XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, key), is_press, CurrentTime);
-	return;
-}
-
-/**
- * Fake sequence key events
- */
-void root_send(Display *dpy, struct action *action) {
-	struct key_press *first_key;
-	struct key_press *tmp;
-
-	if (action == NULL) {
-		fprintf(stderr, " internal error in %s\n", __func__);
-		return;
-
-	}
-	first_key = (struct key_press *) action->data;
-
-	if (first_key == NULL) {
-		fprintf(stderr, " internal error in %s, key is null\n", __func__);
-		return;
-	}
-
-	for (tmp = first_key; tmp != NULL; tmp = tmp->next)
-		press_key(dpy, tmp->key, True);
-
-	for (tmp = first_key; tmp != NULL; tmp = tmp->next)
-		press_key(dpy, tmp->key, False);
-
-	return;
-}
-
-/**
- * Execute an action
- */
-void execute_action(Display *dpy, struct action *action) {
-	int id;
-
-	// if there is an action
-	if (action != NULL) {
-
-		switch (action->type) {
-		case ACTION_EXIT_GEST:
-			shut_down = True;
-			break;
-		case ACTION_EXECUTE:
-			id = fork();
-			if (id == 0) {
-				int i = system(action->data);
-				exit(i);
-			}
-			break;
-		case ACTION_ICONIFY:
-			wm_helper->iconify(dpy, get_focused_window(dpy));
-			break;
-		case ACTION_KILL:
-			wm_helper->kill(dpy, get_focused_window(dpy));
-			break;
-		case ACTION_RAISE:
-			wm_helper->raise(dpy, get_focused_window(dpy));
-			break;
-		case ACTION_LOWER:
-			wm_helper->lower(dpy, get_focused_window(dpy));
-			break;
-		case ACTION_MAXIMIZE:
-			wm_helper->maximize(dpy, get_focused_window(dpy));
-			break;
-		case ACTION_ROOT_SEND:
-			root_send(dpy, action);
-			break;
-		default:
-			fprintf(stderr, "found an unknown gesture \n");
-		}
-	}
-	return;
-}
 
 struct gesture * lookup_gesture(char * captured_sequence,
 		struct window_info * current_context, struct gesture **gesture_list,
@@ -432,7 +339,7 @@ int read_config(char *conf_file) {
 	struct context *gesture_window;
 	char buff[4096];
 
-	struct movement **known_movements[254];
+	struct movement *known_movements[254];
 	int known_movements_num = 0;
 
 	char *buff_ptr = buff;
@@ -621,7 +528,7 @@ int read_config(char *conf_file) {
 		gesture_params = *buff_ptr_ptr; // the remainder chars on the line
 
 		for (i = 1; i < ACTION_LAST; i++) {
-			if (strncasecmp(gestures_names[i], token, strlen(gestures_names[i]))
+			if (strncasecmp(action_names[i], token, strlen(action_names[i]))
 					!= 0)
 				continue;
 

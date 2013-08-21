@@ -35,10 +35,7 @@ struct movement {
 	regex_t compiled;
 };
 
-struct action {
-	int type;
-	void *data;
-};
+
 
 struct context {
 	char *title;
@@ -54,11 +51,7 @@ struct gesture {
 	regex_t movement_compiled;
 };
 
-struct key_press {
-	KeySym key;
-	struct key_press * next;
-	char *original_str;
-};
+
 
 struct window_info {
 	char *title;
