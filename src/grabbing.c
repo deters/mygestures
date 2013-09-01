@@ -30,7 +30,6 @@
 
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <signal.h>
 #include <unistd.h>
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
@@ -43,12 +42,21 @@
 #include <math.h>
 #include "drawing-brush.h"
 #include "helpers.h"
+#include "grabbing.h"
 #include "gestures.h"
 #include "wm.h"
 #include "drawing-brush-image.h"
 
 #define DELTA_MIN	30
 #define MAX_STROKE_SEQUENCE 63
+
+//struct grabbing {
+
+int button = 0;
+
+unsigned int button_modifier = 0;
+
+//};
 
 /* the movements */
 enum DIRECTION {
@@ -59,16 +67,6 @@ enum DIRECTION {
 char gesture_names[] = { 'N', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
 
 /* the modifier key (TODO: Re-use this parameter) */
-int button_modifier;
-
-/*  */
-char *button_modifier_str;
-
-/*  */
-int button;
-
-/* arquivo de configuração */
-char conf_file[4096];
 
 /* Not draw the movement on the screen */
 int without_brush = 0;
@@ -85,9 +83,6 @@ unsigned int valid_masks[MOD_END];
 char *modifiers_names[MOD_END] = { "SHIFT", "CTRL", "ALT", "WIN", "SCROLL",
 		"NUM", "CAPS" };
 
-/* carregar como processo */
-int is_daemonized = 0;
-
 /* Initial position of the movement (algorithm 1) */
 int old_x = -1;
 int old_y = -1;
@@ -96,8 +91,6 @@ int old_y = -1;
 int old_x_2 = -1;
 int old_y_2 = -1;
 
-/* display */
-Display *dpy;
 
 /* movements stack (first capture algoritm) */
 char * accurate_stroke_sequence;
@@ -162,6 +155,61 @@ void create_masks(unsigned int *arr) {
 	return;
 }
 
+void grabbing_set_button(int b) {
+	button = b;
+}
+
+
+unsigned int str_to_modifier(char *str) {
+	int i;
+
+	if (str == NULL) {
+		fprintf(stderr, "no modifier supplied.\n");
+		exit(-1);
+	}
+
+	if (strncasecmp(str, "AnyModifier", 11) == 0)
+		return AnyModifier;
+
+	for (i = 0; i < MOD_END; i++)
+		if (strncasecmp(str, modifiers_names[i], strlen(modifiers_names[i]))
+				== 0)
+			return valid_masks[i];
+	/* no match... */
+	return valid_masks[SHIFT];
+}
+
+
+void grabbing_set_button_modifier(char *button_modifier_str) {
+
+	button_modifier = str_to_modifier(button_modifier_str);
+
+}
+
+void grabbing_set_without_brush(int b) {
+	without_brush = b;
+}
+
+void grabbing_set_brush_color(char * color) {
+
+	if (strcmp(color, "red") == 0)
+		brush_image = &brush_image_red;
+	else if (strcmp(color, "green") == 0)
+		brush_image = &brush_image_green;
+	else if (strcmp(color, "yellow") == 0)
+		brush_image = &brush_image_yellow;
+	else if (strcmp(color, "white") == 0)
+		brush_image = &brush_image_white;
+	else if (strcmp(color, "purple") == 0)
+		brush_image = &brush_image_purple;
+	else if (strcmp(color, "blue") == 0)
+		brush_image = &brush_image_blue;
+	else
+		printf("no such color, %s. using \"blue\"\n", color);
+	return;
+
+}
+
 int grab_pointer(Display *dpy) {
 	int err = 0, i = 0;
 	int screen = 0;
@@ -170,6 +218,7 @@ int grab_pointer(Display *dpy) {
 
 	if (button_modifier != AnyModifier)
 		create_masks(masks);
+
 // em todas as telas ativas
 	for (screen = 0; screen < ScreenCount (dpy); screen++) {
 		for (i = 1; i < (1 << (MOD_END)); i++)
@@ -370,7 +419,7 @@ void process_move(XMotionEvent *e) {
 	return;
 }
 
-void event_loop(Display *dpy) {
+void grabbing_event_loop(Display * dpy) {
 	XEvent e;
 
 	while ((!shut_down)) {
@@ -481,31 +530,26 @@ void print_bin(unsigned int a) {
 	printf("%s\n", str);
 }
 
-unsigned int str_to_modifier(char *str) {
-	int i;
 
-	if (str == NULL) {
-		fprintf(stderr, "no modifier supplied.\n");
-		exit(-1);
+int grabbing_init(Display *dpy) {
+
+	if (!button) {
+		button = 3;
 	}
 
-	if (strncasecmp(str, "AnyModifier", 11) == 0)
-		return AnyModifier;
+	init_masks(dpy);
 
-	for (i = 0; i < MOD_END; i++)
-		if (strncasecmp(str, modifiers_names[i], strlen(modifiers_names[i]))
-				== 0)
-			return valid_masks[i];
-	/* no match... */
-	return valid_masks[SHIFT];
-}
+	accurate_stroke_sequence = (char *) malloc(
+			sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
+	accurate_stroke_sequence[0] = '\0';
 
-int init(Display *dpy) {
+	fuzzy_stroke_sequence = (char *) malloc(
+			sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
+	fuzzy_stroke_sequence[0] = '\0';
+
 	int err = 0;
 	int scr;
 
-	/* set button modifier */
-	button_modifier = str_to_modifier(button_modifier_str);
 	XAllowEvents(dpy, AsyncBoth, CurrentTime);
 
 	scr = DefaultScreen(dpy);
@@ -526,181 +570,21 @@ int init(Display *dpy) {
 		}
 	}
 
-	err = init_gestures(conf_file);
-
-	if (err) {
-		fprintf(stderr, "Error %d loading gestures file '%s' \n", err,
-				conf_file);
-		return err;
-	}
 
 	/* choose a wm helper */
 	init_wm_helper();
 
 	/* last, start grabbing the pointer ...*/
 	grab_pointer(dpy);
+
 	return err;
 }
 
-int end() {
+void grabbing_finalize() {
 	if (!without_brush) {
 		brush_deinit(&brush);
 		backing_deinit(&backing);
 	}
-	return 0;
-}
-
-void parse_brush_color(char *color) {
-	if (strcmp(color, "red") == 0)
-		brush_image = &brush_image_red;
-	else if (strcmp(color, "green") == 0)
-		brush_image = &brush_image_green;
-	else if (strcmp(color, "yellow") == 0)
-		brush_image = &brush_image_yellow;
-	else if (strcmp(color, "white") == 0)
-		brush_image = &brush_image_white;
-	else if (strcmp(color, "purple") == 0)
-		brush_image = &brush_image_purple;
-	else if (strcmp(color, "blue") == 0)
-		brush_image = &brush_image_blue;
-	else
-		printf("no such color, %s. using \"blue\"\n", color);
-	return;
-
-}
-
-void usage() {
-	printf("\n");
-	printf(
-			"mygestures %s. Credits: Nir Tzachar (xgestures) & Lucas Augusto Deters\n",
-			VERSION);
-	printf("\n");
-	printf("-h, --help\t: print this usage info\n");
-	printf(
-			"-c, --config\t: set config file. Defaults: $HOME/.config/mygestures/mygestures.conf /etc/mygestures.conf");
-	printf("-b, --button\t: which button to use. default is 3\n");
-	printf("-d, --daemonize\t: laymans daemonize\n");
-	printf("-m, --modifier\t: which modifier to use. valid values are: \n");
-	printf("\t\t  CTRL, SHIFT, ALT, WIN, CAPS, NUM, AnyModifier \n");
-	printf("\t\t  default is SHIFT\n");
-	printf(
-			"-l, --brush-color\t: choose a brush color. available colors are:\n");
-	printf("\t\t\t  yellow, white, red, green, purple, blue (default)\n");
-	printf("-w, --without-brush\t: don't paint the gesture on screen.\n");
-	exit(0);
-}
-
-int handle_args(int argc, char**argv) {
-	char opt;
-	char *home;
-	static struct option opts[] = { { "help", 0, 0, 'h' },
-			{ "button", 1, 0, 'b' }, /*{ "modifier", 1, 0, 'm' },*/{
-					"without-brush", 0, 0, 'w' }, { "config", 1, 0, 'c' }, {
-					"daemonize", 0, 0, 'd' }, { "brush-color", 1, 0, 'l' }, { 0,
-					0, 0, 0 } };
-
-	button = Button3;
-	button_modifier = valid_masks[SHIFT]; //AnyModifier;
-	button_modifier_str = "AnyModifier";
-
-	home = getenv("HOME");
-	sprintf(conf_file, "%s/.config/mygestures/mygestures.conf", home);
-
-	while (1) {
-		opt = getopt_long(argc, argv, "h::b:m:c:l:wdr", opts, NULL);
-		if (opt == -1)
-			break;
-
-		switch (opt) {
-		case 'h':
-			usage();
-			break;
-		case 'b':
-			button = atoi(optarg);
-			break;
-			/*case 'm':
-			 button_modifier_str = strdup(optarg);
-			 break;*/
-		case 'c':
-			strncpy(conf_file, optarg, 4096);
-			break;
-		case 'w':
-			without_brush = 1;
-			break;
-		case 'd':
-			is_daemonized = 1;
-			break;
-		case 'l':
-			parse_brush_color(optarg);
-			break;
-		}
-
-	}
-
-	return 0;
-}
-
-void sighup(int a) {
-	init_gestures(conf_file);
 	return;
 }
 
-void sigchld(int a) {
-	int err;
-	waitpid(-1, &err, WNOHANG);
-	return;
-}
-
-void daemonize() {
-	int i;
-
-	i = fork();
-	if (i != 0)
-		exit(0);
-
-	i = chdir("/");
-	return;
-}
-
-int main(int argc, char **argv) {
-
-	char *s;
-
-	accurate_stroke_sequence = (char *) malloc(
-			sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
-	accurate_stroke_sequence[0] = '\0';
-
-	fuzzy_stroke_sequence = (char *) malloc(
-			sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
-	fuzzy_stroke_sequence[0] = '\0';
-
-	handle_args(argc, argv);
-	if (is_daemonized)
-		daemonize();
-
-	signal(SIGHUP, sighup);
-	signal(SIGCHLD, sigchld);
-	s = XDisplayName(NULL);
-	dpy = XOpenDisplay(s);
-	if (NULL == dpy) {
-		printf("%s: can't open display %s\n", argv[0], s);
-		exit(0);
-	}
-	init_masks(dpy);
-
-	int err = init(dpy);
-
-	if (!err) {
-		event_loop(dpy);
-	}
-
-	end();
-
-	free(fuzzy_stroke_sequence);
-	free(accurate_stroke_sequence);
-
-	//XUngrabPointer(dpy, CurrentTime);
-	XCloseDisplay(dpy);
-	return 0;
-
-}

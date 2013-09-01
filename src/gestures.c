@@ -31,13 +31,21 @@
 #include "gestures.h"
 #include "helpers.h"
 #include "wm.h"
+#include <jansson.h>
 #include <regex.h>
 #include <X11/Xutil.h>
 #include <fcntl.h>
 #include <errno.h>
 
-#define TEMPLATE_FILE "/usr/share/mygestures/mygestures.conf"
+// struct gesture {
 
+char * conf_file;
+
+// }
+
+#ifndef TEMPLATE_FILE
+#define TEMPLATE_FILE "/usr/share/mygestures/mygestures.conf"
+#endif
 
 /* The name from the actions, to read in .gestures file. */
 char *action_names[] = { "NONE", "exit", "exec", "minimize", "kill", "reconf",
@@ -121,7 +129,8 @@ void free_gesture(struct gesture *free_me) {
 }
 
 /* alloc an action struct */
-struct action *alloc_action(int action_type, void *action_data, char * original_str) {
+struct action *alloc_action(int action_type, void *action_data,
+		char * original_str) {
 	struct action *ans = malloc(sizeof(struct action));
 	bzero(ans, sizeof(struct action));
 	ans->type = action_type;
@@ -219,7 +228,6 @@ int match_gesture(char *stroke_sequence,
 
 }
 
-
 struct gesture * lookup_gesture(char * captured_sequence,
 		struct window_info * current_context, struct gesture **gesture_list,
 		int gesture_list_count) {
@@ -259,10 +267,7 @@ struct gesture * process_movement_sequences(Display * dpy,
 	struct gesture *gest = NULL;
 
 	printf("\n");
-	printf("Captured sequence: %s\n", complex_sequence);
-	printf("Simplified       : %s\n", simple_sequence);
-	printf("Class            : %s\n", current_context->class);
-	printf("Title            : %s\n", current_context->title);
+	printf("Search sequences : %s or %s\n", complex_sequence, simple_sequence);
 
 	gest = lookup_gesture(complex_sequence, current_context, specific_gestures,
 			specific_gestures_count);
@@ -287,27 +292,31 @@ struct gesture * process_movement_sequences(Display * dpy,
 	if (gest == NULL) {
 
 		printf("No gesture matches captured sequences.\n");
+		printf("Window Class = %s\n", current_context->class);
+		printf("Window Title = %s\n", current_context->title);
 
 		return NULL;
 
 	} else {
 
-		printf("Matched          : %s\n",gest->movement->expression);
+		printf("Gesture found    : %s \n", gest->movement->name);
 
 		if ((gest->context->class == NULL) && (gest->context->title == NULL)) {
-    	printf("Context          : All applications\n");
+			printf("Context          : All applications\n");
 		} else {
-			printf("Context          : Class = %s\n", gest->context->class);
-			printf("                   Title = %s\n", gest->context->title);
+			printf("Context          : [class like %s]\n",
+					gest->context->class);
+			printf("                   [title like %s]\n",
+					gest->context->title);
 		}
 
-			if (gest->action != NULL){
-				char * str = gest->action->original_str;
-				printf("Action           : %s %s\n", action_names[gest->action->type],str );
-			} else {
-				printf("Null action.\n");
-			}
-
+		if (gest->action != NULL) {
+			char * str = gest->action->original_str;
+			printf("Action           : %s %s\n",
+					action_names[gest->action->type], str);
+		} else {
+			printf("Null action.\n");
+		}
 
 		return gest;
 
@@ -332,85 +341,131 @@ char *remove_new_line(char *str) {
 
 }
 
-
-
-
-
-
-
 /** 
  * Copy a file
  */
-int cp(const char *to, const char *from)
-{
-    int fd_to, fd_from;
-    char buf[4096];
-    ssize_t nread;
-    int saved_errno;
+int new_file_from_template(const char *to, const char *from) {
+	int fd_to, fd_from;
+	char buf[4096];
+	ssize_t nread;
+	int saved_errno;
 
-    fd_from = open(from, O_RDONLY);
-    if (fd_from < 0)
-        return -1;
+	fd_from = open(from, O_RDONLY);
+	if (fd_from < 0)
+		return -1;
 
-    fd_to = open(to, O_WRONLY | O_CREAT | O_EXCL, 0666);
-    if (fd_to < 0)
-        goto out_error;
+	fd_to = open(to, O_WRONLY | O_CREAT | O_EXCL, 0666);
+	if (fd_to < 0)
+		goto out_error;
 
-    while (nread = read(fd_from, buf, sizeof buf), nread > 0)
-    {
-        char *out_ptr = buf;
-        ssize_t nwritten;
+	while (nread = read(fd_from, buf, sizeof buf), nread > 0) {
+		char *out_ptr = buf;
+		ssize_t nwritten;
 
-        do {
-            nwritten = write(fd_to, out_ptr, nread);
+		do {
+			nwritten = write(fd_to, out_ptr, nread);
 
-            if (nwritten >= 0)
-            {
-                nread -= nwritten;
-                out_ptr += nwritten;
-            }
-            else if (errno != EINTR)
-            {
-                goto out_error;
-            }
-        } while (nread > 0);
-    }
+			if (nwritten >= 0) {
+				nread -= nwritten;
+				out_ptr += nwritten;
+			} else if (errno != EINTR) {
+				goto out_error;
+			}
+		} while (nread > 0);
+	}
 
-    if (nread == 0)
-    {
-        if (close(fd_to) < 0)
-        {
-            fd_to = -1;
-            goto out_error;
-        }
-        close(fd_from);
+	if (nread == 0) {
+		if (close(fd_to) < 0) {
+			fd_to = -1;
+			goto out_error;
+		}
+		close(fd_from);
 
-        /* Success! */
-        return 0;
-    }
+		/* Success! */
+		return 0;
+	}
 
-  out_error:
-    saved_errno = errno;
+	out_error: saved_errno = errno;
 
-    close(fd_from);
-    if (fd_to >= 0)
-        close(fd_to);
+	close(fd_from);
+	if (fd_to >= 0)
+		close(fd_to);
 
-    errno = saved_errno;
-    return -1;
+	errno = saved_errno;
+	return -1;
 }
 
+char* readFileBytes(const char *name) {
+	FILE *fl = fopen(name, "r");
 
+	if (fl == NULL) {
+		return NULL;
+	}
 
+	fseek(fl, 0, SEEK_END);
+	long len = ftell(fl);
+	char *ret = malloc(len);
+	fseek(fl, 0, SEEK_SET);
+	fread(ret, 1, len, fl);
+	fclose(fl);
+	return ret;
+}
 
+int parse_movements(json_t *node) {
 
+	if (!json_is_array(node)) {
+		fprintf(stderr,
+				"error: 'movements' should be a list, delimited by '[' and ']'\n");
+		json_decref(node);
+		return 1;
+	}
+
+	return 0;
+
+}
+
+int parse_root(json_t *node) {
+
+	if (!json_is_object(node)) {
+		fprintf(stderr, "error: root is not an object\n");
+		json_decref(node);
+		return 1;
+	}
+
+	json_t *movements = json_object_get(node, "movement");
+
+	if (movements != NULL) {
+		parse_movements(movements);
+	}
+
+	return 0;
+
+}
 
 /**
  * Reads the conf file
  */
-int read_config(char *conf_file) {
-
-	FILE *conf = fopen(conf_file, "r");
+int parse_config_file(FILE *conf) {
+//
+//	char * text = readFileBytes(
+//			"/home/deters/.config/mygestures/mygestures.json");
+//
+//	if (text == NULL) {
+//		printf("Arquivo não localizado!\n");
+//	}
+//
+//	json_t *root;
+//	json_error_t error;
+//
+//	root = json_loads(text, 0, &error);
+//	free(text);
+//
+//	if (!root) {
+//		fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
+//		return 1;
+//	}
+//
+//	parse_root(root);
 
 	struct action *action;
 	struct gesture *gest;
@@ -431,10 +486,6 @@ int read_config(char *conf_file) {
 	char *token;
 	char *window_title = NULL;
 	char *window_class = NULL;
-
-	if (conf == NULL) {
-		return -1;
-	}
 
 	int currentline = -1;
 
@@ -469,6 +520,7 @@ int read_config(char *conf_file) {
 			if (token == NULL)
 				continue;
 			window_class = NULL; // the class remains empty
+
 			window_title = strdup(token); // copy the window title
 
 			regex_t reg;
@@ -674,43 +726,76 @@ int read_config(char *conf_file) {
 
 }
 
-/**
- * Sort the gesture sequences... // TODO: make a refactoring
- */
+void gestures_set_config_file(char * config_file) {
+	conf_file = strdup(config_file);
+}
 
-int init_gestures(char *config_file) {
+char * get_user_conf_file() {
+	char * ans[4096];
+	char *home = getenv("HOME");
+	snprintf(ans, 4096, "%s/.config/mygestures/mygestures.conf", home);
+	return ans;
+}
+
+int gestures_init() {
+
+	FILE *conf = NULL;
 	int err = 0;
-	int i;
 
-	printf("Loading gestures from %s\n", config_file);
+	if (conf_file == NULL) {
 
-	err = read_config(config_file);
+		// will try to use user's default config file
 
-	if (err){
-		printf("Creating file '%s' from default config at '%s'\n",
-				config_file, TEMPLATE_FILE);
+		conf_file = get_user_conf_file();
 
-		err = cp(config_file,"/usr/share/mygestures/mygestures.conf");
+		conf = fopen(conf_file, "r");
 
-		printf("Done.\n");
+		// if not exists, then try to create it.
+
+		if (!conf) {
+
+			// creating from template
+			err = new_file_from_template(conf_file, TEMPLATE_FILE);
+			if (err) {
+				fprintf(stderr,
+						"Error trying to create config file `%s' from template `%s'.\n",
+						conf_file, TEMPLATE_FILE);
+				return err;
+			}
+
+			// try to open again.
+			conf = fopen(conf_file, "r");
+
+		}
+
+
+
 	}
+
+	if (!conf){
+		fprintf(stderr,
+				"Error opening config file `%s'.\n",
+				conf_file);
+	}
+
+	err = parse_config_file(conf);
 
 	if (err) {
-		printf("Error trying to create config file %s.\n",
-						config_file);
+		printf("Error parsing configuration file.\n");
 		return err;
 	}
 
-	err = read_config(config_file);
-
-	if (err){
-		printf("Error reading configuration file.\n");
-		return err;
-	}
+	int i;
 
 	/* now, fill the gesture array */
-	if (specific_gestures_count != 0) /* reconfiguration.. */
+	if (specific_gestures_count != 0) { /* reconfiguration.. */
+
+		for (i = 0; i < specific_gestures_count; ++i) {
+			free_gesture(specific_gestures[i]);
+		}
+
 		free(specific_gestures);
+	}
 
 	specific_gestures_count = stack_size(&temp_stack);
 	specific_gestures = malloc(
@@ -723,8 +808,16 @@ int init_gestures(char *config_file) {
 	}
 
 	/* now, fill the gesture array */
-	if (global_gestures_count != 0) /* reconfiguration.. */
+	if (global_gestures_count != 0) {/* reconfiguration.. */
+
+		for (i = 0; i < global_gestures_count; ++i) {
+			free_gesture(global_gestures[i]);
+		}
+
 		free(global_gestures);
+
+	}
+
 	global_gestures_count = stack_size(&temp_general_stack);
 	global_gestures = malloc(sizeof(struct gesture *) * global_gestures_count);
 
@@ -732,7 +825,9 @@ int init_gestures(char *config_file) {
 		global_gestures[i] = (struct gesture *) pop(&temp_general_stack);
 	}
 
-	printf("%d gestures loaded.\n", specific_gestures_count + global_gestures_count );
+	printf("%d gestures loaded.\n",
+			specific_gestures_count + global_gestures_count);
 
 	return err;
 }
+

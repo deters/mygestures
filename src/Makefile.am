@@ -3,10 +3,11 @@ bin_PROGRAMS=mygestures
 CC=clang
 
 mygestures_SOURCES = \
+	main.c \
 	helpers.c helpers.h \
 	gestures.c gestures.h \
 	generic_wm.c wm.h \
-	grabbing.c \
+	grabbing.c grabbing.h \
 	drawing-backing.c \
 	drawing-backing.h \
 	drawing-brush.c \
@@ -16,3 +17,5 @@ mygestures_SOURCES = \
 	drawing-brush-image.c \
 	drawing-bresenham.c \
 	drawing-bresenham.h
+	
+mygestures_LDADD=-lm

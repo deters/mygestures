@@ -1,5 +1,6 @@
 /*
  Copyright 2005 Nir Tzachar
+ Copyright 2013 Lucas Augusto Deters
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -58,9 +59,13 @@ struct window_info {
 	char *class;
 };
 
-int init_gestures(char *config_file);
+struct gesture_engine {
+	char * config_file;
+};
 
-void * compile_key_action(char *str_ptr);
+int gestures_init();
+
+void gestures_set_config_file(char * config_file);
 
 struct gesture * process_movement_sequences(Display * dpy,
 		struct window_info *current_context, char *complex_sequence,

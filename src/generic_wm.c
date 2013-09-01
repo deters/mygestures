@@ -70,20 +70,22 @@ Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
 
 	status = XGetWMName(dpy, w, &text_prop);
 	if (!status || !text_prop.value || !text_prop.nitems) {
-		printf("getwmname error ");
-		*out_window_title = NULL;
-		return 0;
+		*out_window_title = "";
 	}
 	status = Xutf8TextPropertyToTextList(dpy, &text_prop, &list, &num);
+
 	if (status < Success || !num || !*list) {
-		*out_window_title = NULL;
-		return 0;
+		*out_window_title = "";
+	} else {
+		*out_window_title = (char *) strdup(*list);
 	}
 	XFree(text_prop.value);
-	*out_window_title = (char *) strdup(*list);
 	XFreeStringList(list);
 	return 1;
 }
+
+
+
 
 
 /*
