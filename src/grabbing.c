@@ -274,6 +274,7 @@ void stop_grab(XButtonEvent *e) {
 			}
 
 			execute_action(first_click.display, gest->action);
+
 		}
 
 	}

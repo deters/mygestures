@@ -130,19 +130,22 @@ int main(int argc, char * const * argv) {
 
 	if (!err) {
 
-		grabbing_init(dpy);
+		err = grabbing_init(dpy);
 
+		if (!err) {
 
-		signal(SIGHUP, sighup);
-		signal(SIGCHLD, sigchld);
+			signal(SIGHUP, sighup);
+			signal(SIGCHLD, sigchld);
 
-		grabbing_event_loop(dpy);
+			grabbing_event_loop(dpy);
+
+		}
 	}
 
 	grabbing_finalize();
 
 	XCloseDisplay(dpy);
 
-	return 0;
+	return err;
 
 }

@@ -39,7 +39,7 @@
 
 // struct gesture {
 
-char * conf_file;
+char * conf_file = NULL;
 
 // }
 
@@ -411,61 +411,10 @@ char* readFileBytes(const char *name) {
 	return ret;
 }
 
-int parse_movements(json_t *node) {
-
-	if (!json_is_array(node)) {
-		fprintf(stderr,
-				"error: 'movements' should be a list, delimited by '[' and ']'\n");
-		json_decref(node);
-		return 1;
-	}
-
-	return 0;
-
-}
-
-int parse_root(json_t *node) {
-
-	if (!json_is_object(node)) {
-		fprintf(stderr, "error: root is not an object\n");
-		json_decref(node);
-		return 1;
-	}
-
-	json_t *movements = json_object_get(node, "movement");
-
-	if (movements != NULL) {
-		parse_movements(movements);
-	}
-
-	return 0;
-
-}
-
 /**
  * Reads the conf file
  */
 int parse_config_file(FILE *conf) {
-//
-//	char * text = readFileBytes(
-//			"/home/deters/.config/mygestures/mygestures.json");
-//
-//	if (text == NULL) {
-//		printf("Arquivo não localizado!\n");
-//	}
-//
-//	json_t *root;
-//	json_error_t error;
-//
-//	root = json_loads(text, 0, &error);
-//	free(text);
-//
-//	if (!root) {
-//		fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
-//		return 1;
-//	}
-//
-//	parse_root(root);
 
 	struct action *action;
 	struct gesture *gest;
@@ -509,6 +458,7 @@ int parse_config_file(FILE *conf) {
 		while ((token != NULL) && (strcmp(token, "") == 0)) {
 			token = strsep(buff_ptr_ptr, " \t");
 		}
+
 		if ((token == NULL) || (strlen(token) == 0))
 			continue; // go to next line
 
@@ -549,7 +499,7 @@ int parse_config_file(FILE *conf) {
 			regex_t reg;
 
 			if (regcomp(&reg, window_class, REG_EXTENDED | REG_NOSUB) != 0) {
-				printf("Error on compiling a regular expression: \t%s\n",
+				printf("Error compiling regular expression: \t%s\n",
 						window_class);
 				exit(1); // exit
 			}
@@ -706,8 +656,7 @@ int parse_config_file(FILE *conf) {
 				continue;
 			}
 
-			// push the gesture to a temporary stack
-			// TODO: the temp_stack remain's necessary??? the is no more sort...
+
 			if ((window_title == NULL) && (window_class == NULL)) {
 				push(gest, &temp_general_stack);
 			} else {
@@ -720,6 +669,8 @@ int parse_config_file(FILE *conf) {
 
 	}
 
+
+
 	// closes the file
 	fclose(conf);
 	return 0;
@@ -727,14 +678,18 @@ int parse_config_file(FILE *conf) {
 }
 
 void gestures_set_config_file(char * config_file) {
+	if (conf_file) {
+		free(conf_file);
+	}
 	conf_file = strdup(config_file);
 }
 
 char * get_user_conf_file() {
-	char * ans[4096];
-	char *home = getenv("HOME");
-	snprintf(ans, 4096, "%s/.config/mygestures/mygestures.conf", home);
-	return ans;
+	char * home = getenv("HOME");
+	char * filename = malloc(sizeof(char) * 4096);
+	strncpy(filename,strdup(home),4096);
+	strncat(filename,"/.config/mygestures/mygestures.conf",4096);
+	return filename;
 }
 
 int gestures_init() {
@@ -825,8 +780,8 @@ int gestures_init() {
 		global_gestures[i] = (struct gesture *) pop(&temp_general_stack);
 	}
 
-	printf("%d gestures loaded.\n",
-			specific_gestures_count + global_gestures_count);
+	printf("%d gestures loaded from file `%s'.\n",
+			specific_gestures_count + global_gestures_count, conf_file);
 
 	return err;
 }

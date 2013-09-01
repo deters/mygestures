@@ -81,6 +81,7 @@ Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
 	}
 	XFree(text_prop.value);
 	XFreeStringList(list);
+
 	return 1;
 }
 

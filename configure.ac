@@ -27,11 +27,7 @@ AC_CHECK_LIB([Xtst], [XTestFakeKeyEvent],,
         AC_MSG_ERROR([*** libXtst not found. Tip: install libxtst-dev]),
         [$x_libs_for_checks])
 
-AC_CHECK_LIB([jansson], [json_loads],,
-        AC_MSG_ERROR([*** libjansson not found. Tip: install libjansson-dev]),
-        [$x_libs_for_checks])
-
-        
+      
 
 AC_PROG_CC
 
