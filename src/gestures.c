@@ -36,46 +36,62 @@
 #include <X11/Xutil.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 
-// struct gesture {
+#ifndef TEMPLATE_FILE
+#define TEMPLATE_FILE "/usr/share/mygestures/mygestures2.xml"
+#endif
 
 char * conf_file = NULL;
 
-// }
+struct movement** movement_list;
+int movement_count;
 
-#ifndef TEMPLATE_FILE
-#define TEMPLATE_FILE "/usr/share/mygestures/mygestures.conf"
-#endif
+struct context** context_list;
+int context_count;
 
 /* The name from the actions, to read in .gestures file. */
-char *action_names[] = { "NONE", "exit", "exec", "minimize", "kill", "reconf",
-		"raise", "lower", "maximize", "root_send" };
-
-/* this holds all known gestures */
-struct gesture **specific_gestures = NULL;
-int specific_gestures_count = 0;
-/* a temporary stack - it remains necessary?) */
-EMPTY_STACK(temp_stack);
-
-/* a temporary stack - it remains necessary?) */
-EMPTY_STACK(movement_stack);
-
-/* this holds all known gestures */
-struct gesture **global_gestures = NULL;
-int global_gestures_count = 0;
-/* a temporary stack - it remains necessary?) */
-EMPTY_STACK(temp_general_stack);
+/*char *action_names[] = { "NONE", "exit", "exec", "minimize", "kill", "reconf",
+ "raise", "lower", "maximize", "root_send" };*/
 
 /* alloc a window struct */
-struct context *alloc_context(char *window_title, char *window_class,
-		regex_t window_title_compiled, regex_t window_class_compiled) {
+struct context *alloc_context(char * context_name, char *window_title,
+		char *window_class, struct gesture ** gestures, int gestures_count,
+		int abort) {
 	struct context *ans = malloc(sizeof(struct context));
 	bzero(ans, sizeof(struct context));
 
+	ans->name = context_name;
 	ans->title = window_title;
 	ans->class = window_class;
-	ans->title_compiled = window_title_compiled;
-	ans->class_compiled = window_class_compiled;
+	ans->gestures = gestures;
+	ans->gestures_count = gestures_count;
+
+	regex_t * title_compiled = NULL;
+	if (ans->title) {
+
+		title_compiled = malloc(sizeof(regex_t));
+		if (regcomp(title_compiled, window_title,
+		REG_EXTENDED | REG_NOSUB)) {
+			fprintf(stderr, "Error compiling regexp: %s\n", window_title);
+			free(title_compiled);
+			title_compiled = NULL;
+		}
+	}
+	ans->title_compiled = title_compiled;
+
+	regex_t * class_compiled = NULL;
+	if (ans->class) {
+		class_compiled = malloc(sizeof(regex_t));
+		if (regcomp(class_compiled, window_class,
+		REG_EXTENDED | REG_NOSUB)) {
+			fprintf(stderr, "Error compiling regexp: %s\n", window_class);
+			class_compiled = NULL;
+		}
+	}
+	ans->class_compiled = class_compiled;
+
 	return ans;
 }
 
@@ -88,14 +104,35 @@ void free_context(struct context *free_me) {
 }
 
 /* alloc a movement struct */
-struct movement *alloc_movement(char *movement_name, char *movement_expression,
-		regex_t movement_compiled) {
+struct movement *alloc_movement(char *movement_name, char *movement_expression) {
 	struct movement *ans = malloc(sizeof(struct movement));
 	bzero(ans, sizeof(struct movement));
 
 	ans->name = movement_name;
 	ans->expression = movement_expression;
+
+	char * regex_str = malloc(sizeof(char) * (strlen(movement_expression) + 5));
+
+	strcpy(regex_str, "");
+	strcat(regex_str, "^(");
+	strcat(regex_str, movement_expression);
+	strcat(regex_str, ")$");
+
+	regex_t * movement_compiled = NULL;
+	movement_compiled = malloc(sizeof(regex_t));
+	if (regcomp(movement_compiled, regex_str,
+	REG_EXTENDED | REG_NOSUB) != 0) {
+		fprintf(stderr, "Warning: Invalid movement sequence: %s\n", regex_str);
+		free(movement_compiled);
+		movement_compiled = NULL;
+	} else {
+		regcomp(movement_compiled, regex_str,
+		REG_EXTENDED | REG_NOSUB);
+	}
+	free(regex_str);
+
 	ans->compiled = movement_compiled;
+
 	return ans;
 }
 
@@ -109,33 +146,93 @@ void free_movement(struct movement *free_me) {
 }
 
 /* alloc a gesture struct */
-struct gesture *alloc_gesture(struct context *context,
-		struct action *gesture_action, struct movement *gesture_movement) {
+struct gesture *alloc_gesture(char * gesture_name,
+		struct movement *gesture_movement, struct action **gesture_actions,
+		int actions_count) {
 	struct gesture *ans = malloc(sizeof(struct gesture));
 	bzero(ans, sizeof(struct gesture));
 
-	ans->context = context;
-	ans->action = gesture_action;
+	ans->name = gesture_name;
 	ans->movement = gesture_movement;
+	ans->actions = gesture_actions;
+	ans->actions_count = actions_count;
 	return ans;
 }
 
+/* alloc a key_press struct ???? */
+struct key_press * alloc_key_press(void) {
+	struct key_press *ans = malloc(sizeof(struct key_press));
+	bzero(ans, sizeof(struct key_press));
+	return ans;
+}
+
+/**
+ * Creates a Keysym from a char sequence
+ *
+ * PRIVATE
+ */
+struct key_press *compile_key_action(char *str_ptr)
+{
+
+		char * copy = strdup(str_ptr);
+
+        struct key_press base;
+        struct key_press *key;
+        KeySym k;
+        char *str = copy;
+        char *token = str ;
+        char *str_dup;
+
+        if (str == NULL)
+                return NULL;
+
+
+        key = &base;
+        token = strsep(&copy, "+\n ");
+        while(token != NULL){
+                /* printf("found : %s\n", token); */
+                k = XStringToKeysym(token);
+                if (k == NoSymbol){
+                        fprintf(stderr, "error converting %s to keysym\n", token);
+                        exit(-1);
+                }
+                key->next = alloc_key_press();
+                key = key->next;
+                key->key = k;
+                token = strsep(&copy, "+\n ");
+        }
+
+        base.next->original_str = str_ptr;
+        return base.next;
+}
+
+
+
+//todo gerenciamento de memória
 /* release a gesture struct */
 void free_gesture(struct gesture *free_me) {
-	free(free_me->action);
+	free(free_me->actions);
 	free(free_me);
 
 	return;
 }
 
 /* alloc an action struct */
-struct action *alloc_action(int action_type, void *action_data,
-		char * original_str) {
+struct action *alloc_action(int action_type, char * original_str) {
 	struct action *ans = malloc(sizeof(struct action));
 	bzero(ans, sizeof(struct action));
+
+	struct key_press * action_data = NULL;
+
+
+	if (action_type == ACTION_ROOT_SEND) {
+		// TODO: limpar no método free
+		action_data = compile_key_action(original_str);
+	}
+
 	ans->type = action_type;
-	ans->data = action_data;
 	ans->original_str = original_str;
+	ans->data = action_data;
 
 	return ans;
 }
@@ -146,179 +243,134 @@ void free_action(struct action *free_me) {
 	return;
 }
 
-/* alloc a key_press struct ???? */
-struct key_press * alloc_key_press(void) {
-	struct key_press *ans = malloc(sizeof(struct key_press));
-	bzero(ans, sizeof(struct key_press));
-	return ans;
-}
-
 /* release a key_press struct */
 void free_key_press(struct key_press *free_me) {
 	free(free_me);
 	return;
 }
 
-/**
- * Creates a Keysym from a char sequence
- *
- * PRIVATE
- */
-void * compile_key_action(char *str_ptr) {
-	struct key_press base;
-	struct key_press *key;
-	KeySym k;
-	char *str = str_ptr;
-	char *token = str;
-	char *str_dup;
+struct gesture * match_gestures(char * captured_sequence,
+		struct window_info * window) {
 
-	if (str == NULL)
-		return NULL;
+	struct gesture * matched_gesture = NULL;
 
-	/* do this before strsep.. */
-	str_dup = strdup(str);
+	for (int c = 0; c < context_count; ++c) {
 
-	key = &base;
-	token = strsep(&str_ptr, "+\n ");
-	while (token != NULL) {
-		/* printf("found : %s\n", token); */
-		k = XStringToKeysym(token);
-		if (k == NoSymbol) {
-			fprintf(stderr, "error converting %s to keysym\n", token);
-			exit(-1);
-		}
-		key->next = (struct key_press *) alloc_key_press();
-		key = key->next;
-		key->key = k;
-		token = strsep(&str_ptr, "+\n ");
-	}
-
-	base.next->original_str = str_dup;
-
-	return base.next;
-}
-
-/*
- * Match the window, the class and the grabbed gesture with a known gesture
- */
-int match_gesture(char *stroke_sequence,
-		const struct window_info *current_window, struct gesture *known_gesture) {
-
-	// match the stroke_sequence against the current gesture movement
-	int status = regexec(&(known_gesture->movement->compiled), stroke_sequence,
-			0, (regmatch_t *) NULL, 0);
-
-	if (status == 0) {
-
-		// match current window against gesture context
-		if (known_gesture->context->title != NULL) {
-			status = regexec(&(known_gesture->context->title_compiled),
-					current_window->title, 0, (regmatch_t *) NULL, 0);
-		}
-
-		// try to match also the class
-		if (known_gesture->context->class != NULL) {
-			status = regexec(&(known_gesture->context->class_compiled),
-					current_window->class, 0, (regmatch_t *) NULL, 0);
-		}
-
-	}
-
-	return status;
-
-}
-
-struct gesture * lookup_gesture(char * captured_sequence,
-		struct window_info * current_context, struct gesture **gesture_list,
-		int gesture_list_count) {
-
-	struct gesture * gest = NULL;
-	int i;
-
-	for (i = 0; i < gesture_list_count; i++) {
-		if (!match_gesture(captured_sequence, current_context,
-				gesture_list[i])) {
-
-			gest = gesture_list[i];
+		if (matched_gesture)
 			break;
 
+		struct context * context = context_list[c];
+
+		fprintf(stderr, "Context: %s\n", context->name);
+
+		if ((!context->class)
+				|| (regexec(context->class_compiled, window->class, 0,
+						(regmatch_t *) NULL, 0) != 0)) {
+			continue;
 		}
+
+		if ((!context->title)
+				|| (regexec(context->title_compiled, window->title, 0,
+						(regmatch_t *) NULL, 0)) != 0) {
+			continue;
+		}
+
+		fprintf(stderr, "Matched context: %s\n", context->name);
+
+		if (context->gestures_count) {
+
+			fprintf(stderr, "       gesture_count: %d\n",
+					context->gestures_count);
+
+			for (int g = 0; g < context->gestures_count; ++g) {
+
+				struct gesture * gest = context->gestures[g];
+
+				if (gest->movement) {
+
+					if ((gest->movement->compiled)
+							&& (regexec(gest->movement->compiled,
+									captured_sequence, 0, (regmatch_t *) NULL,
+									0) == 0)) {
+
+						fprintf(stderr, "          matched movement:  %s %s.\n",
+								gest->movement->name,
+								gest->movement->expression);
+
+						matched_gesture = gest;
+						break;
+
+					}
+
+				}
+
+			}
+
+		}
+
 	}
 
-	return gest;
-
+	return matched_gesture;
 }
 
 /**
  * Receives captured movement from two diferent algoritms: a simple and a complex.
- * 
+ *
  *   The simple algoritm can understand movements in four directions: U, D, R, L
  *   The complex algoritm can understand movements in eight directions, including the diagonals
- * 
+ *
  * The program will process the complex movement sequence prior to the simplest sequence.
- * 
- * The system will also prioritize the gestures defined for the current application, 
+ *
+ * The system will also prioritize the gestures defined for the current application,
  * and only then will consider the global gestures.
  */
-struct gesture * process_movement_sequences(Display * dpy,
-		struct window_info *current_context, char *complex_sequence,
-		char * simple_sequence) {
+void process_movement_sequences(Display * dpy,
+		struct window_info *current_context, char ** sequences,
+		int sequences_count) {
 
 	struct gesture *gest = NULL;
 
 	printf("\n");
-	printf("Search sequences : %s or %s\n", complex_sequence, simple_sequence);
+	printf("Searching for sequences:");
 
-	gest = lookup_gesture(complex_sequence, current_context, specific_gestures,
-			specific_gestures_count);
+	for (int i = 0; i < sequences_count; ++i) {
 
-	if (gest == NULL) {
-		gest = lookup_gesture(complex_sequence, current_context,
-				global_gestures, global_gestures_count);
+		char * sequence = sequences[i];
+
+		printf("\t%s", sequence);
+
+		gest = match_gestures(sequence, current_context);
+
+		if (gest) {
+			break;
+		}
 	}
 
-	if (gest == NULL) {
+	printf("\n");
 
-		gest = lookup_gesture(simple_sequence, current_context,
-				specific_gestures, specific_gestures_count);
-	}
-
-	if (gest == NULL) {
-		gest = lookup_gesture(simple_sequence, current_context, global_gestures,
-				global_gestures_count);
-	}
-
-	// execute the action
-	if (gest == NULL) {
+	if (!gest) {
 
 		printf("No gesture matches captured sequences.\n");
 		printf("Window Class = %s\n", current_context->class);
 		printf("Window Title = %s\n", current_context->title);
 
-		return NULL;
-
 	} else {
 
-		printf("Gesture found    : %s \n", gest->movement->name);
+		printf("Gesture found    : %s \n", gest->name);
+		printf("                   %d actions on gesture. \n",
+				gest->actions_count);
 
-		if ((gest->context->class == NULL) && (gest->context->title == NULL)) {
-			printf("Context          : All applications\n");
-		} else {
-			printf("Context          : [class like %s]\n",
-					gest->context->class);
-			printf("                   [title like %s]\n",
-					gest->context->title);
+	}
+
+	if (gest) {
+
+		for (int i = 0; i < gest->actions_count; ++i) {
+
+			struct action * a = gest->actions[i];
+			fprintf(stderr, "   gesture type: %d\n", a->type);
+			execute_action(dpy, a);
+
 		}
-
-		if (gest->action != NULL) {
-			char * str = gest->action->original_str;
-			printf("Action           : %s %s\n",
-					action_names[gest->action->type], str);
-		} else {
-			printf("Null action.\n");
-		}
-
-		return gest;
 
 	}
 
@@ -341,7 +393,7 @@ char *remove_new_line(char *str) {
 
 }
 
-/** 
+/**
  * Copy a file
  */
 int new_file_from_template(const char *to, const char *from) {
@@ -411,269 +463,353 @@ char* readFileBytes(const char *name) {
 	return ret;
 }
 
-/**
- * Reads the conf file
- */
-int parse_config_file(FILE *conf) {
+struct action * parse_action(xmlNode *node) {
 
-	struct action *action;
-	struct gesture *gest;
-	struct context *gesture_window;
-	char buff[4096];
+	char * action_name = NULL;
+	char * action_value = NULL;
 
-	struct movement *known_movements[254];
-	int known_movements_num = 0;
+	xmlAttr* attribute = node->properties;
+	while (attribute && attribute->name && attribute->children) {
+		xmlChar* value = xmlNodeListGetString(node->doc, attribute->children,
+				1);
 
-	char *buff_ptr = buff;
-	char **buff_ptr_ptr;
-	char *gesture_action;
-
-	char *gesture_params;
-	void *data;
-	char *sequence;
-	int i;
-	char *token;
-	char *window_title = NULL;
-	char *window_class = NULL;
-
-	int currentline = -1;
-
-	// get 1 line
-	while (fgets(buff, 4096, conf) != NULL) {
-
-		currentline = currentline + 1;
-
-		// ignore comments
-		if (buff[0] == '#')
-			continue;
-
-		// remove line breaks
-		remove_new_line(buff);
-
-		buff_ptr = buff;
-		buff_ptr_ptr = &buff_ptr;
-
-		// ignoring white spaces
-		token = strsep(buff_ptr_ptr, " \t");
-		while ((token != NULL) && (strcmp(token, "") == 0)) {
-			token = strsep(buff_ptr_ptr, " \t");
+		if (strcasecmp(attribute->name, "action") == 0) {
+			action_name = strdup(value);
+		} else if (strcasecmp(attribute->name, "value") == 0) {
+			action_value = strdup(value);
 		}
 
-		if ((token == NULL) || (strlen(token) == 0))
-			continue; // go to next line
+		xmlFree(value);
+		attribute = attribute->next;
+	}
 
-		// found a TITLE token
+	if (!action_name) {
+		free(action_value);
+		fprintf(stderr, "Missing action name\n");
+		return NULL;
+	}
 
-		if (strcasecmp(token, "TITLE") == 0) {
-			// get the window title
-			token = strsep(buff_ptr_ptr, " \t");
-			if (token == NULL)
-				continue;
-			window_class = NULL; // the class remains empty
+	if (!action_value) {
+		action_value = "";
+	}
 
-			window_title = strdup(token); // copy the window title
+	struct action * a = NULL;
 
-			regex_t reg;
+	fprintf(stderr, "key = %s\n", action_value);
 
-			if (regcomp(&reg, window_title, REG_EXTENDED | REG_NOSUB) != 0) {
-				printf("Error on compiling a regular expression: \t%s\n",
-						window_title);
-				exit(1); // exit
-			}
+	int id = ACTION_ERROR;
 
-			gesture_window = alloc_context(window_title, window_class, reg,
-					reg/*TODO NULL*/);
+	if (strcasecmp(action_name, "iconify") == 0) {
+		id = ACTION_ICONIFY;
+	} else if (strcasecmp(action_name, "kill") == 0) {
+		id = ACTION_KILL;
+	} else if (strcasecmp(action_name, "lower") == 0) {
+		id = ACTION_LOWER;
+	} else if (strcasecmp(action_name, "raise") == 0) {
+		id = ACTION_RAISE;
+	} else if (strcasecmp(action_name, "maximize") == 0) {
+		id = ACTION_MAXIMIZE;
+	} else if (strcasecmp(action_name, "keypress") == 0) {
+		id = ACTION_ROOT_SEND;
+	} else if (strcasecmp(action_name, "exec") == 0) {
+		id = ACTION_EXECUTE;
+	} else {
+		fprintf(stderr, "unknown gesture: %s\n", action_name);
+	}
 
-			continue; // go to next line
+	a = alloc_action(id, action_value);
+
+
+	fprintf(stderr, "ALLOCATED %s from %s\n", a->original_str, action_value);
+
+
+	return a;
+
+}
+
+struct movement * movement_find(char * movement_name,
+		struct movement ** known_movements, int known_movements_count) {
+
+	if (!movement_name) {
+		return NULL;
+	}
+
+	for (int i = 0; i < known_movements_count; ++i) {
+		struct movement * m = known_movements[i];
+
+		if ((m->name) && (movement_name)
+				&& (strcasecmp(movement_name, m->name) == 0)) {
+			return m;
 		}
+	}
 
-		// found a CLASS token
-		if (strcasecmp(token, "CLASS") == 0) {
-			// get the window class
-			token = strsep(buff_ptr_ptr, " \t");
-			if (token == NULL)
-				continue;
-			window_class = strdup(token);
-			window_title = NULL; // the title remain empty
+	return NULL;
 
-			regex_t reg;
+}
 
-			if (regcomp(&reg, window_class, REG_EXTENDED | REG_NOSUB) != 0) {
-				printf("Error compiling regular expression: \t%s\n",
-						window_class);
-				exit(1); // exit
-			}
+struct gesture * parse_gesture(xmlNode *node,
+		struct movement ** known_movements, int known_movements_count) {
 
-			gesture_window = alloc_context(window_title, window_class,
-					reg/*TODO NULL*/, reg);
+	char * gesture_name = NULL;
+	struct movement * gesture_trigger = NULL;
 
-			continue;
+	xmlAttr* attribute = node->properties;
+	while (attribute && attribute->name && attribute->children) {
+		xmlChar* value = xmlNodeListGetString(node->doc, attribute->children,
+				1);
+		if (strcasecmp(attribute->name, "name") == 0) {
+			gesture_name = strdup(value);
+		} else if (strcasecmp(attribute->name, "movement") == 0) {
+			gesture_trigger = movement_find(value, known_movements,
+					known_movements_count);
 		}
+		xmlFree(value);
+		attribute = attribute->next;
+	}
 
-		// found a ALL token
-		if (strcasecmp(token, "ALL") == 0) {
-			// next lines configuration will be valid to any window
-			window_class = NULL;
-			window_title = NULL;
+	if (!gesture_name) {
+		free(gesture_trigger);
+		fprintf(stderr, "Missing gesture name\n");
+		return NULL;
+	}
 
-			regex_t reg; // TODO: Remove this. will not be used
+	if (!gesture_trigger) {
+		free(gesture_name);
+		fprintf(stderr, "Missing gesture movement.\n");
+		return NULL;
+	}
 
-			gesture_window = alloc_context(window_title, window_class,
-					reg/*TODO NULL*/, reg/*TODO NULL*/);
+	struct action ** gesture_actions = malloc(sizeof(struct action *) * 254);
+	int actions_count = 0;
 
-			continue;
-		}
+	xmlNode *cur_node = NULL;
 
-		// found a MOVEMENT token
-		if (strcasecmp(token, "MOVEMENT") == 0) {
-			// get the name of the movement
-			token = strsep(buff_ptr_ptr, " \t");
-			if (token == NULL)
-				continue;
-			char *movement_name = malloc(sizeof(char) * strlen(token));
-			strcpy(movement_name, token);
+	for (cur_node = node->children; cur_node; cur_node = cur_node->next) {
+		if (cur_node->type == XML_ELEMENT_NODE) {
 
-			// get the regular expression of the movement
-			token = strsep(buff_ptr_ptr, " \t");
-			if (token == NULL) {
-				free(movement_name);
-				continue;
-			}
+			char * element = cur_node->name;
 
-			// forces the start and end of the RE
-			char *movement_value = malloc(sizeof(char) * (strlen(token) + 5));
-			strcpy(movement_value, "");
-			strcat(movement_value, "^(");
-			strcat(movement_value, token);
-			strcat(movement_value, ")$");
+			if (strcasecmp(element, "do") == 0) {
 
-			// compile the regular expression for the movement
-			regex_t movement_compiled;
-			if (regcomp(&movement_compiled, movement_value,
-			REG_EXTENDED | REG_NOSUB) != 0) {
-				printf("Warning: Invalid movement sequence: %s\tat line %i",
-						movement_value, currentline - 1);
-				exit(1); // exit
-			}
+				struct action * a = parse_action(cur_node);
 
-			struct movement *movement = alloc_movement(movement_name,
-					movement_value, movement_compiled);
-
-			known_movements[known_movements_num] = movement;
-			known_movements_num = known_movements_num + 1;
-			continue;
-		}
-
-		// If not found a token, then this line is a GESTURE definition
-		// A GESTURE contains a MOVEMENT name, a ACTION name and the PARAMS to the action
-
-		struct movement *gesture_movement;
-
-		char *movementused = token;
-
-		// TODO remove this variables:
-		char *mov_name = "";
-		char *mov_value = "";
-
-		// Try to get the Movement from the known movements
-		// TODO: create a separated method to do this
-		for (i = 0; i < known_movements_num; i++) {
-
-			char *movement_name =
-					((struct movement *) (known_movements[i]))->name;
-			char *movement_value =
-					((struct movement *) (known_movements[i]))->expression;
-
-			if (strcmp(movementused, movement_name) == 0) {
-				gesture_movement = ((struct movement *) (known_movements[i]));
-				// TODO remove this variables
-				mov_value = movement_value;
-				mov_name = movement_name;
-				continue;
-			}
-
-		}
-		if (gesture_movement == NULL) {
-			continue; //ingores the movement.
-		}
-
-		// get the ACTION name
-		token = strsep(buff_ptr_ptr, " \t");
-		if (token == NULL)
-			continue;
-		gesture_action = token;
-
-		// get the PARAMS of the action
-		gesture_params = *buff_ptr_ptr; // the remainder chars on the line
-
-		for (i = 1; i < ACTION_LAST; i++) {
-			char * str = NULL;
-
-			if (strncasecmp(action_names[i], token, strlen(action_names[i]))
-					!= 0)
-				continue;
-
-			// ACTION_EXECUTE
-			if (i == ACTION_EXECUTE) {
-				// parameters mandatory
-				if (strlen(gesture_params) <= 0) {
-					fprintf(stderr, "error in exec action\n");
-					continue;
+				if (a) {
+					gesture_actions[actions_count++] = a;
 				}
-				str = strdup(gesture_params);
-				data = str;
-				// ACTION_ROOT_SEND
-			} else if (i == ACTION_ROOT_SEND) {
-				// parameters mandatory
-				if (strlen(gesture_params) <= 0) {
-					fprintf(stderr, "error in exec action\n");
-					continue;
-				}
-				// try to compile the key
-				str = strdup(gesture_params);
-				data = compile_key_action(strdup(str));
-				if (data == NULL) {
-					fprintf(stderr, "error reading config file: root_send\n");
-					exit(-1);
-				}
-			} else
-				// OTHER ACTIONS DON'T NEED PARAMETERS
-				data = NULL;
 
-			// creates an ACTION
-			action = alloc_action(i, data, str);
-
-			// creates the gesture
-			sequence = strdup(movementused);
-
-			if (strcmp(mov_name, "") != 0) {
-				gest = alloc_gesture(gesture_window, action, gesture_movement);
-			} else {
-				//gest = alloc_gesture(sequence, action, window_title, window_class,
-				//"Unknown movement");
-				printf("Warning: Invalid gesture name at line %i: %s \n",
-						currentline, sequence);
-				continue;
 			}
 
+		}
+	}
 
-			if ((window_title == NULL) && (window_class == NULL)) {
-				push(gest, &temp_general_stack);
-			} else {
-				push(gest, &temp_stack);
+	if (!actions_count) {
+		fprintf(stderr, "Missing actions associated to the gesture %s\n",
+				gesture_name);
+		/* ignoring */
+	}
+
+	fprintf(stderr, "gesture:  %s %s %d\n", gesture_name, gesture_trigger->name,
+			actions_count);
+
+	struct gesture * gest = NULL;
+
+	gest = alloc_gesture(gesture_name, gesture_trigger, gesture_actions,
+			actions_count);
+
+	return gest;
+
+}
+
+struct context * parse_context(xmlNode *node,
+		struct movement ** known_movements, int known_movements_count) {
+
+	char * context_name = NULL;
+	char * window_title = NULL;
+	char * window_class = NULL;
+
+	xmlAttr* attribute = node->properties;
+	while (attribute && attribute->name && attribute->children) {
+		xmlChar* value = xmlNodeListGetString(node->doc, attribute->children,
+				1);
+		if (strcasecmp(attribute->name, "name") == 0) {
+			context_name = strdup(value);
+		} else if (strcasecmp(attribute->name, "windowtitle") == 0) {
+			window_title = strdup(value);
+		} else if (strcasecmp(attribute->name, "windowclass") == 0) {
+			window_class = strdup(value);
+		}
+		xmlFree(value);
+		attribute = attribute->next;
+	}
+
+	// TODO: criar o context e só depois ir adicionando os elementos.
+
+	if (!context_name) {
+		free(window_title);
+		free(window_class);
+		fprintf(stderr, "Missing context name\n");
+		return NULL;
+	}
+
+	if (!window_class) {
+		window_class = "";
+	}
+
+	if (!window_title) {
+		window_title = "";
+	}
+
+	/* now process the gestures */
+
+	xmlNode *cur_node = NULL;
+
+	struct gesture ** gestures = malloc(sizeof(struct gesture *) * 254);
+	struct gesture * gest = NULL;
+	int gestures_count = 0;
+	int abort = 0;
+
+	for (cur_node = node->children; cur_node; cur_node = cur_node->next) {
+		if (cur_node->type == XML_ELEMENT_NODE) {
+
+			char * element = cur_node->name;
+
+			if (strcasecmp(element, "gesture") == 0) {
+
+				gest = parse_gesture(cur_node, known_movements,
+						known_movements_count);
+				if (gest) {
+					gestures[gestures_count++] = gest;
+				}
+
+			} else if (strcasecmp(element, "abort") == 0) {
+				abort = 1;
 			}
-
-			break;
-
 		}
 
 	}
 
+	fprintf(stderr, "%s with %d gestures\n", context_name, gestures_count);
 
+	struct context * ctx = alloc_context(context_name, window_title,
+			window_class, gestures, gestures_count, abort);
 
-	// closes the file
-	fclose(conf);
+	fprintf(stderr, "%s\n", context_name);
+
+	return ctx;
+
+}
+
+struct movement * parse_movement(xmlNode *node) {
+
+	xmlNode *cur_node = NULL;
+
+	char * movement_name = NULL;
+	char * movement_strokes = NULL;
+
+	struct movement * ans = NULL;
+
+	xmlAttr* attribute = node->properties;
+	while (attribute && attribute->name && attribute->children) {
+		xmlChar* value = xmlNodeListGetString(node->doc, attribute->children,
+				1);
+		if (strcasecmp(attribute->name, "name") == 0) {
+			movement_name = strdup(value);
+		} else if (strcasecmp(attribute->name, "value") == 0) {
+			movement_strokes = strdup(value);
+		}
+		xmlFree(value);
+		attribute = attribute->next;
+	}
+
+	if (movement_name && movement_strokes) {
+		ans = alloc_movement(movement_name, movement_strokes);
+	}
+
+	return ans;
+
+}
+
+int parse_root(xmlNode *node) {
+
+	xmlNode *cur_node = NULL;
+
+	struct movement ** new_movement_list = malloc(
+			sizeof(struct movement *) * 254);
+	int new_movement_count = 0;
+
+	struct context ** new_context_list = malloc(sizeof(struct context *) * 254);
+	int new_context_count = 0;
+
+	for (cur_node = node->children; cur_node; cur_node = cur_node->next) {
+		if (cur_node->type == XML_ELEMENT_NODE) {
+
+			char * element = cur_node->name;
+
+			if (strcasecmp(element, "movement") == 0) {
+
+				struct movement * m = parse_movement(cur_node);
+				if (m) {
+					new_movement_list[new_movement_count++] = m;
+				}
+
+				// found a "context" token
+			} else if (strcasecmp(element, "context") == 0) {
+
+				struct context * ctx = parse_context(cur_node,
+						new_movement_list, new_movement_count);
+				if (ctx) {
+					new_context_list[new_context_count++] = ctx;
+
+				}
+
+			} else {
+				fprintf(stderr,
+						"Expecting only 'movement' or 'context' at root. Ignoring\n");
+			}
+
+			printf("node type: Element, name: %s\n", cur_node->name);
+		}
+
+	}
+
+	fprintf(stderr, "Loaded %i movements.\n", new_movement_count);
+	fprintf(stderr, "Loaded %i contexts.\n", new_context_count);
+
+	// update global variables
+
+	movement_list = new_movement_list;
+	movement_count = new_movement_count;
+
+	context_list = new_context_list;
+	context_count = new_context_count;
+
 	return 0;
+
+}
+
+/**
+ * Reads the conf file
+ */
+int parse_config_file(char *conf) {
+
+	int result = 0;
+
+	xmlDocPtr doc = NULL;
+	xmlNode *root_element = NULL;
+
+	doc = xmlParseFile(conf);
+
+	if (!doc) {
+		return 1;
+	}
+
+	root_element = xmlDocGetRootElement(doc);
+	result = parse_root(root_element);
+
+	xmlFreeDoc(doc);
+	xmlCleanupParser();
+
+	return result;
 
 }
 
@@ -687,102 +823,45 @@ void gestures_set_config_file(char * config_file) {
 char * get_user_conf_file() {
 	char * home = getenv("HOME");
 	char * filename = malloc(sizeof(char) * 4096);
-	strncpy(filename,strdup(home),4096);
-	strncat(filename,"/.config/mygestures/mygestures.conf",4096);
+	strncpy(filename, strdup(home), 4096);
+	strncat(filename, "/.config/mygestures/mygestures2.xml", 4096);
 	return filename;
 }
 
 int gestures_init() {
 
+	if (conf_file == NULL) {
+		conf_file = get_user_conf_file();
+	}
+
 	FILE *conf = NULL;
 	int err = 0;
 
-	if (conf_file == NULL) {
+	conf = fopen(conf_file, "r");
 
-		// will try to use user's default config file
+	if (conf) {
+		fclose(conf);
+	} else {
 
-		conf_file = get_user_conf_file();
+		err = new_file_from_template(conf_file,
+		TEMPLATE_FILE);
 
-		conf = fopen(conf_file, "r");
-
-		// if not exists, then try to create it.
-
-		if (!conf) {
-
-			// creating from template
-			err = new_file_from_template(conf_file, TEMPLATE_FILE);
-			if (err) {
-				fprintf(stderr,
-						"Error trying to create config file `%s' from template `%s'.\n",
-						conf_file, TEMPLATE_FILE);
-				return err;
-			}
-
-			// try to open again.
-			conf = fopen(conf_file, "r");
-
+		if (err) {
+			fprintf(stderr,
+					"Error trying to create config file `%s' from template `%s'.\n",
+					conf_file, TEMPLATE_FILE);
+			return err;
 		}
 
-
-
 	}
 
-	if (!conf){
-		fprintf(stderr,
-				"Error opening config file `%s'.\n",
-				conf_file);
-	}
-
-	err = parse_config_file(conf);
+	err = parse_config_file(conf_file);
 
 	if (err) {
-		printf("Error parsing configuration file.\n");
+		printf("Error parsing configuration file %s.\n", conf_file);
 		return err;
 	}
 
-	int i;
-
-	/* now, fill the gesture array */
-	if (specific_gestures_count != 0) { /* reconfiguration.. */
-
-		for (i = 0; i < specific_gestures_count; ++i) {
-			free_gesture(specific_gestures[i]);
-		}
-
-		free(specific_gestures);
-	}
-
-	specific_gestures_count = stack_size(&temp_stack);
-	specific_gestures = malloc(
-			sizeof(struct gesture *) * specific_gestures_count);
-
-	/* printf("got %d gests\n", known_gestures_num); */
-
-	for (i = 0; i < specific_gestures_count; i++) {
-		specific_gestures[i] = (struct gesture *) pop(&temp_stack);
-	}
-
-	/* now, fill the gesture array */
-	if (global_gestures_count != 0) {/* reconfiguration.. */
-
-		for (i = 0; i < global_gestures_count; ++i) {
-			free_gesture(global_gestures[i]);
-		}
-
-		free(global_gestures);
-
-	}
-
-	global_gestures_count = stack_size(&temp_general_stack);
-	global_gestures = malloc(sizeof(struct gesture *) * global_gestures_count);
-
-	for (i = 0; i < global_gestures_count; i++) {
-		global_gestures[i] = (struct gesture *) pop(&temp_general_stack);
-	}
-
-	printf("%d gestures loaded from file `%s'.\n",
-			specific_gestures_count + global_gestures_count, conf_file);
-
-	return err;
+	return 0;
 }
 

@@ -112,7 +112,10 @@ int shut_down = 0;
  * clean variables and get a transparent background to draw the movement
  */
 
-void start_grab(XButtonEvent *e) {
+Display * dpy = NULL;
+
+
+void start_movement(XButtonEvent *e) {
 
 	// clear captured sequences
 	accurate_stroke_sequence[0] = '\0';
@@ -211,7 +214,7 @@ void grabbing_set_brush_color(char * color) {
 }
 
 int grab_pointer(Display *dpy) {
-	int err = 0, i = 0;
+	int result = 0, i = 0;
 	int screen = 0;
 	unsigned int masks[(1 << (MOD_END))];
 	bzero(masks, (1 << (MOD_END)) * sizeof(unsigned int));
@@ -219,11 +222,9 @@ int grab_pointer(Display *dpy) {
 	if (button_modifier != AnyModifier)
 		create_masks(masks);
 
-// em todas as telas ativas
 	for (screen = 0; screen < ScreenCount (dpy); screen++) {
 		for (i = 1; i < (1 << (MOD_END)); i++)
-			// aguarda que o botão direito seja clicado em alguma janela...
-			err = XGrabButton(dpy, button, /*AnyModifier */
+			result += XGrabButton(dpy, button, /*AnyModifier */
 			button_modifier | masks[i],
 			RootWindow (dpy, screen),
 			False,
@@ -231,13 +232,36 @@ int grab_pointer(Display *dpy) {
 			GrabModeAsync, GrabModeAsync, None, None);
 	}
 
-	return 0;
+	return result;
+}
+
+
+int ungrab_pointer(Display *dpy) {
+	int result = 0, i = 0;
+	int screen = 0;
+	unsigned int masks[(1 << (MOD_END))];
+	bzero(masks, (1 << (MOD_END)) * sizeof(unsigned int));
+
+	if (button_modifier != AnyModifier)
+		create_masks(masks);
+
+	for (screen = 0; screen < ScreenCount (dpy); screen++) {
+		for (i = 1; i < (1 << (MOD_END)); i++)
+
+			result += XUngrabButton(dpy, button, button_modifier | masks[i],
+					RootWindow (dpy, screen));
+
+
+
+	}
+
+	return result;
 }
 
 /**
  * Obtém o resultado dos dois algoritmos de captura de movimentos, e envia para serem processadas.
  */
-void stop_grab(XButtonEvent *e) {
+void end_movement(XButtonEvent *e) {
 
 	// if is drawing
 	if (!without_brush) {
@@ -245,12 +269,13 @@ void stop_grab(XButtonEvent *e) {
 		XSync(e->display, False);
 	};
 
+
+
 	if ((strlen(fuzzy_stroke_sequence) == 0)
 			&& (strlen(accurate_stroke_sequence) == 0)) {
 
 		// temporary ungrab button
-		XUngrabButton(e->display, 3, button_modifier,
-		RootWindow (e->display, 0));
+		ungrab_pointer(e->display);
 
 		// emulate the click
 		mouse_click(e->display, button);
@@ -258,26 +283,25 @@ void stop_grab(XButtonEvent *e) {
 		// restart grabbing
 		grab_pointer(e->display);
 
+
 	} else {
 
 		struct window_info * activeWindow = generic_get_window_context(
 				first_click.display);
 
+		int sequences_count = 2;
+		char ** sequences = malloc(sizeof(char *)*sequences_count);
+
+		sequences[0] = accurate_stroke_sequence;
+		sequences[1] = fuzzy_stroke_sequence;
+
 		// sends the both strings to process.
-		struct gesture * gest = process_movement_sequences(first_click.display,
-				activeWindow, accurate_stroke_sequence, fuzzy_stroke_sequence);
-
-		if (gest != NULL) {
-
-			if (gest->action->type == ACTION_EXIT_GEST) {
-				shut_down = 1;
-			}
-
-			execute_action(first_click.display, gest->action);
-
-		}
+		process_movement_sequences(first_click.display,
+				activeWindow, sequences, sequences_count);
 
 	}
+
+
 
 	return;
 }
@@ -371,7 +395,7 @@ void push_stroke(char stroke, char* stroke_sequence) {
 	}
 }
 
-void process_move(XMotionEvent *e) {
+void update_movement(XMotionEvent *e) {
 
 	// se for o caso, desenha o movimento na tela
 	if (!without_brush) {
@@ -420,7 +444,7 @@ void process_move(XMotionEvent *e) {
 	return;
 }
 
-void grabbing_event_loop(Display * dpy) {
+void grabbing_event_loop() {
 	XEvent e;
 
 	while ((!shut_down)) {
@@ -430,15 +454,15 @@ void grabbing_event_loop(Display * dpy) {
 		switch (e.type) {
 
 		case MotionNotify:
-			process_move((XMotionEvent *) &e);
+			update_movement((XMotionEvent *) &e);
 			break;
 
 		case ButtonPress:
-			start_grab((XButtonEvent *) &e);
+			start_movement((XButtonEvent *) &e);
 			break;
 
 		case ButtonRelease:
-			stop_grab((XButtonEvent *) &e);
+			end_movement((XButtonEvent *) &e);
 			break;
 
 		}
@@ -466,8 +490,6 @@ int x_key_mask_get(KeySym sym, Display *dpy) {
 	if ((mod) && (mod->max_keypermod > 0)) {
 		for (i = 0; i < (8 * mod->max_keypermod); i++) {
 			for (j = 0; j < 8; j++) {
-
-				//sym2 = XKeycodeToKeysym(dpy, mod->modifiermap[i], j);
 
 				sym2 = XkbKeycodeToKeysym(dpy, mod->modifiermap[i], j, 0);
 
@@ -517,22 +539,18 @@ void init_masks(Display *dpy) {
 
 }
 
-void print_bin(unsigned int a) {
-	char str[33];
-	int i = 0;
-	for (; i < 32; i++) {
 
-		if (a & (1 << i))
-			str[i] = '1';
-		else
-			str[i] = '0';
+int grabbing_init() {
+
+	char *s;
+	s = XDisplayName(NULL);
+
+	dpy = XOpenDisplay(s);
+	if (!dpy) {
+		fprintf(stderr, "Can't open display %s\n", s);
+		return 1;
 	}
-	str[32] = 0;
-	printf("%s\n", str);
-}
 
-
-int grabbing_init(Display *dpy) {
 
 	if (!button) {
 		button = 3;
@@ -586,6 +604,8 @@ void grabbing_finalize() {
 		brush_deinit(&brush);
 		backing_deinit(&backing);
 	}
+
+	XCloseDisplay(dpy);
 	return;
 }
 

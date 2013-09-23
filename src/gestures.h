@@ -33,23 +33,29 @@
 struct movement {
 	char *name;
 	void *expression;
-	regex_t compiled;
+	regex_t * compiled;
 };
 
 
 
 struct context {
+	char *name;
 	char *title;
 	char *class;
-	regex_t title_compiled;
-	regex_t class_compiled;
+	struct gesture ** gestures;
+	int gestures_count;
+	int abort;
+	regex_t * title_compiled;
+	regex_t * class_compiled;
+
 };
 
 struct gesture {
+	char * name;
 	struct context *context;
 	struct movement *movement;
-	struct action *action;
-	regex_t movement_compiled;
+	struct action **actions;
+	int actions_count;
 };
 
 
@@ -67,8 +73,7 @@ int gestures_init();
 
 void gestures_set_config_file(char * config_file);
 
-struct gesture * process_movement_sequences(Display * dpy,
-		struct window_info *current_context, char *complex_sequence,
-		char * simple_sequence);
+void process_movement_sequences(Display * dpy,
+		struct window_info *current_context, char **sequences, int sequences_count);
 
 #endif

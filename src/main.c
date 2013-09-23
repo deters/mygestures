@@ -116,35 +116,24 @@ int main(int argc, char * const * argv) {
 
 	handle_args(argc, argv);
 
-	Display * dpy = NULL;
-
-	char *s;
-	s = XDisplayName(NULL);
-	dpy = XOpenDisplay(s);
-	if (!dpy) {
-		fprintf(stderr, "Can't open display %s\n", s);
-		return 1;
-	}
-
 	int err = gestures_init();
 
-	if (!err) {
-
-		err = grabbing_init(dpy);
-
-		if (!err) {
-
-			signal(SIGHUP, sighup);
-			signal(SIGCHLD, sigchld);
-
-			grabbing_event_loop(dpy);
-
-		}
+	if (err) {
+		return err;
 	}
 
-	grabbing_finalize();
+	err = grabbing_init();
 
-	XCloseDisplay(dpy);
+	if (err) {
+		return err;
+	}
+
+	signal(SIGHUP, sighup);
+	signal(SIGCHLD, sigchld);
+
+	grabbing_event_loop();
+
+	grabbing_finalize();
 
 	return err;
 

@@ -16,6 +16,10 @@ mygestures_SOURCES = \
 	drawing-brush-shadow.h \
 	drawing-brush-image.c \
 	drawing-bresenham.c \
-	drawing-bresenham.h
+	drawing-bresenham.h 
+# ogdl/graph.c ogdl/ogdl.h ogdl/ogdlbin.c ogdl/ogdllog.c ogdl/ogdlparser.c ogdl/path.c
+
 	
-mygestures_LDADD=-lm
+mygestures_LDADD=-lm $(XML_LIBS)
+
+mygestures_CPPFLAGS = $(XML_CFLAGS)

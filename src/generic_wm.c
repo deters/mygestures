@@ -29,6 +29,13 @@
 #include <unistd.h>
 #include <X11/Xutil.h>
 
+enum
+{
+_NET_WM_STATE_REMOVE =0,
+_NET_WM_STATE_ADD = 1,
+_NET_WM_STATE_TOGGLE =2
+};
+
 
 /*
  * Emulate a mouse click at the given display.
@@ -37,7 +44,7 @@
  */
 void mouse_click(Display *display, int button) {
 	XTestFakeButtonEvent(display, button, True, CurrentTime);
-	XTestFakeButtonEvent(display, button, False, CurrentTime + 100);
+	XTestFakeButtonEvent(display, button, False, CurrentTime+1);
 }
 
 
@@ -123,8 +130,19 @@ struct window_info * generic_get_window_context(Display *dpy) {
 		win_class = "";
 	}
 
-	ans->class = win_class;
-	ans->title = win_title;
+	if (win_class){
+		ans->class = win_class;
+	} else {
+		ans->class = "";
+	}
+
+	if (win_title){
+		ans->title = win_title;
+	} else {
+		ans->title = "";
+	}
+
+
 
 	return ans;
 
@@ -205,13 +223,35 @@ void generic_lower(Display *dpy, Window w) {
  * PUBLIC
  */
 void generic_maximize(Display *dpy, Window w) {
-
+/*
 	int width = XDisplayWidth(dpy, DefaultScreen(dpy));
 	int heigth = XDisplayHeight(dpy, DefaultScreen(dpy));
 
 	XMoveResizeWindow(dpy, w, 0, 0, width, heigth - 50);
 
 	return;
+
+*/
+	XEvent xev;
+	Atom wm_state  =  XInternAtom(dpy, "_NET_WM_STATE", False);
+	Atom max_horz  =  XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+	Atom max_vert  =  XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_VERT", False);
+
+	memset(&xev, 0, sizeof(xev));
+	xev.type = ClientMessage;
+	xev.xclient.window = w;
+	xev.xclient.message_type = wm_state;
+	xev.xclient.format = 32;
+	xev.xclient.data.l[0] = _NET_WM_STATE_ADD;
+	xev.xclient.data.l[1] = max_horz;
+	xev.xclient.data.l[2] = max_vert;
+
+	XSendEvent(dpy, DefaultRootWindow(dpy), False, SubstructureNotifyMask, &xev);
+
+	fprintf(stderr,"maximizou\n");
+
+	return;
+
 }
 
 
@@ -238,11 +278,20 @@ void generic_root_send(Display *dpy, struct key_press *data) {
 		return;
 	}
 
-	for (tmp = first_key; tmp != NULL; tmp = tmp->next)
-		press_key(dpy, tmp->key, True);
 
-	for (tmp = first_key; tmp != NULL; tmp = tmp->next)
+
+	for (tmp = first_key; tmp != NULL; tmp = tmp->next){
+		fprintf(stderr, " key down: %u\n", tmp->key);
+		press_key(dpy, tmp->key, True);
+	}
+
+
+	for (tmp = first_key; tmp != NULL; tmp = tmp->next){
+		fprintf(stderr, " key up: %u\n", tmp->key);
 		press_key(dpy, tmp->key, False);
+	}
+
+	fprintf(stderr, " end\n");
 
 	return;
 }
@@ -263,9 +312,13 @@ void execute_action(Display *dpy, struct action *action) {
 		case ACTION_EXECUTE:
 			id = fork();
 			if (id == 0) {
-				int i = system(action->data);
+				int i = system(action->original_str);
 				exit(i);
 			}
+			if (id < 0){
+				fprintf(stderr, "Error forking.\n");
+			}
+
 			break;
 		case ACTION_ICONIFY:
 			action_helper->iconify(dpy, get_focused_window(dpy));
@@ -283,6 +336,7 @@ void execute_action(Display *dpy, struct action *action) {
 			action_helper->maximize(dpy, get_focused_window(dpy));
 			break;
 		case ACTION_ROOT_SEND:
+			fprintf(stderr,"root_send %s \n",action->original_str);
 			action_helper->root_send(dpy, action->data);
 			break;
 		default:

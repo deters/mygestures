@@ -11,7 +11,7 @@
 
 #include <X11/Xlib.h>
 
-int grabbing_init(Display * dpy);
+int grabbing_init();
 
 void grabbing_set_button(int b);
 void grabbing_set_without_brush(int b);

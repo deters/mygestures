@@ -18,7 +18,8 @@ GNU General Public License for more details.  */
 
 /* Actions */
 enum {
-	ACTION_EXIT_GEST = 1,
+	ACTION_ERROR,
+	ACTION_EXIT_GEST,
 	ACTION_EXECUTE,
 	ACTION_ICONIFY,
 	ACTION_KILL,
@@ -27,12 +28,13 @@ enum {
 	ACTION_LOWER,
 	ACTION_MAXIMIZE,
 	ACTION_ROOT_SEND,
+	ACTION_ABORT,
 	ACTION_LAST
 };
 
 struct action {
 	int type;
-	void *data;
+	struct key_press *data;
 	char *original_str;
 };
 
