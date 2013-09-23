@@ -118,7 +118,7 @@
 		</gesture>
 
 		<gesture name="Restore window" movement="NorthWest">
-			<do action="restore" />
+			<do action="keypress" value="Alt_L+F5" /> <!-- check your Window Manager for the correct keybinding -->
 		</gesture>
 
 		<gesture name="Iconify window" movement="SouthWest">

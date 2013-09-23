@@ -281,17 +281,14 @@ void generic_root_send(Display *dpy, struct key_press *data) {
 
 
 	for (tmp = first_key; tmp != NULL; tmp = tmp->next){
-		fprintf(stderr, " key down: %u\n", tmp->key);
 		press_key(dpy, tmp->key, True);
 	}
 
 
 	for (tmp = first_key; tmp != NULL; tmp = tmp->next){
-		fprintf(stderr, " key up: %u\n", tmp->key);
 		press_key(dpy, tmp->key, False);
 	}
 
-	fprintf(stderr, " end\n");
 
 	return;
 }
@@ -336,7 +333,6 @@ void execute_action(Display *dpy, struct action *action) {
 			action_helper->maximize(dpy, get_focused_window(dpy));
 			break;
 		case ACTION_ROOT_SEND:
-			fprintf(stderr,"root_send %s \n",action->original_str);
 			action_helper->root_send(dpy, action->data);
 			break;
 		default:

@@ -171,42 +171,38 @@ struct key_press * alloc_key_press(void) {
  *
  * PRIVATE
  */
-struct key_press *compile_key_action(char *str_ptr)
-{
+struct key_press *compile_key_action(char *str_ptr) {
 
-		char * copy = strdup(str_ptr);
+	char * copy = strdup(str_ptr);
 
-        struct key_press base;
-        struct key_press *key;
-        KeySym k;
-        char *str = copy;
-        char *token = str ;
-        char *str_dup;
+	struct key_press base;
+	struct key_press *key;
+	KeySym k;
+	char *str = copy;
+	char *token = str;
+	char *str_dup;
 
-        if (str == NULL)
-                return NULL;
+	if (str == NULL)
+		return NULL;
 
+	key = &base;
+	token = strsep(&copy, "+\n ");
+	while (token != NULL) {
+		/* printf("found : %s\n", token); */
+		k = XStringToKeysym(token);
+		if (k == NoSymbol) {
+			fprintf(stderr, "error converting %s to keysym\n", token);
+			exit(-1);
+		}
+		key->next = alloc_key_press();
+		key = key->next;
+		key->key = k;
+		token = strsep(&copy, "+\n ");
+	}
 
-        key = &base;
-        token = strsep(&copy, "+\n ");
-        while(token != NULL){
-                /* printf("found : %s\n", token); */
-                k = XStringToKeysym(token);
-                if (k == NoSymbol){
-                        fprintf(stderr, "error converting %s to keysym\n", token);
-                        exit(-1);
-                }
-                key->next = alloc_key_press();
-                key = key->next;
-                key->key = k;
-                token = strsep(&copy, "+\n ");
-        }
-
-        base.next->original_str = str_ptr;
-        return base.next;
+	base.next->original_str = str_ptr;
+	return base.next;
 }
-
-
 
 //todo gerenciamento de memória
 /* release a gesture struct */
@@ -223,7 +219,6 @@ struct action *alloc_action(int action_type, char * original_str) {
 	bzero(ans, sizeof(struct action));
 
 	struct key_press * action_data = NULL;
-
 
 	if (action_type == ACTION_ROOT_SEND) {
 		// TODO: limpar no método free
@@ -261,8 +256,6 @@ struct gesture * match_gestures(char * captured_sequence,
 
 		struct context * context = context_list[c];
 
-		fprintf(stderr, "Context: %s\n", context->name);
-
 		if ((!context->class)
 				|| (regexec(context->class_compiled, window->class, 0,
 						(regmatch_t *) NULL, 0) != 0)) {
@@ -275,12 +268,7 @@ struct gesture * match_gestures(char * captured_sequence,
 			continue;
 		}
 
-		fprintf(stderr, "Matched context: %s\n", context->name);
-
 		if (context->gestures_count) {
-
-			fprintf(stderr, "       gesture_count: %d\n",
-					context->gestures_count);
 
 			for (int g = 0; g < context->gestures_count; ++g) {
 
@@ -292,10 +280,6 @@ struct gesture * match_gestures(char * captured_sequence,
 							&& (regexec(gest->movement->compiled,
 									captured_sequence, 0, (regmatch_t *) NULL,
 									0) == 0)) {
-
-						fprintf(stderr, "          matched movement:  %s %s.\n",
-								gest->movement->name,
-								gest->movement->expression);
 
 						matched_gesture = gest;
 						break;
@@ -331,47 +315,29 @@ void process_movement_sequences(Display * dpy,
 	struct gesture *gest = NULL;
 
 	printf("\n");
-	printf("Searching for sequences:");
+	printf("Window Title = \"%s\"\n", current_context->title);
+	printf("Window Class = \"%s\"\n", current_context->class);
 
 	for (int i = 0; i < sequences_count; ++i) {
 
 		char * sequence = sequences[i];
 
-		printf("\t%s", sequence);
-
 		gest = match_gestures(sequence, current_context);
 
 		if (gest) {
-			break;
+			printf(" sequence %s = '%s' --> '%s'\n", sequence,
+					gest->movement->name, gest->name);
+
+			for (int j = 0; j < gest->actions_count; ++j) {
+				struct action * a = gest->actions[j];
+				printf(" (%s)\n", a->original_str);
+				execute_action(dpy, a);
+			}
+
+			return;
+		} else {
+			printf(" sequence %s not found on any gesture\n", sequence);
 		}
-	}
-
-	printf("\n");
-
-	if (!gest) {
-
-		printf("No gesture matches captured sequences.\n");
-		printf("Window Class = %s\n", current_context->class);
-		printf("Window Title = %s\n", current_context->title);
-
-	} else {
-
-		printf("Gesture found    : %s \n", gest->name);
-		printf("                   %d actions on gesture. \n",
-				gest->actions_count);
-
-	}
-
-	if (gest) {
-
-		for (int i = 0; i < gest->actions_count; ++i) {
-
-			struct action * a = gest->actions[i];
-			fprintf(stderr, "   gesture type: %d\n", a->type);
-			execute_action(dpy, a);
-
-		}
-
 	}
 
 }
@@ -470,12 +436,14 @@ struct action * parse_action(xmlNode *node) {
 
 	xmlAttr* attribute = node->properties;
 	while (attribute && attribute->name && attribute->children) {
-		xmlChar* value = xmlNodeListGetString(node->doc, attribute->children,
-				1);
 
-		if (strcasecmp(attribute->name, "action") == 0) {
+		char * name = (char *) attribute->name;
+		char * value = (char *) xmlNodeListGetString(node->doc,
+				attribute->children, 1);
+
+		if (strcasecmp(name, "action") == 0) {
 			action_name = strdup(value);
-		} else if (strcasecmp(attribute->name, "value") == 0) {
+		} else if (strcasecmp(name, "value") == 0) {
 			action_value = strdup(value);
 		}
 
@@ -494,8 +462,6 @@ struct action * parse_action(xmlNode *node) {
 	}
 
 	struct action * a = NULL;
-
-	fprintf(stderr, "key = %s\n", action_value);
 
 	int id = ACTION_ERROR;
 
@@ -518,10 +484,6 @@ struct action * parse_action(xmlNode *node) {
 	}
 
 	a = alloc_action(id, action_value);
-
-
-	fprintf(stderr, "ALLOCATED %s from %s\n", a->original_str, action_value);
-
 
 	return a;
 
@@ -555,11 +517,14 @@ struct gesture * parse_gesture(xmlNode *node,
 
 	xmlAttr* attribute = node->properties;
 	while (attribute && attribute->name && attribute->children) {
-		xmlChar* value = xmlNodeListGetString(node->doc, attribute->children,
-				1);
-		if (strcasecmp(attribute->name, "name") == 0) {
+
+		char * name = (char *) attribute->name;
+		char * value = (char *) xmlNodeListGetString(node->doc,
+				attribute->children, 1);
+
+		if (strcasecmp(name, "name") == 0) {
 			gesture_name = strdup(value);
-		} else if (strcasecmp(attribute->name, "movement") == 0) {
+		} else if (strcasecmp(name, "movement") == 0) {
 			gesture_trigger = movement_find(value, known_movements,
 					known_movements_count);
 		}
@@ -587,7 +552,7 @@ struct gesture * parse_gesture(xmlNode *node,
 	for (cur_node = node->children; cur_node; cur_node = cur_node->next) {
 		if (cur_node->type == XML_ELEMENT_NODE) {
 
-			char * element = cur_node->name;
+			char * element = (char *) cur_node->name;
 
 			if (strcasecmp(element, "do") == 0) {
 
@@ -608,9 +573,6 @@ struct gesture * parse_gesture(xmlNode *node,
 		/* ignoring */
 	}
 
-	fprintf(stderr, "gesture:  %s %s %d\n", gesture_name, gesture_trigger->name,
-			actions_count);
-
 	struct gesture * gest = NULL;
 
 	gest = alloc_gesture(gesture_name, gesture_trigger, gesture_actions,
@@ -629,13 +591,15 @@ struct context * parse_context(xmlNode *node,
 
 	xmlAttr* attribute = node->properties;
 	while (attribute && attribute->name && attribute->children) {
-		xmlChar* value = xmlNodeListGetString(node->doc, attribute->children,
-				1);
-		if (strcasecmp(attribute->name, "name") == 0) {
+		char * name = (char *) attribute->name;
+		char * value = (char *) xmlNodeListGetString(node->doc,
+				attribute->children, 1);
+
+		if (strcasecmp(name, "name") == 0) {
 			context_name = strdup(value);
-		} else if (strcasecmp(attribute->name, "windowtitle") == 0) {
+		} else if (strcasecmp(name, "windowtitle") == 0) {
 			window_title = strdup(value);
-		} else if (strcasecmp(attribute->name, "windowclass") == 0) {
+		} else if (strcasecmp(name, "windowclass") == 0) {
 			window_class = strdup(value);
 		}
 		xmlFree(value);
@@ -671,7 +635,7 @@ struct context * parse_context(xmlNode *node,
 	for (cur_node = node->children; cur_node; cur_node = cur_node->next) {
 		if (cur_node->type == XML_ELEMENT_NODE) {
 
-			char * element = cur_node->name;
+			char * element = (char *) cur_node->name;
 
 			if (strcasecmp(element, "gesture") == 0) {
 
@@ -688,12 +652,8 @@ struct context * parse_context(xmlNode *node,
 
 	}
 
-	fprintf(stderr, "%s with %d gestures\n", context_name, gestures_count);
-
 	struct context * ctx = alloc_context(context_name, window_title,
 			window_class, gestures, gestures_count, abort);
-
-	fprintf(stderr, "%s\n", context_name);
 
 	return ctx;
 
@@ -710,11 +670,14 @@ struct movement * parse_movement(xmlNode *node) {
 
 	xmlAttr* attribute = node->properties;
 	while (attribute && attribute->name && attribute->children) {
-		xmlChar* value = xmlNodeListGetString(node->doc, attribute->children,
-				1);
-		if (strcasecmp(attribute->name, "name") == 0) {
+
+		char * name = (char *) attribute->name;
+		char * value = (char *) xmlNodeListGetString(node->doc,
+				attribute->children, 1);
+
+		if (strcasecmp(name, "name") == 0) {
 			movement_name = strdup(value);
-		} else if (strcasecmp(attribute->name, "value") == 0) {
+		} else if (strcasecmp(name, "value") == 0) {
 			movement_strokes = strdup(value);
 		}
 		xmlFree(value);
@@ -740,10 +703,12 @@ int parse_root(xmlNode *node) {
 	struct context ** new_context_list = malloc(sizeof(struct context *) * 254);
 	int new_context_count = 0;
 
+	int gestures_count = 0;
+
 	for (cur_node = node->children; cur_node; cur_node = cur_node->next) {
 		if (cur_node->type == XML_ELEMENT_NODE) {
 
-			char * element = cur_node->name;
+			char * element = (char *) cur_node->name;
 
 			if (strcasecmp(element, "movement") == 0) {
 
@@ -759,6 +724,7 @@ int parse_root(xmlNode *node) {
 						new_movement_list, new_movement_count);
 				if (ctx) {
 					new_context_list[new_context_count++] = ctx;
+					gestures_count += ctx->gestures_count;
 
 				}
 
@@ -767,13 +733,13 @@ int parse_root(xmlNode *node) {
 						"Expecting only 'movement' or 'context' at root. Ignoring\n");
 			}
 
-			printf("node type: Element, name: %s\n", cur_node->name);
 		}
 
 	}
 
-	fprintf(stderr, "Loaded %i movements.\n", new_movement_count);
-	fprintf(stderr, "Loaded %i contexts.\n", new_context_count);
+	fprintf(stdout, "Loaded %i movements.\n", new_movement_count);
+	fprintf(stdout, "Loaded %i gestures in %i contexts.\n", gestures_count,
+			new_context_count);
 
 	// update global variables
 
