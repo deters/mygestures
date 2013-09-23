@@ -281,13 +281,11 @@ void generic_root_send(Display *dpy, struct key_press *data) {
 
 
 	for (tmp = first_key; tmp != NULL; tmp = tmp->next){
-		fprintf(stderr, " key down: %u\n", tmp->key);
 		press_key(dpy, tmp->key, True);
 	}
 
 
 	for (tmp = first_key; tmp != NULL; tmp = tmp->next){
-		fprintf(stderr, " key up: %u\n", tmp->key);
 		press_key(dpy, tmp->key, False);
 	}
 
