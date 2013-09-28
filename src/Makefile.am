@@ -1,5 +1,11 @@
 bin_PROGRAMS=mygestures
 
+sysconf_DATA = mygestures.xml
+
+AM_CFLAGS = -DSYSCONFIR='"$(sysconfdir)"' $(XML_CFLAGS)
+
+
+
 CC=clang
 
 mygestures_SOURCES = \
@@ -15,10 +21,7 @@ mygestures_SOURCES = \
 	drawing-brush-shadow.h \
 	drawing-brush-image.c \
 	drawing-bresenham.c \
-	drawing-bresenham.h 
-# ogdl/graph.c ogdl/ogdl.h ogdl/ogdlbin.c ogdl/ogdllog.c ogdl/ogdlparser.c ogdl/path.c
+	drawing-bresenham.h
 
-	
 mygestures_LDADD=-lm $(XML_LIBS)
 
-mygestures_CPPFLAGS = $(XML_CFLAGS)

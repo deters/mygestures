@@ -38,10 +38,6 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
-#ifndef TEMPLATE_FILE
-#define TEMPLATE_FILE "/usr/share/mygestures/mygestures2.xml"
-#endif
-
 char * conf_file = NULL;
 
 struct movement** movement_list;
@@ -951,11 +947,14 @@ char * gestures_get_default_config() {
 	char * home = getenv("HOME");
 	char * filename = malloc(sizeof(char) * 4096);
 	strncpy(filename, strdup(home), 4096);
-	strncat(filename, "/.config/mygestures/mygestures2.xml", 4096);
+	strncat(filename, "/.config/mygestures/mygestures.xml", 4096);
 	return filename;
 }
 
 int gestures_init() {
+
+
+
 
 	if (conf_file == NULL) {
 		conf_file = gestures_get_default_config();
@@ -970,22 +969,28 @@ int gestures_init() {
 		fclose(conf);
 	} else {
 
-		err = new_file_from_template(conf_file,
-		TEMPLATE_FILE);
+		char * template_file = malloc(sizeof(char *) * 4096);
+		sprintf(template_file,"%s/mygestures.xml", SYSCONFIR );
+
+		err = new_file_from_template(conf_file, template_file);
+
+		free(template_file);
 
 		if (err) {
 			fprintf(stderr,
 					"Error trying to create config file `%s' from template `%s'.\n",
-					conf_file, TEMPLATE_FILE);
+					conf_file, SYSCONFIR);
 			return err;
 		}
 
 	}
 
+	printf("Loading configuration from %s\n", conf_file);
+
 	err = gestures_load_from_file(conf_file);
 
 	if (err) {
-		printf("Error parsing configuration file %s.\n", conf_file);
+		fprintf(stderr,"Error parsing configuration file.\n");
 		return err;
 	}
 

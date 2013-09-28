@@ -1,5 +1,5 @@
 /* GIMP RGBA C-Source image dump (brush-image.h) */
-#include <config.h>
+
 #include "drawing-brush-image.h"
 
 struct brush_image_t brush_image_blue = {
