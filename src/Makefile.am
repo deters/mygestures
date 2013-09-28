@@ -4,7 +4,6 @@ CC=clang
 
 mygestures_SOURCES = \
 	main.c \
-	helpers.c helpers.h \
 	gestures.c gestures.h \
 	generic_wm.c wm.h \
 	grabbing.c grabbing.h \

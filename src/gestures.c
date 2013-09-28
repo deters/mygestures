@@ -29,7 +29,6 @@
 #include <strings.h>
 #include <string.h>
 #include "gestures.h"
-#include "helpers.h"
 #include "wm.h"
 #include <jansson.h>
 #include <regex.h>
@@ -51,9 +50,17 @@ int movement_count;
 struct context** context_list;
 int context_count;
 
-/* The name from the actions, to read in .gestures file. */
-/*char *action_names[] = { "NONE", "exit", "exec", "minimize", "kill", "reconf",
- "raise", "lower", "maximize", "root_send" };*/
+struct action_helper *action_helper;
+
+
+
+
+
+int init_wm_helper(void) {
+	action_helper = &generic_action_helper;
+
+	return 1;
+}
 
 /* alloc a window struct */
 struct context *alloc_context(char * context_name, char *window_title,
@@ -171,7 +178,7 @@ struct key_press * alloc_key_press(void) {
  *
  * PRIVATE
  */
-struct key_press *compile_key_action(char *str_ptr) {
+struct key_press *string_to_keypress(char *str_ptr) {
 
 	char * copy = strdup(str_ptr);
 
@@ -222,7 +229,7 @@ struct action *alloc_action(int action_type, char * original_str) {
 
 	if (action_type == ACTION_ROOT_SEND) {
 		// TODO: limpar no método free
-		action_data = compile_key_action(original_str);
+		action_data = string_to_keypress(original_str);
 	}
 
 	ans->type = action_type;
@@ -244,7 +251,7 @@ void free_key_press(struct key_press *free_me) {
 	return;
 }
 
-struct gesture * match_gestures(char * captured_sequence,
+struct gesture * gesture_locate(char * captured_sequence,
 		struct window_info * window) {
 
 	struct gesture * matched_gesture = NULL;
@@ -297,32 +304,138 @@ struct gesture * match_gestures(char * captured_sequence,
 	return matched_gesture;
 }
 
-/**
- * Receives captured movement from two diferent algoritms: a simple and a complex.
+
+
+/*
+ * Get the parent window.
  *
- *   The simple algoritm can understand movements in four directions: U, D, R, L
- *   The complex algoritm can understand movements in eight directions, including the diagonals
- *
- * The program will process the complex movement sequence prior to the simplest sequence.
- *
- * The system will also prioritize the gestures defined for the current application,
- * and only then will consider the global gestures.
+ * PRIVATE
  */
-void process_movement_sequences(Display * dpy,
-		struct window_info *current_context, char ** sequences,
+Window get_parent_window(Display *dpy, Window w) {
+	Window root_return, parent_return, *child_return;
+	unsigned int nchildren_return;
+	int ret;
+	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return,
+			&nchildren_return);
+
+	return parent_return;
+}
+
+
+/*
+ * Get the title of a given window at out_window_title.
+ *
+ * PRIVATE
+ */
+Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
+	int status;
+	XTextProperty text_prop;
+	char **list;
+	int num;
+
+	status = XGetWMName(dpy, w, &text_prop);
+	if (!status || !text_prop.value || !text_prop.nitems) {
+		*out_window_title = "";
+	}
+	status = Xutf8TextPropertyToTextList(dpy, &text_prop, &list, &num);
+
+	if (status < Success || !num || !*list) {
+		*out_window_title = "";
+	} else {
+		*out_window_title = (char *) strdup(*list);
+	}
+	XFree(text_prop.value);
+	XFreeStringList(list);
+
+	return 1;
+}
+
+
+
+/*
+ * Return a window_info struct for the focused window at a given Display.
+ *
+ * PRIVATE
+ */
+struct window_info * get_window_info(Display* dpy, Window win) {
+
+	int ret, val;
+
+	char *win_title;
+	ret = fetch_window_title(dpy, win, &win_title);
+
+	struct window_info *ans = malloc(sizeof(struct window_info));
+	bzero(ans, sizeof(struct window_info));
+
+	char *win_class = NULL;
+
+	XClassHint class_hints;
+
+	int result = XGetClassHint(dpy, win, &class_hints);
+
+	if (class_hints.res_class != NULL)
+		win_class = class_hints.res_class;
+
+	if (win_class == NULL) {
+		win_class = "";
+	}
+
+	if (win_class){
+		ans->class = win_class;
+	} else {
+		ans->class = "";
+	}
+
+	if (win_title){
+		ans->title = win_title;
+	} else {
+		ans->title = "";
+	}
+
+
+
+	return ans;
+
+}
+
+
+
+/*
+ * Return the focused window at the given display.
+ *
+ * PRIVATE
+ */
+Window get_focused_window(Display *dpy) {
+
+	Window win = 0;
+	int ret, val;
+	ret = XGetInputFocus(dpy, &win, &val);
+
+	if (val == RevertToParent) {
+		win = get_parent_window(dpy, win);
+	}
+
+	return win;
+
+}
+
+void gesture_process_movement(Display * dpy,
+		char ** sequences,
 		int sequences_count) {
+
+	struct window_info * focused_window = get_window_info(dpy, get_focused_window(dpy));
 
 	struct gesture *gest = NULL;
 
 	printf("\n");
-	printf("Window Title = \"%s\"\n", current_context->title);
-	printf("Window Class = \"%s\"\n", current_context->class);
+	printf("Window Title = \"%s\"\n", focused_window->title);
+	printf("Window Class = \"%s\"\n", focused_window->class);
 
 	for (int i = 0; i < sequences_count; ++i) {
 
 		char * sequence = sequences[i];
 
-		gest = match_gestures(sequence, current_context);
+		gest = gesture_locate(sequence, focused_window);
 
 		if (gest) {
 			printf(" sequence %s = '%s' --> '%s'\n", sequence,
@@ -331,7 +444,7 @@ void process_movement_sequences(Display * dpy,
 			for (int j = 0; j < gest->actions_count; ++j) {
 				struct action * a = gest->actions[j];
 				printf(" (%s)\n", a->original_str);
-				execute_action(dpy, a);
+				execute_action(dpy, a, get_focused_window(dpy));
 			}
 
 			return;
@@ -341,6 +454,54 @@ void process_movement_sequences(Display * dpy,
 	}
 
 }
+
+
+/**
+ * Execute an action
+ */
+void execute_action(Display *dpy, struct action *action, Window focused_window) {
+	int id;
+
+	// if there is an action
+	if (action != NULL) {
+
+		switch (action->type) {
+		case ACTION_EXECUTE:
+			id = fork();
+			if (id == 0) {
+				int i = system(action->original_str);
+				exit(i);
+			}
+			if (id < 0){
+				fprintf(stderr, "Error forking.\n");
+			}
+
+			break;
+		case ACTION_ICONIFY:
+			action_helper->iconify(dpy, focused_window);
+			break;
+		case ACTION_KILL:
+			action_helper->kill(dpy, focused_window);
+			break;
+		case ACTION_RAISE:
+			action_helper->raise(dpy, focused_window);
+			break;
+		case ACTION_LOWER:
+			action_helper->lower(dpy, focused_window);
+			break;
+		case ACTION_MAXIMIZE:
+			action_helper->maximize(dpy, focused_window);
+			break;
+		case ACTION_ROOT_SEND:
+			action_helper->root_send(dpy, action->data);
+			break;
+		default:
+			fprintf(stderr, "found an unknown gesture \n");
+		}
+	}
+	return;
+}
+
 
 /**
  * Removes the line break from a string
@@ -756,14 +917,14 @@ int parse_root(xmlNode *node) {
 /**
  * Reads the conf file
  */
-int parse_config_file(char *conf) {
+int gestures_load_from_file(char *filename) {
 
 	int result = 0;
 
 	xmlDocPtr doc = NULL;
 	xmlNode *root_element = NULL;
 
-	doc = xmlParseFile(conf);
+	doc = xmlParseFile(filename);
 
 	if (!doc) {
 		return 1;
@@ -786,7 +947,7 @@ void gestures_set_config_file(char * config_file) {
 	conf_file = strdup(config_file);
 }
 
-char * get_user_conf_file() {
+char * gestures_get_default_config() {
 	char * home = getenv("HOME");
 	char * filename = malloc(sizeof(char) * 4096);
 	strncpy(filename, strdup(home), 4096);
@@ -797,7 +958,7 @@ char * get_user_conf_file() {
 int gestures_init() {
 
 	if (conf_file == NULL) {
-		conf_file = get_user_conf_file();
+		conf_file = gestures_get_default_config();
 	}
 
 	FILE *conf = NULL;
@@ -821,12 +982,16 @@ int gestures_init() {
 
 	}
 
-	err = parse_config_file(conf_file);
+	err = gestures_load_from_file(conf_file);
 
 	if (err) {
 		printf("Error parsing configuration file %s.\n", conf_file);
 		return err;
 	}
+
+
+	/* choose a wm helper */
+	init_wm_helper();
 
 	return 0;
 }

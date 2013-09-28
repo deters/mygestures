@@ -30,6 +30,15 @@
 #define ALT_R_MASK (1<<5)
 #define TAB_MASK (1<<6)
 
+
+/* the movements */
+enum STROKES {
+	NONE, LEFT, RIGHT, UP, DOWN, ONE, THREE, SEVEN, NINE
+};
+
+
+
+
 struct movement {
 	char *name;
 	void *expression;
@@ -73,7 +82,7 @@ int gestures_init();
 
 void gestures_set_config_file(char * config_file);
 
-void process_movement_sequences(Display * dpy,
-		struct window_info *current_context, char **sequences, int sequences_count);
+void gesture_process_movement(Display * dpy,
+		char **sequences, int sequences_count);
 
 #endif

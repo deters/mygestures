@@ -66,10 +66,9 @@ void generic_raise(Display *dpy, Window w);
 void generic_lower(Display *dpy, Window w);
 void generic_maximize(Display *dpy, Window w);
 void generic_root_send(Display *dpy, struct key_press *data);
-struct window_info * generic_get_window_context(Display *dpy);
 
 
-void execute_action(Display *dpy, struct action *action);
+void execute_action(Display *dpy, struct action *action, Window focused_window);
 void mouse_click(Display *display, int button);
 
 

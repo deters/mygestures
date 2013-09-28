@@ -109,6 +109,10 @@ void handle_args(int argc, char * const *argv) {
 	return;
 }
 
+
+
+
+
 int main(int argc, char * const * argv) {
 
 	if (is_daemonized)
@@ -123,6 +127,7 @@ int main(int argc, char * const * argv) {
 	}
 
 	err = grabbing_init();
+
 
 	if (err) {
 		return err;

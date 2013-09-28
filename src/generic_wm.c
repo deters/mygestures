@@ -19,7 +19,6 @@
 #include <X11/extensions/XTest.h>
 #include <stdio.h>
 #include "wm.h"
-#include "helpers.h"
 #include "gestures.h"
 
 // mouse click
@@ -37,135 +36,6 @@ _NET_WM_STATE_TOGGLE =2
 };
 
 
-/*
- * Emulate a mouse click at the given display.
- *
- * PRIVATE
- */
-void mouse_click(Display *display, int button) {
-	XTestFakeButtonEvent(display, button, True, CurrentTime);
-	XTestFakeButtonEvent(display, button, False, CurrentTime+1);
-}
-
-
-
-/*
- * Get the parent window.
- *
- * PRIVATE
- */
-Window get_parent_window(Display *dpy, Window w) {
-	Window root_return, parent_return, *child_return;
-	unsigned int nchildren_return;
-	int ret;
-	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return,
-			&nchildren_return);
-
-	return parent_return;
-}
-
-/*
- * Get the title of a given window at out_window_title.
- *
- * PRIVATE
- */
-Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
-	int status;
-	XTextProperty text_prop;
-	char **list;
-	int num;
-
-	status = XGetWMName(dpy, w, &text_prop);
-	if (!status || !text_prop.value || !text_prop.nitems) {
-		*out_window_title = "";
-	}
-	status = Xutf8TextPropertyToTextList(dpy, &text_prop, &list, &num);
-
-	if (status < Success || !num || !*list) {
-		*out_window_title = "";
-	} else {
-		*out_window_title = (char *) strdup(*list);
-	}
-	XFree(text_prop.value);
-	XFreeStringList(list);
-
-	return 1;
-}
-
-
-
-
-
-/*
- * Return a window_info struct for the focused window at a given Display.
- *
- * PRIVATE
- */
-struct window_info * generic_get_window_context(Display *dpy) {
-
-	Window win = 0;
-	int ret, val;
-	ret = XGetInputFocus(dpy, &win, &val);
-
-	if (val == RevertToParent) {
-		win = get_parent_window(dpy, win);
-	}
-
-	char *win_title;
-	ret = fetch_window_title(dpy, win, &win_title);
-
-	struct window_info *ans = malloc(sizeof(struct window_info));
-	bzero(ans, sizeof(struct window_info));
-
-	char *win_class = NULL;
-
-	XClassHint class_hints;
-
-	int result = XGetClassHint(dpy, win, &class_hints);
-
-	if (class_hints.res_class != NULL)
-		win_class = class_hints.res_class;
-
-	if (win_class == NULL) {
-		win_class = "";
-	}
-
-	if (win_class){
-		ans->class = win_class;
-	} else {
-		ans->class = "";
-	}
-
-	if (win_title){
-		ans->title = win_title;
-	} else {
-		ans->title = "";
-	}
-
-
-
-	return ans;
-
-}
-
-/*
- * Return the focused window at the given display.
- *
- * PRIVATE
- */
-Window get_focused_window(Display *dpy) {
-
-	Window win = 0;
-	int ret, val;
-	ret = XGetInputFocus(dpy, &win, &val);
-
-	if (val == RevertToParent) {
-		win = get_parent_window(dpy, win);
-	}
-
-	return win;
-
-}
 
 /*
  * Iconify the focused window at given display.
@@ -296,51 +166,6 @@ void generic_root_send(Display *dpy, struct key_press *data) {
 
 
 
-/**
- * Execute an action
- */
-void execute_action(Display *dpy, struct action *action) {
-	int id;
-
-	// if there is an action
-	if (action != NULL) {
-
-		switch (action->type) {
-		case ACTION_EXECUTE:
-			id = fork();
-			if (id == 0) {
-				int i = system(action->original_str);
-				exit(i);
-			}
-			if (id < 0){
-				fprintf(stderr, "Error forking.\n");
-			}
-
-			break;
-		case ACTION_ICONIFY:
-			action_helper->iconify(dpy, get_focused_window(dpy));
-			break;
-		case ACTION_KILL:
-			action_helper->kill(dpy, get_focused_window(dpy));
-			break;
-		case ACTION_RAISE:
-			action_helper->raise(dpy, get_focused_window(dpy));
-			break;
-		case ACTION_LOWER:
-			action_helper->lower(dpy, get_focused_window(dpy));
-			break;
-		case ACTION_MAXIMIZE:
-			action_helper->maximize(dpy, get_focused_window(dpy));
-			break;
-		case ACTION_ROOT_SEND:
-			action_helper->root_send(dpy, action->data);
-			break;
-		default:
-			fprintf(stderr, "found an unknown gesture \n");
-		}
-	}
-	return;
-}
 
 struct action_helper generic_action_helper = { .iconify = generic_iconify, .kill =
 		generic_kill, .raise = generic_raise, .lower = generic_lower,

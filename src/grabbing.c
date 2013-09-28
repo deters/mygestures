@@ -14,14 +14,14 @@
  - recognize movements without a modifier key                                            - 13 JAN 2008   OK
  - gestures customized for each application                                              - 02 MAR 2008   OK
  - emule a click on Java applications                                                    - 02 MAR 2008   (not complete)
- - custom moviment definition on .gestures                                              - 14 MAR 2008   OK
+ - custom moviment definition on .gestures                                               - 14 MAR 2008   OK
+  - Store the configurations on XML                                                      - 28 SET 2013   OK
  TODO:
  - disable gesture recognition on some apps
  - translate and review the source code
  - create a GUI
  - quick icon on the taskbar (with options: inactivate xgestures, automatic start, open configure gui)
  - Translate the GUI
- - Store the configurations on XML
  */
 
 #if HAVE_CONFIG_H
@@ -34,6 +34,7 @@
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include <X11/XKBlib.h>
+#include <X11/extensions/XTest.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -41,32 +42,19 @@
 #include <getopt.h>
 #include <math.h>
 #include "drawing-brush.h"
-#include "helpers.h"
 #include "grabbing.h"
 #include "gestures.h"
-#include "wm.h"
+
 #include "drawing-brush-image.h"
 
 #define DELTA_MIN	30
 #define MAX_STROKE_SEQUENCE 63
 
-//struct grabbing {
-
+/* the button to grab */
 int button = 0;
 
+/* the modifier key (TODO: REVIEW) */
 unsigned int button_modifier = 0;
-
-//};
-
-/* the movements */
-enum DIRECTION {
-	NONE, LEFT, RIGHT, UP, DOWN, ONE, THREE, SEVEN, NINE
-};
-
-/* Names of movements (will consider the initial letters on the config file) */
-char gesture_names[] = { 'N', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
-
-/* the modifier key (TODO: Re-use this parameter) */
 
 /* Not draw the movement on the screen */
 int without_brush = 0;
@@ -76,12 +64,13 @@ enum {
 	SHIFT = 0, CTRL, ALT, WIN, SCROLL, NUM, CAPS, MOD_END
 };
 
-/* Filter to capture the events of the mouse */
-unsigned int valid_masks[MOD_END];
-
 /* names of the modifier keys */
 char *modifiers_names[MOD_END] = { "SHIFT", "CTRL", "ALT", "WIN", "SCROLL",
 		"NUM", "CAPS" };
+
+/* Filter to capture the events of the mouse */
+unsigned int valid_masks[MOD_END];
+
 
 /* Initial position of the movement (algorithm 1) */
 int old_x = -1;
@@ -91,6 +80,8 @@ int old_y = -1;
 int old_x_2 = -1;
 int old_y_2 = -1;
 
+/* valid strokes */
+char stroke_names[] = { 'N', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
 
 /* movements stack (first capture algoritm) */
 char * accurate_stroke_sequence;
@@ -99,7 +90,8 @@ char * accurate_stroke_sequence;
 char * fuzzy_stroke_sequence;
 
 XButtonEvent first_click;
-struct action_helper *action_helper;
+
+
 
 /* back of the draw */
 backing_t backing;
@@ -113,6 +105,9 @@ int shut_down = 0;
  */
 
 Display * dpy = NULL;
+
+
+
 
 
 void start_movement(XButtonEvent *e) {
@@ -250,12 +245,20 @@ int ungrab_pointer(Display *dpy) {
 
 			result += XUngrabButton(dpy, button, button_modifier | masks[i],
 					RootWindow (dpy, screen));
-
-
-
 	}
 
 	return result;
+}
+
+
+/*
+ * Emulate a mouse click at the given display.
+ *
+ * PRIVATE
+ */
+void mouse_click(Display *display, int button) {
+	XTestFakeButtonEvent(display, button, True, CurrentTime);
+	XTestFakeButtonEvent(display, button, False, CurrentTime+1);
 }
 
 /**
@@ -286,9 +289,6 @@ void end_movement(XButtonEvent *e) {
 
 	} else {
 
-		struct window_info * activeWindow = generic_get_window_context(
-				first_click.display);
-
 		int sequences_count = 2;
 		char ** sequences = malloc(sizeof(char *)*sequences_count);
 
@@ -296,8 +296,8 @@ void end_movement(XButtonEvent *e) {
 		sequences[1] = fuzzy_stroke_sequence;
 
 		// sends the both strings to process.
-		process_movement_sequences(first_click.display,
-				activeWindow, sequences, sequences_count);
+		gesture_process_movement(first_click.display,
+				 sequences, sequences_count);
 
 	}
 
@@ -309,7 +309,7 @@ void end_movement(XButtonEvent *e) {
 char get_accurated_stroke(int x_delta, int y_delta) {
 
 	if ((x_delta == 0) && (y_delta == 0)) {
-		return gesture_names[NONE];
+		return stroke_names[NONE];
 	}
 
 	// check if the movement is near main axes
@@ -321,18 +321,18 @@ char get_accurated_stroke(int x_delta, int y_delta) {
 		if (abs(x_delta) > abs(y_delta)) {
 
 			if (x_delta > 0) {
-				return gesture_names[RIGHT];
+				return stroke_names[RIGHT];
 			} else {
-				return gesture_names[LEFT];
+				return stroke_names[LEFT];
 			}
 
 			// y axe
 		} else {
 
 			if (y_delta > 0) {
-				return gesture_names[DOWN];
+				return stroke_names[DOWN];
 			} else {
-				return gesture_names[UP];
+				return stroke_names[UP];
 			}
 
 		}
@@ -342,21 +342,21 @@ char get_accurated_stroke(int x_delta, int y_delta) {
 
 		if (y_delta < 0) {
 			if (x_delta < 0) {
-				return gesture_names[SEVEN];
+				return stroke_names[SEVEN];
 			} else if (x_delta > 0) { // RIGHT
-				return gesture_names[NINE];
+				return stroke_names[NINE];
 			}
 		} else if (y_delta > 0) { // DOWN
 			if (x_delta < 0) { // RIGHT
-				return gesture_names[ONE];
+				return stroke_names[ONE];
 			} else if (x_delta > 0) {
-				return gesture_names[THREE];
+				return stroke_names[THREE];
 			}
 		}
 
 	}
 
-	return gesture_names[NONE];
+	return stroke_names[NONE];
 
 }
 
@@ -364,16 +364,16 @@ char get_fuzzy_stroke(int x_delta, int y_delta) {
 
 	if (abs(y_delta) > abs(x_delta)) {
 		if (y_delta > 0) {
-			return gesture_names[DOWN];
+			return stroke_names[DOWN];
 		} else {
-			return gesture_names[UP];
+			return stroke_names[UP];
 		}
 
 	} else {
 		if (x_delta > 0) {
-			return gesture_names[RIGHT];
+			return stroke_names[RIGHT];
 		} else {
-			return gesture_names[LEFT];
+			return stroke_names[LEFT];
 		}
 
 	}
@@ -471,12 +471,6 @@ void grabbing_event_loop() {
 
 }
 
-int init_wm_helper(void) {
-	action_helper = &generic_action_helper;
-
-	return 1;
-}
-
 /* taken from ecore.. */
 int x_key_mask_get(KeySym sym, Display *dpy) {
 	XModifierKeymap *mod;
@@ -558,6 +552,7 @@ int grabbing_init() {
 
 	init_masks(dpy);
 
+
 	accurate_stroke_sequence = (char *) malloc(
 			sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
 	accurate_stroke_sequence[0] = '\0';
@@ -567,11 +562,10 @@ int grabbing_init() {
 	fuzzy_stroke_sequence[0] = '\0';
 
 	int err = 0;
-	int scr;
+	int scr = DefaultScreen(dpy);
 
 	XAllowEvents(dpy, AsyncBoth, CurrentTime);
 
-	scr = DefaultScreen(dpy);
 
 	if (!without_brush) {
 		err = backing_init(&backing, dpy, DefaultRootWindow(dpy),
@@ -588,10 +582,6 @@ int grabbing_init() {
 			return err;
 		}
 	}
-
-
-	/* choose a wm helper */
-	init_wm_helper();
 
 	/* last, start grabbing the pointer ...*/
 	grab_pointer(dpy);
