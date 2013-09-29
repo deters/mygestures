@@ -1,12 +1,10 @@
-bin_PROGRAMS=mygestures
 
+bin_PROGRAMS=mygestures
 sysconf_DATA = mygestures.xml
 
-AM_CFLAGS = -DSYSCONFIR='"$(sysconfdir)"' $(XML_CFLAGS)
-
-
-
 CC=clang
+
+AM_CFLAGS = -DSYSCONFIR='"$(sysconfdir)"' $(XML_CFLAGS)
 
 mygestures_SOURCES = \
 	main.c \
@@ -24,4 +22,3 @@ mygestures_SOURCES = \
 	drawing-bresenham.h
 
 mygestures_LDADD=-lm $(XML_LIBS)
-

@@ -37,6 +37,8 @@
 #include <errno.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+#include <libgen.h>
+#include <sys/stat.h>
 
 char * conf_file = NULL;
 
@@ -47,10 +49,6 @@ struct context** context_list;
 int context_count;
 
 struct action_helper *action_helper;
-
-
-
-
 
 int init_wm_helper(void) {
 	action_helper = &generic_action_helper;
@@ -300,8 +298,6 @@ struct gesture * gesture_locate(char * captured_sequence,
 	return matched_gesture;
 }
 
-
-
 /*
  * Get the parent window.
  *
@@ -316,7 +312,6 @@ Window get_parent_window(Display *dpy, Window w) {
 
 	return parent_return;
 }
-
 
 /*
  * Get the title of a given window at out_window_title.
@@ -346,8 +341,6 @@ Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
 	return 1;
 }
 
-
-
 /*
  * Return a window_info struct for the focused window at a given Display.
  *
@@ -376,25 +369,21 @@ struct window_info * get_window_info(Display* dpy, Window win) {
 		win_class = "";
 	}
 
-	if (win_class){
+	if (win_class) {
 		ans->class = win_class;
 	} else {
 		ans->class = "";
 	}
 
-	if (win_title){
+	if (win_title) {
 		ans->title = win_title;
 	} else {
 		ans->title = "";
 	}
 
-
-
 	return ans;
 
 }
-
-
 
 /*
  * Return the focused window at the given display.
@@ -415,11 +404,11 @@ Window get_focused_window(Display *dpy) {
 
 }
 
-void gesture_process_movement(Display * dpy,
-		char ** sequences,
+void gesture_process_movement(Display * dpy, char ** sequences,
 		int sequences_count) {
 
-	struct window_info * focused_window = get_window_info(dpy, get_focused_window(dpy));
+	struct window_info * focused_window = get_window_info(dpy,
+			get_focused_window(dpy));
 
 	struct gesture *gest = NULL;
 
@@ -434,8 +423,9 @@ void gesture_process_movement(Display * dpy,
 		gest = gesture_locate(sequence, focused_window);
 
 		if (gest) {
-			printf(" sequence %s = '%s' --> '%s'\n", sequence,
-					gest->movement->name, gest->name);
+			printf(
+					"Captured sequence: '%s' --> Movement '%s' --> Gesture '%s'\n",
+					sequence, gest->movement->name, gest->name);
 
 			for (int j = 0; j < gest->actions_count; ++j) {
 				struct action * a = gest->actions[j];
@@ -445,12 +435,11 @@ void gesture_process_movement(Display * dpy,
 
 			return;
 		} else {
-			printf(" sequence %s not found on any gesture\n", sequence);
+			printf("Captured sequence %s --> not found\n", sequence);
 		}
 	}
 
 }
-
 
 /**
  * Execute an action
@@ -468,7 +457,7 @@ void execute_action(Display *dpy, struct action *action, Window focused_window) 
 				int i = system(action->original_str);
 				exit(i);
 			}
-			if (id < 0){
+			if (id < 0) {
 				fprintf(stderr, "Error forking.\n");
 			}
 
@@ -498,7 +487,6 @@ void execute_action(Display *dpy, struct action *action, Window focused_window) 
 	return;
 }
 
-
 /**
  * Removes the line break from a string
  */
@@ -516,58 +504,65 @@ char *remove_new_line(char *str) {
 
 }
 
+static void recursive_mkdir(char *path, mode_t mode) {
+	char *spath = strdup(path);
+	char *next_dir = dirname(spath);
+
+	if (access(next_dir, F_OK) == 0) {
+		goto done;
+	}
+
+	if (strcmp(next_dir, ".") == 0 || strcmp(next_dir, "/") == 0) {
+		goto done;
+	}
+
+	recursive_mkdir(next_dir, mode);
+	mkdir(next_dir, mode);
+
+	done: free(spath);
+	return;
+}
+
 /**
  * Copy a file
  */
-int new_file_from_template(const char *to, const char *from) {
-	int fd_to, fd_from;
-	char buf[4096];
-	ssize_t nread;
-	int saved_errno;
+int new_file_from_template(char *tofile, char *fromfile) {
 
-	fd_from = open(from, O_RDONLY);
-	if (fd_from < 0)
+	recursive_mkdir(tofile, S_IRWXU | S_IRGRP);
+
+	FILE *in, *out;
+	char ch;
+
+	if ((in = fopen(fromfile, "rb")) == NULL) {
+		fprintf(stderr, "Cannot open input file: %s\n", fromfile);
 		return -1;
+	}
+	if ((out = fopen(tofile, "wb")) == NULL) {
+		fprintf(stderr, "Cannot open output file: %s\n", tofile);
+		return -2;
+	}
 
-	fd_to = open(to, O_WRONLY | O_CREAT | O_EXCL, 0666);
-	if (fd_to < 0)
-		goto out_error;
-
-	while (nread = read(fd_from, buf, sizeof buf), nread > 0) {
-		char *out_ptr = buf;
-		ssize_t nwritten;
-
-		do {
-			nwritten = write(fd_to, out_ptr, nread);
-
-			if (nwritten >= 0) {
-				nread -= nwritten;
-				out_ptr += nwritten;
-			} else if (errno != EINTR) {
-				goto out_error;
+	while (!feof(in)) {
+		ch = getc(in);
+		if (ferror(in)) {
+			printf("Read Error");
+			clearerr(in);
+			break;
+		} else {
+			if (!feof(in))
+				putc(ch, out);
+			if (ferror(out)) {
+				fprintf(stderr, "Write Error");
+				clearerr(out);
+				break;
 			}
-		} while (nread > 0);
-	}
-
-	if (nread == 0) {
-		if (close(fd_to) < 0) {
-			fd_to = -1;
-			goto out_error;
 		}
-		close(fd_from);
-
-		/* Success! */
-		return 0;
 	}
+	fclose(in);
+	fclose(out);
 
-	out_error: saved_errno = errno;
+	return 0;
 
-	close(fd_from);
-	if (fd_to >= 0)
-		close(fd_to);
-
-	errno = saved_errno;
-	return -1;
 }
 
 char* readFileBytes(const char *name) {
@@ -895,8 +890,10 @@ int parse_root(xmlNode *node) {
 	}
 
 	fprintf(stdout, "Loaded %i movements.\n", new_movement_count);
-	fprintf(stdout, "Loaded %i gestures in %i contexts.\n", gestures_count,
-			new_context_count);
+	fprintf(stdout, "Loaded %i contexts with %i gestures.\n", new_context_count,
+			gestures_count);
+	fprintf(stdout,
+			"Draw some movement on the screen with the configured button pressed.\n");
 
 	// update global variables
 
@@ -944,17 +941,24 @@ void gestures_set_config_file(char * config_file) {
 }
 
 char * gestures_get_default_config() {
-	char * home = getenv("HOME");
+
 	char * filename = malloc(sizeof(char) * 4096);
-	strncpy(filename, strdup(home), 4096);
-	strncat(filename, "/.config/mygestures/mygestures.xml", 4096);
+
+	char * xdg;
+
+	xdg = getenv("XDG_CONFIG_HOME");
+
+	if (xdg) {
+		sprintf(filename, "%s/mygestures/mygestures.xml", xdg);
+	} else {
+		char * home = getenv("HOME");
+		sprintf(filename, "%s/.config/mygestures/mygestures.xml", home);
+	}
+
 	return filename;
 }
 
 int gestures_init() {
-
-
-
 
 	if (conf_file == NULL) {
 		conf_file = gestures_get_default_config();
@@ -970,30 +974,31 @@ int gestures_init() {
 	} else {
 
 		char * template_file = malloc(sizeof(char *) * 4096);
-		sprintf(template_file,"%s/mygestures.xml", SYSCONFIR );
+		sprintf(template_file, "%s/mygestures.xml", SYSCONFIR);
 
 		err = new_file_from_template(conf_file, template_file);
-
-		free(template_file);
 
 		if (err) {
 			fprintf(stderr,
 					"Error trying to create config file `%s' from template `%s'.\n",
-					conf_file, SYSCONFIR);
-			return err;
+					conf_file, template_file);
+		} else {
+			fprintf(stderr, "Created config file `%s' from template `%s'.\n",
+					conf_file, template_file);
 		}
+
+		free(template_file);
 
 	}
 
-	printf("Loading configuration from %s\n", conf_file);
+	fprintf(stdout, "Loading configuration from %s\n", conf_file);
 
 	err = gestures_load_from_file(conf_file);
 
 	if (err) {
-		fprintf(stderr,"Error parsing configuration file.\n");
+		fprintf(stderr, "Error parsing configuration file.\n");
 		return err;
 	}
-
 
 	/* choose a wm helper */
 	init_wm_helper();
