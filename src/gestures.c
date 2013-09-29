@@ -250,7 +250,9 @@ struct gesture * gesture_locate(char * captured_sequence,
 
 	struct gesture * matched_gesture = NULL;
 
-	for (int c = 0; c < context_count; ++c) {
+	int c = 0;
+
+	for (c = 0; c < context_count; ++c) {
 
 		if (matched_gesture)
 			break;
@@ -271,7 +273,9 @@ struct gesture * gesture_locate(char * captured_sequence,
 
 		if (context->gestures_count) {
 
-			for (int g = 0; g < context->gestures_count; ++g) {
+			int g = 0;
+
+			for (g = 0; g < context->gestures_count; ++g) {
 
 				struct gesture * gest = context->gestures[g];
 
@@ -416,7 +420,9 @@ void gesture_process_movement(Display * dpy, char ** sequences,
 	printf("Window Title = \"%s\"\n", focused_window->title);
 	printf("Window Class = \"%s\"\n", focused_window->class);
 
-	for (int i = 0; i < sequences_count; ++i) {
+	int i = 0;
+
+	for (i = 0; i < sequences_count; ++i) {
 
 		char * sequence = sequences[i];
 
@@ -427,7 +433,9 @@ void gesture_process_movement(Display * dpy, char ** sequences,
 					"Captured sequence: '%s' --> Movement '%s' --> Gesture '%s'\n",
 					sequence, gest->movement->name, gest->name);
 
-			for (int j = 0; j < gest->actions_count; ++j) {
+			int j = 0;
+
+			for (j = 0; j < gest->actions_count; ++j) {
 				struct action * a = gest->actions[j];
 				printf(" (%s)\n", a->original_str);
 				execute_action(dpy, a, get_focused_window(dpy));
@@ -576,7 +584,7 @@ char* readFileBytes(const char *name) {
 	long len = ftell(fl);
 	char *ret = malloc(len);
 	fseek(fl, 0, SEEK_SET);
-	fread(ret, 1, len, fl);
+	int x = fread(ret, 1, len, fl);
 	fclose(fl);
 	return ret;
 }
@@ -648,7 +656,9 @@ struct movement * movement_find(char * movement_name,
 		return NULL;
 	}
 
-	for (int i = 0; i < known_movements_count; ++i) {
+	int i = 0;
+
+	for (i = 0; i < known_movements_count; ++i) {
 		struct movement * m = known_movements[i];
 
 		if ((m->name) && (movement_name)
