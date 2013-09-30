@@ -11,7 +11,7 @@
 #                    <...>
 ### END INIT INFO
 
-# Author: deters <deters@inf.ufsc.br>
+# Author: Lucas Augusto Deters <lucasdeters@gmail.com>
 
 # PATH should only include /usr/* if it runs after the mountnfs.sh script
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
