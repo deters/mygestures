@@ -1,7 +1,7 @@
 Source: mygestures
 Section: x11
 Priority: optional
-Maintainer: Lucas Augusto Deters <deters@inf.ufsc.br>
+Maintainer: Lucas Augusto Deters <lucasdeters@gmail.com>
 Build-Depends: debhelper (>= 8.0.0), autotools-dev, libxt-dev, libxmu-dev, libxrender-dev, libx11-dev, libxtst-dev, libc6-dev, libxml2-dev
 Standards-Version: 3.9.4
 Homepage: http://sourceforge.net/projects/mygestures/
