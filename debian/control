@@ -1,0 +1,15 @@
+Source: mygestures
+Section: unknown
+Priority: extra
+Maintainer: deters <deters@inf.ufsc.br>
+Build-Depends: debhelper (>= 8.0.0), autotools-dev
+Standards-Version: 3.9.4
+Homepage: <insert the upstream URL, if relevant>
+#Vcs-Git: git://git.debian.org/collab-maint/mygestures.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/mygestures.git;a=summary
+
+Package: mygestures
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>
