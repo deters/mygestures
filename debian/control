@@ -1,15 +1,15 @@
 Source: mygestures
-Section: unknown
-Priority: extra
-Maintainer: deters <deters@inf.ufsc.br>
-Build-Depends: debhelper (>= 8.0.0), autotools-dev
+Section: x11
+Priority: optional
+Maintainer: Lucas Augusto Deters <deters@inf.ufsc.br>
+Build-Depends: debhelper (>= 8.0.0), autotools-dev, libxt-dev, libxmu-dev, libxrender-dev, libx11-dev, libxtst-dev, libc6-dev, libxml2-dev
 Standards-Version: 3.9.4
-Homepage: <insert the upstream URL, if relevant>
+Homepage: http://sourceforge.net/projects/mygestures/
 #Vcs-Git: git://git.debian.org/collab-maint/mygestures.git
 #Vcs-Browser: http://git.debian.org/?p=collab-maint/mygestures.git;a=summary
 
 Package: mygestures
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Description: Small mouse gestures utility for X11
+ mygestures allows recognizing gestures made with your mouse and perform actions such as execute programs or send keystrokes.
