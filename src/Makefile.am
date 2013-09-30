@@ -1,5 +1,5 @@
 
-AM_CFLAGS = -DSYSCONFIR='"$(sysconfdir)"' $(XML_CFLAGS) -O4
+AM_CFLAGS = -DSYSCONFIR='"$(sysconfdir)"' -O2 $(libXML_CFLAGS) 
 
 bin_PROGRAMS=mygestures
 
@@ -18,4 +18,4 @@ mygestures_SOURCES = \
 	drawing-bresenham.c \
 	drawing-bresenham.h
 
-mygestures_LDADD=-lm $(XML_LIBS)
+mygestures_LDADD=-lm $(libXML_LIBS) $(X11_LIBS) $(Xmu_LIBS) $(Xrender_LIBS) $(Xtst_LIBS) $(libXML_LIBS)
