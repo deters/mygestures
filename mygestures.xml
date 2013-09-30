@@ -127,6 +127,14 @@
 
       <!-- Generic actions -->
 
+		<gesture name="Previous page (Alt+Left)" movement="Left">
+			<do action="keypress" value="Alt_L+Left" />
+		</gesture>
+
+		<gesture name="Next page (Alt+Right)" movement="Right">
+			<do action="keypress" value="Alt_L+Right" />
+		</gesture>
+
 		<gesture name="Copy (Ctrl+C)" movement="C">
 			<do action="keypress" value="Control_L+C" />
 		</gesture>
