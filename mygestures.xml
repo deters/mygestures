@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mygestures>
+
+	<!--
+
+	 You can define new movements by composing this 4 basic strokes in a regular expression:
+
+            U      
+            ↑
+       L ←     → R
+            ↓
+            D
+
+    If you need more precision, you may need to use more complex strokes.
+
+        7   U   9 
+          ↖ ↑ ↗     
+       L ←     → R
+          ↙ ↓ ↘    
+        1   D   3  
+
+    -->
+
+	<movement name="Up" value="U" />
+	<movement name="Down" value="D" />
+	<movement name="Left" value="L" />
+	<movement name="Right" value="R" />
+	<movement name="NorthWest" value="(7(U|L)?)+" />
+	<movement name="NorthEast" value="(9(U|R)?)+" />
+	<movement name="SouthWest" value="(1(D|L)?)+" />
+	<movement name="SouthEast" value="(3(D|R)?)+" />
+	<movement name="A" value="(URD|U?9R?3D?)" />
+	<movement name="B" value="(D?U)?((R|3)(D1?L|1))((R|3)(D1?L|1))" />
+	<movement name="C" value="U?LDRU?" />
+	<movement name="D" value="DRUL" />
+	<movement name="E" value="RULDRU?" />
+	<movement name="F" value="(LD(UR|RLD)|RUL?DU(R|RU)?)" />
+	<movement name="G" value="LDRU(LRD?|DL(U|UR))" />
+	<movement name="H" value="DURUD" />
+	<movement name="I" value="RL?DL?R" />
+	<movement name="J" value="(RLD(RD?)LU?|D3D1L|RLD3L|RD3DL|D1L7)" />
+	<movement name="K" value="DU(9?13|913?|93|RLDR(D(RD?)?)?)" />
+	<movement name="L" value="DR" />
+	<movement name="M" value="(D?UR?DUR?D|9393)" />
+	<movement name="N" value="(9|U|7)+(R?(D|3)R?)+(9|U|7)+" />
+	<movement name="O" value="LDRUL" />
+	<movement name="P" value="RULD" />
+	<movement name="Q" value="1?D3?R9?U7?D1?R3?" />
+	<movement name="R" value="((RDL?)|DL?|L)?URDLR?(D|DRD?R?)?" />
+	<movement name="S" value="U?7?L1?D3?R3?D1?L7?U?" />
+	<movement name="T" value="RLD" />
+	<movement name="U" value="DRU" />
+	<movement name="V" value="39" />
+	<movement name="W" value="(DR?UDR?U|3939)" />
+	<movement name="X" value="(DLURU?|3L9)" />
+	<movement name="Y" value="(DRUDLUR?|391)" />
+	<movement name="Z" value="R(1?D?L?)*R" />
+	<movement name="UpRight" value="UR" />
+	<movement name="UpLeft" value="UL" />
+	<movement name="LeftUp" value="LU" />
+	<movement name="LeftDown" value="LD" />
+	<movement name="DownLeft" value="DL" />
+	<movement name="DownRight" value="DR" /> <!-- conflicts with "L". will never be reached. -->
+   <movement name="RightDown" value="RD" />
+   <movement name="RightUp" value="RU" />
+
+	<!--
+	 You can define new contexts to the execution of gestures here.
+    -->
+
+
+	<!--
+    Context: Terminal windows.
+    -->
+
+	<context name="Terminal windows" windowclass=".*(Term|term).*" windowtitle=".*">
+
+		<gesture name="Open new tab (Ctrl+Shift+T)" movement="T">
+			<do action="keypress" value="Control_L+Shift_L+T" />
+		</gesture>
+
+		<gesture name="Open new tab (Ctrl+Shift+T)" movement="Down">
+			<do action="keypress" value="Control_L+Shift_L+T" />
+		</gesture>
+
+		<gesture name="Open new window (Ctrl+Shift+N)" movement="N">
+			<do action="keypress" value="Control_L+Shift_L+N" />
+		</gesture>
+
+		<gesture name="Copy (Ctrl+Shift+C)" movement="C">
+			<do action="keypress" value="Control_L+Shift_L+C" />
+		</gesture>
+
+		<gesture name="Paste (Ctrl+Shift+V)" movement="V">
+			<do action="keypress" value="Control_L+Shift_L+V" />
+		</gesture>
+
+		<gesture name="Close current tab (Ctrl+Shift+W)" movement="RightDown">
+			<do action="keypress" value="Control_L+Shift_L+W" />
+		</gesture>
+
+	</context>
+
+	<!--
+	 Context: All applications. This context need to be the last one in this file.
+    -->
+
+	<context name="All applications" windowclass=".*" windowtitle=".*">
+
+      <!-- Window control -->
+
+		<gesture name="Close window (Alt+F4)" movement="DownRight">
+			<do action="keypress" value="Alt_L+F4" />
+		</gesture>
+
+		<gesture name="Maximize window" movement="NorthEast">
+			<do action="keypress" value="Alt_L+F5" /> <!-- check your Window Manager for the correct keybinding -->
+		</gesture>
+
+		<gesture name="Restore window" movement="NorthWest">
+			<do action="keypress" value="Alt_L+F5" /> <!-- check your Window Manager for the correct keybinding -->
+		</gesture>
+
+		<gesture name="Iconify window" movement="SouthWest">
+			<do action="iconify" />
+		</gesture>
+
+      <!-- Generic actions -->
+
+		<gesture name="Copy (Ctrl+C)" movement="C">
+			<do action="keypress" value="Control_L+C" />
+		</gesture>
+
+		<gesture name="Paste (Ctrl+V)" movement="V">
+			<do action="keypress" value="Control_L+V" />
+		</gesture>
+
+		<gesture name="New (Ctrl+N)" movement="N">
+			<do action="keypress" value="Control_L+N" />
+		</gesture>
+
+		<gesture name="Open (Ctrl+O)" movement="O">
+			<do action="keypress" value="Control_L+O" />
+		</gesture>
+
+		<gesture name="Print (Ctrl+P)" movement="P">
+			<do action="keypress" value="Control_L+P" />
+		</gesture>
+
+		<gesture name="Save (Ctrl+S)" movement="S">
+			<do action="keypress" value="Control_L+S" />
+		</gesture>
+
+		<gesture name="New tab (Ctrl+T)" movement="T">
+			<do action="keypress" value="Control_L+T" />
+		</gesture>
+
+		<gesture name="Close tab (Ctrl+W)" movement="RightDown">
+			<do action="keypress" value="Control_L+W" />
+		</gesture>
+
+      <!-- Custom actions -->
+
+		<gesture name="Run default terminal" movement="Down">
+			<do action="exec" value="x-terminal-emulator" />
+		</gesture>      
+		
+		<gesture name="Run default browser" movement="W">
+         <do action="exec" value="x-www-browser" />
+		</gesture>
+
+		<gesture name="Run gedit" movement="G">
+         <do action="exec" value="gedit" />
+		</gesture>
+
+	</context> 
+
+   <!-- 
+
+    See http://www.sf.net/p/mygestures for a more complete reference to this file.
+
+    -->
+
+</mygestures>
+
+
+

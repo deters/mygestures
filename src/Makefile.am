@@ -1,11 +1,7 @@
 
-bin_PROGRAMS=mygestures
-sysconf_DATA = mygestures.xml
-
-#CC=gcc
-CC=clang
-
 AM_CFLAGS = -DSYSCONFIR='"$(sysconfdir)"' $(XML_CFLAGS) -O4
+
+bin_PROGRAMS=mygestures
 
 mygestures_SOURCES = \
 	main.c \
