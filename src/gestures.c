@@ -30,7 +30,6 @@
 #include <string.h>
 #include "gestures.h"
 #include "wm.h"
-#include <jansson.h>
 #include <regex.h>
 #include <X11/Xutil.h>
 #include <fcntl.h>
