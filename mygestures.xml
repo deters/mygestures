@@ -79,10 +79,6 @@
 			<do action="keypress" value="Control_L+Shift_L+T" />
 		</gesture>
 
-		<gesture name="Open new tab (Ctrl+Shift+T)" movement="Down">
-			<do action="keypress" value="Control_L+Shift_L+T" />
-		</gesture>
-
 		<gesture name="Open new window (Ctrl+Shift+N)" movement="N">
 			<do action="keypress" value="Control_L+Shift_L+N" />
 		</gesture>
