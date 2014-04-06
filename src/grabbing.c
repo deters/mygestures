@@ -258,7 +258,7 @@ int ungrab_pointer(Display *dpy) {
  */
 void mouse_click(Display *display, int button) {
 	XTestFakeButtonEvent(display, button, True, CurrentTime);
-	XTestFakeButtonEvent(display, button, False, CurrentTime+1);
+	XTestFakeButtonEvent(display, button, False, CurrentTime);
 }
 
 /**
