@@ -15,20 +15,17 @@
 
 #include "grabbing.h"
 #include "gestures.h"
+#include "config.h"
 
 struct grabbing * grabber;
 
 int is_daemonized = 0;
 
 void usage() {
-	printf("\n");
-	printf(
-			"mygestures %s. Credits: Nir Tzachar (xgestures) & Lucas Augusto Deters\n",
-			VERSION);
-	printf("\n");
+	printf("%s\n\n",PACKAGE_STRING);
+    printf("Usage:\n");
 	printf("-h, --help\t: print this usage info\n");
-	printf(
-			"-c, --config\t: set config file. Defaults: $HOME/.config/mygestures/mygestures.conf /etc/mygestures.conf");
+	printf("-c, --config\t: set config file. Defaults: $HOME/.config/mygestures/mygestures.xml /etc/mygestures.xml");
 	printf("-b, --button\t: which button to use. default is 3\n");
 	printf("-d, --daemonize\t: laymans daemonize\n");
 	printf("-m, --modifier\t: which modifier to use. valid values are: \n");

@@ -1,21 +1,37 @@
-dnl Process this file with autoconf to produce a configure script.
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
 
-AC_PREREQ(2.59)
-AC_INIT(MyGestures, 0.7)
+AC_PREREQ([2.69])
+AC_INIT([MyGestures], [1.0], [lucasdeters@users.sourceforge.net])
+AM_INIT_AUTOMAKE
+AC_CONFIG_SRCDIR([src/main.c])
+AC_CONFIG_HEADERS([src/config.h])
 
-
-AC_CANONICAL_SYSTEM
-AM_INIT_AUTOMAKE()
+# Checks for programs.
+AC_PROG_CC
 
 # Checks for libraries.
 PKG_CHECK_MODULES(X11, x11)
 PKG_CHECK_MODULES(Xmu, xmu)
 PKG_CHECK_MODULES(Xrender, xrender)
 PKG_CHECK_MODULES(Xtst, xtst)
-PKG_CHECK_MODULES(libXML, libxml-2.0 >= 2.4)      
+PKG_CHECK_MODULES(libXML, libxml-2.0 >= 2.4)
 
-AC_PROG_CC
+# Checks for header files.
+AC_PATH_X
+AC_CHECK_HEADERS([fcntl.h stdlib.h string.h strings.h unistd.h])
 
-AC_CONFIG_FILES(Makefile src/Makefile)
+# Checks for typedefs, structures, and compiler characteristics.
+AC_TYPE_MODE_T
+
+# Checks for library functions.
+AC_FUNC_FORK
+AC_FUNC_MALLOC
+AC_CHECK_FUNCS([bzero memset mkdir regcomp strcasecmp strdup strncasecmp])
+
+AC_CONFIG_FILES([Makefile
+                 src/Makefile])
+
 AC_OUTPUT
+
 
