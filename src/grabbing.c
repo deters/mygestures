@@ -10,18 +10,8 @@
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.  */
-/*
- - recognize movements without a modifier key                                            - 13 JAN 2008   OK
- - gestures customized for each application                                              - 02 MAR 2008   OK
- - emule a click on Java applications                                                    - 02 MAR 2008   (not complete)
- - custom moviment definition on .gestures                                               - 14 MAR 2008   OK
-  - Store the configurations on XML                                                      - 28 SET 2013   OK
- TODO:
- - disable gesture recognition on some apps
- - translate and review the source code
- - create a GUI
- - quick icon on the taskbar (with options: inactivate xgestures, automatic start, open configure gui)
- - Translate the GUI
+/**
+ *  This class grabs mouse events and try to translate them into stroke sequences.
  */
 
 #if HAVE_CONFIG_H
@@ -44,11 +34,13 @@
 #include "drawing-brush.h"
 #include "grabbing.h"
 #include "gestures.h"
-
 #include "drawing-brush-image.h"
 
-#define DELTA_MIN	30
-#define MAX_STROKE_SEQUENCE 63
+#define DELTA_MIN	30 /*TODO*/
+#define MAX_STROKE_SEQUENCE 63 /*TODO*/
+
+Display * dpy = NULL;
+
 
 /* the button to grab */
 int button = 0;
@@ -89,8 +81,6 @@ char * accurate_stroke_sequence;
 /* movements stack (secound capture algoritm) */
 char * fuzzy_stroke_sequence;
 
-XButtonEvent first_click;
-
 
 
 /* back of the draw */
@@ -100,16 +90,13 @@ brush_t brush;
 /* close xgestures */
 int shut_down = 0;
 
+
+
+
+
 /**
- * clean variables and get a transparent background to draw the movement
+ * Clear previous movement data.
  */
-
-Display * dpy = NULL;
-
-
-
-
-
 void start_movement(XButtonEvent *e) {
 
 	// clear captured sequences
@@ -147,7 +134,6 @@ void create_masks(unsigned int *arr) {
 				arr[i] |= valid_masks[j];
 			}
 		}
-		/* print_bin(arr[i]); */
 	}
 
 	return;
@@ -258,6 +244,7 @@ int ungrab_pointer(Display *dpy) {
  */
 void mouse_click(Display *display, int button) {
 	XTestFakeButtonEvent(display, button, True, CurrentTime);
+	sleep(0.001);
 	XTestFakeButtonEvent(display, button, False, CurrentTime);
 }
 
@@ -296,7 +283,7 @@ void end_movement(XButtonEvent *e) {
 		sequences[1] = fuzzy_stroke_sequence;
 
 		// sends the both strings to process.
-		gesture_process_movement(first_click.display,
+		gesture_process_movement(dpy,
 				 sequences, sequences_count);
 
 	}
@@ -306,7 +293,7 @@ void end_movement(XButtonEvent *e) {
 	return;
 }
 
-char get_accurated_stroke(int x_delta, int y_delta) {
+char stroke_sequence_complex_detect_stroke(int x_delta, int y_delta) {
 
 	if ((x_delta == 0) && (y_delta == 0)) {
 		return stroke_names[NONE];
@@ -380,7 +367,7 @@ char get_fuzzy_stroke(int x_delta, int y_delta) {
 
 }
 
-void push_stroke(char stroke, char* stroke_sequence) {
+void stroke_sequence_push_stroke(char* stroke_sequence, char stroke) {
 	// grab stroke
 	int len = strlen(stroke_sequence);
 	if ((len == 0) || (stroke_sequence[len - 1] != stroke)) {
@@ -414,9 +401,9 @@ void update_movement(XMotionEvent *e) {
 
 	if ((abs(x_delta) > DELTA_MIN) || (abs(y_delta) > DELTA_MIN)) {
 
-		char stroke = get_accurated_stroke(x_delta, y_delta);
+		char stroke = stroke_sequence_complex_detect_stroke(x_delta, y_delta);
 
-		push_stroke(stroke, accurate_stroke_sequence);
+		stroke_sequence_push_stroke(accurate_stroke_sequence, stroke);
 
 		// reset start position
 		old_x = new_x;
@@ -434,7 +421,7 @@ void update_movement(XMotionEvent *e) {
 	if ( DELTA_MIN * DELTA_MIN < square_distance_2) {
 		// grab stroke
 
-		push_stroke(fuzzy_stroke, fuzzy_stroke_sequence);
+		stroke_sequence_push_stroke(fuzzy_stroke_sequence, fuzzy_stroke);
 
 		// reset start position
 		old_x_2 = new_x;
@@ -536,7 +523,7 @@ void init_masks(Display *dpy) {
 
 int grabbing_init() {
 
-	char *s;
+	char *s = NULL;
 	s = XDisplayName(NULL);
 
 	dpy = XOpenDisplay(s);
