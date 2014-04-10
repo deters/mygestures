@@ -103,9 +103,6 @@ void start_movement(XButtonEvent *e) {
 	accurate_stroke_sequence[0] = '\0';
 	fuzzy_stroke_sequence[0] = '\0';
 
-	// guarda o evento inicial
-	memcpy(&first_click, e, sizeof(XButtonEvent));
-
 	// guarda a localização do início do movimento
 	old_x = e->x_root;
 	old_y = e->y_root;
