@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([MyGestures], [1.0], [lucasdeters@users.sourceforge.net])
+AC_INIT([MyGestures], [1.1], [lucasdeters@users.sourceforge.net])
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([src/main.c])
 AC_CONFIG_HEADERS([src/config.h])

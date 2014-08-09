@@ -25,8 +25,8 @@ void usage() {
 	printf("%s\n\n", PACKAGE_STRING);
 	printf("Usage:\n");
 	printf("-h, --help\t: print this usage info\n");
-	printf("-c, --config\t: use config file.\n"
-			"\t\tDefaults: $HOME/.config/mygestures/mygestures.xml /etc/mygestures.xml\n");
+	printf(
+			"-c, --config\t: use config file.\n\t\tDefaults: $HOME/.config/mygestures/mygestures.xml /etc/mygestures.xml\n");
 	printf("-b, --button\t: which button to use. default is 3\n");
 	printf("-d, --daemonize\t: laymans daemonize\n");
 	printf("-m, --modifier\t: which modifier to use. valid values are: \n");
