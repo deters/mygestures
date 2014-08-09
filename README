@@ -3,6 +3,7 @@ Build & Install from source:
  $ cd mygestures/
  $ aclocal
  $ autoconf
+ $ automake
  $ ./configure
  $ make
  $ sudo make install
