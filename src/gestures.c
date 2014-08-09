@@ -365,12 +365,18 @@ struct window_info * get_window_info(Display* dpy, Window win) {
 
 	int result = XGetClassHint(dpy, win, &class_hints);
 
-	if (class_hints.res_class != NULL)
-		win_class = class_hints.res_class;
 
-	if (win_class == NULL) {
-		win_class = "";
+	if (result) {
+
+		if (class_hints.res_class != NULL)
+			win_class = class_hints.res_class;
+
+		if (win_class == NULL) {
+			win_class = "";
+
+		}
 	}
+
 
 	if (win_class) {
 		ans->class = win_class;
