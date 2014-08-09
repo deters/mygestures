@@ -1,1 +1,11 @@
-Sample readme file for Gnu1 project.
+
+Build & Install from source:
+ $ cd mygestures/
+ $ aclocal
+ $ autoconf
+ $ ./configure
+ $ make
+ $ sudo make install
+
+
+
