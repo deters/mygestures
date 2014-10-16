@@ -1,6 +1,8 @@
 mygestures (1.2) stable; urgency=low
 
   * Fixed unused dependencies
+  * Fixed identation of configuration file.
+  * Releasing package as "stable".
 
  -- Lucas Augusto Deters <lucasdeters@gmail.com>  Thu, 16 Oct 2014 10:22:00 -0300
 
