@@ -18,4 +18,4 @@ mygestures_SOURCES = \
 	drawing-bresenham.c \
 	drawing-bresenham.h
 
-mygestures_LDADD=-lm $(libXML_LIBS) $(X11_LIBS) $(Xmu_LIBS) $(Xrender_LIBS) $(Xtst_LIBS) $(libXML_LIBS)
+mygestures_LDADD=$(libXML_LIBS) $(X11_LIBS) $(Xrender_LIBS) $(Xtst_LIBS) $(libXML_LIBS)

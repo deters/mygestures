@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([MyGestures], [1.1], [lucasdeters@users.sourceforge.net])
+AC_INIT([MyGestures], [1.2], [lucasdeters@users.sourceforge.net])
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([src/main.c])
 AC_CONFIG_HEADERS([src/config.h])
@@ -12,7 +12,6 @@ AC_PROG_CC
 
 # Checks for libraries.
 PKG_CHECK_MODULES(X11, x11)
-PKG_CHECK_MODULES(Xmu, xmu)
 PKG_CHECK_MODULES(Xrender, xrender)
 PKG_CHECK_MODULES(Xtst, xtst)
 PKG_CHECK_MODULES(libXML, libxml-2.0 >= 2.4)
