@@ -12,7 +12,6 @@ AC_PROG_CC
 
 # Checks for libraries.
 PKG_CHECK_MODULES(X11, x11)
-PKG_CHECK_MODULES(Xmu, xmu)
 PKG_CHECK_MODULES(Xrender, xrender)
 PKG_CHECK_MODULES(Xtst, xtst)
 PKG_CHECK_MODULES(libXML, libxml-2.0 >= 2.4)
