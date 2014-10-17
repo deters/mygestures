@@ -1,22 +1,21 @@
 /*
- Copyright 2005 Nir Tzachar
- Copyright 2013 Lucas Augusto Deters
+  Copyright 2005 Nir Tzachar
+  Copyright 2008, 2010, 2013, 2014 Lucas Augusto Deters
 
- This program is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation; either version 2, or (at your option)
- any later version.
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2, or (at your option)
+any later version.
 
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.  */
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.  */
 
 #ifndef __GESTURES_h
 #define __GESTURES_h
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
-#include <regex.h>
 
 #define GEST_SEQUENCE_MAX 64
 #define GEST_ACTION_NAME_MAX 32
@@ -31,58 +30,24 @@
 #define TAB_MASK (1<<6)
 
 
-/* the movements */
-enum STROKES {
-	NONE, LEFT, RIGHT, UP, DOWN, ONE, THREE, SEVEN, NINE
+struct action{
+        int type;
+        void *data;
 };
 
-
-
-
-struct movement {
-	char *name;
-	void *expression;
-	regex_t * compiled;
-};
-
-
-
-struct context {
-	char *name;
-	char *title;
-	char *class;
-	struct gesture ** gestures;
-	int gestures_count;
-	int abort;
-	regex_t * title_compiled;
-	regex_t * class_compiled;
-
-};
 
 struct gesture {
-	char * name;
-	struct context *context;
-	struct movement *movement;
-	struct action **actions;
-	int actions_count;
+        char *gest_str;
+        struct action *action;
 };
 
-
-
-struct window_info {
-	char *title;
-	char *class;
+struct key_press {
+  KeySym key;
+  struct key_press *next;
+  char *original_str;
 };
 
-struct gesture_engine {
-	char * config_file;
-};
-
-int gestures_init();
-
-void gestures_set_config_file(char * config_file);
-
-void gesture_process_movement(Display * dpy,
-		char **sequences, int sequences_count);
+void process_gestures(XButtonEvent *e, char *gest_str);
+int init_gestures(char *config_file);
 
 #endif
