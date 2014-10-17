@@ -1,5 +1,11 @@
 
+Pre-Reqs (debian)
+
+ $ sudo apt-get install \
+   autoconf libtool libx11-dev pkg-config libxrender-dev libxtst-dev libxml2-dev
+
 Build & Install from source:
+
  $ cd mygestures/
  $ autogen.sh
  $ make
