@@ -67,12 +67,20 @@ struct gesture {
 	int actions_count;
 };
 
-
-
-struct window_info {
-	char *title;
-	char *class;
+struct captured_movements {
+	char *basic_movements;
+	char *advanced_movements;
+	char *window_title;
+	char *window_class;
 };
+
+
+struct key_press {
+	void * key;
+	struct key_press * next;
+	char *original_str;
+};
+
 
 struct gesture_engine {
 	char * config_file;
@@ -80,9 +88,11 @@ struct gesture_engine {
 
 int gestures_init();
 
+void execute_action(struct action *action);
+
 void gestures_set_config_file(char * config_file);
 
-void gesture_process_movement(Display * dpy,
-		char **sequences, int sequences_count);
+void gesture_process_movement(
+		struct captured_movements * captured);
 
 #endif

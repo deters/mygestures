@@ -41,7 +41,6 @@
 
 Display * dpy = NULL;
 
-
 /* the button to grab */
 int button = 0;
 
@@ -63,7 +62,6 @@ char *modifiers_names[MOD_END] = { "SHIFT", "CTRL", "ALT", "WIN", "SCROLL",
 /* Filter to capture the events of the mouse */
 unsigned int valid_masks[MOD_END];
 
-
 /* Initial position of the movement (algorithm 1) */
 int old_x = -1;
 int old_y = -1;
@@ -81,18 +79,9 @@ char * accurate_stroke_sequence;
 /* movements stack (secound capture algoritm) */
 char * fuzzy_stroke_sequence;
 
-
-
 /* back of the draw */
 backing_t backing;
 brush_t brush;
-
-/* close xgestures */
-int shut_down = 0;
-
-
-
-
 
 /**
  * Clear previous movement data.
@@ -140,7 +129,6 @@ void grabbing_set_button(int b) {
 	button = b;
 }
 
-
 unsigned int str_to_modifier(char *str) {
 	int i;
 
@@ -159,7 +147,6 @@ unsigned int str_to_modifier(char *str) {
 	/* no match... */
 	return valid_masks[SHIFT];
 }
-
 
 void grabbing_set_button_modifier(char *button_modifier_str) {
 
@@ -200,11 +187,10 @@ int grab_pointer(Display *dpy) {
 	if (button_modifier != AnyModifier)
 		create_masks(masks);
 
-	for (screen = 0; screen < ScreenCount (dpy); screen++) {
+	for (screen = 0; screen < ScreenCount(dpy); screen++) {
 		for (i = 1; i < (1 << (MOD_END)); i++)
 			result += XGrabButton(dpy, button, /*AnyModifier */
-			button_modifier | masks[i],
-			RootWindow (dpy, screen),
+			button_modifier | masks[i], RootWindow(dpy, screen),
 			False,
 			PointerMotionMask | ButtonReleaseMask | ButtonPressMask,
 			GrabModeAsync, GrabModeAsync, None, None);
@@ -212,7 +198,6 @@ int grab_pointer(Display *dpy) {
 
 	return result;
 }
-
 
 int ungrab_pointer(Display *dpy) {
 	int result = 0, i = 0;
@@ -223,16 +208,50 @@ int ungrab_pointer(Display *dpy) {
 	if (button_modifier != AnyModifier)
 		create_masks(masks);
 
-	for (screen = 0; screen < ScreenCount (dpy); screen++) {
+	for (screen = 0; screen < ScreenCount(dpy); screen++) {
 		for (i = 1; i < (1 << (MOD_END)); i++)
 
 			result += XUngrabButton(dpy, button, button_modifier | masks[i],
-					RootWindow (dpy, screen));
+					RootWindow(dpy, screen));
 	}
 
 	return result;
 }
 
+
+/*
+ * Get the parent window.
+ *
+ * PRIVATE
+ */
+Window get_parent_window(Display *dpy, Window w) {
+	Window root_return, parent_return, *child_return;
+	unsigned int nchildren_return;
+	int ret;
+	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return,
+			&nchildren_return);
+
+	return parent_return;
+}
+
+/*
+ * Return the focused window at the given display.
+ *
+ * PRIVATE
+ */
+Window get_focused_window(Display *dpy) {
+
+	Window win = 0;
+	int ret, val;
+	ret = XGetInputFocus(dpy, &win, &val);
+
+	if (val == RevertToParent) {
+		win = get_parent_window(dpy, win);
+	}
+
+	return win;
+
+}
 
 /*
  * Emulate a mouse click at the given display.
@@ -248,15 +267,15 @@ void mouse_click(Display *display, int button) {
 /**
  * Obtém o resultado dos dois algoritmos de captura de movimentos, e envia para serem processadas.
  */
-void end_movement(XButtonEvent *e) {
+struct captured_movements * end_movement(XButtonEvent *e) {
+
+	struct captured_movements * captured = NULL;
 
 	// if is drawing
 	if (!without_brush) {
 		backing_restore(&backing);
 		XSync(e->display, False);
 	};
-
-
 
 	if ((strlen(fuzzy_stroke_sequence) == 0)
 			&& (strlen(accurate_stroke_sequence) == 0)) {
@@ -270,24 +289,26 @@ void end_movement(XButtonEvent *e) {
 		// restart grabbing
 		grab_pointer(e->display);
 
-
 	} else {
 
-		int sequences_count = 2;
-		char ** sequences = malloc(sizeof(char *)*sequences_count);
+		captured = malloc(sizeof(struct captured_movements));
 
-		sequences[0] = accurate_stroke_sequence;
-		sequences[1] = fuzzy_stroke_sequence;
+		captured->advanced_movements = accurate_stroke_sequence;
+		captured->basic_movements = fuzzy_stroke_sequence;
 
-		// sends the both strings to process.
-		gesture_process_movement(dpy,
-				 sequences, sequences_count);
+		char * window_title = "";
+		char * window_class = "";
+
+		get_window_info(dpy, get_focused_window(dpy), &window_title,
+				&window_class);
+
+		captured->window_class =  window_title;
+		captured->window_title = window_class;
 
 	}
 
+	return captured;
 
-
-	return;
 }
 
 char stroke_sequence_complex_detect_stroke(int x_delta, int y_delta) {
@@ -428,30 +449,32 @@ void update_movement(XMotionEvent *e) {
 	return;
 }
 
-void grabbing_event_loop() {
+struct captured_movements * grabbing_capture_movements() {
+
 	XEvent e;
 
-	while ((!shut_down)) {
+	struct captured_movements * captured = NULL;
 
-		XNextEvent(dpy, &e);
+	XNextEvent(dpy, &e);
 
-		switch (e.type) {
+	switch (e.type) {
 
-		case MotionNotify:
-			update_movement((XMotionEvent *) &e);
-			break;
+	case MotionNotify:
+		update_movement((XMotionEvent *) &e);
+		break;
 
-		case ButtonPress:
-			start_movement((XButtonEvent *) &e);
-			break;
+	case ButtonPress:
+		start_movement((XButtonEvent *) &e);
+		break;
 
-		case ButtonRelease:
-			end_movement((XButtonEvent *) &e);
-			break;
+	case ButtonRelease:
 
-		}
+		captured = end_movement((XButtonEvent *) &e);
+		break;
 
 	}
+
+	return captured;
 
 }
 
@@ -517,7 +540,6 @@ void init_masks(Display *dpy) {
 
 }
 
-
 int grabbing_init() {
 
 	char *s = NULL;
@@ -529,13 +551,11 @@ int grabbing_init() {
 		return 1;
 	}
 
-
 	if (!button) {
 		button = 3;
 	}
 
 	init_masks(dpy);
-
 
 	accurate_stroke_sequence = (char *) malloc(
 			sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
@@ -550,11 +570,10 @@ int grabbing_init() {
 
 	XAllowEvents(dpy, AsyncBoth, CurrentTime);
 
-
 	if (!without_brush) {
 		err = backing_init(&backing, dpy, DefaultRootWindow(dpy),
-		DisplayWidth(dpy, scr), DisplayHeight(dpy, scr),
-		DefaultDepth(dpy, scr));
+				DisplayWidth(dpy, scr), DisplayHeight(dpy, scr),
+				DefaultDepth(dpy, scr));
 		if (err) {
 			fprintf(stderr, "cannot open backing store.... \n");
 			return err;
@@ -571,6 +590,30 @@ int grabbing_init() {
 	grab_pointer(dpy);
 
 	return err;
+}
+
+void grabbing_iconify() {
+	generic_iconify(dpy, get_focused_window(dpy));
+}
+
+void grabbing_kill() {
+	generic_kill(dpy, get_focused_window(dpy));
+}
+
+void grabbing_raise() {
+	generic_raise(dpy, get_focused_window(dpy));
+}
+
+void grabbing_lower() {
+	generic_lower(dpy, get_focused_window(dpy));
+}
+
+void grabbing_maximize() {
+	generic_maximize(dpy, get_focused_window(dpy));
+}
+
+void grabbing_root_send(struct key_press *data) {
+	generic_root_send(dpy, data);
 }
 
 void grabbing_finalize() {

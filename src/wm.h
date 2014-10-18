@@ -38,27 +38,8 @@ struct action {
 	char *original_str;
 };
 
-struct key_press {
-	KeySym key;
-	struct key_press * next;
-	char *original_str;
-};
 
 
-
-
-struct action_helper {
-  void (*kill)(Display *dpy, Window w);
-  void (*iconify)(Display *dpy, Window w);
-  void (*raise)(Display *dpy, Window w);
-  void (*lower)(Display *dpy, Window w);
-  void (*maximize)(Display *dpy, Window w);
-  void (*root_send)(Display *dpy, struct key_press *data);
-};
-
-
-extern struct action_helper generic_action_helper;
-extern struct action_helper *action_helper;
 
 void generic_iconify(Display *dpy, Window w);
 void generic_kill(Display *dpy, Window w);
@@ -68,7 +49,6 @@ void generic_maximize(Display *dpy, Window w);
 void generic_root_send(Display *dpy, struct key_press *data);
 
 
-void execute_action(Display *dpy, struct action *action, Window focused_window);
 void mouse_click(Display *display, int button);
 
 

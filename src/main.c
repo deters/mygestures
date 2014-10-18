@@ -116,15 +116,15 @@ int main(int argc, char * const * argv) {
 
 	int err = gestures_init();
 
-	if (err) {
-		return err;
+	if (!err) {
+
+		signal(SIGHUP, sighup);
+		signal(SIGCHLD, sigchld);
+
+		gestures_run();
+
 	}
 
-	signal(SIGHUP, sighup);
-	signal(SIGCHLD, sigchld);
-
-	gestures_run();
-
-	return 0;
+	return err;
 
 }

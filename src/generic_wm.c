@@ -164,13 +164,3 @@ void generic_root_send(Display *dpy, struct key_press *data) {
 }
 
 
-
-
-
-struct action_helper generic_action_helper = { .iconify = generic_iconify, .kill =
-		generic_kill, .raise = generic_raise, .lower = generic_lower,
-		.maximize = generic_maximize, .root_send = generic_root_send, };
-
-
-
-
