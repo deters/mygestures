@@ -20,8 +20,6 @@
 #include <config.h>
 #endif
 
-#include <X11/keysym.h>
-#include <X11/extensions/XTest.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -31,7 +29,6 @@
 #include "gestures.h"
 #include "wm.h"
 #include <regex.h>
-#include <X11/Xutil.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <libxml/parser.h>
@@ -98,6 +95,14 @@ void free_context(struct context *free_me) {
 	return;
 }
 
+void free_captured_movements(struct captured_movements *free_me) {
+	free(free_me->advanced_movements);
+	free(free_me->basic_movements);
+	free(free_me->window_class);
+	free(free_me->window_title);
+	free(free_me);
+}
+
 /* alloc a movement struct */
 struct movement *alloc_movement(char *movement_name, char *movement_expression) {
 	struct movement *ans = malloc(sizeof(struct movement));
@@ -118,11 +123,6 @@ struct movement *alloc_movement(char *movement_name, char *movement_expression) 
 	if (regcomp(movement_compiled, regex_str,
 	REG_EXTENDED | REG_NOSUB) != 0) {
 		fprintf(stderr, "Warning: Invalid movement sequence: %s\n", regex_str);
-		free(movement_compiled);
-		movement_compiled = NULL;
-	} else {
-		regcomp(movement_compiled, regex_str,
-		REG_EXTENDED | REG_NOSUB);
 	}
 	free(regex_str);
 
@@ -303,79 +303,6 @@ struct gesture * gesture_locate(char * captured_sequence, char * window_class,
 
 
 
-/*
- * Get the title of a given window at out_window_title.
- *
- * PRIVATE
- */
-Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
-	int status;
-	XTextProperty text_prop;
-	char **list;
-	int num;
-
-	status = XGetWMName(dpy, w, &text_prop);
-	if (!status || !text_prop.value || !text_prop.nitems) {
-		*out_window_title = "";
-	}
-	status = Xutf8TextPropertyToTextList(dpy, &text_prop, &list, &num);
-
-	if (status < Success || !num || !*list) {
-		*out_window_title = "";
-	} else {
-		*out_window_title = (char *) strdup(*list);
-	}
-	XFree(text_prop.value);
-	XFreeStringList(list);
-
-	return 1;
-}
-
-/*
- * Return a window_info struct for the focused window at a given Display.
- *
- * PRIVATE
- */
-void get_window_info(Display* dpy, Window win, char ** window_title, char ** window_class) {
-
-	int ret, val;
-
-	char *win_title;
-	ret = fetch_window_title(dpy, win, &win_title);
-
-	char *win_class = NULL;
-
-	XClassHint class_hints;
-
-	int result = XGetClassHint(dpy, win, &class_hints);
-
-	if (result) {
-
-		if (class_hints.res_class != NULL)
-			win_class = strdup(class_hints.res_class);
-
-		if (win_class == NULL) {
-			win_class = "";
-
-		}
-	}
-
-	XFree(class_hints.res_name);
-	XFree(class_hints.res_class);
-
-	if (win_class) {
-		* window_class = win_class;
-	} else {
-		* window_class = "";
-	}
-
-	if (win_title) {
-		* window_title = win_title;
-	} else {
-		* window_title = "";
-	}
-
-}
 
 void gesture_process_movement(struct captured_movements * captured) {
 
@@ -995,15 +922,19 @@ int gestures_init() {
 
 void gestures_run() {
 
-	struct captured_movements * captured = NULL;
+	struct captured_movements * captured;
 
 	while (!shut_down) {
+
+
+		captured = NULL;
 
 		captured = grabbing_capture_movements();
 
 		if (captured) {
 			// sends the both strings to process.
 			gesture_process_movement(captured);
+			free_captured_movements(captured);
 		}
 
 	}

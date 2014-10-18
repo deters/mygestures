@@ -264,6 +264,83 @@ void mouse_click(Display *display, int button) {
 	XTestFakeButtonEvent(display, button, False, CurrentTime);
 }
 
+
+/*
+ * Get the title of a given window at out_window_title.
+ *
+ * PRIVATE
+ */
+Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
+	int status;
+	XTextProperty text_prop;
+	char **list;
+	int num;
+
+	status = XGetWMName(dpy, w, &text_prop);
+	if (!status || !text_prop.value || !text_prop.nitems) {
+		*out_window_title = "";
+	}
+	status = Xutf8TextPropertyToTextList(dpy, &text_prop, &list, &num);
+
+	if (status < Success || !num || !*list) {
+		*out_window_title = "";
+	} else {
+		*out_window_title = (char *) strdup(*list);
+	}
+	XFree(text_prop.value);
+	XFreeStringList(list);
+
+	return 1;
+}
+
+/*
+ * Return a window_info struct for the focused window at a given Display.
+ *
+ * PRIVATE
+ */
+void get_window_info(Display* dpy, Window win, char ** window_title, char ** window_class) {
+
+	int ret, val;
+
+	char *win_title;
+	ret = fetch_window_title(dpy, win, &win_title);
+
+	char *win_class = NULL;
+
+	XClassHint class_hints;
+
+	int result = XGetClassHint(dpy, win, &class_hints);
+
+	if (result) {
+
+		if (class_hints.res_class != NULL)
+			win_class = strdup(class_hints.res_class);
+
+		if (win_class == NULL) {
+			win_class = "";
+
+		}
+	}
+
+	XFree(class_hints.res_name);
+	XFree(class_hints.res_class);
+
+	if (win_class) {
+		* window_class = win_class;
+	} else {
+		* window_class = "";
+	}
+
+	if (win_title) {
+		* window_title = win_title;
+	} else {
+		* window_title = "";
+	}
+
+}
+
+
+
 /**
  * Obtém o resultado dos dois algoritmos de captura de movimentos, e envia para serem processadas.
  */
@@ -293,8 +370,8 @@ struct captured_movements * end_movement(XButtonEvent *e) {
 
 		captured = malloc(sizeof(struct captured_movements));
 
-		captured->advanced_movements = accurate_stroke_sequence;
-		captured->basic_movements = fuzzy_stroke_sequence;
+		captured->advanced_movements = strdup(accurate_stroke_sequence);
+		captured->basic_movements = strdup(fuzzy_stroke_sequence);
 
 		char * window_title = "";
 		char * window_class = "";
@@ -625,4 +702,6 @@ void grabbing_finalize() {
 	XCloseDisplay(dpy);
 	return;
 }
+
+
 
