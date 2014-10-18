@@ -28,14 +28,9 @@
 #include <unistd.h>
 #include <X11/Xutil.h>
 
-enum
-{
-_NET_WM_STATE_REMOVE =0,
-_NET_WM_STATE_ADD = 1,
-_NET_WM_STATE_TOGGLE =2
+enum {
+	_NET_WM_STATE_REMOVE = 0, _NET_WM_STATE_ADD = 1, _NET_WM_STATE_TOGGLE = 2
 };
-
-
 
 /*
  * Iconify the focused window at given display.
@@ -48,7 +43,6 @@ void generic_iconify(Display *dpy, Window w) {
 
 	return;
 }
-
 
 /**
  * Kill focused window at the given Display.
@@ -93,19 +87,19 @@ void generic_lower(Display *dpy, Window w) {
  * PUBLIC
  */
 void generic_maximize(Display *dpy, Window w) {
-/*
-	int width = XDisplayWidth(dpy, DefaultScreen(dpy));
-	int heigth = XDisplayHeight(dpy, DefaultScreen(dpy));
+	/*
+	 int width = XDisplayWidth(dpy, DefaultScreen(dpy));
+	 int heigth = XDisplayHeight(dpy, DefaultScreen(dpy));
 
-	XMoveResizeWindow(dpy, w, 0, 0, width, heigth - 50);
+	 XMoveResizeWindow(dpy, w, 0, 0, width, heigth - 50);
 
-	return;
+	 return;
 
-*/
+	 */
 	XEvent xev;
-	Atom wm_state  =  XInternAtom(dpy, "_NET_WM_STATE", False);
-	Atom max_horz  =  XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-	Atom max_vert  =  XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_VERT", False);
+	Atom wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
+	Atom max_horz = XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+	Atom max_vert = XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_VERT", False);
 
 	memset(&xev, 0, sizeof(xev));
 	xev.type = ClientMessage;
@@ -116,14 +110,68 @@ void generic_maximize(Display *dpy, Window w) {
 	xev.xclient.data.l[1] = max_horz;
 	xev.xclient.data.l[2] = max_vert;
 
-	XSendEvent(dpy, DefaultRootWindow(dpy), False, SubstructureNotifyMask, &xev);
+	XSendEvent(dpy, DefaultRootWindow(dpy), False, SubstructureNotifyMask,
+			&xev);
 
-	fprintf(stderr,"maximizou\n");
+	fprintf(stderr, "maximizou\n");
 
 	return;
 
 }
 
+/* alloc a key_press struct ???? */
+struct key_press * alloc_key_press(void) {
+	struct key_press *ans = malloc(sizeof(struct key_press));
+	bzero(ans, sizeof(struct key_press));
+	return ans;
+}
+
+/**
+ * Creates a Keysym from a char sequence
+ *
+ * PRIVATE
+ */
+struct key_press *string_to_keypress(char *string) {
+
+	// strsep consumes string during parsing... need to be a copy
+	char * copy = strdup(string);
+
+	struct key_press * ans = NULL;
+	struct key_press * pointer = NULL;
+
+	KeySym k;
+	char *token = NULL;
+
+	token = strsep(&copy, "+\n ");
+
+	while (token != NULL) {
+
+		k = XStringToKeysym(token);
+
+		if (k == NoSymbol) {
+			fprintf(stderr, "error converting %s to keysym\n", token);
+			exit(-1);
+		}
+
+		if (!pointer) {
+			pointer = alloc_key_press();
+			pointer->original_str = string;
+			ans = pointer;
+		} else {
+			pointer->next = alloc_key_press();
+			pointer = pointer->next;
+		}
+
+		pointer->key = (void *) k;
+
+		token = strsep(&copy, "+\n ");
+	}
+
+	free(copy);
+
+	return ans;
+
+}
 
 /**
  * Fake key event
@@ -144,23 +192,19 @@ void generic_root_send(Display *dpy, void *data) {
 	first_key = (struct key_press *) data;
 
 	if (first_key == NULL) {
-		fprintf(stderr, " internal error in %s, key is null\n", __func__);
+		fprintf(stderr, " internal error in %s, key sequence is null\n",
+				__func__);
 		return;
 	}
 
-
-
-	for (tmp = first_key; tmp != NULL; tmp = tmp->next){
-		press_key(dpy, (KeySym)tmp->key, True);
+	for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
+		press_key(dpy, (KeySym) tmp->key, True);
 	}
 
-
-	for (tmp = first_key; tmp != NULL; tmp = tmp->next){
-		press_key(dpy, (KeySym)tmp->key, False);
+	for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
+		press_key(dpy, (KeySym) tmp->key, False);
 	}
-
 
 	return;
 }
-
 

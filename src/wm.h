@@ -54,7 +54,7 @@ void generic_lower(Display *dpy, Window w);
 void generic_maximize(Display *dpy, Window w);
 void generic_root_send(Display *dpy, void *data);
 
-
+struct key_press *string_to_keypress(char *str_ptr);
 void mouse_click(Display *display, int button);
 
 

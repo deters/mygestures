@@ -53,7 +53,7 @@ void sigchld(int a) {
 	return;
 }
 
-void daemonize() {
+int daemonize() {
 	int i;
 
 	i = fork();
@@ -61,7 +61,8 @@ void daemonize() {
 		exit(0);
 
 	i = chdir("/");
-	return;
+
+	return i;
 }
 
 void handle_args(int argc, char * const *argv) {

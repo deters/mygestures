@@ -38,7 +38,7 @@
 
 #include "grabbing.h"
 
-char * conf_file = NULL;
+//char * filename = NULL;
 
 struct movement** movement_list;
 int movement_count;
@@ -46,8 +46,33 @@ int movement_count;
 struct context** context_list;
 int context_count;
 
+char * _filename;
+
 /* close xgestures */
 int shut_down = 0;
+
+/* alloc a gesture struct */
+struct gesture *alloc_gesture(char * gesture_name,
+		struct movement *gesture_movement, struct action **gesture_actions,
+		int actions_count) {
+	struct gesture *ans = malloc(sizeof(struct gesture));
+	bzero(ans, sizeof(struct gesture));
+
+	ans->name = gesture_name;
+	ans->movement = gesture_movement;
+	ans->actions = gesture_actions;
+	ans->actions_count = actions_count;
+	return ans;
+}
+
+//todo gerenciamento de memória
+/* release a gesture struct */
+void free_gesture(struct gesture *free_me) {
+	free(free_me->actions);
+	free(free_me);
+
+	return;
+}
 
 /* alloc a window struct */
 struct context *alloc_context(char * context_name, char *window_title,
@@ -81,6 +106,7 @@ struct context *alloc_context(char * context_name, char *window_title,
 		if (regcomp(class_compiled, window_class,
 		REG_EXTENDED | REG_NOSUB)) {
 			fprintf(stderr, "Error compiling regexp: %s\n", window_class);
+			free(class_compiled);
 			class_compiled = NULL;
 		}
 	}
@@ -91,8 +117,11 @@ struct context *alloc_context(char * context_name, char *window_title,
 
 /* release a window struct */
 void free_context(struct context *free_me) {
+	free(free_me->name);
 	free(free_me->title);
 	free(free_me->class);
+	free(free_me->class_compiled);
+	free_gesture(*free_me->gestures);
 	free(free_me);
 	return;
 }
@@ -139,79 +168,6 @@ void free_movement(struct movement *free_me) {
 	free(free_me->expression);
 	//free(free_me->movement_compiled);
 	free(free_me);
-	return;
-}
-
-/* alloc a gesture struct */
-struct gesture *alloc_gesture(char * gesture_name,
-		struct movement *gesture_movement, struct action **gesture_actions,
-		int actions_count) {
-	struct gesture *ans = malloc(sizeof(struct gesture));
-	bzero(ans, sizeof(struct gesture));
-
-	ans->name = gesture_name;
-	ans->movement = gesture_movement;
-	ans->actions = gesture_actions;
-	ans->actions_count = actions_count;
-	return ans;
-}
-
-/* alloc a key_press struct ???? */
-struct key_press * alloc_key_press(void) {
-	struct key_press *ans = malloc(sizeof(struct key_press));
-	bzero(ans, sizeof(struct key_press));
-	return ans;
-}
-
-/**
- * Creates a Keysym from a char sequence
- *
- * PRIVATE
- */
-struct key_press *string_to_keypress(char *str_ptr) {
-
-	char * copy = strdup(str_ptr);
-
-	struct key_press base;
-	struct key_press *key;
-	KeySym k;
-	char *str = copy;
-	char *token = str;
-	char *str_dup;
-
-	if (str) {
-
-		key = &base;
-		token = strsep(&copy, "+\n ");
-		while (token != NULL) {
-			/* printf("found : %s\n", token); */
-			k = XStringToKeysym(token);
-			if (k == NoSymbol) {
-				fprintf(stderr, "error converting %s to keysym\n", token);
-				exit(-1);
-			}
-			key->next = alloc_key_press();
-			key = key->next;
-			key->key = (void *) k;
-			token = strsep(&copy, "+\n ");
-		}
-
-		base.next->original_str = str_ptr;
-
-		free(copy);
-		return base.next;
-	} else {
-		free(copy);
-		return NULL;
-	}
-}
-
-//todo gerenciamento de memória
-/* release a gesture struct */
-void free_gesture(struct gesture *free_me) {
-	free(free_me->actions);
-	free(free_me);
-
 	return;
 }
 
@@ -349,8 +305,6 @@ void execute_action(struct action *action) {
 	return;
 }
 
-
-
 void gesture_process_movement(struct captured_movements * captured) {
 
 	printf("\n");
@@ -388,7 +342,6 @@ void gesture_process_movement(struct captured_movements * captured) {
 	}
 
 }
-
 
 /**
  * Removes the line break from a string
@@ -429,7 +382,7 @@ static void recursive_mkdir(char *path, mode_t mode) {
 /**
  * Copy a file
  */
-int new_file_from_template(char *tofile, char *fromfile) {
+int file_create_from_template(char *tofile, char *fromfile) {
 
 	recursive_mkdir(tofile, S_IRWXU | S_IRGRP);
 
@@ -479,7 +432,7 @@ char* readFileBytes(const char *name) {
 	long len = ftell(fl);
 	char *ret = malloc(len);
 	fseek(fl, 0, SEEK_SET);
-	int x = fread(ret, 1, len, fl);
+	fread(ret, 1, len, fl);
 	fclose(fl);
 	return ret;
 }
@@ -841,69 +794,87 @@ int gestures_load_from_file(char *filename) {
 
 }
 
-void gestures_set_config_file(char * config_file) {
-	if (conf_file) {
-		free(conf_file);
+char * gestures_get_filename() {
+
+	if (_filename) {
+		return strdup(_filename);
 	}
-	conf_file = strdup(config_file);
-}
 
-char * gestures_get_default_config() {
-
-	char * filename = malloc(sizeof(char) * 4096);
+	_filename = malloc(sizeof(char) * 4096);
 
 	char * xdg;
 
 	xdg = getenv("XDG_CONFIG_HOME");
 
 	if (xdg) {
-		sprintf(filename, "%s/mygestures/mygestures.xml", xdg);
+		sprintf(_filename, "%s/mygestures/mygestures.xml", xdg);
 	} else {
 		char * home = getenv("HOME");
-		sprintf(filename, "%s/.config/mygestures/mygestures.xml", home);
+		sprintf(_filename, "%s/.config/mygestures/mygestures.xml", home);
 	}
 
-	return filename;
+	free(xdg);
+	return strdup(_filename);
+}
+
+char * gestures_get_template_filename() {
+	char * template_file = malloc(sizeof(char) * 4096);
+	sprintf(template_file, "%s/mygestures.xml", SYSCONFIR);
+	return template_file;
 }
 
 int gestures_load() {
 
-	if (conf_file == NULL) {
-		conf_file = gestures_get_default_config();
-	}
+	char * filename = gestures_get_filename();
 
-	FILE *conf = NULL;
-	int err = 0;
+	fprintf(stdout, "Loading configuration from %s\n", filename);
 
-	conf = fopen(conf_file, "r");
+	int err = gestures_load_from_file(filename);
 
-	if (conf) {
-		fclose(conf);
-	} else {
+	if (err) {
 
-		char * template_file = malloc(sizeof(char *) * 4096);
-		sprintf(template_file, "%s/mygestures.xml", SYSCONFIR);
+		FILE *f = NULL;
+		f = fopen(filename, "r");
 
-		err = new_file_from_template(conf_file, template_file);
-
-		if (err) {
-			fprintf(stderr,
-					"Error trying to create config file `%s' from template `%s'.\n",
-					conf_file, template_file);
+		if (f) {
+			fclose(f);
 		} else {
-			fprintf(stderr, "Created config file `%s' from template `%s'.\n",
-					conf_file, template_file);
+
+			char * template_filename = gestures_get_template_filename();
+
+			err = file_create_from_template(filename, template_filename);
+
+			if (err) {
+				fprintf(stderr,
+						"Error trying to create config file `%s' from template `%s'.\n",
+						filename, template_filename);
+			} else {
+				fprintf(stderr,
+						"Created config file `%s' from template `%s'.\n",
+						filename, template_filename);
+			}
+
+			err = gestures_load_from_file(filename);
+
+			free(template_filename);
+
 		}
 
-		free(template_file);
-
 	}
 
-	fprintf(stdout, "Loading configuration from %s\n", conf_file);
-
-	err = gestures_load_from_file(conf_file);
+	free(filename);
 
 	return err;
+
+}
+
+// --------------------------------------------------------------------------------------------
+//                                        PUBLIC
+// --------------------------------------------------------------------------------------------
+
+void gestures_set_config_file(char * config_file) {
+
+	_filename = config_file;
 
 }
 
@@ -912,11 +883,16 @@ int gestures_init() {
 	int err = gestures_load();
 
 	if (err) {
-		fprintf(stderr, "Error parsing configuration file.\n");
+		fprintf(stderr, "Error loading configuration file.\n");
 		return err;
 	}
 
 	err = grabbing_init();
+
+	if (err) {
+		fprintf(stderr, "Error parsing configuration file.\n");
+		return err;
+	}
 
 	return err;
 
@@ -924,7 +900,7 @@ int gestures_init() {
 
 void gestures_run() {
 
-	struct captured_movements  *captured  = NULL;
+	struct captured_movements *captured = NULL;
 
 	while (!shut_down) {
 
