@@ -226,11 +226,15 @@ int ungrab_pointer(Display *dpy) {
  * PRIVATE
  */
 Window get_parent_window(Display *dpy, Window w) {
-	Window root_return, parent_return, *child_return;
+	Window root_return, parent_return, *child_return = NULL;
 	unsigned int nchildren_return;
 	int ret;
 	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return,
 			&nchildren_return);
+
+	if (ret){
+		XFree(child_return);
+	}
 
 	return parent_return;
 }
@@ -243,8 +247,9 @@ Window get_parent_window(Display *dpy, Window w) {
 Window get_focused_window(Display *dpy) {
 
 	Window win = 0;
-	int ret, val;
-	ret = XGetInputFocus(dpy, &win, &val);
+	int val = 0;
+
+	XGetInputFocus(dpy, &win, &val);
 
 	if (val == RevertToParent) {
 		win = get_parent_window(dpy, win);
@@ -301,10 +306,10 @@ Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
  */
 void get_window_info(Display* dpy, Window win, char ** window_title, char ** window_class) {
 
-	int ret, val;
+	int val;
 
 	char *win_title;
-	ret = fetch_window_title(dpy, win, &win_title);
+	fetch_window_title(dpy, win, &win_title);
 
 	char *win_class = NULL;
 
