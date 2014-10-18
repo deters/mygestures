@@ -120,19 +120,11 @@ int main(int argc, char * const * argv) {
 		return err;
 	}
 
-	err = grabbing_init();
-
-	if (err) {
-		return err;
-	}
-
 	signal(SIGHUP, sighup);
 	signal(SIGCHLD, sigchld);
 
-	grabbing_event_loop();
+	gestures_run();
 
-	grabbing_finalize();
-
-	return err;
+	return 0;
 
 }

@@ -446,7 +446,6 @@ void gesture_process_movement(Display * dpy, char ** sequences,
 		char * sequence = sequences[i];
 
 		gest = gesture_locate(sequence, focused_window);
-		free_window_info(focused_window);
 
 		if (gest) {
 			printf(
@@ -461,14 +460,17 @@ void gesture_process_movement(Display * dpy, char ** sequences,
 				execute_action(dpy, a, get_focused_window(dpy));
 			}
 
+			free_window_info(focused_window);
 			free(sequences);
 			return;
 		} else {
 			printf("Captured sequence %s --> not found\n", sequence);
-			free(sequences);
-			return;
 		}
+
 	}
+
+	free(sequences);
+	free_window_info(focused_window);
 
 }
 
@@ -1039,6 +1041,19 @@ int gestures_init() {
 	/* choose a wm helper */
 	init_wm_helper();
 
+	err = grabbing_init();
+
+	if (err) {
+		return err;
+	}
+
 	return 0;
 }
 
+void gestures_run() {
+
+	grabbing_event_loop();
+
+	grabbing_finalize();
+
+}
