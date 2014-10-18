@@ -1,6 +1,5 @@
 /*
   Copyright 2005 Nir Tzachar
-  Copyright 2013, 2014 Lucas Augusto Deters
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,22 +15,61 @@ GNU General Public License for more details.  */
 #define __WM_H__
 #include <X11/Xlib.h>
 
-struct wm_helper {
-  void (*kill)(XButtonEvent *ev);
-  void (*iconify)(XButtonEvent *ev);
-  void (*raise)(XButtonEvent *ev);
-  void (*lower)(XButtonEvent *ev);
-  void (*maximize)(XButtonEvent *ev);
+
+/* Actions */
+enum {
+	ACTION_ERROR,
+	ACTION_EXIT_GEST,
+	ACTION_EXECUTE,
+	ACTION_ICONIFY,
+	ACTION_KILL,
+	ACTION_RECONF,
+	ACTION_RAISE,
+	ACTION_LOWER,
+	ACTION_MAXIMIZE,
+	ACTION_ROOT_SEND,
+	ACTION_ABORT,
+	ACTION_LAST
+};
+
+struct action {
+	int type;
+	struct key_press *data;
+	char *original_str;
+};
+
+struct key_press {
+	KeySym key;
+	struct key_press * next;
+	char *original_str;
 };
 
 
-extern struct wm_helper generic_wm_helper;
-extern struct wm_helper *wm_helper;
 
-void generic_iconify(XButtonEvent *ev);
-void generic_kill(XButtonEvent *ev);
-void generic_raise(XButtonEvent *ev);
-void generic_lower(XButtonEvent *ev);
-void generic_maximize(XButtonEvent *ev);
+
+struct action_helper {
+  void (*kill)(Display *dpy, Window w);
+  void (*iconify)(Display *dpy, Window w);
+  void (*raise)(Display *dpy, Window w);
+  void (*lower)(Display *dpy, Window w);
+  void (*maximize)(Display *dpy, Window w);
+  void (*root_send)(Display *dpy, struct key_press *data);
+};
+
+
+extern struct action_helper generic_action_helper;
+extern struct action_helper *action_helper;
+
+void generic_iconify(Display *dpy, Window w);
+void generic_kill(Display *dpy, Window w);
+void generic_raise(Display *dpy, Window w);
+void generic_lower(Display *dpy, Window w);
+void generic_maximize(Display *dpy, Window w);
+void generic_root_send(Display *dpy, struct key_press *data);
+
+
+void execute_action(Display *dpy, struct action *action, Window focused_window);
+void mouse_click(Display *display, int button);
+
 
 #endif
