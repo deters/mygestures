@@ -34,10 +34,16 @@ enum {
 
 struct action {
 	int type;
-	struct key_press *data;
+	void *data;
 	char *original_str;
 };
 
+
+struct key_press {
+	void * key;
+	struct key_press * next;
+	char *original_str;
+};
 
 
 
@@ -46,7 +52,7 @@ void generic_kill(Display *dpy, Window w);
 void generic_raise(Display *dpy, Window w);
 void generic_lower(Display *dpy, Window w);
 void generic_maximize(Display *dpy, Window w);
-void generic_root_send(Display *dpy, struct key_press *data);
+void generic_root_send(Display *dpy, void *data);
 
 
 void mouse_click(Display *display, int button);

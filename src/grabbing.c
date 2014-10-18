@@ -33,6 +33,7 @@
 #include <math.h>
 #include "drawing-brush.h"
 #include "grabbing.h"
+#include "wm.h"
 #include "gestures.h"
 #include "drawing-brush-image.h"
 
@@ -260,7 +261,7 @@ Window get_focused_window(Display *dpy) {
  */
 void mouse_click(Display *display, int button) {
 	XTestFakeButtonEvent(display, button, True, CurrentTime);
-	sleep(0.001);
+	usleep(1);
 	XTestFakeButtonEvent(display, button, False, CurrentTime);
 }
 
@@ -689,7 +690,7 @@ void grabbing_maximize() {
 	generic_maximize(dpy, get_focused_window(dpy));
 }
 
-void grabbing_root_send(struct key_press *data) {
+void grabbing_root_send(void *data) {
 	generic_root_send(dpy, data);
 }
 

@@ -26,4 +26,4 @@ void grabbing_kill();
 void grabbing_raise();
 void grabbing_lower();
 void grabbing_maximize();
-void grabbing_root_send(struct key_press *data);
+void grabbing_root_send(void * data);

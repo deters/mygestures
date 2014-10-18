@@ -75,24 +75,16 @@ struct captured_movements {
 };
 
 
-struct key_press {
-	void * key;
-	struct key_press * next;
-	char *original_str;
-};
-
 
 struct gesture_engine {
 	char * config_file;
 };
 
 int gestures_init();
-
-void execute_action(struct action *action);
+void gestures_run();
 
 void gestures_set_config_file(char * config_file);
 
-void gesture_process_movement(
-		struct captured_movements * captured);
+
 
 #endif

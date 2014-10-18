@@ -137,7 +137,7 @@ void press_key(Display *dpy, KeySym key, Bool is_press) {
 /**
  * Fake sequence key events
  */
-void generic_root_send(Display *dpy, struct key_press *data) {
+void generic_root_send(Display *dpy, void *data) {
 	struct key_press *first_key;
 	struct key_press *tmp;
 
@@ -151,12 +151,12 @@ void generic_root_send(Display *dpy, struct key_press *data) {
 
 
 	for (tmp = first_key; tmp != NULL; tmp = tmp->next){
-		press_key(dpy, tmp->key, True);
+		press_key(dpy, (KeySym)tmp->key, True);
 	}
 
 
 	for (tmp = first_key; tmp != NULL; tmp = tmp->next){
-		press_key(dpy, tmp->key, False);
+		press_key(dpy, (KeySym)tmp->key, False);
 	}
 
 
