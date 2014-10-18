@@ -1,79 +1,176 @@
 /*
-  Copyright 2005 Nir Tzachar
-  Copyright 2008, 2010, 2013, 2014 Lucas Augusto Deters
+ Copyright 2005 Nir Tzachar
 
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 2, or (at your option)
+ any later version.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.  */
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.  */
 
 #if HAVE_CONFIG_H
 #include <config.h>
 #endif
 
 #include <X11/Xlib.h>
+#include <X11/extensions/XTest.h>
 #include <stdio.h>
 #include "wm.h"
-#include "helpers.h"
+#include "gestures.h"
 
+// mouse click
 
-void generic_iconify(XButtonEvent *ev)
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <X11/Xutil.h>
+
+enum
 {
-        Window w = get_window(ev, 0);
-        if (w != None)
-                XIconifyWindow(ev->display, w, 0);
-                
-        return;
-}
-
-void generic_kill(XButtonEvent *ev)
-{
-        Window w = get_window(ev, 0);
-
-        /* dont kill root window */
-        if (w == RootWindow(ev->display, DefaultScreen(ev->display)))
-                return;
-
-        XSync (ev->display, 0);	
-        XKillClient(ev->display, w);
-        XSync (ev->display, 0);	
-        return;
-}
-
-void generic_raise(XButtonEvent *ev)
-{
-        Window w = get_window(ev, 0);
-        XRaiseWindow(ev->display, w);
-        return;
-}
-
-void generic_lower(XButtonEvent *ev)
-{
-        Window w = get_window(ev, 0);
-        XLowerWindow(ev->display, w);
-        return;
-}
-
-void generic_maximize(XButtonEvent *ev)
-{
-        Window w = get_window(ev, 0);
-        int width = XDisplayWidth(ev->display, DefaultScreen(ev->display));
-        int heigth = XDisplayHeight(ev->display, DefaultScreen(ev->display));
-        
-        XMoveResizeWindow(ev->display, w, 0, 0,
-                          width-50, heigth-50);
-        
-        return;
-}
-struct wm_helper generic_wm_helper = {
-        .iconify = generic_iconify,
-        .kill = generic_kill,
-        .raise = generic_raise,
-        .lower = generic_lower,
-        .maximize = generic_maximize,
+_NET_WM_STATE_REMOVE =0,
+_NET_WM_STATE_ADD = 1,
+_NET_WM_STATE_TOGGLE =2
 };
+
+
+
+/*
+ * Iconify the focused window at given display.
+ *
+ * PUBLIC
+ */
+void generic_iconify(Display *dpy, Window w) {
+	if (w != None)
+		XIconifyWindow(dpy, w, 0);
+
+	return;
+}
+
+
+/**
+ * Kill focused window at the given Display.
+ *
+ * PUBLIC
+ */
+void generic_kill(Display *dpy, Window w) {
+
+	/* dont kill root window */
+	if (w == RootWindow(dpy, DefaultScreen(dpy)))
+		return;
+
+	XSync(dpy, 0);
+	XKillClient(dpy, w);
+	XSync(dpy, 0);
+	return;
+}
+
+/**
+ * Raise the focused window at the given Display.
+ *
+ * PUBLIC
+ */
+void generic_raise(Display *dpy, Window w) {
+	XRaiseWindow(dpy, w);
+	return;
+}
+
+/**
+ * Lower the focused window at the given Display.
+ *
+ * PUBLIC
+ */
+void generic_lower(Display *dpy, Window w) {
+	XLowerWindow(dpy, w);
+	return;
+}
+
+/**
+ * Maximize the focused window at the given Display.
+ *
+ * PUBLIC
+ */
+void generic_maximize(Display *dpy, Window w) {
+/*
+	int width = XDisplayWidth(dpy, DefaultScreen(dpy));
+	int heigth = XDisplayHeight(dpy, DefaultScreen(dpy));
+
+	XMoveResizeWindow(dpy, w, 0, 0, width, heigth - 50);
+
+	return;
+
+*/
+	XEvent xev;
+	Atom wm_state  =  XInternAtom(dpy, "_NET_WM_STATE", False);
+	Atom max_horz  =  XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+	Atom max_vert  =  XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_VERT", False);
+
+	memset(&xev, 0, sizeof(xev));
+	xev.type = ClientMessage;
+	xev.xclient.window = w;
+	xev.xclient.message_type = wm_state;
+	xev.xclient.format = 32;
+	xev.xclient.data.l[0] = _NET_WM_STATE_ADD;
+	xev.xclient.data.l[1] = max_horz;
+	xev.xclient.data.l[2] = max_vert;
+
+	XSendEvent(dpy, DefaultRootWindow(dpy), False, SubstructureNotifyMask, &xev);
+
+	fprintf(stderr,"maximizou\n");
+
+	return;
+
+}
+
+
+/**
+ * Fake key event
+ */
+void press_key(Display *dpy, KeySym key, Bool is_press) {
+
+	XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, key), is_press, CurrentTime);
+	return;
+}
+
+/**
+ * Fake sequence key events
+ */
+void generic_root_send(Display *dpy, struct key_press *data) {
+	struct key_press *first_key;
+	struct key_press *tmp;
+
+	first_key = (struct key_press *) data;
+
+	if (first_key == NULL) {
+		fprintf(stderr, " internal error in %s, key is null\n", __func__);
+		return;
+	}
+
+
+
+	for (tmp = first_key; tmp != NULL; tmp = tmp->next){
+		press_key(dpy, tmp->key, True);
+	}
+
+
+	for (tmp = first_key; tmp != NULL; tmp = tmp->next){
+		press_key(dpy, tmp->key, False);
+	}
+
+
+	return;
+}
+
+
+
+
+
+struct action_helper generic_action_helper = { .iconify = generic_iconify, .kill =
+		generic_kill, .raise = generic_raise, .lower = generic_lower,
+		.maximize = generic_maximize, .root_send = generic_root_send, };
+
+
+
+
