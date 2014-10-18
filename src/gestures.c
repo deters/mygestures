@@ -95,6 +95,14 @@ struct context *alloc_context(char * context_name, char *window_title,
 	return ans;
 }
 
+/* release a window_info struct */
+void free_window_info(struct window_info *free_me) {
+	free(free_me->title);
+	free(free_me->class);
+	free(free_me);
+	return;
+}
+
 /* release a window struct */
 void free_context(struct context *free_me) {
 	free(free_me->title);
@@ -182,26 +190,31 @@ struct key_press *string_to_keypress(char *str_ptr) {
 	char *token = str;
 	char *str_dup;
 
-	if (str == NULL)
-		return NULL;
+	if (str) {
 
-	key = &base;
-	token = strsep(&copy, "+\n ");
-	while (token != NULL) {
-		/* printf("found : %s\n", token); */
-		k = XStringToKeysym(token);
-		if (k == NoSymbol) {
-			fprintf(stderr, "error converting %s to keysym\n", token);
-			exit(-1);
-		}
-		key->next = alloc_key_press();
-		key = key->next;
-		key->key = k;
+		key = &base;
 		token = strsep(&copy, "+\n ");
-	}
+		while (token != NULL) {
+			/* printf("found : %s\n", token); */
+			k = XStringToKeysym(token);
+			if (k == NoSymbol) {
+				fprintf(stderr, "error converting %s to keysym\n", token);
+				exit(-1);
+			}
+			key->next = alloc_key_press();
+			key = key->next;
+			key->key = k;
+			token = strsep(&copy, "+\n ");
+		}
 
-	base.next->original_str = str_ptr;
-	return base.next;
+		base.next->original_str = str_ptr;
+
+		free(copy);
+		return base.next;
+	} else {
+		free(copy);
+		return NULL;
+	}
 }
 
 //todo gerenciamento de memória
@@ -365,11 +378,10 @@ struct window_info * get_window_info(Display* dpy, Window win) {
 
 	int result = XGetClassHint(dpy, win, &class_hints);
 
-
 	if (result) {
 
 		if (class_hints.res_class != NULL)
-			win_class = class_hints.res_class;
+			win_class = strdup(class_hints.res_class);
 
 		if (win_class == NULL) {
 			win_class = "";
@@ -377,6 +389,8 @@ struct window_info * get_window_info(Display* dpy, Window win) {
 		}
 	}
 
+	XFree(class_hints.res_name);
+	XFree(class_hints.res_class);
 
 	if (win_class) {
 		ans->class = win_class;
@@ -432,6 +446,7 @@ void gesture_process_movement(Display * dpy, char ** sequences,
 		char * sequence = sequences[i];
 
 		gest = gesture_locate(sequence, focused_window);
+		free_window_info(focused_window);
 
 		if (gest) {
 			printf(
@@ -446,9 +461,12 @@ void gesture_process_movement(Display * dpy, char ** sequences,
 				execute_action(dpy, a, get_focused_window(dpy));
 			}
 
+			free(sequences);
 			return;
 		} else {
 			printf("Captured sequence %s --> not found\n", sequence);
+			free(sequences);
+			return;
 		}
 	}
 
@@ -617,40 +635,43 @@ struct action * parse_action(xmlNode *node) {
 	}
 
 	if (!action_name) {
+		free(action_name);
 		free(action_value);
 		fprintf(stderr, "Missing action name\n");
 		return NULL;
-	}
-
-	if (!action_value) {
-		action_value = "";
-	}
-
-	struct action * a = NULL;
-
-	int id = ACTION_ERROR;
-
-	if (strcasecmp(action_name, "iconify") == 0) {
-		id = ACTION_ICONIFY;
-	} else if (strcasecmp(action_name, "kill") == 0) {
-		id = ACTION_KILL;
-	} else if (strcasecmp(action_name, "lower") == 0) {
-		id = ACTION_LOWER;
-	} else if (strcasecmp(action_name, "raise") == 0) {
-		id = ACTION_RAISE;
-	} else if (strcasecmp(action_name, "maximize") == 0) {
-		id = ACTION_MAXIMIZE;
-	} else if (strcasecmp(action_name, "keypress") == 0) {
-		id = ACTION_ROOT_SEND;
-	} else if (strcasecmp(action_name, "exec") == 0) {
-		id = ACTION_EXECUTE;
 	} else {
-		fprintf(stderr, "unknown gesture: %s\n", action_name);
+
+		if (!action_value) {
+			action_value = "";
+		}
+
+		struct action * a = NULL;
+
+		int id = ACTION_ERROR;
+
+		if (strcasecmp(action_name, "iconify") == 0) {
+			id = ACTION_ICONIFY;
+		} else if (strcasecmp(action_name, "kill") == 0) {
+			id = ACTION_KILL;
+		} else if (strcasecmp(action_name, "lower") == 0) {
+			id = ACTION_LOWER;
+		} else if (strcasecmp(action_name, "raise") == 0) {
+			id = ACTION_RAISE;
+		} else if (strcasecmp(action_name, "maximize") == 0) {
+			id = ACTION_MAXIMIZE;
+		} else if (strcasecmp(action_name, "keypress") == 0) {
+			id = ACTION_ROOT_SEND;
+		} else if (strcasecmp(action_name, "exec") == 0) {
+			id = ACTION_EXECUTE;
+		} else {
+			fprintf(stderr, "unknown gesture: %s\n", action_name);
+		}
+
+		a = alloc_action(id, action_value);
+
+		free(action_name);
+		return a;
 	}
-
-	a = alloc_action(id, action_value);
-
-	return a;
 
 }
 
