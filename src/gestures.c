@@ -33,7 +33,7 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <libgen.h>
-//#include <sys/stat.h>
+#include <sys/stat.h>
 
 #include "grabbing.h"
 
