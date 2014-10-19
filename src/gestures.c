@@ -33,7 +33,7 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <libgen.h>
-#include <sys/stat.h>
+//#include <sys/stat.h>
 
 #include "grabbing.h"
 
@@ -341,23 +341,6 @@ void gesture_process_movement(struct captured_movements * captured) {
 		}
 
 	}
-
-}
-
-/**
- * Removes the line break from a string
- */
-char *remove_new_line(char *str) {
-	int len = 0;
-	int i;
-	if (str == NULL)
-		return NULL;
-	len = strlen(str);
-
-	for (i = 0; i < len; i++)
-		if (str[i] == '\n')
-			str[i] = '\0';
-	return str;
 
 }
 

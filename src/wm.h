@@ -16,20 +16,11 @@ GNU General Public License for more details.  */
 #include <X11/Xlib.h>
 
 
-
-
-
-
-
 void generic_iconify(Display *dpy, Window w);
 void generic_kill(Display *dpy, Window w);
 void generic_raise(Display *dpy, Window w);
 void generic_lower(Display *dpy, Window w);
 void generic_maximize(Display *dpy, Window w);
 void generic_root_send(Display *dpy, void *data);
-
-struct key_press * string_to_keypress(char *str_ptr);
-void mouse_click(Display *display, int button);
-
 
 #endif

@@ -14,8 +14,7 @@
 
 #ifndef __GESTURES_h
 #define __GESTURES_h
-#include <X11/Xlib.h>
-#include <X11/keysym.h>
+
 #include <regex.h>
 
 #define GEST_SEQUENCE_MAX 64

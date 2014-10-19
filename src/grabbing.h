@@ -21,9 +21,13 @@ void grabbing_set_brush_color(char * color);
 struct captured_movements * grabbing_capture_movements();
 void grabbing_finalize();
 
+struct key_press * string_to_keypress(char *str_ptr);
+void mouse_click(Display *display, int button);
+
 void grabbing_iconify();
 void grabbing_kill();
 void grabbing_raise();
 void grabbing_lower();
 void grabbing_maximize();
 void grabbing_root_send(void * data);
+

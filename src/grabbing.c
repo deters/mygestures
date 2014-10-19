@@ -347,6 +347,98 @@ void get_window_info(Display* dpy, Window win, char ** window_title, char ** win
 
 
 
+/* alloc a key_press struct ???? */
+struct key_press * alloc_key_press(void) {
+	struct key_press *ans = malloc(sizeof(struct key_press));
+	bzero(ans, sizeof(struct key_press));
+	return ans;
+}
+
+/**
+ * Creates a Keysym from a char sequence
+ *
+ * PRIVATE
+ */
+struct key_press *string_to_keypress(char *string) {
+
+	// strsep consumes string during parsing... need to be a copy
+	char * copy = strdup(string);
+
+	struct key_press * ans = NULL;
+	struct key_press * pointer = NULL;
+
+	KeySym k;
+	char *token = NULL;
+
+	token = strsep(&copy, "+\n ");
+
+	while (token != NULL) {
+
+		k = XStringToKeysym(token);
+
+		if (k == NoSymbol) {
+			fprintf(stderr, "error converting %s to keysym\n", token);
+			exit(-1);
+		}
+
+		if (!pointer) {
+			pointer = alloc_key_press();
+			pointer->original_str = string;
+			ans = pointer;
+		} else {
+			pointer->next = alloc_key_press();
+			pointer = pointer->next;
+		}
+
+		pointer->key = (void *) k;
+
+		token = strsep(&copy, "+\n ");
+	}
+
+	free(copy);
+
+	return ans;
+
+}
+
+/**
+ * Fake key event
+ */
+void press_key(Display *dpy, KeySym key, Bool is_press) {
+
+	XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, key), is_press, CurrentTime);
+	return;
+}
+
+/**
+ * Fake sequence key events
+ */
+void generic_root_send(Display *dpy, void *data) {
+	struct key_press *first_key;
+	struct key_press *tmp;
+
+	first_key = (struct key_press *) data;
+
+	if (first_key == NULL) {
+		fprintf(stderr, " internal error in %s, key sequence is null\n",
+				__func__);
+		return;
+	}
+
+	for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
+		press_key(dpy, (KeySym) tmp->key, True);
+	}
+
+	for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
+		press_key(dpy, (KeySym) tmp->key, False);
+	}
+
+	return;
+}
+
+
+
+
 /**
  * Obtém o resultado dos dois algoritmos de captura de movimentos, e envia para serem processadas.
  */
