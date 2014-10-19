@@ -34,10 +34,9 @@
 #include <libxml/tree.h>
 #include <libgen.h>
 #include <sys/stat.h>
+#include <assert.h>
 
 #include "grabbing.h"
-
-//char * filename = NULL;
 
 struct movement** movement_list;
 int movement_count;
@@ -54,6 +53,12 @@ int shut_down = 0;
 struct gesture *alloc_gesture(char * gesture_name,
 		struct movement *gesture_movement, struct action **gesture_actions,
 		int actions_count) {
+
+	assert(gesture_name);
+	assert(gesture_movement);
+	assert(gesture_actions);
+	assert(actions_count >= 0);
+
 	struct gesture *ans = malloc(sizeof(struct gesture));
 	bzero(ans, sizeof(struct gesture));
 
@@ -64,9 +69,11 @@ struct gesture *alloc_gesture(char * gesture_name,
 	return ans;
 }
 
-//todo gerenciamento de memória
 /* release a gesture struct */
 void free_gesture(struct gesture *free_me) {
+
+	assert(free_me);
+
 	free(free_me->actions);
 	free(free_me);
 
@@ -77,6 +84,12 @@ void free_gesture(struct gesture *free_me) {
 struct context *alloc_context(char * context_name, char *window_title,
 		char *window_class, struct gesture ** gestures, int gestures_count,
 		int abort) {
+	assert(context_name);
+	assert(window_title);
+	assert(window_class);
+	assert(gestures);
+	assert(gestures_count >= 0);
+
 	struct context *ans = malloc(sizeof(struct context));
 	bzero(ans, sizeof(struct context));
 
@@ -116,6 +129,9 @@ struct context *alloc_context(char * context_name, char *window_title,
 
 /* release a window struct */
 void free_context(struct context *free_me) {
+
+	assert(free_me);
+
 	free(free_me->name);
 	free(free_me->title);
 	free(free_me->class);
@@ -126,6 +142,9 @@ void free_context(struct context *free_me) {
 }
 
 void free_captured_movements(struct captured_movements *free_me) {
+
+	assert(free_me);
+
 	free(free_me->advanced_movements);
 	free(free_me->basic_movements);
 	free(free_me->window_class);
@@ -135,6 +154,10 @@ void free_captured_movements(struct captured_movements *free_me) {
 
 /* alloc a movement struct */
 struct movement *alloc_movement(char *movement_name, char *movement_expression) {
+
+	assert(movement_name);
+	assert(movement_expression);
+
 	struct movement *ans = malloc(sizeof(struct movement));
 	bzero(ans, sizeof(struct movement));
 
@@ -163,25 +186,29 @@ struct movement *alloc_movement(char *movement_name, char *movement_expression) 
 
 /* release a movement struct */
 void free_movement(struct movement *free_me) {
+
+	assert(free_me);
+
 	free(free_me->name);
 	free(free_me->expression);
-	//free(free_me->movement_compiled);
+	free(free_me->compiled);
 	free(free_me);
 	return;
 }
 
 /* alloc an action struct */
 struct action *alloc_action(int action_type, char * original_str) {
+
+	assert(action_type >= 0);
+
 	struct action * ans = malloc(sizeof(struct action));
+
 	bzero(ans, sizeof(struct action));
 
 	struct key_press * action_data = NULL;
 
 	if (action_type == ACTION_ROOT_SEND) {
-		// TODO: limpar no método free
-		action_data = string_to_keypress(
-				             original_str
-				             );
+		action_data = string_to_keypress(original_str);
 	}
 
 	ans->type = action_type;
@@ -193,18 +220,28 @@ struct action *alloc_action(int action_type, char * original_str) {
 
 /* release an action struct */
 void free_action(struct action *free_me) {
+
+	assert(free_me);
+
 	free(free_me);
 	return;
 }
 
 /* release a key_press struct */
 void free_key_press(struct key_press *free_me) {
+
+	assert(free_me);
+
 	free(free_me);
 	return;
 }
 
 struct gesture * gesture_locate(char * captured_sequence, char * window_class,
 		char * window_title) {
+
+	assert(captured_sequence);
+	assert(window_class);
+	assert(window_title);
 
 	struct gesture * matched_gesture = NULL;
 

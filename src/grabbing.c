@@ -477,8 +477,8 @@ struct captured_movements * end_movement(XButtonEvent *e) {
 		get_window_info(dpy, get_focused_window(dpy), &window_title,
 				&window_class);
 
-		captured->window_class =  window_title;
-		captured->window_title = window_class;
+		captured->window_class =  window_class;
+		captured->window_title = window_title;
 
 	}
 
