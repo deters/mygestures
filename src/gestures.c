@@ -27,7 +27,6 @@
 #include <strings.h>
 #include <string.h>
 #include "gestures.h"
-#include "wm.h"
 #include <regex.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -173,19 +172,21 @@ void free_movement(struct movement *free_me) {
 
 /* alloc an action struct */
 struct action *alloc_action(int action_type, char * original_str) {
-	struct action *ans = malloc(sizeof(struct action));
+	struct action * ans = malloc(sizeof(struct action));
 	bzero(ans, sizeof(struct action));
 
 	struct key_press * action_data = NULL;
 
 	if (action_type == ACTION_ROOT_SEND) {
 		// TODO: limpar no método free
-		action_data = string_to_keypress(original_str);
+		action_data = string_to_keypress(
+				             original_str
+				             );
 	}
 
 	ans->type = action_type;
 	ans->original_str = original_str;
-	ans->data = action_data;
+	ans->data = (void *) action_data;
 
 	return ans;
 }

@@ -80,6 +80,35 @@ struct gesture_engine {
 	char * config_file;
 };
 
+/* Actions */
+enum {
+	ACTION_ERROR,
+	ACTION_EXIT_GEST,
+	ACTION_EXECUTE,
+	ACTION_ICONIFY,
+	ACTION_KILL,
+	ACTION_RECONF,
+	ACTION_RAISE,
+	ACTION_LOWER,
+	ACTION_MAXIMIZE,
+	ACTION_ROOT_SEND,
+	ACTION_ABORT,
+	ACTION_LAST
+};
+
+struct action {
+	int type;
+	void *data;
+	char *original_str;
+};
+
+
+struct key_press {
+	void * key;
+	struct key_press * next;
+	char *original_str;
+};
+
 int gestures_init();
 void gestures_run();
 

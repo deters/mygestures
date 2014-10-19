@@ -16,34 +16,8 @@ GNU General Public License for more details.  */
 #include <X11/Xlib.h>
 
 
-/* Actions */
-enum {
-	ACTION_ERROR,
-	ACTION_EXIT_GEST,
-	ACTION_EXECUTE,
-	ACTION_ICONIFY,
-	ACTION_KILL,
-	ACTION_RECONF,
-	ACTION_RAISE,
-	ACTION_LOWER,
-	ACTION_MAXIMIZE,
-	ACTION_ROOT_SEND,
-	ACTION_ABORT,
-	ACTION_LAST
-};
-
-struct action {
-	int type;
-	void *data;
-	char *original_str;
-};
 
 
-struct key_press {
-	void * key;
-	struct key_press * next;
-	char *original_str;
-};
 
 
 
@@ -54,7 +28,7 @@ void generic_lower(Display *dpy, Window w);
 void generic_maximize(Display *dpy, Window w);
 void generic_root_send(Display *dpy, void *data);
 
-struct key_press *string_to_keypress(char *str_ptr);
+struct key_press * string_to_keypress(char *str_ptr);
 void mouse_click(Display *display, int button);
 
 
