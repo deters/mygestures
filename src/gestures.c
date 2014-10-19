@@ -197,7 +197,7 @@ void free_movement(struct movement *free_me) {
 }
 
 /* alloc an action struct */
-struct action *alloc_action(int action_type, char * original_str) {
+struct action *alloc_action(int action_type, char * action_value) {
 
 	assert(action_type >= 0);
 
@@ -208,11 +208,11 @@ struct action *alloc_action(int action_type, char * original_str) {
 	struct key_press * action_data = NULL;
 
 	if (action_type == ACTION_ROOT_SEND) {
-		action_data = string_to_keypress(original_str);
+		action_data = string_to_keypress(action_value);
 	}
 
 	ans->type = action_type;
-	ans->original_str = original_str;
+	ans->original_str = action_value;
 	ans->data = (void *) action_data;
 
 	return ans;
@@ -248,9 +248,6 @@ struct gesture * gesture_locate(char * captured_sequence, char * window_class,
 	int c = 0;
 
 	for (c = 0; c < context_count; ++c) {
-
-		if (matched_gesture)
-			break;
 
 		struct context * context = context_list[c];
 
@@ -303,43 +300,42 @@ struct gesture * gesture_locate(char * captured_sequence, char * window_class,
 void execute_action(struct action *action) {
 	int id;
 
-	// if there is an action
-	if (action != NULL) {
+	assert(action);
 
-		switch (action->type) {
-		case ACTION_EXECUTE:
-			id = fork();
-			if (id == 0) {
-				int i = system(action->original_str);
-				exit(i);
-			}
-			if (id < 0) {
-				fprintf(stderr, "Error forking.\n");
-			}
-
-			break;
-		case ACTION_ICONIFY:
-			grabbing_iconify();
-			break;
-		case ACTION_KILL:
-			grabbing_kill();
-			break;
-		case ACTION_RAISE:
-			grabbing_raise();
-			break;
-		case ACTION_LOWER:
-			grabbing_lower();
-			break;
-		case ACTION_MAXIMIZE:
-			grabbing_maximize();
-			break;
-		case ACTION_ROOT_SEND:
-			grabbing_root_send(action->data);
-			break;
-		default:
-			fprintf(stderr, "found an unknown gesture \n");
+	switch (action->type) {
+	case ACTION_EXECUTE:
+		id = fork();
+		if (id == 0) {
+			int i = system(action->original_str);
+			exit(i);
 		}
+		if (id < 0) {
+			fprintf(stderr, "Error forking.\n");
+		}
+
+		break;
+	case ACTION_ICONIFY:
+		grabbing_iconify();
+		break;
+	case ACTION_KILL:
+		grabbing_kill();
+		break;
+	case ACTION_RAISE:
+		grabbing_raise();
+		break;
+	case ACTION_LOWER:
+		grabbing_lower();
+		break;
+	case ACTION_MAXIMIZE:
+		grabbing_maximize();
+		break;
+	case ACTION_ROOT_SEND:
+		grabbing_root_send(action->data);
+		break;
+	default:
+		fprintf(stderr, "found an unknown gesture \n");
 	}
+
 	return;
 }
 
@@ -353,11 +349,17 @@ void gesture_process_movement(struct captured_movements * captured) {
 
 	char * sequence = captured->advanced_movements;
 
+	// Try to match complex gestures
+
 	gest = gesture_locate(sequence, captured->window_class,
 			captured->window_title);
 
 	if (!gest) {
+
 		printf("Captured sequence %s --> not found\n", sequence);
+
+		// Then try to match basic sequences.
+
 		sequence = captured->basic_movements;
 		gest = gesture_locate(sequence, captured->window_class,
 				captured->window_title);
@@ -382,6 +384,9 @@ void gesture_process_movement(struct captured_movements * captured) {
 }
 
 static void recursive_mkdir(char *path, mode_t mode) {
+
+	assert(path);
+
 	char *spath = strdup(path);
 	char *next_dir = dirname(spath);
 
@@ -405,6 +410,9 @@ static void recursive_mkdir(char *path, mode_t mode) {
  */
 int file_create_from_template(char *tofile, char *fromfile) {
 
+	assert(tofile);
+	assert(fromfile);
+
 	recursive_mkdir(tofile, S_IRWXU | S_IRGRP);
 
 	FILE *in, *out;
@@ -422,14 +430,14 @@ int file_create_from_template(char *tofile, char *fromfile) {
 	while (!feof(in)) {
 		ch = getc(in);
 		if (ferror(in)) {
-			printf("Read Error");
+			printf("Read Error\n");
 			clearerr(in);
 			break;
 		} else {
 			if (!feof(in))
 				putc(ch, out);
 			if (ferror(out)) {
-				fprintf(stderr, "Write Error");
+				fprintf(stderr, "Write Error\n");
 				clearerr(out);
 				break;
 			}
@@ -442,23 +450,9 @@ int file_create_from_template(char *tofile, char *fromfile) {
 
 }
 
-char* readFileBytes(const char *name) {
-	FILE *fl = fopen(name, "r");
-
-	if (fl == NULL) {
-		return NULL;
-	}
-
-	fseek(fl, 0, SEEK_END);
-	long len = ftell(fl);
-	char *ret = malloc(len);
-	fseek(fl, 0, SEEK_SET);
-	fread(ret, 1, len, fl);
-	fclose(fl);
-	return ret;
-}
-
 struct action * parse_action(xmlNode *node) {
+
+	assert(node);
 
 	char * action_name = NULL;
 	char * action_value = NULL;
@@ -480,18 +474,18 @@ struct action * parse_action(xmlNode *node) {
 		attribute = attribute->next;
 	}
 
+	struct action * a = NULL;
+
 	if (!action_name) {
-		free(action_name);
-		free(action_value);
 		fprintf(stderr, "Missing action name\n");
-		return NULL;
+
+		free(action_value);
+
 	} else {
 
 		if (!action_value) {
 			action_value = "";
 		}
-
-		struct action * a = NULL;
 
 		int id = ACTION_ERROR;
 
@@ -510,14 +504,16 @@ struct action * parse_action(xmlNode *node) {
 		} else if (strcasecmp(action_name, "exec") == 0) {
 			id = ACTION_EXECUTE;
 		} else {
-			fprintf(stderr, "unknown gesture: %s\n", action_name);
+			fprintf(stderr, "unknown action: %s\n", action_name);
 		}
 
 		a = alloc_action(id, action_value);
 
 		free(action_name);
-		return a;
+
 	}
+
+	return a;
 
 }
 
@@ -545,6 +541,9 @@ struct movement * movement_find(char * movement_name,
 
 struct gesture * parse_gesture(xmlNode *node,
 		struct movement ** known_movements, int known_movements_count) {
+
+	assert(node);
+	assert(known_movements);
 
 	char * gesture_name = NULL;
 	struct movement * gesture_trigger = NULL;
@@ -602,9 +601,9 @@ struct gesture * parse_gesture(xmlNode *node,
 	}
 
 	if (!actions_count) {
-		fprintf(stderr, "Missing actions associated to the gesture %s\n",
+		fprintf(stderr,
+				"Alert: No actions associated to the gesture %s. Ignoring.\n",
 				gesture_name);
-		/* ignoring */
 	}
 
 	struct gesture * gest = NULL;
@@ -618,6 +617,12 @@ struct gesture * parse_gesture(xmlNode *node,
 
 struct context * parse_context(xmlNode *node,
 		struct movement ** known_movements, int known_movements_count) {
+
+	assert(node);
+	assert(known_movements);
+	assert(known_movements_count >= 0);
+
+	// parse node attributes (context name, window_title, window_class)
 
 	char * context_name = NULL;
 	char * window_title = NULL;
@@ -640,13 +645,13 @@ struct context * parse_context(xmlNode *node,
 		attribute = attribute->next;
 	}
 
-	// TODO: criar o context e só depois ir adicionando os elementos.
-
 	if (!context_name) {
+
 		free(window_title);
 		free(window_class);
 		fprintf(stderr, "Missing context name\n");
 		return NULL;
+
 	}
 
 	if (!window_class) {
@@ -657,7 +662,7 @@ struct context * parse_context(xmlNode *node,
 		window_title = "";
 	}
 
-	/* now process the gestures */
+	// parse node items (context gestures)
 
 	xmlNode *cur_node = NULL;
 
@@ -728,6 +733,8 @@ struct movement * parse_movement(xmlNode *node) {
 
 int parse_root(xmlNode *node) {
 
+	assert(node);
+
 	xmlNode *cur_node = NULL;
 
 	struct movement ** new_movement_list = malloc(
@@ -793,6 +800,8 @@ int parse_root(xmlNode *node) {
  * Reads the conf file
  */
 int gestures_load_from_file(char *filename) {
+
+	assert(filename);
 
 	int result = 0;
 
