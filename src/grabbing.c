@@ -361,8 +361,7 @@ struct key_press * alloc_key_press(void) {
  */
 struct key_press *string_to_keypress(char *string) {
 
-	// strsep consumes string during parsing... need to be a copy
-	char * copy = strdup(string);
+	char ** string_ptr = &string;
 
 	struct key_press * ans = NULL;
 	struct key_press * pointer = NULL;
@@ -370,7 +369,7 @@ struct key_press *string_to_keypress(char *string) {
 	KeySym k;
 	char *token = NULL;
 
-	token = strsep(&copy, "+\n ");
+	token = strsep(string_ptr, "+\n ");
 
 	while (token != NULL) {
 
@@ -383,7 +382,6 @@ struct key_press *string_to_keypress(char *string) {
 
 		if (!pointer) {
 			pointer = alloc_key_press();
-			pointer->original_str = string;
 			ans = pointer;
 		} else {
 			pointer->next = alloc_key_press();
@@ -392,10 +390,8 @@ struct key_press *string_to_keypress(char *string) {
 
 		pointer->key = (void *) k;
 
-		token = strsep(&copy, "+\n ");
+		token = strsep(string_ptr, "+\n ");
 	}
-
-	free(copy);
 
 	return ans;
 

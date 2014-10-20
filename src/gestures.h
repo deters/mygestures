@@ -105,7 +105,6 @@ struct action {
 struct key_press {
 	void * key;
 	struct key_press * next;
-	char *original_str;
 };
 
 int gestures_init();

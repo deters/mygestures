@@ -298,12 +298,22 @@ struct gesture * gesture_locate(char * captured_sequence, char * window_class,
  * Execute an action
  */
 void execute_action(struct action *action) {
-	int id;
 
 	assert(action);
 
+	int pid = -1;
+
 	switch (action->type) {
 	case ACTION_EXECUTE:
+
+
+
+		if ((pid = vfork()) == 0) {
+			system(action->original_str);
+		  //execl(action->original_str, NULL); /* after a successful execl the parent should be resumed */
+		  _exit(127); /* terminate the child in case execl fails */
+		}
+/*
 		id = fork();
 		if (id == 0) {
 			int i = system(action->original_str);
@@ -311,7 +321,7 @@ void execute_action(struct action *action) {
 		}
 		if (id < 0) {
 			fprintf(stderr, "Error forking.\n");
-		}
+		}*/
 
 		break;
 	case ACTION_ICONIFY:
