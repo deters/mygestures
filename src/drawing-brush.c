@@ -27,6 +27,7 @@
 
 #include "drawing-bresenham.h"
 #include "drawing-brush.h"
+#include "string.h"
 #define const
 #include "drawing-brush-image.h"
 #include "drawing-brush-shadow.h"
@@ -104,20 +105,35 @@ int brush_init(brush_t *brush, backing_t *backing) {
 	fix_image(brush_image->pixel_data,
 			brush_image->width * brush_image->height);
 
+	unsigned char * pixel_data1 = malloc(brush_image->height * brush_image->width * brush_image->bytes_per_pixel + 1);
+
+		memcpy( (void *) pixel_data1, (void *)brush_image->pixel_data,
+				brush_image->height * brush_image->width * brush_image->bytes_per_pixel + 1);
+
 	image = XCreateImage(dpy, DefaultVisual(dpy, screen), 32, ZPixmap, 0,
-			(char *) brush_image->pixel_data, brush->image_width,
-			brush->image_height, 32, brush->image_width * 4);
+			(char *) pixel_data1, brush->image_width, brush->image_height, 32, brush->image_width
+			* 4
+	);
 	XPutImage(dpy, brush->image_pixmap, image_gc, image, 0, 0, 0, 0,
 			brush->image_width, brush->image_height);
+
+	XDestroyImage(image);
 
 	fix_image(brush_shadow.pixel_data,
 			brush_shadow.width * brush_shadow.height);
 
+	unsigned char * pixel_data2 = malloc(brush_shadow.height * brush_shadow.width * brush_shadow.bytes_per_pixel + 1);
+
+	memcpy( (void *) pixel_data2, (void *)brush_shadow.pixel_data,
+			brush_shadow.height * brush_shadow.width * brush_shadow.bytes_per_pixel + 1);
+
 	image = XCreateImage(dpy, DefaultVisual(dpy, screen), 32, ZPixmap, 0,
-			(char *) brush_shadow.pixel_data, brush->shadow_width,
+			(char *) pixel_data2 , brush->shadow_width,
 			brush->shadow_height, 32, brush->shadow_width * 4);
 	XPutImage(dpy, brush->shadow_pixmap, image_gc, image, 0, 0, 0, 0,
 			brush->shadow_width, brush->shadow_height);
+
+	XDestroyImage(image);
 
 	XFreeGC(dpy, image_gc);
 
