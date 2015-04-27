@@ -18,18 +18,13 @@
 #include <config.h>
 #endif
 
-#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <X11/Xlib.h>
-//#include <X11/keysym.h>
-#include <X11/XKBlib.h>
 #include <X11/extensions/XTest.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <strings.h>
 #include <string.h>
-#include <getopt.h>
 #include <math.h>
 #include <assert.h>
 #include "drawing-brush.h"
@@ -615,44 +610,6 @@ struct captured_movements * grabbing_capture_movements() {
 
 	return captured;
 
-}
-
-/* taken from ecore.. */
-int x_key_mask_get(KeySym sym, Display *dpy) {
-	XModifierKeymap *mod;
-	KeySym sym2;
-	int i, j;
-	const int masks[8] = {
-	ShiftMask, LockMask, ControlMask,
-	Mod1Mask, Mod2Mask, Mod3Mask, Mod4Mask, Mod5Mask };
-
-	mod = XGetModifierMapping(dpy);
-	if ((mod) && (mod->max_keypermod > 0)) {
-		for (i = 0; i < (8 * mod->max_keypermod); i++) {
-			for (j = 0; j < 8; j++) {
-
-				sym2 = XkbKeycodeToKeysym(dpy, mod->modifiermap[i], j, 0);
-
-				if (sym2 != 0)
-					break;
-			}
-			if (sym2 == sym) {
-				int mask;
-
-				mask = masks[i / mod->max_keypermod];
-				if (mod->modifiermap)
-					XFree(mod->modifiermap);
-				XFree(mod);
-				return mask;
-			}
-		}
-	}
-	if (mod) {
-		if (mod->modifiermap)
-			XFree(mod->modifiermap);
-		XFree(mod);
-	}
-	return 0;
 }
 
 int grabbing_init() {
