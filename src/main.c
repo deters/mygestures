@@ -122,7 +122,7 @@ int main(int argc, char * const * argv) {
 		signal(SIGHUP, sighup);
 		signal(SIGCHLD, sigchld);
 
-		gestures_run();
+		err = gestures_run();
 
 	}
 

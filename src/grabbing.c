@@ -31,6 +31,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <math.h>
+#include <assert.h>
 #include "drawing-brush.h"
 #include "grabbing.h"
 #include "wm.h"
@@ -278,6 +279,9 @@ void mouse_click(Display *display, int button) {
  */
 Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
 	int status;
+
+	// TODO: investigate memory leak here... see XTextProperty
+
 	XTextProperty text_prop;
 	char **list;
 	int num;
@@ -304,7 +308,7 @@ Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
  *
  * PRIVATE
  */
-void get_window_info(Display* dpy, Window win, char ** window_title, char ** window_class) {
+void get_window_info(Display* dpy, Window win, char ** out_window_title, char ** out_window_class) {
 
 	int val;
 
@@ -332,15 +336,15 @@ void get_window_info(Display* dpy, Window win, char ** window_title, char ** win
 	XFree(class_hints.res_class);
 
 	if (win_class) {
-		* window_class = win_class;
+		* out_window_class = win_class;
 	} else {
-		* window_class = "";
+		* out_window_class = "";
 	}
 
 	if (win_title) {
-		* window_title = win_title;
+		* out_window_title = win_title;
 	} else {
-		* window_title = "";
+		* out_window_title = "";
 	}
 
 }
@@ -402,6 +406,8 @@ struct key_press *string_to_keypress(char *string) {
  */
 void press_key(Display *dpy, KeySym key, Bool is_press) {
 
+	assert(key);
+
 	XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, key), is_press, CurrentTime);
 	return;
 }
@@ -410,16 +416,13 @@ void press_key(Display *dpy, KeySym key, Bool is_press) {
  * Fake sequence key events
  */
 void generic_root_send(Display *dpy, void *data) {
+
+	assert(data);
+
 	struct key_press *first_key;
 	struct key_press *tmp;
 
 	first_key = (struct key_press *) data;
-
-	if (first_key == NULL) {
-		fprintf(stderr, " internal error in %s, key sequence is null\n",
-				__func__);
-		return;
-	}
 
 	for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
 		press_key(dpy, (KeySym) tmp->key, True);

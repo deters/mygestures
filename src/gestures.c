@@ -99,6 +99,8 @@ struct context *alloc_context(char * context_name, char *window_title,
 	ans->gestures = gestures;
 	ans->gestures_count = gestures_count;
 
+	// TODO: GET ERROR DETAILS WITH regerror
+
 	regex_t * title_compiled = NULL;
 	if (ans->title) {
 
@@ -106,7 +108,7 @@ struct context *alloc_context(char * context_name, char *window_title,
 		if (regcomp(title_compiled, window_title,
 		REG_EXTENDED | REG_NOSUB)) {
 			fprintf(stderr, "Error compiling regexp: %s\n", window_title);
-			free(title_compiled);
+			regfree(title_compiled);
 			title_compiled = NULL;
 		}
 	}
@@ -118,7 +120,7 @@ struct context *alloc_context(char * context_name, char *window_title,
 		if (regcomp(class_compiled, window_class,
 		REG_EXTENDED | REG_NOSUB)) {
 			fprintf(stderr, "Error compiling regexp: %s\n", window_class);
-			free(class_compiled);
+			regfree(class_compiled);
 			class_compiled = NULL;
 		}
 	}
@@ -135,7 +137,8 @@ void free_context(struct context *free_me) {
 	free(free_me->name);
 	free(free_me->title);
 	free(free_me->class);
-	free(free_me->class_compiled);
+	regfree(free_me->class_compiled);
+	regfree(free_me->title_compiled);
 	free_gesture(*free_me->gestures);
 	free(free_me);
 	return;
@@ -313,15 +316,6 @@ void execute_action(struct action *action) {
 		  //execl(action->original_str, NULL); /* after a successful execl the parent should be resumed */
 		  _exit(127); /* terminate the child in case execl fails */
 		}
-/*
-		id = fork();
-		if (id == 0) {
-			int i = system(action->original_str);
-			exit(i);
-		}
-		if (id < 0) {
-			fprintf(stderr, "Error forking.\n");
-		}*/
 
 		break;
 	case ACTION_ICONIFY:
@@ -938,7 +932,7 @@ int gestures_init() {
 
 }
 
-void gestures_run() {
+int gestures_run() {
 
 	struct captured_movements *captured = NULL;
 
@@ -955,5 +949,7 @@ void gestures_run() {
 	}
 
 	grabbing_finalize();
+
+	return 0;
 
 }

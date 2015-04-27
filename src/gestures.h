@@ -108,7 +108,7 @@ struct key_press {
 };
 
 int gestures_init();
-void gestures_run();
+int gestures_run();
 
 void gestures_set_config_file(char * config_file);
 
