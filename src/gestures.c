@@ -46,8 +46,7 @@ int context_count;
 
 char * _filename;
 
-/* close xgestures */
-int shut_down = 0;
+
 
 /* alloc a gesture struct */
 struct gesture *alloc_gesture(char * gesture_name,
@@ -239,7 +238,7 @@ void free_key_press(struct key_press *free_me) {
 	return;
 }
 
-struct gesture * gesture_locate(char * captured_sequence, char * window_class,
+struct gesture * gesture_match(char * captured_sequence, char * window_class,
 		char * window_title) {
 
 	assert(captured_sequence);
@@ -343,49 +342,6 @@ void execute_action(struct action *action) {
 	return;
 }
 
-void gesture_process_movement(struct captured_movements * captured) {
-
-	printf("\n");
-	printf("Window Title = \"%s\"\n", captured->window_title);
-	printf("Window Class = \"%s\"\n", captured->window_class);
-
-	struct gesture *gest = NULL;
-
-	char * sequence = captured->advanced_movements;
-
-	// Try to match complex gestures
-
-	gest = gesture_locate(sequence, captured->window_class,
-			captured->window_title);
-
-	if (!gest) {
-
-		printf("Captured sequence %s --> not found\n", sequence);
-
-		// Then try to match basic sequences.
-
-		sequence = captured->basic_movements;
-		gest = gesture_locate(sequence, captured->window_class,
-				captured->window_title);
-	}
-
-	if (!gest) {
-		printf("Captured sequence %s --> not found\n", sequence);
-	} else {
-		printf("Captured sequence: '%s' --> Movement '%s' --> Gesture '%s'\n",
-				sequence, gest->movement->name, gest->name);
-
-		int j = 0;
-
-		for (j = 0; j < gest->actions_count; ++j) {
-			struct action * a = gest->actions[j];
-			printf(" (%s)\n", a->original_str);
-			execute_action(a);
-		}
-
-	}
-
-}
 
 static void recursive_mkdir(char *path, mode_t mode) {
 
@@ -932,24 +888,4 @@ int gestures_init() {
 
 }
 
-int gestures_run() {
 
-	struct captured_movements *captured = NULL;
-
-	while (!shut_down) {
-
-		captured = grabbing_capture_movements();
-
-		if (captured) {
-			// sends the both strings to process.
-			gesture_process_movement(captured);
-			free_captured_movements(captured);
-		}
-
-	}
-
-	grabbing_finalize();
-
-	return 0;
-
-}

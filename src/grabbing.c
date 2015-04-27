@@ -52,6 +52,9 @@ unsigned int button_modifier = 0;
 /* Not draw the movement on the screen */
 int without_brush = 0;
 
+/* close xgestures */
+int shut_down = 0;
+
 /* modifier keys */
 enum {
 	SHIFT = 0, CTRL, ALT, WIN, SCROLL, NUM, CAPS, MOD_END
@@ -764,6 +767,56 @@ int grabbing_init() {
 	grab_pointer(dpy);
 
 	return err;
+}
+
+int gestures_run() {
+
+	struct captured_movements *grabbed = NULL;
+
+	while (!shut_down) {
+
+		grabbed = grabbing_capture_movements();
+
+		if (grabbed) {
+
+			printf("\n");
+			printf("Window Title = \"%s\"\n", grabbed->window_title);
+			printf("Window Class = \"%s\"\n", grabbed->window_class);
+
+			char * sequence = grabbed->advanced_movements;
+			struct gesture * gesture = gesture_match(sequence,grabbed->window_class,grabbed->window_title);
+
+
+			if (!gesture) {
+				char * sequence = grabbed->basic_movements;
+				gesture = gesture_match(sequence,grabbed->window_class,grabbed->window_title);
+			}
+
+			if (!gesture) {
+				printf("Captured sequences %s or %s --> not found\n", grabbed->advanced_movements, grabbed->basic_movements);
+			} else {
+				printf("Captured sequence: '%s' --> Movement '%s' --> Gesture '%s'\n",
+						sequence, gesture->movement->name, gesture->name);
+
+				int j = 0;
+
+				for (j = 0; j < gesture->actions_count; ++j) {
+					struct action * a = gesture->actions[j];
+					printf(" (%s)\n", a->original_str);
+					execute_action(a);
+				}
+
+			}
+
+			free_captured_movements(grabbed);
+		}
+
+	}
+
+	grabbing_finalize();
+
+	return 0;
+
 }
 
 void grabbing_iconify() {
