@@ -21,6 +21,6 @@ void generic_kill(Display *dpy, Window w);
 void generic_raise(Display *dpy, Window w);
 void generic_lower(Display *dpy, Window w);
 void generic_maximize(Display *dpy, Window w);
-void generic_root_send(Display *dpy, void *data);
+void generic_root_send(Display *dpy, char *keys);
 
 #endif

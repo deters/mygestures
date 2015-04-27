@@ -21,6 +21,9 @@ struct grabbing * grabber;
 
 int is_daemonized = 0;
 
+int shut_down = 0;
+
+
 void usage() {
 	printf("%s\n\n", PACKAGE_STRING);
 	printf("Usage:\n");
@@ -115,16 +118,40 @@ int main(int argc, char * const * argv) {
 
 	handle_args(argc, argv);
 
-	int err = gestures_init();
+
+
+	int err = 0;
+
+
+	err = gestures_init();
+
+	if (err) {
+		fprintf(stderr, "Error loading configuration file.\n");
+		return err;
+	}
+
+	err = grabbing_init();
+
+	if (err) {
+		fprintf(stderr, "Error grabbing button. Already running?\n");
+		return err;
+	}
 
 	if (!err) {
 
 		signal(SIGHUP, sighup);
 		signal(SIGCHLD, sigchld);
 
-		err = gestures_run();
+
+		while (!shut_down) {
+		// will be in looping reading events.
+			grabbing_run();
+
+		}
 
 	}
+
+	grabbing_finalize();
 
 	return err;
 

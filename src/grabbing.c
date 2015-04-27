@@ -52,9 +52,6 @@ unsigned int button_modifier = 0;
 /* Not draw the movement on the screen */
 int without_brush = 0;
 
-/* close xgestures */
-int shut_down = 0;
-
 /* modifier keys */
 enum {
 	SHIFT = 0, CTRL, ALT, WIN, SCROLL, NUM, CAPS, MOD_END
@@ -87,6 +84,17 @@ char * fuzzy_stroke_sequence;
 /* back of the draw */
 backing_t backing;
 brush_t brush;
+
+void free_captured_movements(struct captured_movements *free_me) {
+
+	assert(free_me);
+
+	free(free_me->advanced_movements);
+	free(free_me->basic_movements);
+	free(free_me->window_class);
+	free(free_me->window_title);
+	free(free_me);
+}
 
 /**
  * Clear previous movement data.
@@ -223,7 +231,6 @@ int ungrab_pointer(Display *dpy) {
 	return result;
 }
 
-
 /*
  * Get the parent window.
  *
@@ -236,7 +243,7 @@ Window get_parent_window(Display *dpy, Window w) {
 	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return,
 			&nchildren_return);
 
-	if (ret){
+	if (ret) {
 		XFree(child_return);
 	}
 
@@ -274,7 +281,6 @@ void mouse_click(Display *display, int button) {
 	XTestFakeButtonEvent(display, button, False, CurrentTime);
 }
 
-
 /*
  * Get the title of a given window at out_window_title.
  *
@@ -311,7 +317,8 @@ Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
  *
  * PRIVATE
  */
-void get_window_info(Display* dpy, Window win, char ** out_window_title, char ** out_window_class) {
+void get_window_info(Display* dpy, Window win, char ** out_window_title,
+		char ** out_window_class) {
 
 	int val;
 
@@ -339,26 +346,37 @@ void get_window_info(Display* dpy, Window win, char ** out_window_title, char **
 	XFree(class_hints.res_class);
 
 	if (win_class) {
-		* out_window_class = win_class;
+		*out_window_class = win_class;
 	} else {
-		* out_window_class = "";
+		*out_window_class = "";
 	}
 
 	if (win_title) {
-		* out_window_title = win_title;
+		*out_window_title = win_title;
 	} else {
-		* out_window_title = "";
+		*out_window_title = "";
 	}
 
 }
-
-
 
 /* alloc a key_press struct ???? */
 struct key_press * alloc_key_press(void) {
 	struct key_press *ans = malloc(sizeof(struct key_press));
 	bzero(ans, sizeof(struct key_press));
 	return ans;
+}
+
+/* alloc a key_press struct ???? */
+void free_key_press(struct key_press *free_me) {
+
+	assert(free_me);
+
+	if (free_me->next) {
+		free_key_press(free_me->next);
+	}
+
+	free(free_me);
+
 }
 
 /**
@@ -368,7 +386,9 @@ struct key_press * alloc_key_press(void) {
  */
 struct key_press *string_to_keypress(char *string) {
 
-	char ** string_ptr = &string;
+	char * copy = strdup(string);
+
+	char ** string_ptr = &copy;
 
 	struct key_press * ans = NULL;
 	struct key_press * pointer = NULL;
@@ -383,8 +403,10 @@ struct key_press *string_to_keypress(char *string) {
 		k = XStringToKeysym(token);
 
 		if (k == NoSymbol) {
-			fprintf(stderr, "error converting %s to keysym\n", token);
-			exit(-1);
+			fprintf(stderr, "Warning: error converting %s to keysym\n", token);
+			free_key_press(ans);
+			ans = NULL;
+			break;
 		}
 
 		if (!pointer) {
@@ -400,6 +422,7 @@ struct key_press *string_to_keypress(char *string) {
 		token = strsep(string_ptr, "+\n ");
 	}
 
+	//free(copy);
 	return ans;
 
 }
@@ -418,28 +441,33 @@ void press_key(Display *dpy, KeySym key, Bool is_press) {
 /**
  * Fake sequence key events
  */
-void generic_root_send(Display *dpy, void *data) {
+void generic_root_send(Display *dpy, char *keys) {
 
-	assert(data);
+	assert(keys);
 
-	struct key_press *first_key;
-	struct key_press *tmp;
+	struct key_press * keys_compiled = string_to_keypress(keys);
 
-	first_key = (struct key_press *) data;
+	if (keys_compiled) {
 
-	for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
-		press_key(dpy, (KeySym) tmp->key, True);
-	}
+		struct key_press *first_key;
+		struct key_press *tmp;
 
-	for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
-		press_key(dpy, (KeySym) tmp->key, False);
+		first_key = (struct key_press *) keys_compiled;
+
+		for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
+			press_key(dpy, (KeySym) tmp->key, True);
+		}
+
+		for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
+			press_key(dpy, (KeySym) tmp->key, False);
+		}
+
+		free_key_press(keys_compiled);
+
 	}
 
 	return;
 }
-
-
-
 
 /**
  * Obtém o resultado dos dois algoritmos de captura de movimentos, e envia para serem processadas.
@@ -479,7 +507,7 @@ struct captured_movements * end_movement(XButtonEvent *e) {
 		get_window_info(dpy, get_focused_window(dpy), &window_title,
 				&window_class);
 
-		captured->window_class =  window_class;
+		captured->window_class = window_class;
 		captured->window_title = window_title;
 
 	}
@@ -764,58 +792,101 @@ int grabbing_init() {
 	}
 
 	/* last, start grabbing the pointer ...*/
-	grab_pointer(dpy);
+
+	int res = grab_pointer(dpy);
+	if (res == 0) {
+		err = -1;
+	}
 
 	return err;
 }
 
-int gestures_run() {
+/**
+ * Execute an action
+ */
+void execute_action(struct action *action) {
+
+	assert(action);
+
+	int pid = -1;
+
+	switch (action->type) {
+	case ACTION_EXECUTE:
+
+		if ((pid = vfork()) == 0) {
+			system(action->data);
+			//execl(action->original_str, NULL); /* after a successful execl the parent should be resumed */
+			_exit(127); /* terminate the child in case execl fails */
+		}
+
+		break;
+	case ACTION_ICONIFY:
+		grabbing_iconify();
+		break;
+	case ACTION_KILL:
+		grabbing_kill();
+		break;
+	case ACTION_RAISE:
+		grabbing_raise();
+		break;
+	case ACTION_LOWER:
+		grabbing_lower();
+		break;
+	case ACTION_MAXIMIZE:
+		grabbing_maximize();
+		break;
+	case ACTION_ROOT_SEND:
+		grabbing_root_send(action->data);
+		break;
+	default:
+		fprintf(stderr, "found an unknown gesture \n");
+	}
+
+	return;
+}
+
+void grabbing_run() {
 
 	struct captured_movements *grabbed = NULL;
 
-	while (!shut_down) {
+	grabbed = grabbing_capture_movements();
 
-		grabbed = grabbing_capture_movements();
+	if (grabbed) {
 
-		if (grabbed) {
+		printf("\n");
+		printf("Window Title = \"%s\"\n", grabbed->window_title);
+		printf("Window Class = \"%s\"\n", grabbed->window_class);
 
-			printf("\n");
-			printf("Window Title = \"%s\"\n", grabbed->window_title);
-			printf("Window Class = \"%s\"\n", grabbed->window_class);
+		char * sequence = grabbed->advanced_movements;
+		struct gesture * gesture = gesture_match(sequence,
+				grabbed->window_class, grabbed->window_title);
 
-			char * sequence = grabbed->advanced_movements;
-			struct gesture * gesture = gesture_match(sequence,grabbed->window_class,grabbed->window_title);
-
-
-			if (!gesture) {
-				char * sequence = grabbed->basic_movements;
-				gesture = gesture_match(sequence,grabbed->window_class,grabbed->window_title);
-			}
-
-			if (!gesture) {
-				printf("Captured sequences %s or %s --> not found\n", grabbed->advanced_movements, grabbed->basic_movements);
-			} else {
-				printf("Captured sequence: '%s' --> Movement '%s' --> Gesture '%s'\n",
-						sequence, gesture->movement->name, gesture->name);
-
-				int j = 0;
-
-				for (j = 0; j < gesture->actions_count; ++j) {
-					struct action * a = gesture->actions[j];
-					printf(" (%s)\n", a->original_str);
-					execute_action(a);
-				}
-
-			}
-
-			free_captured_movements(grabbed);
+		if (!gesture) {
+			char * sequence = grabbed->basic_movements;
+			gesture = gesture_match(sequence, grabbed->window_class,
+					grabbed->window_title);
 		}
 
+		if (!gesture) {
+			printf("Captured sequences %s or %s --> not found\n",
+					grabbed->advanced_movements, grabbed->basic_movements);
+		} else {
+			printf(
+					"Captured sequence: '%s' --> Movement '%s' --> Gesture '%s'\n",
+					sequence, gesture->movement->name, gesture->name);
+
+			int j = 0;
+
+			for (j = 0; j < gesture->actions_count; ++j) {
+				struct action * a = gesture->actions[j];
+				printf(" (%s)\n", a->data);
+				execute_action(a);
+			}
+
+		}
+
+		free_captured_movements(grabbed);
 	}
-
-	grabbing_finalize();
-
-	return 0;
 
 }
 
@@ -839,8 +910,8 @@ void grabbing_maximize() {
 	generic_maximize(dpy, get_focused_window(dpy));
 }
 
-void grabbing_root_send(void *data) {
-	generic_root_send(dpy, data);
+void grabbing_root_send(char *keys) {
+	generic_root_send(dpy, keys);
 }
 
 void grabbing_finalize() {
@@ -852,6 +923,4 @@ void grabbing_finalize() {
 	XCloseDisplay(dpy);
 	return;
 }
-
-
 

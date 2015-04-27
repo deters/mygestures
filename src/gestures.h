@@ -66,14 +66,6 @@ struct gesture {
 	int actions_count;
 };
 
-struct captured_movements {
-	char *basic_movements;
-	char *advanced_movements;
-	char *window_title;
-	char *window_class;
-};
-
-
 
 struct gesture_engine {
 	char * config_file;
@@ -97,18 +89,13 @@ enum {
 
 struct action {
 	int type;
-	void *data;
-	char *original_str;
+	char *data;
 };
 
 
-struct key_press {
-	void * key;
-	struct key_press * next;
-};
 
 int gestures_init();
-int gestures_run();
+
 struct gesture * gesture_match(char * captured_sequence, char * window_class,
 		char * window_title);
 

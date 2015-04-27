@@ -12,7 +12,22 @@
 #include <X11/Xlib.h>
 #include "gestures.h"
 
+struct captured_movements {
+	char *basic_movements;
+	char *advanced_movements;
+	char *window_title;
+	char *window_class;
+};
+
+
+struct key_press {
+	KeySym key;
+	struct key_press * next;
+};
+
+
 int grabbing_init();
+void grabbing_run();
 
 void grabbing_set_button(int b);
 void grabbing_set_without_brush(int b);
@@ -29,5 +44,5 @@ void grabbing_kill();
 void grabbing_raise();
 void grabbing_lower();
 void grabbing_maximize();
-void grabbing_root_send(void * data);
+void grabbing_root_send(char * keys);
 

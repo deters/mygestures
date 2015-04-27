@@ -36,8 +36,6 @@
 #include <sys/stat.h>
 #include <assert.h>
 
-#include "grabbing.h"
-
 struct movement** movement_list;
 int movement_count;
 
@@ -143,16 +141,6 @@ void free_context(struct context *free_me) {
 	return;
 }
 
-void free_captured_movements(struct captured_movements *free_me) {
-
-	assert(free_me);
-
-	free(free_me->advanced_movements);
-	free(free_me->basic_movements);
-	free(free_me->window_class);
-	free(free_me->window_title);
-	free(free_me);
-}
 
 /* alloc a movement struct */
 struct movement *alloc_movement(char *movement_name, char *movement_expression) {
@@ -207,30 +195,14 @@ struct action *alloc_action(int action_type, char * action_value) {
 
 	bzero(ans, sizeof(struct action));
 
-	struct key_press * action_data = NULL;
-
-	if (action_type == ACTION_ROOT_SEND) {
-		action_data = string_to_keypress(action_value);
-	}
-
 	ans->type = action_type;
-	ans->original_str = action_value;
-	ans->data = (void *) action_data;
+	ans->data = action_value;
 
 	return ans;
 }
 
 /* release an action struct */
 void free_action(struct action *free_me) {
-
-	assert(free_me);
-
-	free(free_me);
-	return;
-}
-
-/* release a key_press struct */
-void free_key_press(struct key_press *free_me) {
 
 	assert(free_me);
 
@@ -296,51 +268,6 @@ struct gesture * gesture_match(char * captured_sequence, char * window_class,
 	return matched_gesture;
 }
 
-/**
- * Execute an action
- */
-void execute_action(struct action *action) {
-
-	assert(action);
-
-	int pid = -1;
-
-	switch (action->type) {
-	case ACTION_EXECUTE:
-
-
-
-		if ((pid = vfork()) == 0) {
-			system(action->original_str);
-		  //execl(action->original_str, NULL); /* after a successful execl the parent should be resumed */
-		  _exit(127); /* terminate the child in case execl fails */
-		}
-
-		break;
-	case ACTION_ICONIFY:
-		grabbing_iconify();
-		break;
-	case ACTION_KILL:
-		grabbing_kill();
-		break;
-	case ACTION_RAISE:
-		grabbing_raise();
-		break;
-	case ACTION_LOWER:
-		grabbing_lower();
-		break;
-	case ACTION_MAXIMIZE:
-		grabbing_maximize();
-		break;
-	case ACTION_ROOT_SEND:
-		grabbing_root_send(action->data);
-		break;
-	default:
-		fprintf(stderr, "found an unknown gesture \n");
-	}
-
-	return;
-}
 
 
 static void recursive_mkdir(char *path, mode_t mode) {
@@ -813,7 +740,7 @@ char * gestures_get_template_filename() {
 	return template_file;
 }
 
-int gestures_load() {
+int gestures_init() {
 
 	char * filename = gestures_get_filename();
 
@@ -868,24 +795,5 @@ void gestures_set_config_file(char * config_file) {
 
 }
 
-int gestures_init() {
-
-	int err = gestures_load();
-
-	if (err) {
-		fprintf(stderr, "Error loading configuration file.\n");
-		return err;
-	}
-
-	err = grabbing_init();
-
-	if (err) {
-		fprintf(stderr, "Error parsing configuration file.\n");
-		return err;
-	}
-
-	return err;
-
-}
 
 
