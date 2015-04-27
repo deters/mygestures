@@ -23,13 +23,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <strings.h>
 #include <string.h>
 #include "gestures.h"
 #include <regex.h>
-#include <fcntl.h>
-#include <errno.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <libgen.h>
