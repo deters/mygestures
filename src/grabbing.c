@@ -387,8 +387,9 @@ void free_key_press(struct key_press *free_me) {
 struct key_press *string_to_keypress(char *string) {
 
 	char * copy = strdup(string);
+	char * copy2 = copy;
 
-	char ** string_ptr = &copy;
+	char ** string_ptr = &copy2;
 
 	struct key_press * ans = NULL;
 	struct key_press * pointer = NULL;
@@ -417,12 +418,12 @@ struct key_press *string_to_keypress(char *string) {
 			pointer = pointer->next;
 		}
 
-		pointer->key = (void *) k;
+		pointer->key = k;
 
 		token = strsep(string_ptr, "+\n ");
 	}
 
-	//free(copy);
+	free(copy);
 	return ans;
 
 }
