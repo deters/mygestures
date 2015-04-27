@@ -22,7 +22,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <X11/Xlib.h>
-#include <X11/keysym.h>
+//#include <X11/keysym.h>
 #include <X11/XKBlib.h>
 #include <X11/extensions/XTest.h>
 #include <stdio.h>
@@ -46,23 +46,8 @@ Display * dpy = NULL;
 /* the button to grab */
 int button = 0;
 
-/* the modifier key (TODO: REVIEW) */
-unsigned int button_modifier = 0;
-
 /* Not draw the movement on the screen */
 int without_brush = 0;
-
-/* modifier keys */
-enum {
-	SHIFT = 0, CTRL, ALT, WIN, SCROLL, NUM, CAPS, MOD_END
-};
-
-/* names of the modifier keys */
-char *modifiers_names[MOD_END] = { "SHIFT", "CTRL", "ALT", "WIN", "SCROLL",
-		"NUM", "CAPS" };
-
-/* Filter to capture the events of the mouse */
-unsigned int valid_masks[MOD_END];
 
 /* Initial position of the movement (algorithm 1) */
 int old_x = -1;
@@ -123,48 +108,8 @@ void start_movement(XButtonEvent *e) {
 	return;
 }
 
-void create_masks(unsigned int *arr) {
-	unsigned int i, j;
-
-	for (i = 0; i < (1 << (MOD_END)); i++) {
-		arr[i] = 0;
-		for (j = 0; j < MOD_END; j++) {
-			if ((1 << j) & i) {
-				arr[i] |= valid_masks[j];
-			}
-		}
-	}
-
-	return;
-}
-
 void grabbing_set_button(int b) {
 	button = b;
-}
-
-unsigned int str_to_modifier(char *str) {
-	int i;
-
-	if (str == NULL) {
-		fprintf(stderr, "no modifier supplied.\n");
-		exit(-1);
-	}
-
-	if (strncasecmp(str, "AnyModifier", 11) == 0)
-		return AnyModifier;
-
-	for (i = 0; i < MOD_END; i++)
-		if (strncasecmp(str, modifiers_names[i], strlen(modifiers_names[i]))
-				== 0)
-			return valid_masks[i];
-	/* no match... */
-	return valid_masks[SHIFT];
-}
-
-void grabbing_set_button_modifier(char *button_modifier_str) {
-
-	button_modifier = str_to_modifier(button_modifier_str);
-
 }
 
 void grabbing_set_without_brush(int b) {
@@ -194,19 +139,13 @@ void grabbing_set_brush_color(char * color) {
 int grab_pointer(Display *dpy) {
 	int result = 0, i = 0;
 	int screen = 0;
-	unsigned int masks[(1 << (MOD_END))];
-	bzero(masks, (1 << (MOD_END)) * sizeof(unsigned int));
-
-	if (button_modifier != AnyModifier)
-		create_masks(masks);
 
 	for (screen = 0; screen < ScreenCount(dpy); screen++) {
-		for (i = 1; i < (1 << (MOD_END)); i++)
-			result += XGrabButton(dpy, button, /*AnyModifier */
-			button_modifier | masks[i], RootWindow(dpy, screen),
-			False,
-			PointerMotionMask | ButtonReleaseMask | ButtonPressMask,
-			GrabModeAsync, GrabModeAsync, None, None);
+
+		result += XGrabButton(dpy, button, AnyModifier, RootWindow(dpy, screen),
+		False,
+		PointerMotionMask | ButtonReleaseMask | ButtonPressMask,
+		GrabModeAsync, GrabModeAsync, None, None);
 	}
 
 	return result;
@@ -215,17 +154,11 @@ int grab_pointer(Display *dpy) {
 int ungrab_pointer(Display *dpy) {
 	int result = 0, i = 0;
 	int screen = 0;
-	unsigned int masks[(1 << (MOD_END))];
-	bzero(masks, (1 << (MOD_END)) * sizeof(unsigned int));
-
-	if (button_modifier != AnyModifier)
-		create_masks(masks);
 
 	for (screen = 0; screen < ScreenCount(dpy); screen++) {
-		for (i = 1; i < (1 << (MOD_END)); i++)
 
-			result += XUngrabButton(dpy, button, button_modifier | masks[i],
-					RootWindow(dpy, screen));
+		result += XUngrabButton(dpy, button, AnyModifier,
+				RootWindow(dpy, screen));
 	}
 
 	return result;
@@ -275,10 +208,10 @@ Window get_focused_window(Display *dpy) {
  *
  * PRIVATE
  */
-void mouse_click(Display *display, int button) {
-	XTestFakeButtonEvent(display, button, True, CurrentTime);
+void mouse_click(Display *dpy, int button) {
+	XTestFakeButtonEvent(dpy, button, True, CurrentTime);
 	usleep(1);
-	XTestFakeButtonEvent(display, button, False, CurrentTime);
+	XTestFakeButtonEvent(dpy, button, False, CurrentTime);
 }
 
 /*
@@ -722,30 +655,6 @@ int x_key_mask_get(KeySym sym, Display *dpy) {
 	return 0;
 }
 
-void init_masks(Display *dpy) {
-	valid_masks[SHIFT] = x_key_mask_get(XK_Shift_L, dpy);
-	valid_masks[CTRL] = x_key_mask_get(XK_Control_L, dpy);
-
-	/* apple's xdarwin has no alt!!!! */
-	valid_masks[ALT] = x_key_mask_get(XK_Alt_L, dpy);
-	if (!valid_masks[ALT])
-		valid_masks[ALT] = x_key_mask_get(XK_Meta_L, dpy);
-	if (!valid_masks[ALT])
-		valid_masks[ALT] = x_key_mask_get(XK_Super_L, dpy);
-
-	/* the windows key... a valid modifier :) */
-	valid_masks[WIN] = x_key_mask_get(XK_Super_L, dpy);
-	if (!valid_masks[WIN])
-		valid_masks[WIN] = x_key_mask_get(XK_Mode_switch, dpy);
-	if (!valid_masks[WIN])
-		valid_masks[WIN] = x_key_mask_get(XK_Meta_L, dpy);
-
-	valid_masks[SCROLL] = x_key_mask_get(XK_Scroll_Lock, dpy);
-	valid_masks[NUM] = x_key_mask_get(XK_Num_Lock, dpy);
-	valid_masks[CAPS] = x_key_mask_get(XK_Caps_Lock, dpy);
-
-}
-
 int grabbing_init() {
 
 	char *s = NULL;
@@ -760,8 +669,6 @@ int grabbing_init() {
 	if (!button) {
 		button = 3;
 	}
-
-	init_masks(dpy);
 
 	accurate_stroke_sequence = (char *) malloc(
 			sizeof(char) * (MAX_STROKE_SEQUENCE + 1));

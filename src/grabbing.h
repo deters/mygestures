@@ -10,7 +10,6 @@
 #endif /* GRABBING_H_ */
 
 #include <X11/Xlib.h>
-#include "gestures.h"
 
 struct captured_movements {
 	char *basic_movements;
@@ -37,7 +36,6 @@ struct captured_movements * grabbing_capture_movements();
 void grabbing_finalize();
 
 struct key_press * string_to_keypress(char *str_ptr);
-void mouse_click(Display *display, int button);
 
 void grabbing_iconify();
 void grabbing_kill();

@@ -72,7 +72,7 @@ void handle_args(int argc, char * const *argv) {
 
 	char opt;
 	static struct option opts[] = { { "help", 0, 0, 'h' },
-			{ "button", 1, 0, 'b' }, { "modifier", 1, 0, 'm' }, {
+			{ "button", 1, 0, 'b' }, {
 					"without-brush", 0, 0, 'w' }, { "config", 1, 0, 'c' }, {
 					"daemonize", 0, 0, 'd' }, { "brush-color", 1, 0, 'l' }, { 0,
 					0, 0, 0 } };
@@ -88,9 +88,6 @@ void handle_args(int argc, char * const *argv) {
 			break;
 		case 'b':
 			grabbing_set_button(atoi(optarg));
-			break;
-		case 'm':
-			grabbing_set_button_modifier(optarg);
 			break;
 		case 'c':
 			gestures_set_config_file(optarg);
