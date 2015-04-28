@@ -22,38 +22,14 @@
 #define GEST_EXTRA_DATA_MAX 4096
 
 #define NO_DIRECTION  '\0'
-
-#ifndef LEFT_DIRECTION
 #define LEFT_DIRECTION  'L'
-#endif
-
-#ifndef RIGHT_DIRECTION
 #define RIGHT_DIRECTION  'R'
-#endif
-
-#ifndef UP_DIRECTION
 #define UP_DIRECTION  'U'
-#endif
-
-#ifndef DOWN_DIRECTION
 #define DOWN_DIRECTION  'D'
-#endif
-
-#ifndef UPPER_RIGHT_DIRECTION
 #define UPPER_RIGHT_DIRECTION  '9'
-#endif
-
-#ifndef UPPER_LEFT_DIRECTION
 #define UPPER_LEFT_DIRECTION  '7'
-#endif
-
-#ifndef BOTTOM_RIGHT_DIRECTION
 #define BOTTOM_RIGHT_DIRECTION  '3'
-#endif
-
-#ifndef BOTTOM_LEFT_DIRECTION
 #define BOTTOM_LEFT_DIRECTION  '1'
-#endif
 
 
 struct movement {
