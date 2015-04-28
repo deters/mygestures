@@ -31,14 +31,11 @@
 #define BOTTOM_RIGHT_DIRECTION  '3'
 #define BOTTOM_LEFT_DIRECTION  '1'
 
-
 struct movement {
 	char *name;
 	void *expression;
 	regex_t * compiled;
 };
-
-
 
 struct context {
 	char *name;
@@ -59,7 +56,6 @@ struct gesture {
 	struct action **actions;
 	int actions_count;
 };
-
 
 struct gesture_engine {
 	char * config_file;
@@ -86,15 +82,11 @@ struct action {
 	char *data;
 };
 
-
-
 int gestures_init();
 
 struct gesture * gesture_match(char * captured_sequence, char * window_class,
 		char * window_title);
 
 void gestures_set_config_file(char * config_file);
-
-
 
 #endif
