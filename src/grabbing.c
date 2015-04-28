@@ -29,12 +29,14 @@
 #include <assert.h>
 #include "drawing-brush.h"
 #include "grabbing.h"
-#include "wm.h"
 #include "gestures.h"
+#include "wm.h"
 #include "drawing-brush-image.h"
 
 #define DELTA_MIN	30 /*TODO*/
 #define MAX_STROKE_SEQUENCE 63 /*TODO*/
+
+
 
 Display * dpy = NULL;
 
@@ -52,9 +54,6 @@ int old_y = -1;
 int old_x_2 = -1;
 int old_y_2 = -1;
 
-/* valid strokes */
-char stroke_names[] = { 'N', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
-
 /* movements stack (first capture algoritm) */
 char * accurate_stroke_sequence;
 
@@ -65,12 +64,12 @@ char * fuzzy_stroke_sequence;
 backing_t backing;
 brush_t brush;
 
-void free_captured_movements(struct captured_movements *free_me) {
+void free_captured_movements(struct grabbed_information *free_me) {
 
 	assert(free_me);
 
-	free(free_me->advanced_movements);
-	free(free_me->basic_movements);
+	free(free_me->advanced_movement);
+	free(free_me->basic_movement);
 	free(free_me->window_class);
 	free(free_me->window_title);
 	free(free_me);
@@ -401,9 +400,9 @@ void generic_root_send(Display *dpy, char *keys) {
 /**
  * Obtém o resultado dos dois algoritmos de captura de movimentos, e envia para serem processadas.
  */
-struct captured_movements * end_movement(XButtonEvent *e) {
+struct grabbed_information * end_movement(XButtonEvent *e) {
 
-	struct captured_movements * captured = NULL;
+	struct grabbed_information * captured = NULL;
 
 	// if is drawing
 	if (!without_brush) {
@@ -425,10 +424,10 @@ struct captured_movements * end_movement(XButtonEvent *e) {
 
 	} else {
 
-		captured = malloc(sizeof(struct captured_movements));
+		captured = malloc(sizeof(struct grabbed_information));
 
-		captured->advanced_movements = strdup(accurate_stroke_sequence);
-		captured->basic_movements = strdup(fuzzy_stroke_sequence);
+		captured->advanced_movement = strdup(accurate_stroke_sequence);
+		captured->basic_movement = strdup(fuzzy_stroke_sequence);
 
 		char * window_title = "";
 		char * window_class = "";
@@ -448,7 +447,7 @@ struct captured_movements * end_movement(XButtonEvent *e) {
 char stroke_sequence_complex_detect_stroke(int x_delta, int y_delta) {
 
 	if ((x_delta == 0) && (y_delta == 0)) {
-		return stroke_names[NONE];
+		return NO_DIRECTION;
 	}
 
 	// check if the movement is near main axes
@@ -460,18 +459,18 @@ char stroke_sequence_complex_detect_stroke(int x_delta, int y_delta) {
 		if (abs(x_delta) > abs(y_delta)) {
 
 			if (x_delta > 0) {
-				return stroke_names[RIGHT];
+				return RIGHT_DIRECTION;
 			} else {
-				return stroke_names[LEFT];
+				return LEFT_DIRECTION;
 			}
 
 			// y axe
 		} else {
 
 			if (y_delta > 0) {
-				return stroke_names[DOWN];
+				return DOWN_DIRECTION;
 			} else {
-				return stroke_names[UP];
+				return UP_DIRECTION;
 			}
 
 		}
@@ -481,21 +480,21 @@ char stroke_sequence_complex_detect_stroke(int x_delta, int y_delta) {
 
 		if (y_delta < 0) {
 			if (x_delta < 0) {
-				return stroke_names[SEVEN];
+				return UPPER_LEFT_DIRECTION;
 			} else if (x_delta > 0) { // RIGHT
-				return stroke_names[NINE];
+				return UPPER_RIGHT_DIRECTION;
 			}
 		} else if (y_delta > 0) { // DOWN
 			if (x_delta < 0) { // RIGHT
-				return stroke_names[ONE];
+				return BOTTOM_LEFT_DIRECTION;
 			} else if (x_delta > 0) {
-				return stroke_names[THREE];
+				return BOTTOM_RIGHT_DIRECTION;
 			}
 		}
 
 	}
 
-	return stroke_names[NONE];
+	return NO_DIRECTION;
 
 }
 
@@ -503,16 +502,16 @@ char get_fuzzy_stroke(int x_delta, int y_delta) {
 
 	if (abs(y_delta) > abs(x_delta)) {
 		if (y_delta > 0) {
-			return stroke_names[DOWN];
+			return DOWN_DIRECTION;
 		} else {
-			return stroke_names[UP];
+			return UP_DIRECTION;
 		}
 
 	} else {
 		if (x_delta > 0) {
-			return stroke_names[RIGHT];
+			return RIGHT_DIRECTION;
 		} else {
-			return stroke_names[LEFT];
+			return LEFT_DIRECTION;
 		}
 
 	}
@@ -583,11 +582,11 @@ void update_movement(XMotionEvent *e) {
 	return;
 }
 
-struct captured_movements * grabbing_capture_movements() {
+struct grabbed_information * grabbing_capture_movements() {
 
 	XEvent e;
 
-	struct captured_movements * captured = NULL;
+	struct grabbed_information * captured = NULL;
 
 	XNextEvent(dpy, &e);
 
@@ -666,94 +665,7 @@ int grabbing_init() {
 	return err;
 }
 
-/**
- * Execute an action
- */
-void execute_action(struct action *action) {
 
-	assert(action);
-
-	int pid = -1;
-
-	switch (action->type) {
-	case ACTION_EXECUTE:
-
-		if ((pid = vfork()) == 0) {
-			system(action->data);
-			//execl(action->original_str, NULL); /* after a successful execl the parent should be resumed */
-			_exit(127); /* terminate the child in case execl fails */
-		}
-
-		break;
-	case ACTION_ICONIFY:
-		grabbing_iconify();
-		break;
-	case ACTION_KILL:
-		grabbing_kill();
-		break;
-	case ACTION_RAISE:
-		grabbing_raise();
-		break;
-	case ACTION_LOWER:
-		grabbing_lower();
-		break;
-	case ACTION_MAXIMIZE:
-		grabbing_maximize();
-		break;
-	case ACTION_ROOT_SEND:
-		grabbing_root_send(action->data);
-		break;
-	default:
-		fprintf(stderr, "found an unknown gesture \n");
-	}
-
-	return;
-}
-
-void grabbing_run() {
-
-	struct captured_movements *grabbed = NULL;
-
-	grabbed = grabbing_capture_movements();
-
-	if (grabbed) {
-
-		printf("\n");
-		printf("Window Title = \"%s\"\n", grabbed->window_title);
-		printf("Window Class = \"%s\"\n", grabbed->window_class);
-
-		char * sequence = grabbed->advanced_movements;
-		struct gesture * gesture = gesture_match(sequence,
-				grabbed->window_class, grabbed->window_title);
-
-		if (!gesture) {
-			char * sequence = grabbed->basic_movements;
-			gesture = gesture_match(sequence, grabbed->window_class,
-					grabbed->window_title);
-		}
-
-		if (!gesture) {
-			printf("Captured sequences %s or %s --> not found\n",
-					grabbed->advanced_movements, grabbed->basic_movements);
-		} else {
-			printf(
-					"Captured sequence: '%s' --> Movement '%s' --> Gesture '%s'\n",
-					sequence, gesture->movement->name, gesture->name);
-
-			int j = 0;
-
-			for (j = 0; j < gesture->actions_count; ++j) {
-				struct action * a = gesture->actions[j];
-				printf(" (%s)\n", a->data);
-				execute_action(a);
-			}
-
-		}
-
-		free_captured_movements(grabbed);
-	}
-
-}
 
 void grabbing_iconify() {
 	generic_iconify(dpy, get_focused_window(dpy));

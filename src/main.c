@@ -11,9 +11,9 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "grabbing.h"
+#include "assert.h"
 #include "gestures.h"
 #include "config.h"
 
@@ -22,7 +22,6 @@ struct grabbing * grabber;
 int is_daemonized = 0;
 
 int shut_down = 0;
-
 
 void usage() {
 	printf("%s\n\n", PACKAGE_STRING);
@@ -72,10 +71,9 @@ void handle_args(int argc, char * const *argv) {
 
 	char opt;
 	static struct option opts[] = { { "help", 0, 0, 'h' },
-			{ "button", 1, 0, 'b' }, {
-					"without-brush", 0, 0, 'w' }, { "config", 1, 0, 'c' }, {
-					"daemonize", 0, 0, 'd' }, { "brush-color", 1, 0, 'l' }, { 0,
-					0, 0, 0 } };
+			{ "button", 1, 0, 'b' }, { "without-brush", 0, 0, 'w' }, { "config",
+					1, 0, 'c' }, { "daemonize", 0, 0, 'd' }, { "brush-color", 1,
+					0, 'l' }, { 0, 0, 0, 0 } };
 
 	while (1) {
 		opt = getopt_long(argc, argv, "h::b:m:c:l:wdr", opts, NULL);
@@ -108,6 +106,50 @@ void handle_args(int argc, char * const *argv) {
 	return;
 }
 
+/**
+ * Execute an action
+ */
+void execute_action(struct action *action) {
+
+	assert(action);
+
+	int pid = -1;
+
+	switch (action->type) {
+	case ACTION_EXECUTE:
+
+		if ((pid = vfork()) == 0) {
+			system(action->data);
+			//execl(action->original_str, NULL); /* after a successful execl the parent should be resumed */
+			_exit(127); /* terminate the child in case execl fails */
+		}
+
+		break;
+	case ACTION_ICONIFY:
+		grabbing_iconify();
+		break;
+	case ACTION_KILL:
+		grabbing_kill();
+		break;
+	case ACTION_RAISE:
+		grabbing_raise();
+		break;
+	case ACTION_LOWER:
+		grabbing_lower();
+		break;
+	case ACTION_MAXIMIZE:
+		grabbing_maximize();
+		break;
+	case ACTION_ROOT_SEND:
+		grabbing_root_send(action->data);
+		break;
+	default:
+		fprintf(stderr, "found an unknown gesture \n");
+	}
+
+	return;
+}
+
 int main(int argc, char * const * argv) {
 
 	if (is_daemonized)
@@ -115,10 +157,7 @@ int main(int argc, char * const * argv) {
 
 	handle_args(argc, argv);
 
-
-
 	int err = 0;
-
 
 	err = gestures_init();
 
@@ -139,10 +178,49 @@ int main(int argc, char * const * argv) {
 		signal(SIGHUP, sighup);
 		signal(SIGCHLD, sigchld);
 
-
 		while (!shut_down) {
-		// will be in looping reading events.
-			grabbing_run();
+
+			struct grabbed_information *grabbed = NULL;
+
+			grabbed = grabbing_capture_movements();
+
+			if (grabbed) {
+
+				char * sequence = grabbed->advanced_movement;
+				struct gesture * gesture = gesture_match(sequence,
+						grabbed->window_class, grabbed->window_title);
+
+				if (!gesture) {
+					char * sequence = grabbed->basic_movement;
+					gesture = gesture_match(sequence, grabbed->window_class,
+							grabbed->window_title);
+				}
+
+				printf("\n");
+				printf("Window Title = \"%s\"\n", grabbed->window_title);
+				printf("Window Class = \"%s\"\n", grabbed->window_class);
+
+				if (!gesture) {
+					printf("Captured sequences %s or %s --> not found\n",
+							grabbed->advanced_movement,
+							grabbed->basic_movement);
+				} else {
+					printf(
+							"Captured sequence '%s' --> Movement '%s' --> Gesture '%s'\n",
+							sequence, gesture->movement->name, gesture->name);
+
+					int j = 0;
+
+					for (j = 0; j < gesture->actions_count; ++j) {
+						struct action * a = gesture->actions[j];
+						printf(" (%s)\n", a->data);
+						execute_action(a);
+					}
+
+				}
+
+				free_captured_movements(grabbed);
+			}
 
 		}
 

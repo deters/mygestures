@@ -11,9 +11,9 @@
 
 #include <X11/Xlib.h>
 
-struct captured_movements {
-	char *basic_movements;
-	char *advanced_movements;
+struct grabbed_information {
+	char *basic_movement;
+	char *advanced_movement;
 	char *window_title;
 	char *window_class;
 };
@@ -32,8 +32,9 @@ void grabbing_set_button(int b);
 void grabbing_set_without_brush(int b);
 void grabbing_set_button_modifier(char * button_modifier_str);
 void grabbing_set_brush_color(char * color);
-struct captured_movements * grabbing_capture_movements();
+struct grabbed_information * grabbing_capture_movements();
 void grabbing_finalize();
+void free_captured_movements(struct grabbed_information *free_me);
 
 struct key_press * string_to_keypress(char *str_ptr);
 

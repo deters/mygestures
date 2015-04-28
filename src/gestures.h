@@ -17,25 +17,43 @@
 
 #include <regex.h>
 
-#define GEST_SEQUENCE_MAX 64
-#define GEST_ACTION_NAME_MAX 32
+#define MOVEMENT_MAX_DIRECTIONS 64
+#define NAMES_MAX_SIZE 64
 #define GEST_EXTRA_DATA_MAX 4096
 
-#define CONTROL_L_MASK (1<<0)
-#define CONTROL_R_MASK (1<<1)
-#define SHIFT_L_MASK (1<<2)
-#define SHIFT_R_MASK (1<<3)
-#define ALT_L_MASK (1<<4)
-#define ALT_R_MASK (1<<5)
-#define TAB_MASK (1<<6)
+#define NO_DIRECTION  '\0'
 
+#ifndef LEFT_DIRECTION
+#define LEFT_DIRECTION  'L'
+#endif
 
-/* the movements */
-enum STROKES {
-	NONE, LEFT, RIGHT, UP, DOWN, ONE, THREE, SEVEN, NINE
-};
+#ifndef RIGHT_DIRECTION
+#define RIGHT_DIRECTION  'R'
+#endif
 
+#ifndef UP_DIRECTION
+#define UP_DIRECTION  'U'
+#endif
 
+#ifndef DOWN_DIRECTION
+#define DOWN_DIRECTION  'D'
+#endif
+
+#ifndef UPPER_RIGHT_DIRECTION
+#define UPPER_RIGHT_DIRECTION  '9'
+#endif
+
+#ifndef UPPER_LEFT_DIRECTION
+#define UPPER_LEFT_DIRECTION  '7'
+#endif
+
+#ifndef BOTTOM_RIGHT_DIRECTION
+#define BOTTOM_RIGHT_DIRECTION  '3'
+#endif
+
+#ifndef BOTTOM_LEFT_DIRECTION
+#define BOTTOM_LEFT_DIRECTION  '1'
+#endif
 
 
 struct movement {
