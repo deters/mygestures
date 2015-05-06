@@ -17,6 +17,9 @@
 #include "gestures.h"
 #include "config.h"
 
+#include <mcheck.h>
+
+
 struct grabbing * grabber;
 
 int is_daemonized = 0;
@@ -41,17 +44,22 @@ void usage() {
 	exit(0);
 }
 
-void sighup(int a) {
+/*void sighup(int a) {
 	int err = gestures_init();
 	if (err != 0) {
 		fprintf(stderr, "Error reloading gestures.");
 	}
 	return;
-}
+}*/
 
-void sigchld(int a) {
+/*void sigchld(int a) {
 	int err;
 	waitpid(-1, &err, WNOHANG);
+	return;
+}*/
+
+void sigint(int a) {
+	shut_down = 1;
 	return;
 }
 
@@ -148,6 +156,8 @@ void execute_action(struct action *action) {
 
 int main(int argc, char * const * argv) {
 
+	mtrace();
+
 	handle_args(argc, argv);
 
 	if (is_daemonized)
@@ -156,6 +166,9 @@ int main(int argc, char * const * argv) {
 	int err = 0;
 
 	err = gestures_init();
+
+
+
 
 	if (err) {
 		fprintf(stderr, "Error loading gestures.\n");
@@ -171,10 +184,14 @@ int main(int argc, char * const * argv) {
 
 	if (!err) {
 
-		signal(SIGHUP, sighup);
-		signal(SIGCHLD, sigchld);
+
+
+		//signal(SIGHUP, sighup);
+		//signal(SIGCHLD, sigchld);
+		signal(SIGINT, sigint);
 
 		while (!shut_down) {
+
 
 			struct grabbed_information *grabbed = NULL;
 
@@ -223,6 +240,8 @@ int main(int argc, char * const * argv) {
 	}
 
 	grabbing_finalize();
+
+	gestures_finalize();
 
 	return err;
 

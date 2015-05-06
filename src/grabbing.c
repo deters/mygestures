@@ -697,6 +697,9 @@ void grabbing_finalize() {
 		backing_deinit(&backing);
 	}
 
+	free(accurate_stroke_sequence);
+	free(fuzzy_stroke_sequence);
+
 	XCloseDisplay(dpy);
 	return;
 }

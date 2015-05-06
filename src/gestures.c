@@ -39,7 +39,7 @@ int movement_count;
 struct context** context_list;
 int context_count;
 
-char * _filename;
+char * _filename = NULL;
 
 
 
@@ -63,16 +63,94 @@ struct gesture *alloc_gesture(char * gesture_name,
 	return ans;
 }
 
+
+/* release a movement struct */
+void free_movement(struct movement *free_me) {
+
+	assert(free_me);
+
+	free(free_me->name);
+	free(free_me->expression);
+	regfree(free_me->compiled);
+	free(free_me->compiled);
+	free(free_me);
+	return;
+}
+
+/* release an action struct */
+void free_action(struct action *free_me) {
+
+	assert(free_me);
+
+	free(free_me->data);
+	free(free_me);
+	return;
+}
+
+
 /* release a gesture struct */
 void free_gesture(struct gesture *free_me) {
 
 	assert(free_me);
 
-	free(free_me->actions);
+
+	free(free_me->name);
+
+	//free_movement(free_me->movement);
+
+	for (int i = 0; i < free_me->actions_count; ++i) {
+		free_action(free_me->actions[i]);
+	}
+
+
 	free(free_me);
 
 	return;
 }
+
+
+void free_context(struct context * free_me){
+	assert(free_me);
+
+	for (int g = 0; g < free_me->gestures_count; ++g) {
+		free_gesture(free_me->gestures[g]);
+	}
+
+	free(free_me->name);
+	free(free_me->title);
+	free(free_me->class);
+	regfree(free_me->class_compiled);
+	free(free_me->class_compiled);
+	regfree(free_me->title_compiled);
+	free(free_me->title_compiled);
+	for (int i = 0; i < free_me->gestures_count; ++i) {
+		free_gesture(free_me->gestures[i]);
+	}
+	free(free_me);
+
+
+
+}
+
+void gestures_finalize(){
+	free(_filename);
+	for (int c = 0; c < context_count; ++c) {
+
+		free_context(context_list[c]);
+
+	}
+
+	for (int m = 0; m < movement_count; ++m) {
+		free_movement(movement_list[m]);
+	}
+
+	free(context_list);
+	free(movement_list);
+
+	return;
+}
+
+
 
 /* alloc a window struct */
 struct context *alloc_context(char * context_name, char *window_title,
@@ -123,20 +201,6 @@ struct context *alloc_context(char * context_name, char *window_title,
 	return ans;
 }
 
-/* release a window struct */
-void free_context(struct context *free_me) {
-
-	assert(free_me);
-
-	free(free_me->name);
-	free(free_me->title);
-	free(free_me->class);
-	regfree(free_me->class_compiled);
-	regfree(free_me->title_compiled);
-	free_gesture(*free_me->gestures);
-	free(free_me);
-	return;
-}
 
 
 /* alloc a movement struct */
@@ -171,17 +235,6 @@ struct movement *alloc_movement(char *movement_name, char *movement_expression) 
 	return ans;
 }
 
-/* release a movement struct */
-void free_movement(struct movement *free_me) {
-
-	assert(free_me);
-
-	free(free_me->name);
-	free(free_me->expression);
-	free(free_me->compiled);
-	free(free_me);
-	return;
-}
 
 /* alloc an action struct */
 struct action *alloc_action(int action_type, char * action_value) {
@@ -198,14 +251,7 @@ struct action *alloc_action(int action_type, char * action_value) {
 	return ans;
 }
 
-/* release an action struct */
-void free_action(struct action *free_me) {
 
-	assert(free_me);
-
-	free(free_me);
-	return;
-}
 
 struct gesture * gesture_match(char * captured_sequence, char * window_class,
 		char * window_title) {
@@ -450,7 +496,7 @@ struct gesture * parse_gesture(xmlNode *node,
 	}
 
 	if (!gesture_name) {
-		free(gesture_trigger);
+		//free(gesture_trigger);
 		fprintf(stderr, "Missing gesture name\n");
 		return NULL;
 	}
@@ -718,6 +764,7 @@ char * gestures_get_filename() {
 
 	char * xdg;
 
+	// xdg cannot be modified
 	xdg = getenv("XDG_CONFIG_HOME");
 
 	if (xdg) {
@@ -727,7 +774,7 @@ char * gestures_get_filename() {
 		sprintf(_filename, "%s/.config/mygestures/mygestures.xml", home);
 	}
 
-	free(xdg);
+
 	return strdup(_filename);
 }
 
@@ -736,6 +783,12 @@ char * gestures_get_template_filename() {
 	sprintf(template_file, "%s/mygestures.xml", SYSCONFIR);
 	return template_file;
 }
+
+
+
+
+
+
 
 int gestures_init() {
 

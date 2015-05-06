@@ -51,7 +51,7 @@ struct context {
 
 struct gesture {
 	char * name;
-	struct context *context;
+	//struct context *context;
 	struct movement *movement;
 	struct action **actions;
 	int actions_count;
