@@ -429,8 +429,8 @@ struct grabbed_information * end_movement(XButtonEvent *e) {
 		captured->advanced_movement = strdup(accurate_stroke_sequence);
 		captured->basic_movement = strdup(fuzzy_stroke_sequence);
 
-		char * window_title = "";
-		char * window_class = "";
+		char * window_title;
+		char * window_class;
 
 		get_window_info(dpy, get_focused_window(dpy), &window_title,
 				&window_class);

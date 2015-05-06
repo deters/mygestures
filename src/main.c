@@ -118,11 +118,7 @@ void execute_action(struct action *action) {
 	switch (action->type) {
 	case ACTION_EXECUTE:
 
-		if ((pid = vfork()) == 0) {
-			system(action->data);
-			//execl(action->original_str, NULL); /* after a successful execl the parent should be resumed */
-			_exit(127); /* terminate the child in case execl fails */
-		}
+		system(action->data);
 
 		break;
 	case ACTION_ICONIFY:
@@ -152,17 +148,17 @@ void execute_action(struct action *action) {
 
 int main(int argc, char * const * argv) {
 
+	handle_args(argc, argv);
+
 	if (is_daemonized)
 		daemonize();
-
-	handle_args(argc, argv);
 
 	int err = 0;
 
 	err = gestures_init();
 
 	if (err) {
-		fprintf(stderr, "Error loading configuration file.\n");
+		fprintf(stderr, "Error loading gestures.\n");
 		return err;
 	}
 
