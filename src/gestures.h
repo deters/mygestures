@@ -83,6 +83,7 @@ struct action {
 };
 
 int gestures_init();
+void gestures_finalize();
 
 struct gesture * gesture_match(char * captured_sequence, char * window_class,
 		char * window_title);

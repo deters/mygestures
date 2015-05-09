@@ -20,6 +20,9 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE /* See feature_test_macros(7) */
+#include <stdio.h>
+
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -41,8 +44,6 @@ int context_count;
 
 char * _filename = NULL;
 
-
-
 /* alloc a gesture struct */
 struct gesture *alloc_gesture(char * gesture_name,
 		struct movement *gesture_movement, struct action **gesture_actions,
@@ -62,7 +63,6 @@ struct gesture *alloc_gesture(char * gesture_name,
 	ans->actions_count = actions_count;
 	return ans;
 }
-
 
 /* release a movement struct */
 void free_movement(struct movement *free_me) {
@@ -87,12 +87,10 @@ void free_action(struct action *free_me) {
 	return;
 }
 
-
 /* release a gesture struct */
 void free_gesture(struct gesture *free_me) {
 
 	assert(free_me);
-
 
 	free(free_me->name);
 
@@ -102,14 +100,12 @@ void free_gesture(struct gesture *free_me) {
 		free_action(free_me->actions[i]);
 	}
 
-
 	free(free_me);
 
 	return;
 }
 
-
-void free_context(struct context * free_me){
+void free_context(struct context * free_me) {
 	assert(free_me);
 
 	for (int g = 0; g < free_me->gestures_count; ++g) {
@@ -128,16 +124,14 @@ void free_context(struct context * free_me){
 	}
 	free(free_me);
 
-
-
 }
 
-void gestures_finalize(){
+void gestures_finalize() {
+
 	free(_filename);
-	for (int c = 0; c < context_count; ++c) {
 
-		free_context(context_list[c]);
-
+	for (int i = 0; i < context_count; ++i) {
+		free_context(context_list[i]);
 	}
 
 	for (int m = 0; m < movement_count; ++m) {
@@ -149,8 +143,6 @@ void gestures_finalize(){
 
 	return;
 }
-
-
 
 /* alloc a window struct */
 struct context *alloc_context(char * context_name, char *window_title,
@@ -201,8 +193,6 @@ struct context *alloc_context(char * context_name, char *window_title,
 	return ans;
 }
 
-
-
 /* alloc a movement struct */
 struct movement *alloc_movement(char *movement_name, char *movement_expression) {
 
@@ -215,7 +205,7 @@ struct movement *alloc_movement(char *movement_name, char *movement_expression) 
 	ans->name = movement_name;
 	ans->expression = movement_expression;
 
-	char * regex_str = malloc(sizeof(char) * (strlen(movement_expression) + 5));
+	char * regex_str = malloc(sizeof(char) * (strlen(movement_expression) + 6));
 
 	strcpy(regex_str, "");
 	strcat(regex_str, "^(");
@@ -235,7 +225,6 @@ struct movement *alloc_movement(char *movement_name, char *movement_expression) 
 	return ans;
 }
 
-
 /* alloc an action struct */
 struct action *alloc_action(int action_type, char * action_value) {
 
@@ -250,8 +239,6 @@ struct action *alloc_action(int action_type, char * action_value) {
 
 	return ans;
 }
-
-
 
 struct gesture * gesture_match(char * captured_sequence, char * window_class,
 		char * window_title) {
@@ -310,8 +297,6 @@ struct gesture * gesture_match(char * captured_sequence, char * window_class,
 
 	return matched_gesture;
 }
-
-
 
 static void recursive_mkdir(char *path, mode_t mode) {
 
@@ -754,54 +739,40 @@ int gestures_load_from_file(char *filename) {
 
 }
 
-char * gestures_get_filename() {
-
-	if (_filename) {
-		return strdup(_filename);
-	}
-
-	_filename = malloc(sizeof(char) * 4096);
-
-	char * xdg;
-
-	// xdg cannot be modified
-	xdg = getenv("XDG_CONFIG_HOME");
-
-	if (xdg) {
-		sprintf(_filename, "%s/mygestures/mygestures.xml", xdg);
-	} else {
-		char * home = getenv("HOME");
-		sprintf(_filename, "%s/.config/mygestures/mygestures.xml", home);
-	}
-
-
-	return strdup(_filename);
-}
-
 char * gestures_get_template_filename() {
-	char * template_file = malloc(sizeof(char) * 4096);
-	sprintf(template_file, "%s/mygestures.xml", SYSCONFIR);
+	char * template_file = NULL;
+	asprintf(&template_file, "%s/mygestures.xml", SYSCONFIR);
 	return template_file;
 }
 
-
-
-
-
-
-
 int gestures_init() {
 
-	char * filename = gestures_get_filename();
+	if (!_filename) {
 
-	fprintf(stdout, "Loading configuration from %s\n", filename);
+		_filename = malloc(sizeof(char) * 4096);
 
-	int err = gestures_load_from_file(filename);
+		char * xdg = NULL;
+
+		// dont need to be freed
+		xdg = getenv("XDG_CONFIG_HOME");
+
+		if (xdg) {
+			sprintf(_filename, "%s/mygestures/mygestures.xml", xdg);
+		} else {
+			char * home = getenv("HOME");
+			sprintf(_filename, "%s/.config/mygestures/mygestures.xml", home);
+		}
+
+	}
+
+	fprintf(stdout, "Loading configuration from %s\n", _filename);
+
+	int err = gestures_load_from_file(_filename);
 
 	if (err) {
 
 		FILE *f = NULL;
-		f = fopen(filename, "r");
+		f = fopen(_filename, "r");
 
 		if (f) {
 			fclose(f);
@@ -809,27 +780,25 @@ int gestures_init() {
 
 			char * template_filename = gestures_get_template_filename();
 
-			err = file_create_from_template(filename, template_filename);
+			err = file_create_from_template(_filename, template_filename);
 
 			if (err) {
 				fprintf(stderr,
 						"Error trying to create config file `%s' from template `%s'.\n",
-						filename, template_filename);
+						_filename, template_filename);
 			} else {
 				fprintf(stderr,
 						"Created config file `%s' from template `%s'.\n",
-						filename, template_filename);
+						_filename, template_filename);
 			}
 
-			err = gestures_load_from_file(filename);
+			err = gestures_load_from_file(_filename);
 
 			free(template_filename);
 
 		}
 
 	}
-
-	free(filename);
 
 	return err;
 
@@ -844,6 +813,4 @@ void gestures_set_config_file(char * config_file) {
 	_filename = config_file;
 
 }
-
-
 
