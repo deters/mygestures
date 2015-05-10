@@ -17,9 +17,7 @@ PKG_CHECK_MODULES(Xrender, xrender)
 PKG_CHECK_MODULES(Xtst, xtst)
 PKG_CHECK_MODULES(libXML, libxml-2.0 >= 2.4)
 
-# Checks for header files.
-AC_PATH_X
-AC_CHECK_HEADERS([fcntl.h stdlib.h string.h strings.h unistd.h])
+AC_SEARCH_LIBS([shm_open], [rt])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_MODE_T

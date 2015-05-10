@@ -19,12 +19,60 @@
 
 #include <mcheck.h>
 
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <time.h>
 
 struct grabbing * grabber;
 
 int is_daemonized = 0;
 
+char * _name = NULL;
+
+struct msgt {
+	int pid;
+};
+
 int shut_down = 0;
+
+void highlander(char * unique_identifier) {
+
+	// "there can be only one"
+
+	_name = unique_identifier;
+
+	int shared_seg_size = sizeof(struct msgt);
+	struct msgt * shared_msg = NULL;
+
+	int shmfd = shm_open(_name, O_CREAT | O_RDWR, S_IRWXU | S_IRWXG);
+
+	if (shmfd < 0) {
+		perror("In shm_open()");
+		exit(1);
+	}
+
+	ftruncate(shmfd, shared_seg_size);
+
+	shared_msg = (struct msgt *) mmap(NULL, shared_seg_size,
+	PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);
+
+	if (shared_msg == NULL) {
+		perror("In mmap()");
+		exit(1);
+	}
+
+	if (shared_msg->pid > 0) {
+		printf("Killing mygestures running on pid %d\n", shared_msg->pid);
+
+		kill(shared_msg->pid, SIGTERM);
+		usleep(100 * 1000); // 100ms
+
+	}
+
+	shared_msg->pid = getpid();
+
+}
 
 void usage() {
 	printf("%s\n\n", PACKAGE_STRING);
@@ -45,22 +93,27 @@ void usage() {
 }
 
 /*void sighup(int a) {
-	int err = gestures_init();
-	if (err != 0) {
-		fprintf(stderr, "Error reloading gestures.");
-	}
-	return;
-}*/
+ int err = gestures_init();
+ if (err != 0) {
+ fprintf(stderr, "Error reloading gestures.");
+ }
+ return;
+ }
 
-/*void sigchld(int a) {
-	int err;
-	waitpid(-1, &err, WNOHANG);
-	return;
-}*/
+ void sigchld(int a) {
+ int err;
+ waitpid(-1, &err, WNOHANG);
+ return;
+ }*/
 
 void sigint(int a) {
-	shut_down = 1;
-	return;
+
+	if (shm_unlink(_name) != 0) {
+		perror("In shm_unlink()");
+		exit(1);
+	}
+
+	exit(0);
 }
 
 int daemonize() {
@@ -114,6 +167,25 @@ void handle_args(int argc, char * const *argv) {
 	return;
 }
 
+void forkexec(char * data) {
+
+	pid_t pid;
+
+	pid = fork();
+	if (pid == -1) {
+		perror("fork error");
+		exit(1);
+	} else if (pid == 0) {
+		/* code for child */
+
+		execvp(data, NULL);
+
+		_exit(1);
+	} else { /* code for parent */
+	}
+
+}
+
 /**
  * Execute an action
  */
@@ -126,7 +198,7 @@ void execute_action(struct action *action) {
 	switch (action->type) {
 	case ACTION_EXECUTE:
 
-		system(action->data);
+		forkexec(action->data);
 
 		break;
 	case ACTION_ICONIFY:
@@ -148,7 +220,7 @@ void execute_action(struct action *action) {
 		grabbing_root_send(action->data);
 		break;
 	default:
-		fprintf(stderr, "found an unknown gesture \n");
+		fprintf(stderr, "found an unknown gesture\n");
 	}
 
 	return;
@@ -167,9 +239,6 @@ int main(int argc, char * const * argv) {
 
 	err = gestures_init();
 
-
-
-
 	if (err) {
 		fprintf(stderr, "Error loading gestures.\n");
 		return err;
@@ -177,21 +246,29 @@ int main(int argc, char * const * argv) {
 
 	err = grabbing_init();
 
+	char * unique_identifier;
+	asprintf(&unique_identifier,"/mygestures_uid%d",getuid());
+
+	//printf(unique_identifier);
+
+	highlander(unique_identifier);
+
 	if (err) {
 		fprintf(stderr, "Error grabbing button. Already running?\n");
-		return err;
+		exit(err);
 	}
 
+	fprintf(stdout,
+			"Draw some movement on the screen with the configured button pressed.\n");
+
+
 	if (!err) {
-
-
 
 		//signal(SIGHUP, sighup);
 		//signal(SIGCHLD, sigchld);
 		signal(SIGINT, sigint);
 
 		while (!shut_down) {
-
 
 			struct grabbed_information *grabbed = NULL;
 
@@ -233,6 +310,7 @@ int main(int argc, char * const * argv) {
 				}
 
 				free_captured_movements(grabbed);
+
 			}
 
 		}

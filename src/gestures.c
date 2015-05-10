@@ -96,7 +96,9 @@ void free_gesture(struct gesture *free_me) {
 
 	//free_movement(free_me->movement);
 
-	for (int i = 0; i < free_me->actions_count; ++i) {
+	int i = 0;
+
+	for (; i < free_me->actions_count; ++i) {
 		free_action(free_me->actions[i]);
 	}
 
@@ -108,7 +110,9 @@ void free_gesture(struct gesture *free_me) {
 void free_context(struct context * free_me) {
 	assert(free_me);
 
-	for (int g = 0; g < free_me->gestures_count; ++g) {
+	int g = 0;
+
+	for (; g < free_me->gestures_count; ++g) {
 		free_gesture(free_me->gestures[g]);
 	}
 
@@ -119,7 +123,9 @@ void free_context(struct context * free_me) {
 	free(free_me->class_compiled);
 	regfree(free_me->title_compiled);
 	free(free_me->title_compiled);
-	for (int i = 0; i < free_me->gestures_count; ++i) {
+
+	int i = 0;
+	for (; i < free_me->gestures_count; ++i) {
 		free_gesture(free_me->gestures[i]);
 	}
 	free(free_me);
@@ -130,12 +136,14 @@ void gestures_finalize() {
 
 	free(_filename);
 
-	for (int i = 0; i < context_count; ++i) {
+	int i;
+
+	for (i = 0; i < context_count; ++i) {
 		free_context(context_list[i]);
 	}
 
-	for (int m = 0; m < movement_count; ++m) {
-		free_movement(movement_list[m]);
+	for (i = 0; i < movement_count; ++i) {
+		free_movement(movement_list[i]);
 	}
 
 	free(context_list);
@@ -696,8 +704,6 @@ int parse_root(xmlNode *node) {
 	fprintf(stdout, "Loaded %i movements.\n", new_movement_count);
 	fprintf(stdout, "Loaded %i contexts with %i gestures.\n", new_context_count,
 			gestures_count);
-	fprintf(stdout,
-			"Draw some movement on the screen with the configured button pressed.\n");
 
 	// update global variables
 
@@ -749,18 +755,16 @@ int gestures_init() {
 
 	if (!_filename) {
 
-		_filename = malloc(sizeof(char) * 4096);
-
 		char * xdg = NULL;
 
 		// dont need to be freed
 		xdg = getenv("XDG_CONFIG_HOME");
 
 		if (xdg) {
-			sprintf(_filename, "%s/mygestures/mygestures.xml", xdg);
+			asprintf(&_filename, "%s/mygestures/mygestures.xml", xdg);
 		} else {
 			char * home = getenv("HOME");
-			sprintf(_filename, "%s/.config/mygestures/mygestures.xml", home);
+			asprintf(&_filename, "%s/.config/mygestures/mygestures.xml", home);
 		}
 
 	}
