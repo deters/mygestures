@@ -11,24 +11,24 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <fcntl.h>
+
+#include <mcheck.h>
 
 #include "grabbing.h"
 #include "assert.h"
 #include "gestures.h"
 #include "config.h"
 
-#include <mcheck.h>
 
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <time.h>
 
 struct grabbing * grabber;
 
 int is_daemonized = 0;
 
-char * _name = NULL;
+char * unique_identifier;
 
 struct msgt {
 	int pid;
@@ -36,41 +36,47 @@ struct msgt {
 
 int shut_down = 0;
 
-void highlander(char * unique_identifier) {
+void highlander() {
 
 	// "there can be only one"
 
-	_name = unique_identifier;
+	// Current process will use a shared memory to share current pid.
+	// if there is already a pid in this region of memory, kill it.
 
+	// the pid will be stored on a struct
+	struct msgt * shared_message = NULL;
 	int shared_seg_size = sizeof(struct msgt);
-	struct msgt * shared_msg = NULL;
 
-	int shmfd = shm_open(_name, O_CREAT | O_RDWR, S_IRWXU | S_IRWXG);
-
+	// request the shared memory identified by unique_identifier
+	int shmfd = shm_open(unique_identifier, O_CREAT | O_RDWR, 0600);
 	if (shmfd < 0) {
 		perror("In shm_open()");
 		exit(1);
 	}
-
 	ftruncate(shmfd, shared_seg_size);
 
-	shared_msg = (struct msgt *) mmap(NULL, shared_seg_size,
+	// map the memory region to be used in current process
+	shared_message = (struct msgt *) mmap(NULL, shared_seg_size,
 	PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);
-
-	if (shared_msg == NULL) {
+	if (shared_message == NULL) {
 		perror("In mmap()");
 		exit(1);
 	}
 
-	if (shared_msg->pid > 0) {
-		printf("Killing mygestures running on pid %d\n", shared_msg->pid);
+	// check if another process wrote his PID in the shared memory. Kill the process who has this PID
+	if (shared_message->pid > 0) {
+		printf("Killing mygestures running on pid %d\n", shared_message->pid);
 
-		kill(shared_msg->pid, SIGTERM);
+		kill(shared_message->pid, SIGTERM);
 		usleep(100 * 1000); // 100ms
 
 	}
 
-	shared_msg->pid = getpid();
+	// write the PID of the current process in the shared memory
+	shared_message->pid = getpid();
+
+	// the shared memory need to be released when mygestures is closed to avoid killing some other process who had been assigned to the same pid.
+	// This is being done in the sigint() method.
 
 }
 
@@ -108,7 +114,7 @@ void usage() {
 
 void sigint(int a) {
 
-	if (shm_unlink(_name) != 0) {
+	if (shm_unlink(unique_identifier) != 0) {
 		perror("In shm_unlink()");
 		exit(1);
 	}
@@ -246,12 +252,10 @@ int main(int argc, char * const * argv) {
 
 	err = grabbing_init();
 
-	char * unique_identifier;
+
 	asprintf(&unique_identifier,"/mygestures_uid%d",getuid());
 
-	//printf(unique_identifier);
-
-	highlander(unique_identifier);
+	highlander();
 
 	if (err) {
 		fprintf(stderr, "Error grabbing button. Already running?\n");
