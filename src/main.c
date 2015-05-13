@@ -15,20 +15,16 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
-#include <mcheck.h>
-
 #include "grabbing.h"
 #include "assert.h"
 #include "gestures.h"
 #include "config.h"
 
-
-
 struct grabbing * grabber;
 
 int is_daemonized = 0;
 
-char * unique_identifier;
+char * unique_identifier = NULL;
 
 struct msgt {
 	int pid;
@@ -46,6 +42,9 @@ void highlander() {
 	// the pid will be stored on a struct
 	struct msgt * shared_message = NULL;
 	int shared_seg_size = sizeof(struct msgt);
+
+	// create a unique identifier using the UID
+	asprintf(&unique_identifier, "/mygestures_uid%d", getuid());
 
 	// request the shared memory identified by unique_identifier
 	int shmfd = shm_open(unique_identifier, O_CREAT | O_RDWR, 0600);
@@ -88,50 +87,11 @@ void usage() {
 			"-c, --config\t: use config file.\n\t\tDefaults: $HOME/.config/mygestures/mygestures.xml /etc/mygestures.xml\n");
 	printf("-b, --button\t: which button to use. default is 3\n");
 	printf("-d, --daemonize\t: laymans daemonize\n");
-	printf("-m, --modifier\t: which modifier to use. valid values are: \n");
-	printf("\t\t  CTRL, SHIFT, ALT, WIN, CAPS, NUM, AnyModifier \n");
-	printf("\t\t  default is SHIFT\n");
 	printf(
 			"-l, --brush-color\t: choose a brush color. available colors are:\n");
 	printf("\t\t\t  yellow, white, red, green, purple, blue (default)\n");
 	printf("-w, --without-brush\t: don't paint the gesture on screen.\n");
 	exit(0);
-}
-
-/*void sighup(int a) {
- int err = gestures_init();
- if (err != 0) {
- fprintf(stderr, "Error reloading gestures.");
- }
- return;
- }
-
- void sigchld(int a) {
- int err;
- waitpid(-1, &err, WNOHANG);
- return;
- }*/
-
-void sigint(int a) {
-
-	if (shm_unlink(unique_identifier) != 0) {
-		perror("In shm_unlink()");
-		exit(1);
-	}
-
-	exit(0);
-}
-
-int daemonize() {
-	int i;
-
-	i = fork();
-	if (i != 0)
-		exit(0);
-
-	i = chdir("/");
-
-	return i;
 }
 
 void handle_args(int argc, char * const *argv) {
@@ -171,6 +131,30 @@ void handle_args(int argc, char * const *argv) {
 	}
 
 	return;
+}
+
+int daemonize() {
+	int i;
+
+	i = fork();
+	if (i != 0)
+		exit(0);
+
+	i = chdir("/");
+
+	return i;
+}
+
+void sigint(int a) {
+
+	if (unique_identifier) {
+		if (shm_unlink(unique_identifier) != 0) {
+			perror("In shm_unlink()");
+			exit(1);
+		}
+	}
+
+	exit(0);
 }
 
 void forkexec(char * data) {
@@ -252,9 +236,6 @@ int main(int argc, char * const * argv) {
 
 	err = grabbing_init();
 
-
-	asprintf(&unique_identifier,"/mygestures_uid%d",getuid());
-
 	highlander();
 
 	if (err) {
@@ -264,7 +245,6 @@ int main(int argc, char * const * argv) {
 
 	fprintf(stdout,
 			"Draw some movement on the screen with the configured button pressed.\n");
-
 
 	if (!err) {
 
