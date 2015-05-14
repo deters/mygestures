@@ -30,11 +30,11 @@ int is_daemonized = 0;
 
 char * unique_identifier = NULL;
 
+int shut_down = 0;
+
 struct msgt {
 	int pid;
 };
-
-int shut_down = 0;
 
 void highlander() {
 
@@ -82,6 +82,8 @@ void highlander() {
 	// This is being done in the sigint() method.
 
 }
+
+
 
 void usage() {
 	printf("%s\n\n", PACKAGE_STRING);
@@ -176,7 +178,7 @@ void forkexec(char * data) {
 	} else if (pid == 0) {
 		/* code for child */
 
-		execvp(data, NULL);
+		execvp(data,NULL);
 
 		_exit(1);
 	} else { /* code for parent */
@@ -227,27 +229,25 @@ void execute_action(struct action *action) {
 int main(int argc, char * const * argv) {
 
 #ifdef DEBUG
-		printf("Debug mode enabled. Memory trace will be writed to MALLOC_TRACE.\n");
-		mtrace();
+	printf("Debug mode enabled. Memory trace will be writed to MALLOC_TRACE.\n");
+	mtrace();
 #endif
 
 	handle_args(argc, argv);
 
-	if (is_daemonized)
-		daemonize();
+	struct context * root_context = gestures_init();
 
-	int err = 0;
-
-	err = gestures_init();
-
-	if (err) {
+	if (!root_context) {
 		fprintf(stderr, "Error loading gestures.\n");
-		return err;
+		return -1;
 	}
 
-	err = grabbing_init();
+	int err = grabbing_init();
 
 	highlander();
+
+	if (is_daemonized)
+		daemonize();
 
 	if (err) {
 		fprintf(stderr, "Error grabbing button. Already running?\n");
@@ -272,13 +272,13 @@ int main(int argc, char * const * argv) {
 			if (grabbed) {
 
 				char * sequence = grabbed->advanced_movement;
-				struct gesture * gesture = gesture_match(sequence,
+				struct gesture * gesture = gesture_match(root_context, sequence,
 						grabbed->window_class, grabbed->window_title);
 
 				if (!gesture) {
 					char * sequence = grabbed->basic_movement;
-					gesture = gesture_match(sequence, grabbed->window_class,
-							grabbed->window_title);
+					gesture = gesture_match(root_context, sequence,
+							grabbed->window_class, grabbed->window_title);
 				}
 
 				printf("\n");
@@ -314,8 +314,8 @@ int main(int argc, char * const * argv) {
 
 	grabbing_finalize();
 
-	gestures_finalize();
+	gestures_finalize(root_context);
 
-	return err;
+	exit(0);
 
 }

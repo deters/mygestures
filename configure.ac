@@ -38,6 +38,8 @@ AC_FUNC_MALLOC
 AC_FUNC_MMAP
 AC_CHECK_FUNCS([bzero ftruncate memset mkdir regcomp strcasecmp strdup])
 
+# "--enable-debug" flag
+
 AC_ARG_ENABLE(debug,
 [  --enable-debug          Enable debugging (disabled by default)],
 [if test x$enableval = xyes; then

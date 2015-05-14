@@ -43,6 +43,11 @@ struct context {
 	char *class;
 	struct gesture ** gestures;
 	int gestures_count;
+	struct context ** context_list;
+	int context_count;
+	struct movement ** movements;
+	int movement_count;
+	struct context * parent; /* weak */
 	int abort;
 	regex_t * title_compiled;
 	regex_t * class_compiled;
@@ -82,11 +87,12 @@ struct action {
 	char *data;
 };
 
-int gestures_init();
+struct context * gestures_init();
+
 void gestures_finalize();
 
-struct gesture * gesture_match(char * captured_sequence, char * window_class,
-		char * window_title);
+struct gesture * gesture_match(struct context * context,
+		char * captured_sequence, char * window_class, char * window_title);
 
 void gestures_set_config_file(char * config_file);
 
