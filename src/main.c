@@ -20,6 +20,10 @@
 #include "gestures.h"
 #include "config.h"
 
+#ifdef DEBUG
+#include <mcheck.h>
+#endif
+
 struct grabbing * grabber;
 
 int is_daemonized = 0;
@@ -154,6 +158,10 @@ void sigint(int a) {
 		}
 	}
 
+#ifdef DEBUG
+	muntrace();
+#endif
+
 	exit(0);
 }
 
@@ -218,7 +226,10 @@ void execute_action(struct action *action) {
 
 int main(int argc, char * const * argv) {
 
-	mtrace();
+#ifdef DEBUG
+		printf("Debug mode enabled. Memory trace will be writed to MALLOC_TRACE.\n");
+		mtrace();
+#endif
 
 	handle_args(argc, argv);
 

@@ -22,11 +22,11 @@ PKG_CHECK_MODULES(Xrender, xrender)
 PKG_CHECK_MODULES(Xtst, xtst)
 PKG_CHECK_MODULES(libXML, libxml-2.0 >= 2.4)
 
-AC_SEARCH_LIBS([shm_open], [rt])
+AC_SEARCH_LIBS([shm_open], [rt], [])
 
 # Checks for header files.
 AC_PATH_X
-AC_CHECK_HEADERS([fcntl.h stdlib.h string.h strings.h unistd.h])
+AC_CHECK_HEADERS
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_MODE_T
@@ -37,6 +37,16 @@ AC_FUNC_FORK
 AC_FUNC_MALLOC
 AC_FUNC_MMAP
 AC_CHECK_FUNCS([bzero ftruncate memset mkdir regcomp strcasecmp strdup])
+
+AC_ARG_ENABLE(debug,
+[  --enable-debug          Enable debugging (disabled by default)],
+[if test x$enableval = xyes; then
+    AC_DEFINE(DEBUG, 1, [Define this to enable debug messages and assert warnings.]) debug_support=yes
+fi])
+
+if test x$debug_support != xyes; then
+    AC_DEFINE(NDEBUG, 1, [Shut up assert warnings :-)])
+fi
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile])

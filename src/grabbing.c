@@ -36,8 +36,6 @@
 #define DELTA_MIN	30 /*TODO*/
 #define MAX_STROKE_SEQUENCE 63 /*TODO*/
 
-
-
 Display * dpy = NULL;
 
 /* the button to grab */
@@ -63,6 +61,69 @@ char * fuzzy_stroke_sequence;
 /* back of the draw */
 backing_t backing;
 brush_t brush;
+
+/*
+ * Get the parent window.
+ *
+ * PRIVATE
+ */
+Window get_parent_window(Display *dpy, Window w) {
+	Window root_return, parent_return, *child_return = NULL;
+	unsigned int nchildren_return;
+	int ret;
+	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return,
+			&nchildren_return);
+
+	if (ret) {
+		XFree(child_return);
+	}
+
+	return parent_return;
+}
+
+/*
+ * Return the focused window at the given display.
+ *
+ * PRIVATE
+ */
+Window get_focused_window(Display *dpy) {
+
+	Window win = 0;
+	int val = 0;
+
+	XGetInputFocus(dpy, &win, &val);
+
+	if (val == RevertToParent) {
+		win = get_parent_window(dpy, win);
+	}
+
+	return win;
+
+}
+
+void grabbing_iconify() {
+	generic_iconify(dpy, get_focused_window(dpy));
+}
+
+void grabbing_kill() {
+	generic_kill(dpy, get_focused_window(dpy));
+}
+
+void grabbing_raise() {
+	generic_raise(dpy, get_focused_window(dpy));
+}
+
+void grabbing_lower() {
+	generic_lower(dpy, get_focused_window(dpy));
+}
+
+void grabbing_maximize() {
+	generic_maximize(dpy, get_focused_window(dpy));
+}
+
+void grabbing_root_send(char *keys) {
+	generic_root_send(dpy, keys);
+}
 
 void free_captured_movements(struct grabbed_information *free_me) {
 
@@ -156,45 +217,6 @@ int ungrab_pointer(Display *dpy) {
 	}
 
 	return result;
-}
-
-/*
- * Get the parent window.
- *
- * PRIVATE
- */
-Window get_parent_window(Display *dpy, Window w) {
-	Window root_return, parent_return, *child_return = NULL;
-	unsigned int nchildren_return;
-	int ret;
-	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return,
-			&nchildren_return);
-
-	if (ret) {
-		XFree(child_return);
-	}
-
-	return parent_return;
-}
-
-/*
- * Return the focused window at the given display.
- *
- * PRIVATE
- */
-Window get_focused_window(Display *dpy) {
-
-	Window win = 0;
-	int val = 0;
-
-	XGetInputFocus(dpy, &win, &val);
-
-	if (val == RevertToParent) {
-		win = get_parent_window(dpy, win);
-	}
-
-	return win;
-
 }
 
 /*
@@ -663,32 +685,6 @@ int grabbing_init() {
 	}
 
 	return err;
-}
-
-
-
-void grabbing_iconify() {
-	generic_iconify(dpy, get_focused_window(dpy));
-}
-
-void grabbing_kill() {
-	generic_kill(dpy, get_focused_window(dpy));
-}
-
-void grabbing_raise() {
-	generic_raise(dpy, get_focused_window(dpy));
-}
-
-void grabbing_lower() {
-	generic_lower(dpy, get_focused_window(dpy));
-}
-
-void grabbing_maximize() {
-	generic_maximize(dpy, get_focused_window(dpy));
-}
-
-void grabbing_root_send(char *keys) {
-	generic_root_send(dpy, keys);
 }
 
 void grabbing_finalize() {

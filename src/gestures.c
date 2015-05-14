@@ -213,12 +213,8 @@ struct movement *alloc_movement(char *movement_name, char *movement_expression) 
 	ans->name = movement_name;
 	ans->expression = movement_expression;
 
-	char * regex_str = malloc(sizeof(char) * (strlen(movement_expression) + 6));
-
-	strcpy(regex_str, "");
-	strcat(regex_str, "^(");
-	strcat(regex_str, movement_expression);
-	strcat(regex_str, ")$");
+	char * regex_str = NULL;
+	asprintf(&regex_str,"^(%s)$",movement_expression);
 
 	regex_t * movement_compiled = NULL;
 	movement_compiled = malloc(sizeof(regex_t));
