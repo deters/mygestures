@@ -5,6 +5,9 @@
  *      Author: deters
  */
 
+#define _GNU_SOURCE /* needed by asprintf */
+#include <stdio.h>  /* needed by asprintf */
+
 #include <signal.h>
 #include <wait.h>
 #include <unistd.h>
@@ -24,17 +27,28 @@
 #include <mcheck.h>
 #endif
 
-struct grabbing * grabber;
-
 int is_daemonized = 0;
 
 char * unique_identifier = NULL;
 
-int shut_down = 0;
-
-struct msgt {
+struct shm_info {
 	int pid;
 };
+
+void usage() {
+	printf("%s\n\n", PACKAGE_STRING);
+	printf("Usage:\n");
+	printf("-h, --help\t: print this usage info\n");
+	printf(
+			"-c, --config\t: use config file.\n\t\tDefaults: $HOME/.config/mygestures/mygestures.xml /etc/mygestures.xml\n");
+	printf("-b, --button\t: which button to use. default is 3\n");
+	printf("-d, --daemonize\t: laymans daemonize\n");
+	printf(
+			"-l, --brush-color\t: choose a brush color. available colors are:\n");
+	printf("\t\t\t  yellow, white, red, green, purple, blue (default)\n");
+	printf("-w, --without-brush\t: don't paint the gesture on screen.\n");
+	exit(0);
+}
 
 void highlander() {
 
@@ -44,8 +58,8 @@ void highlander() {
 	// if there is already a pid in this region of memory, kill it.
 
 	// the pid will be stored on a struct
-	struct msgt * shared_message = NULL;
-	int shared_seg_size = sizeof(struct msgt);
+	struct shm_info * shared_message = NULL;
+	int shared_seg_size = sizeof(struct shm_info);
 
 	// create a unique identifier using the UID
 	asprintf(&unique_identifier, "/mygestures_uid%d", getuid());
@@ -59,7 +73,7 @@ void highlander() {
 	ftruncate(shmfd, shared_seg_size);
 
 	// map the memory region to be used in current process
-	shared_message = (struct msgt *) mmap(NULL, shared_seg_size,
+	shared_message = (struct shm_info *) mmap(NULL, shared_seg_size,
 	PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);
 	if (shared_message == NULL) {
 		perror("In mmap()");
@@ -81,23 +95,6 @@ void highlander() {
 	// the shared memory need to be released when mygestures is closed to avoid killing some other process who had been assigned to the same pid.
 	// This is being done in the sigint() method.
 
-}
-
-
-
-void usage() {
-	printf("%s\n\n", PACKAGE_STRING);
-	printf("Usage:\n");
-	printf("-h, --help\t: print this usage info\n");
-	printf(
-			"-c, --config\t: use config file.\n\t\tDefaults: $HOME/.config/mygestures/mygestures.xml /etc/mygestures.xml\n");
-	printf("-b, --button\t: which button to use. default is 3\n");
-	printf("-d, --daemonize\t: laymans daemonize\n");
-	printf(
-			"-l, --brush-color\t: choose a brush color. available colors are:\n");
-	printf("\t\t\t  yellow, white, red, green, purple, blue (default)\n");
-	printf("-w, --without-brush\t: don't paint the gesture on screen.\n");
-	exit(0);
 }
 
 void handle_args(int argc, char * const *argv) {
@@ -178,7 +175,7 @@ void forkexec(char * data) {
 	} else if (pid == 0) {
 		/* code for child */
 
-		execvp(data,NULL);
+		system(data);
 
 		_exit(1);
 	} else { /* code for parent */
@@ -235,6 +232,8 @@ int main(int argc, char * const * argv) {
 
 	handle_args(argc, argv);
 
+	struct grabbing * grabber;
+
 	struct context * root_context = gestures_init();
 
 	if (!root_context) {
@@ -259,11 +258,9 @@ int main(int argc, char * const * argv) {
 
 	if (!err) {
 
-		//signal(SIGHUP, sighup);
-		//signal(SIGCHLD, sigchld);
 		signal(SIGINT, sigint);
 
-		while (!shut_down) {
+		while (1) {
 
 			struct grabbed_information *grabbed = NULL;
 

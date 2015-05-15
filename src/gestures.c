@@ -20,8 +20,8 @@
 #include <config.h>
 #endif
 
-#define _GNU_SOURCE /* See feature_test_macros(7) */
-#include <stdio.h>
+#define _GNU_SOURCE /* needed by asprintf */
+#include <stdio.h>  /* needed by asprintf */
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -677,12 +677,6 @@ struct context * parse_root(xmlNode *node) {
 	int gestures_count = 0;
 
 	struct context * root_context = parse_context(node, NULL);
-
-	/*
-	 fprintf(stdout, "Loaded %i movements.\n", new_movement_count);
-	 fprintf(stdout, "Loaded %i contexts with %i gestures.\n", new_context_count,
-	 gestures_count);
-	 */
 
 	return root_context;
 
