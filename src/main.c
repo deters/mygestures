@@ -66,6 +66,8 @@ void highlander() {
 
 	// request the shared memory identified by unique_identifier
 	int shmfd = shm_open(unique_identifier, O_CREAT | O_RDWR, 0600);
+
+
 	if (shmfd < 0) {
 		perror("In shm_open()");
 		exit(1);
