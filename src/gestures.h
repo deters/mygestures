@@ -62,9 +62,10 @@ struct gesture {
 	int actions_count;
 };
 
-struct gesture_engine {
+typedef struct _config {
 	char * config_file;
-};
+	struct context * root_context;
+} config;
 
 /* Actions */
 enum {
@@ -87,13 +88,11 @@ struct action {
 	char *data;
 };
 
-struct context * gestures_init();
-
-void gestures_finalize();
-
-struct gesture * gesture_match(struct context * context,
-		char * captured_sequence, char * window_class, char * window_title);
-
-void gestures_set_config_file(char * config_file);
+config * config_new();
+void config_free();
+int config_load_from_file(config * conf, char * filename);
+int config_load_from_default(config * conf);
+struct gesture * config_match_gesture(config * conf, char * captured_sequence,
+		char * window_class, char * window_title);
 
 #endif

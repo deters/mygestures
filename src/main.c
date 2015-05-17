@@ -67,7 +67,6 @@ void highlander() {
 	// request the shared memory identified by unique_identifier
 	int shmfd = shm_open(unique_identifier, O_CREAT | O_RDWR, 0600);
 
-
 	if (shmfd < 0) {
 		perror("In shm_open()");
 		exit(1);
@@ -99,7 +98,7 @@ void highlander() {
 
 }
 
-void handle_args(int argc, char * const *argv) {
+void handle_args(int argc, char * const *argv, char ** config_file) {
 
 	char opt;
 	static struct option opts[] = { { "help", 0, 0, 'h' },
@@ -120,7 +119,7 @@ void handle_args(int argc, char * const *argv) {
 			grabbing_set_button(atoi(optarg));
 			break;
 		case 'c':
-			gestures_set_config_file(optarg);
+			*config_file = optarg;
 			break;
 		case 'w':
 			grabbing_set_without_brush(1);
@@ -232,18 +231,29 @@ int main(int argc, char * const * argv) {
 	mtrace();
 #endif
 
-	handle_args(argc, argv);
+	char * config_file = NULL;
+
+	handle_args(argc, argv, &config_file);
+
+	config * conf = config_new();
+
+	int err = 0;
+
+	if (config_file) {
+		err = config_load_from_file(conf, config_file);
+	} else {
+		err = config_load_from_default(conf);
+	}
+
+
+	if (err) {
+		fprintf(stderr, "Error loading gestures.\n");
+		return err;
+	}
 
 	struct grabbing * grabber;
 
-	struct context * root_context = gestures_init();
-
-	if (!root_context) {
-		fprintf(stderr, "Error loading gestures.\n");
-		return -1;
-	}
-
-	int err = grabbing_init();
+	err = grabbing_init();
 
 	highlander();
 
@@ -271,12 +281,12 @@ int main(int argc, char * const * argv) {
 			if (grabbed) {
 
 				char * sequence = grabbed->advanced_movement;
-				struct gesture * gesture = gesture_match(root_context, sequence,
+				struct gesture * gesture = config_match_gesture(conf, sequence,
 						grabbed->window_class, grabbed->window_title);
 
 				if (!gesture) {
 					char * sequence = grabbed->basic_movement;
-					gesture = gesture_match(root_context, sequence,
+					gesture = config_match_gesture(conf, sequence,
 							grabbed->window_class, grabbed->window_title);
 				}
 
@@ -313,7 +323,7 @@ int main(int argc, char * const * argv) {
 
 	grabbing_finalize();
 
-	gestures_finalize(root_context);
+	config_free(conf);
 
 	exit(0);
 
