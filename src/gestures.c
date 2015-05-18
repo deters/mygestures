@@ -28,7 +28,6 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <string.h>
-#include "gestures.h"
 #include <regex.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
@@ -36,19 +35,23 @@
 #include <sys/stat.h>
 #include <assert.h>
 
+#include "gestures.h"
+
 /* alloc a gesture struct */
-static struct gesture *_alloc_gesture(char * gesture_name,
-		struct movement *gesture_movement, struct action **gesture_actions,
-		int actions_count) {
+static struct gesture *_alloc_gesture(struct context * context,
+		char * gesture_name, struct movement *gesture_movement,
+		struct action **gesture_actions, int actions_count) {
 
 	assert(gesture_name);
 	assert(gesture_movement);
 	assert(gesture_actions);
+	assert(context);
 	assert(actions_count >= 0);
 
 	struct gesture *ans = malloc(sizeof(struct gesture));
 	bzero(ans, sizeof(struct gesture));
 
+	ans->context = context;
 	ans->name = gesture_name;
 	ans->movement = gesture_movement;
 	ans->actions = gesture_actions;
@@ -87,6 +90,7 @@ static void _free_gesture(struct gesture *free_me) {
 	free(free_me->name);
 
 	//free_movement(free_me->movement);
+	//free_context(free_me->context);
 
 	int i = 0;
 
@@ -293,17 +297,27 @@ struct gesture * context_match_gesture(struct context * context,
 
 }
 
-struct gesture * config_match_gesture(config * conf, char * captured_sequence,
-		char * window_class, char * window_title) {
+struct gesture * config_match_captured(config * conf, capture * captured) {
 
-	assert(captured_sequence);
-	assert(window_class);
-	assert(window_title);
-	assert(context);
+	assert(conf);
+	assert(captured);
+
+	struct gesture * matched = NULL;
 
 	struct context * root_context = conf->root_context;
-	return context_match_gesture(root_context, captured_sequence, window_class,
-			window_title);
+
+	int i = 0;
+	for (; i < captured->movement_representations_count; ++i) {
+		matched = context_match_gesture(root_context,
+				captured->movement_representations[i], captured->window_class,
+				captured->window_title);
+		if (matched) {
+			break;
+		}
+	}
+
+	return matched;
+
 }
 
 static void _recursive_mkdir(char *path, mode_t mode) {
@@ -491,8 +505,8 @@ static struct gesture * _parse_gesture(xmlNode *node, struct context * context) 
 
 	struct gesture * gest = NULL;
 
-	gest = _alloc_gesture(gesture_name, gesture_trigger, gesture_actions,
-			actions_count);
+	gest = _alloc_gesture(context, gesture_name, gesture_trigger,
+			gesture_actions, actions_count);
 
 	return gest;
 
@@ -559,7 +573,7 @@ static struct context * _parse_context(xmlNode *node, struct context * parent) {
 		}
 
 	} else {
-		context_name = "root";
+		context_name = "Any Application";
 	}
 
 	if (!context_name) {

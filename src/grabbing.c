@@ -38,6 +38,13 @@
 
 Display * dpy = NULL;
 
+
+struct key_press {
+	KeySym key;
+	struct key_press * next;
+};
+
+
 /* the button to grab */
 int button = 0;
 
@@ -125,12 +132,13 @@ void grabbing_root_send(char *keys) {
 	generic_root_send(dpy, keys);
 }
 
-void free_captured_movements(struct grabbed_information *free_me) {
+void grabbing_free_grabbed_information(capture * free_me) {
 
 	assert(free_me);
 
-	free(free_me->advanced_movement);
-	free(free_me->basic_movement);
+	free(free_me->movement_representations[1]);
+	free(free_me->movement_representations[0]);
+	free(free_me->movement_representations);
 	free(free_me->window_class);
 	free(free_me->window_title);
 	free(free_me);
@@ -422,9 +430,9 @@ void generic_root_send(Display *dpy, char *keys) {
 /**
  * Obtém o resultado dos dois algoritmos de captura de movimentos, e envia para serem processadas.
  */
-struct grabbed_information * end_movement(XButtonEvent *e) {
+capture * end_movement(XButtonEvent *e) {
 
-	struct grabbed_information * captured = NULL;
+	capture * captured = NULL;
 
 	// if is drawing
 	if (!without_brush) {
@@ -446,10 +454,13 @@ struct grabbed_information * end_movement(XButtonEvent *e) {
 
 	} else {
 
-		captured = malloc(sizeof(struct grabbed_information));
+		captured = malloc(sizeof(capture));
 
-		captured->advanced_movement = strdup(accurate_stroke_sequence);
-		captured->basic_movement = strdup(fuzzy_stroke_sequence);
+		captured->movement_representations = malloc(sizeof(captured)*2);
+		captured->movement_representations_count = 2;
+
+		captured->movement_representations[0] = strdup(accurate_stroke_sequence);
+		captured->movement_representations[1] = strdup(fuzzy_stroke_sequence);
 
 		char * window_title;
 		char * window_class;
@@ -604,11 +615,11 @@ void update_movement(XMotionEvent *e) {
 	return;
 }
 
-struct grabbed_information * grabbing_capture_movements() {
+capture * grabbing_capture() {
 
 	XEvent e;
 
-	struct grabbed_information * captured = NULL;
+	capture * captured = NULL;
 
 	XNextEvent(dpy, &e);
 

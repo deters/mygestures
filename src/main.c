@@ -50,21 +50,22 @@ void usage() {
 	exit(0);
 }
 
+/*
+ * Try to kill other instances of the program before running.
+ * Will use shared memory to store the pid of the running session.
+ * Will kill the session stored previously on shared memory before writing new pid.
+ */
 void highlander() {
 
-	// "there can be only one"
+	/* "there can be only one" */
 
-	// Current process will use a shared memory to share current pid.
-	// if there is already a pid in this region of memory, kill it.
-
-	// the pid will be stored on a struct
 	struct shm_info * shared_message = NULL;
 	int shared_seg_size = sizeof(struct shm_info);
 
-	// create a unique identifier using the UID
+	/* the unique identifier */
 	asprintf(&unique_identifier, "/mygestures_uid%d", getuid());
 
-	// request the shared memory identified by unique_identifier
+	/* request the shared memory */
 	int shmfd = shm_open(unique_identifier, O_CREAT | O_RDWR, 0600);
 
 	if (shmfd < 0) {
@@ -73,29 +74,50 @@ void highlander() {
 	}
 	ftruncate(shmfd, shared_seg_size);
 
-	// map the memory region to be used in current process
+	/* read the struct from shared memory */
 	shared_message = (struct shm_info *) mmap(NULL, shared_seg_size,
 	PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);
+
 	if (shared_message == NULL) {
 		perror("In mmap()");
 		exit(1);
 	}
 
-	// check if another process wrote his PID in the shared memory. Kill the process who has this PID
+	/* if shared message contains a PID, kill that process */
 	if (shared_message->pid > 0) {
 		printf("Killing mygestures running on pid %d\n", shared_message->pid);
 
 		kill(shared_message->pid, SIGTERM);
+
+		/* give some time */
 		usleep(100 * 1000); // 100ms
 
 	}
 
-	// write the PID of the current process in the shared memory
+	/* write own PID in shared memory */
 	shared_message->pid = getpid();
 
-	// the shared memory need to be released when mygestures is closed to avoid killing some other process who had been assigned to the same pid.
 	// This is being done in the sigint() method.
 
+}
+
+void sigint(int a) {
+
+	/* release shared memory used to share current PID */
+
+	if (unique_identifier) {
+
+		if (shm_unlink(unique_identifier) != 0) {
+			perror("In shm_unlink()");
+			exit(1);
+		}
+	}
+
+#ifdef DEBUG
+	muntrace();
+#endif
+
+	exit(0);
 }
 
 void handle_args(int argc, char * const *argv, char ** config_file) {
@@ -147,22 +169,6 @@ int daemonize() {
 	i = chdir("/");
 
 	return i;
-}
-
-void sigint(int a) {
-
-	if (unique_identifier) {
-		if (shm_unlink(unique_identifier) != 0) {
-			perror("In shm_unlink()");
-			exit(1);
-		}
-	}
-
-#ifdef DEBUG
-	muntrace();
-#endif
-
-	exit(0);
 }
 
 void forkexec(char * data) {
@@ -245,17 +251,16 @@ int main(int argc, char * const * argv) {
 		err = config_load_from_default(conf);
 	}
 
-
 	if (err) {
 		fprintf(stderr, "Error loading gestures.\n");
 		return err;
 	}
 
-	struct grabbing * grabber;
-
-	err = grabbing_init();
-
+	signal(SIGINT, sigint);
 	highlander();
+
+	struct grabbing * grabber;
+	err = grabbing_init();
 
 	if (is_daemonized)
 		daemonize();
@@ -270,50 +275,53 @@ int main(int argc, char * const * argv) {
 
 	if (!err) {
 
-		signal(SIGINT, sigint);
-
 		while (1) {
 
-			struct grabbed_information *grabbed = NULL;
+			capture * captured = grabbing_capture();
 
-			grabbed = grabbing_capture_movements();
+			if (captured) {
 
-			if (grabbed) {
+				struct gesture * detected = config_match_captured(conf,
+						captured);
 
-				char * sequence = grabbed->advanced_movement;
-				struct gesture * gesture = config_match_gesture(conf, sequence,
-						grabbed->window_class, grabbed->window_title);
+				printf("\n");
+				printf("  title : %s\n", captured->window_title);
+				printf("  class : %s\n", captured->window_class);
+				printf(" movement values :");
 
-				if (!gesture) {
-					char * sequence = grabbed->basic_movement;
-					gesture = config_match_gesture(conf, sequence,
-							grabbed->window_class, grabbed->window_title);
+				int i = 0;
+				for (i = 0; i < captured->movement_representations_count; ++i) {
+
+					printf(" %s", captured->movement_representations[i]);
 				}
 
 				printf("\n");
-				printf("Window Title = \"%s\"\n", grabbed->window_title);
-				printf("Window Class = \"%s\"\n", grabbed->window_class);
 
-				if (!gesture) {
-					printf("Captured sequences %s or %s --> not found\n",
-							grabbed->advanced_movement,
-							grabbed->basic_movement);
+				if (!detected) {
+
+					printf("        -- NO MATCH --\n");
+
 				} else {
-					printf(
-							"Captured sequence '%s' --> Movement '%s' --> Gesture '%s'\n",
-							sequence, gesture->movement->name, gesture->name);
+
+					printf("movement: %s\n", detected->movement->name);
+					printf("context : %s\n", detected->context->name);
+					printf(" gesture: %s\n", detected->name);
 
 					int j = 0;
 
-					for (j = 0; j < gesture->actions_count; ++j) {
-						struct action * a = gesture->actions[j];
-						printf(" (%s)\n", a->data);
+					printf("         ");
+
+					for (j = 0; j < detected->actions_count; ++j) {
+						struct action * a = detected->actions[j];
+						printf(" (%s)", a->data);
 						execute_action(a);
 					}
 
+					printf("\n");
+
 				}
 
-				free_captured_movements(grabbed);
+				grabbing_free_grabbed_information(captured);
 
 			}
 

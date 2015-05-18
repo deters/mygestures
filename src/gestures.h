@@ -56,11 +56,20 @@ struct context {
 
 struct gesture {
 	char * name;
-	//struct context *context;
+	struct context *context;
 	struct movement *movement;
 	struct action **actions;
 	int actions_count;
 };
+
+
+typedef struct _capture {
+	char **movement_representations;
+	int movement_representations_count;
+	char *window_title;
+	char *window_class;
+} capture;
+
 
 typedef struct _config {
 	char * config_file;
@@ -92,7 +101,6 @@ config * config_new();
 void config_free();
 int config_load_from_file(config * conf, char * filename);
 int config_load_from_default(config * conf);
-struct gesture * config_match_gesture(config * conf, char * captured_sequence,
-		char * window_class, char * window_title);
+struct gesture * config_match_captured(config * conf, capture * captured);
 
 #endif
