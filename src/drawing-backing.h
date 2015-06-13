@@ -44,6 +44,7 @@ struct backing
 };
 typedef struct backing backing_t;
 
+backing_t * backing_new();
 int backing_init(backing_t *backing, Display *dpy, Window root, int width, int height, int depth);
 void backing_deinit(backing_t *backing);
 int backing_save(backing_t *backing, int x, int y);

@@ -27,8 +27,6 @@
 #include <mcheck.h>
 #endif
 
-int is_daemonized = 0;
-
 char * unique_identifier = NULL;
 
 struct shm_info {
@@ -85,9 +83,13 @@ void highlander() {
 
 	/* if shared message contains a PID, kill that process */
 	if (shared_message->pid > 0) {
-		printf("Killing mygestures running on pid %d\n", shared_message->pid);
+		fprintf(stdout, "Killing mygestures running on pid %d\n",
+				shared_message->pid);
 
-		kill(shared_message->pid, SIGTERM);
+		int err = kill(shared_message->pid, SIGTERM);
+		if (err) {
+			fprintf(stdout, "PID not killed. Ignoring\n");
+		}
 
 		/* give some time */
 		usleep(100 * 1000); // 100ms
@@ -101,9 +103,9 @@ void highlander() {
 
 }
 
-void sigint(int a) {
+void its_over() {
 
-	/* release shared memory used to share current PID */
+	/*  If your head comes away from your neck, it's over! */
 
 	if (unique_identifier) {
 
@@ -111,7 +113,15 @@ void sigint(int a) {
 			perror("In shm_unlink()");
 			exit(1);
 		}
+
+		free(unique_identifier);
+
 	}
+}
+
+void sigint(int a) {
+
+	its_over();
 
 #ifdef DEBUG
 	muntrace();
@@ -120,13 +130,16 @@ void sigint(int a) {
 	exit(0);
 }
 
-void handle_args(int argc, char * const *argv, char ** config_file) {
+int handle_args(int argc, char * const *argv, grabbing * grabbing,
+		config * conf) {
 
 	char opt;
 	static struct option opts[] = { { "help", 0, 0, 'h' },
 			{ "button", 1, 0, 'b' }, { "without-brush", 0, 0, 'w' }, { "config",
 					1, 0, 'c' }, { "daemonize", 0, 0, 'd' }, { "brush-color", 1,
 					0, 'l' }, { 0, 0, 0, 0 } };
+
+	char * custom_filename = NULL;
 
 	while (1) {
 		opt = getopt_long(argc, argv, "h::b:m:c:l:wdr", opts, NULL);
@@ -138,25 +151,47 @@ void handle_args(int argc, char * const *argv, char ** config_file) {
 			usage();
 			break;
 		case 'b':
-			grabbing_set_button(atoi(optarg));
+			grabbing_set_button(grabbing, atoi(optarg));
 			break;
 		case 'c':
-			*config_file = optarg;
+			custom_filename = optarg;
 			break;
 		case 'w':
-			grabbing_set_without_brush(1);
+			grabbing_set_without_brush(grabbing, 1);
 			break;
 		case 'd':
-			is_daemonized = 1;
+			daemonize();
 			break;
 		case 'l':
-			grabbing_set_brush_color(optarg);
+			grabbing_set_brush_color(grabbing, optarg);
 			break;
 		}
 
 	}
 
-	return;
+	int status = CONFIG_OK;
+
+	if (custom_filename) {
+
+		status = config_load_from_file(conf, custom_filename);
+
+	} else {
+
+		status = config_load_from_default(conf);
+
+		if (status == CONFIG_FILE_NOT_FOUND) {
+
+			status = config_create_from_default(conf);
+
+			if (status == CONFIG_OK) {
+				status = config_load_from_default(conf);
+			}
+
+		}
+
+	}
+
+	return status;
 }
 
 int daemonize() {
@@ -171,7 +206,7 @@ int daemonize() {
 	return i;
 }
 
-void forkexec(char * data) {
+static void forkexec(char * data) {
 
 	pid_t pid;
 
@@ -193,7 +228,7 @@ void forkexec(char * data) {
 /**
  * Execute an action
  */
-void execute_action(struct action *action) {
+void execute_action(grabbing * grabbing, struct action *action) {
 
 	assert(action);
 
@@ -206,22 +241,22 @@ void execute_action(struct action *action) {
 
 		break;
 	case ACTION_ICONIFY:
-		grabbing_iconify();
+		grabbing_iconify(grabbing);
 		break;
 	case ACTION_KILL:
-		grabbing_kill();
+		grabbing_kill(grabbing);
 		break;
 	case ACTION_RAISE:
-		grabbing_raise();
+		grabbing_raise(grabbing);
 		break;
 	case ACTION_LOWER:
-		grabbing_lower();
+		grabbing_lower(grabbing);
 		break;
 	case ACTION_MAXIMIZE:
-		grabbing_maximize();
+		grabbing_maximize(grabbing);
 		break;
 	case ACTION_ROOT_SEND:
-		grabbing_root_send(action->data);
+		grabbing_root_send(grabbing, action->data);
 		break;
 	default:
 		fprintf(stderr, "found an unknown gesture\n");
@@ -237,47 +272,47 @@ int main(int argc, char * const * argv) {
 	mtrace();
 #endif
 
-	char * config_file = NULL;
+	signal(SIGINT, sigint);
+	signal(SIGKILL, sigint);
 
-	handle_args(argc, argv, &config_file);
+	highlander();
+
+	int status = 0;
+
+	grabbing * grab = grabbing_new();
 
 	config * conf = config_new();
 
-	int err = 0;
+	status = handle_args(argc, argv, grab, conf);
 
-	if (config_file) {
-		err = config_load_from_file(conf, config_file);
-	} else {
-		err = config_load_from_default(conf);
+	if (status != CONFIG_OK) {
+
+		char * filename = config_get_filename(conf);
+
+		if (status == CONFIG_CREATE_ERROR) {
+			fprintf(stdout, "Unable to autocreate config file '%s'.\n",filename);
+		} else {
+			fprintf(stdout, "Unable to load config file '%s'.\n",filename);
+		}
+		its_over();
+		return status;
 	}
 
-	if (err) {
-		fprintf(stderr, "Error loading gestures.\n");
-		return err;
-	}
+	status = grabbing_prepare(grab);
 
-	signal(SIGINT, sigint);
-	highlander();
-
-	struct grabbing * grabber;
-	err = grabbing_init();
-
-	if (is_daemonized)
-		daemonize();
-
-	if (err) {
+	if (status) {
 		fprintf(stderr, "Error grabbing button. Already running?\n");
-		exit(err);
+		exit(status);
 	}
 
 	fprintf(stdout,
 			"Draw some movement on the screen with the configured button pressed.\n");
 
-	if (!err) {
+	if (!status) {
 
 		while (1) {
 
-			capture * captured = grabbing_capture();
+			capture * captured = grabbing_capture(grab);
 
 			if (captured) {
 
@@ -314,14 +349,14 @@ int main(int argc, char * const * argv) {
 					for (j = 0; j < detected->actions_count; ++j) {
 						struct action * a = detected->actions[j];
 						printf(" (%s)", a->data);
-						execute_action(a);
+						execute_action(grab, a);
 					}
 
 					printf("\n");
 
 				}
 
-				grabbing_free_grabbed_information(captured);
+				grabbing_free_capture(captured);
 
 			}
 
@@ -329,7 +364,7 @@ int main(int argc, char * const * argv) {
 
 	}
 
-	grabbing_finalize();
+	grabbing_finalize(grab);
 
 	config_free(conf);
 

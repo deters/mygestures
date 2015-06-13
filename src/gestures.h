@@ -31,6 +31,13 @@
 #define BOTTOM_RIGHT_DIRECTION  '3'
 #define BOTTOM_LEFT_DIRECTION  '1'
 
+#define CONFIG_OK  0
+#define CONFIG_FILE_NOT_FOUND  -1
+#define CONFIG_PARSE_ERROR  -2
+#define CONFIG_SEMANTIC_ERROR  -3
+#define CONFIG_CREATE_ERROR  -4
+
+
 struct movement {
 	char *name;
 	void *expression;

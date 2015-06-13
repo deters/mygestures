@@ -647,7 +647,7 @@ static struct context * _parse_context(xmlNode *node, struct context * parent) {
 
 static int _file_copy(char * target, char * source) {
 
-	int err = 0;
+	int err = CONFIG_OK;
 
 	if (access(target, F_OK) != -1) {
 		// file already exists. do not overwrite.
@@ -661,11 +661,11 @@ static int _file_copy(char * target, char * source) {
 
 	if ((in = fopen(source, "rb")) == NULL) {
 		fprintf(stderr, "Cannot open input file: %s\n", source);
-		return -1;
+		return CONFIG_CREATE_ERROR;
 	}
 	if ((out = fopen(target, "wb")) == NULL) {
 		fprintf(stderr, "Cannot open output file: %s\n", target);
-		return -2;
+		return CONFIG_CREATE_ERROR;
 	}
 
 	while (!feof(in)) {
@@ -687,7 +687,7 @@ static int _file_copy(char * target, char * source) {
 	fclose(in);
 	fclose(out);
 
-	return 0;
+	return err;
 
 }
 
@@ -724,10 +724,7 @@ void config_free(config* conf) {
 int config_load_from_file(config * c, char *filename) {
 
 	assert(c);
-
-	if (!filename) {
-		return -1;
-	}
+	assert(filename);
 
 	xmlDocPtr doc = NULL;
 	xmlNode *root_node = NULL;
@@ -735,7 +732,11 @@ int config_load_from_file(config * c, char *filename) {
 	doc = xmlParseFile(filename);
 
 	if (!doc) {
-		return -1;
+		if (access(filename, F_OK) == -1) {
+			return CONFIG_FILE_NOT_FOUND;
+		} else {
+			return CONFIG_PARSE_ERROR;
+		}
 	}
 
 	/* If already loaded, clear current root_context */
@@ -755,8 +756,17 @@ int config_load_from_file(config * c, char *filename) {
 	xmlFreeDoc(doc);
 	xmlCleanupParser();
 
-	return 0;
+	return CONFIG_OK;
 
+}
+
+char * config_get_filename(config * conf) {
+
+	assert(conf);
+
+	char * result = NULL;
+	asprintf(&result, conf->config_file);
+	return result;
 }
 
 config * config_new() {
@@ -798,6 +808,23 @@ char * config_get_default_filename() {
 
 }
 
+int config_create_from_default(config * conf) {
+
+	assert(conf);
+
+	char * target_filename = config_get_default_filename();
+
+	char * template_filename = config_get_template_filename();
+
+	int err = _file_copy(target_filename, template_filename);
+
+	free(template_filename);
+	free(target_filename);
+
+	return err;
+
+}
+
 /*
  * Load configuration from default place
  */
@@ -808,21 +835,6 @@ int config_load_from_default(config * conf) {
 	/* try to load from default */
 	char * default_filename = config_get_default_filename();
 	int err = config_load_from_file(conf, default_filename);
-
-	if (err) {
-
-		/* create default file from template */
-		char * template_filename = config_get_template_filename();
-		int err = _file_copy(default_filename, template_filename);
-
-		if (!err) {
-			/* try to load again */
-			err = config_load_from_file(conf, default_filename);
-		}
-
-		free(template_filename);
-
-	}
 
 	free(default_filename);
 

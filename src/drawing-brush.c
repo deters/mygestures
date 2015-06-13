@@ -22,6 +22,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrender.h>
 
@@ -33,13 +34,21 @@
 #include "drawing-brush-shadow.h"
 #undef const
 
+
+
 #ifdef DMALLOC
 #include "dmalloc.h"
 #endif
 
 static void fix_image(unsigned char *image, int npixels);
 
-int brush_init(brush_t *brush, backing_t *backing) {
+brush_t * brush_new() {
+	brush_t * new = malloc(sizeof(brush_t));
+	return new;
+}
+
+
+int brush_init(brush_t *brush, backing_t *backing, struct brush_image_t *brush_image) {
 	Display *dpy = backing->dpy;
 	Window root = backing->root;
 	int screen = DefaultScreen(backing->dpy);

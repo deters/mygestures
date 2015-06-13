@@ -75,4 +75,4 @@ struct brush_image_t  brush_image_purple = {
 };
 
 	
-struct brush_image_t *brush_image = &brush_image_blue;
+
