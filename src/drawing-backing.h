@@ -25,15 +25,14 @@ struct backing
 {
     Display *dpy;
     Window root;
-    GC gc;
 
+    GC gc;
     Pixmap root_pixmap;
     Picture root_pict;
     XRenderPictFormat *root_format;
-
-    Pixmap brush_pixmap;
-    Picture brush_pict;
     XRenderPictFormat *brush_format;
+    Picture brush_pict;
+    Pixmap brush_pixmap;
 
     int total_width, total_height, depth;
 
@@ -44,7 +43,6 @@ struct backing
 };
 typedef struct backing backing_t;
 
-backing_t * backing_new();
 int backing_init(backing_t *backing, Display *dpy, Window root, int width, int height, int depth);
 void backing_deinit(backing_t *backing);
 int backing_save(backing_t *backing, int x, int y);

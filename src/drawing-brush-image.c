@@ -74,5 +74,3 @@ struct brush_image_t  brush_image_purple = {
   "\0\0\0\0\0\0\0",
 };
 
-	
-

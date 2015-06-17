@@ -41,7 +41,6 @@ struct brush
 };
 typedef struct brush brush_t;
 
-brush_t * brush_new();
 int brush_init(brush_t *brush, backing_t *backing, struct brush_image_t *brush_image);
 void brush_deinit(brush_t *brush);
 

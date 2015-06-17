@@ -1,6 +1,5 @@
 /*
  Copyright 2005 Nir Tzachar
- Copyright
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,14 +16,17 @@
 #endif
 
 #include <X11/Xlib.h>
+#include <X11/extensions/XTest.h>
 #include <stdio.h>
 #include "wm.h"
+#include "gestures.h"
 
 // mouse click
 
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <X11/Xutil.h>
 
 enum {
 	_NET_WM_STATE_REMOVE = 0, _NET_WM_STATE_ADD = 1, _NET_WM_STATE_TOGGLE = 2
@@ -116,3 +118,86 @@ void generic_maximize(Display *dpy, Window w) {
 	return;
 
 }
+
+/**
+ * Fake key event
+ */
+void press_key(Display *dpy, KeySym key, Bool is_press) {
+
+	XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, key), is_press, CurrentTime);
+	return;
+}
+
+/* alloc a key_press struct ???? */
+struct key_press * alloc_key_press(void) {
+	struct key_press *ans = malloc(sizeof(struct key_press));
+	bzero(ans, sizeof(struct key_press));
+	return ans;
+}
+
+/**
+ * Creates a Keysym from a char sequence
+ *
+ * PRIVATE
+ */
+struct key_press * string_to_keypress(char *str_ptr) {
+
+	char * copy = strdup(str_ptr);
+
+	struct key_press base;
+	struct key_press *key;
+	KeySym k;
+	char *str = copy;
+	char *token = str;
+	char *str_dup;
+
+	if (str == NULL)
+		return NULL;
+
+	key = &base;
+	token = strsep(&copy, "+\n ");
+	while (token != NULL) {
+		/* printf("found : %s\n", token); */
+		k = XStringToKeysym(token);
+		if (k == NoSymbol) {
+			fprintf(stderr, "error converting %s to keysym\n", token);
+			exit(-1);
+		}
+		key->next = alloc_key_press();
+		key = key->next;
+		key->key = k;
+		token = strsep(&copy, "+\n ");
+	}
+
+	base.next->original_str = str_ptr;
+	return base.next;
+}
+
+/**
+ * Fake sequence key events
+ */
+void generic_root_send(Display *dpy, char *data) {
+
+	struct key_press * keys = string_to_keypress(data);
+
+	struct key_press *first_key;
+	struct key_press *tmp;
+
+	first_key = (struct key_press *) keys;
+
+	if (first_key == NULL) {
+		fprintf(stderr, " internal error in %s, key is null\n", __func__);
+		return;
+	}
+
+	for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
+		press_key(dpy, tmp->key, True);
+	}
+
+	for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
+		press_key(dpy, tmp->key, False);
+	}
+
+	return;
+}
+

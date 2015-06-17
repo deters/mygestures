@@ -13,28 +13,17 @@
  GNU General Public License for more details.
  */
 
-#include <stdlib.h>
+#include <stdio.h>
 #include <X11/Xlib.h>
 
 #include "drawing-backing.h"
-
-#include <stdio.h>
 
 #ifdef DMALLOC
 #include "dmalloc.h"
 #endif
 
-backing_t * backing_new(){
-
-	backing_t * self = malloc(sizeof(backing_t));
-	return self;
-
-}
-
 int backing_init(backing_t *backing, Display *dpy, Window root, int width,
 		int height, int depth) {
-
-
 
 	XRenderPictFormat templ;
 	int screen = DefaultScreen(dpy);

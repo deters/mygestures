@@ -14,96 +14,110 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <string.h>
 #include <sys/mman.h>
-#include <sys/types.h>
+#include <sys/shm.h>
 #include <fcntl.h>
+#include <sys/types.h>
 
 #include "grabbing.h"
-#include "assert.h"
 #include "gestures.h"
+#include "configuration.h"
 #include "config.h"
-
-#ifdef DEBUG
-#include <mcheck.h>
-#endif
 
 char * unique_identifier = NULL;
 
-struct shm_info {
+struct shared_structure {
 	int pid;
+	int kill;
 };
+
+struct shared_structure * message;
 
 void usage() {
 	printf("%s\n\n", PACKAGE_STRING);
-	printf("Usage:\n");
-	printf("-h, --help\t: print this usage info\n");
+	printf("Usage: mygestures [OPTIONS] [CONFIG_FILE]\n");
+	printf("\n");
+	printf("CONFIG_FILE:\n");
+
+	char * default_file = config_get_default_filename();
+	printf(" Default: %s\n", default_file);
+	free(default_file);
+
+	char * template_file = config_get_template_filename();
+	printf(" Default: %s\n", template_file);
+	free(template_file);
+
+	printf("\n");
+	printf("OPTIONS:\n");
+	printf(" -b, --button <BUTTON>      : Button used to draw the gesture\n");
 	printf(
-			"-c, --config\t: use config file.\n\t\tDefaults: $HOME/.config/mygestures/mygestures.xml /etc/mygestures.xml\n");
-	printf("-b, --button\t: which button to use. default is 3\n");
-	printf("-d, --daemonize\t: laymans daemonize\n");
+			"                              Default: '1' on touchscreen devices,\n");
 	printf(
-			"-l, --brush-color\t: choose a brush color. available colors are:\n");
-	printf("\t\t\t  yellow, white, red, green, purple, blue (default)\n");
-	printf("-w, --without-brush\t: don't paint the gesture on screen.\n");
-	exit(0);
+			"                                       '3' on other pointer devices\n");
+	printf(" -d, --device <DEVICENAME>  : Device to grab.\n");
+	printf("                              Default: 'Virtual core pointer'\n");
+	printf(
+			" -l, --device-list          : Print all available devices an exit.\n");
+	printf(" -z, --daemonize            : Fork the process and return.\n");
+	printf(" -x, --brush-color          : Brush color.\n");
+	printf("                              Default: blue\n");
+	printf(
+			"                              Options: yellow, white, red, green, purple, blue\n");
+	printf(
+			" -w, --without-brush        : Don't paint the gesture on screen.\n");
+	printf(" -h, --help                 : Help\n");
 }
 
 /*
- * Try to kill other instances of the program before running.
- * Will use shared memory to store the pid of the running session.
- * Will kill the session stored previously on shared memory before writing new pid.
+ * Ask other instances with same unique_identifier to exit.
  */
-void highlander() {
+void be_unique(char * device_name) {
 
-	/* "there can be only one" */
+	// the unique_identifier = mygestures + uid + device being grabbed
+	int bytes = asprintf(&unique_identifier, "/mygestures_uid_%d_dev_%s",
+			getuid(), device_name);
 
-	struct shm_info * shared_message = NULL;
-	int shared_seg_size = sizeof(struct shm_info);
-
-	/* the unique identifier */
-	asprintf(&unique_identifier, "/mygestures_uid%d", getuid());
-
-	/* request the shared memory */
+	int shared_seg_size = sizeof(struct shared_structure);
 	int shmfd = shm_open(unique_identifier, O_CREAT | O_RDWR, 0600);
-
 	if (shmfd < 0) {
 		perror("In shm_open()");
 		exit(1);
 	}
-	ftruncate(shmfd, shared_seg_size);
-
-	/* read the struct from shared memory */
-	shared_message = (struct shm_info *) mmap(NULL, shared_seg_size,
+	int err = ftruncate(shmfd, shared_seg_size);
+	message = (struct shared_structure *) mmap(NULL, shared_seg_size,
 	PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);
-
-	if (shared_message == NULL) {
+	if (message == NULL) {
 		perror("In mmap()");
 		exit(1);
 	}
 
 	/* if shared message contains a PID, kill that process */
-	if (shared_message->pid > 0) {
-		fprintf(stdout, "Killing mygestures running on pid %d\n",
-				shared_message->pid);
+	if (message->pid > 0) {
+		fprintf(stdout,
+				"Asking mygestures running on pid %d to kill himself.\n",
+				message->pid);
 
-		int err = kill(shared_message->pid, SIGTERM);
-		if (err) {
-			fprintf(stdout, "PID not killed. Ignoring\n");
-		}
+		int running = message->pid;
 
-		/* give some time */
+		message->kill = 1;
+		message->pid = getpid();
+
+		int err = kill(running, SIGINT);
+
+		/* give some time. ignore failing */
 		usleep(100 * 1000); // 100ms
 
 	}
 
 	/* write own PID in shared memory */
-	shared_message->pid = getpid();
-
-	// This is being done in the sigint() method.
+	message->pid = getpid();
+	message->kill = 0;
 
 }
 
-void its_over() {
+void clean_shared_memory() {
 
 	/*  If your head comes away from your neck, it's over! */
 
@@ -119,82 +133,22 @@ void its_over() {
 	}
 }
 
-void sigint(int a) {
+void on_kill(int a) {
+	clean_shared_memory();
+	exit(0);
+}
 
-	its_over();
+void on_interrupt(int a) {
 
-#ifdef DEBUG
-	muntrace();
-#endif
+	if (message->kill) {
+		printf("PID %d asked me to exit.\n", message->pid);
+		on_kill(a);
+	}
 
 	exit(0);
 }
 
-int handle_args(int argc, char * const *argv, grabbing * grabbing,
-		config * conf) {
-
-	char opt;
-	static struct option opts[] = { { "help", 0, 0, 'h' },
-			{ "button", 1, 0, 'b' }, { "without-brush", 0, 0, 'w' }, { "config",
-					1, 0, 'c' }, { "daemonize", 0, 0, 'd' }, { "brush-color", 1,
-					0, 'l' }, { 0, 0, 0, 0 } };
-
-	char * custom_filename = NULL;
-
-	while (1) {
-		opt = getopt_long(argc, argv, "h::b:m:c:l:wdr", opts, NULL);
-		if (opt == -1)
-			break;
-
-		switch (opt) {
-		case 'h':
-			usage();
-			break;
-		case 'b':
-			grabbing_set_button(grabbing, atoi(optarg));
-			break;
-		case 'c':
-			custom_filename = optarg;
-			break;
-		case 'w':
-			grabbing_set_without_brush(grabbing, 1);
-			break;
-		case 'd':
-			daemonize();
-			break;
-		case 'l':
-			grabbing_set_brush_color(grabbing, optarg);
-			break;
-		}
-
-	}
-
-	int status = CONFIG_OK;
-
-	if (custom_filename) {
-
-		status = config_load_from_file(conf, custom_filename);
-
-	} else {
-
-		status = config_load_from_default(conf);
-
-		if (status == CONFIG_FILE_NOT_FOUND) {
-
-			status = config_create_from_default(conf);
-
-			if (status == CONFIG_OK) {
-				status = config_load_from_default(conf);
-			}
-
-		}
-
-	}
-
-	return status;
-}
-
-int daemonize() {
+void daemonize() {
 	int i;
 
 	i = fork();
@@ -202,171 +156,114 @@ int daemonize() {
 		exit(0);
 
 	i = chdir("/");
-
-	return i;
-}
-
-static void forkexec(char * data) {
-
-	pid_t pid;
-
-	pid = fork();
-	if (pid == -1) {
-		perror("fork error");
-		exit(1);
-	} else if (pid == 0) {
-		/* code for child */
-
-		system(data);
-
-		_exit(1);
-	} else { /* code for parent */
-	}
-
-}
-
-/**
- * Execute an action
- */
-void execute_action(grabbing * grabbing, struct action *action) {
-
-	assert(action);
-
-	int pid = -1;
-
-	switch (action->type) {
-	case ACTION_EXECUTE:
-
-		forkexec(action->data);
-
-		break;
-	case ACTION_ICONIFY:
-		grabbing_iconify(grabbing);
-		break;
-	case ACTION_KILL:
-		grabbing_kill(grabbing);
-		break;
-	case ACTION_RAISE:
-		grabbing_raise(grabbing);
-		break;
-	case ACTION_LOWER:
-		grabbing_lower(grabbing);
-		break;
-	case ACTION_MAXIMIZE:
-		grabbing_maximize(grabbing);
-		break;
-	case ACTION_ROOT_SEND:
-		grabbing_root_send(grabbing, action->data);
-		break;
-	default:
-		fprintf(stderr, "found an unknown gesture\n");
-	}
-
 	return;
+}
+
+struct args_t {
+
+	int help;
+	int button;
+	int without_brush;
+	int is_daemonized;
+	int list_devices;
+
+	char * device;
+	char * brush_color;
+	char * config;
+};
+
+struct args_t * handle_args(int argc, char * const *argv) {
+
+	char opt;
+	static struct option opts[] = { { "help", no_argument, 0, 'h' }, {
+			"without-brush", no_argument, 0, 'w' }, { "daemonize", no_argument,
+			0, 'z' }, { "button", required_argument, 0, 'b' }, { "config",
+	required_argument, 0, 'c' }, { "brush-color", required_argument, 0, 'l' }, {
+			"device", required_argument, 0, 'd' }, { 0, 0, 0, 0 } };
+
+	struct args_t * result = malloc(sizeof(struct args_t));
+	bzero(result, sizeof(struct args_t));
+
+	while (1) {
+		opt = getopt_long(argc, argv, "b:c:d:hlwx:z", opts, NULL);
+		if (opt == -1)
+			break;
+
+		switch (opt) {
+
+		case 'd':
+			result->device = optarg;
+			break;
+
+		case 'b':
+			result->button = atoi(optarg);
+			break;
+
+		case 'c':
+			result->config = optarg;
+			break;
+
+		case 'x':
+			result->brush_color = optarg;
+			break;
+
+		case 'w':
+			result->without_brush = 1;
+			break;
+
+		case 'l':
+			result->list_devices = 1;
+			break;
+
+		case 'z':
+			result->is_daemonized = 1;
+			break;
+
+		case 'h':
+			result->help = 1;
+			break;
+
+		}
+
+	}
+
+	if (optind < argc) {
+		result->config = argv[optind++];
+	}
+
+	if (optind < argc) {
+		printf("non-option ARGV-elements: ");
+		while (optind < argc)
+			printf("%s ", argv[optind++]);
+		putchar('\n');
+	}
+	return result;
 }
 
 int main(int argc, char * const * argv) {
 
-#ifdef DEBUG
-	printf("Debug mode enabled. Memory trace will be writed to MALLOC_TRACE.\n");
-	mtrace();
-#endif
+	signal(SIGINT, on_interrupt);
+	signal(SIGKILL, on_kill);
 
-	signal(SIGINT, sigint);
-	signal(SIGKILL, sigint);
+	struct args_t * args = handle_args(argc, argv);
 
-	highlander();
-
-	int status = 0;
-
-	grabbing * grab = grabbing_new();
-
-	config * conf = config_new();
-
-	status = handle_args(argc, argv, grab, conf);
-
-	if (status != CONFIG_OK) {
-
-		char * filename = config_get_filename(conf);
-
-		if (status == CONFIG_CREATE_ERROR) {
-			fprintf(stdout, "Unable to autocreate config file '%s'.\n",filename);
-		} else {
-			fprintf(stdout, "Unable to load config file '%s'.\n",filename);
-		}
-		its_over();
-		return status;
+	if (args->help) {
+		usage();
+		exit(0);
 	}
 
-	status = grabbing_prepare(grab);
+	if (args->is_daemonized)
+		daemonize();
 
-	if (status) {
-		fprintf(stderr, "Error grabbing button. Already running?\n");
-		exit(status);
-	}
+	struct engine * gestures = config_load_from_file(args->config);
 
-	fprintf(stdout,
-			"Draw some movement on the screen with the configured button pressed.\n");
+	struct grabbing * grabber = grabber_connect_device(args->device, args->button,
+			args->without_brush, args->list_devices, args->brush_color);
 
-	if (!status) {
+	be_unique(engine_get_device_name(grabber));
 
-		while (1) {
-
-			capture * captured = grabbing_capture(grab);
-
-			if (captured) {
-
-				struct gesture * detected = config_match_captured(conf,
-						captured);
-
-				printf("\n");
-				printf("  title : %s\n", captured->window_title);
-				printf("  class : %s\n", captured->window_class);
-				printf(" movement values :");
-
-				int i = 0;
-				for (i = 0; i < captured->movement_representations_count; ++i) {
-
-					printf(" %s", captured->movement_representations[i]);
-				}
-
-				printf("\n");
-
-				if (!detected) {
-
-					printf("        -- NO MATCH --\n");
-
-				} else {
-
-					printf("movement: %s\n", detected->movement->name);
-					printf("context : %s\n", detected->context->name);
-					printf(" gesture: %s\n", detected->name);
-
-					int j = 0;
-
-					printf("         ");
-
-					for (j = 0; j < detected->actions_count; ++j) {
-						struct action * a = detected->actions[j];
-						printf(" (%s)", a->data);
-						execute_action(grab, a);
-					}
-
-					printf("\n");
-
-				}
-
-				grabbing_free_capture(captured);
-
-			}
-
-		}
-
-	}
-
-	grabbing_finalize(grab);
-
-	config_free(conf);
+	grabbing_event_loop(grabber, gestures);
+	engine_finalize(grabber);
 
 	exit(0);
 

@@ -18,203 +18,57 @@
 #include <config.h>
 #endif
 
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <X11/Xlib.h>
+#include <X11/keysym.h>
+#include <X11/XKBlib.h>
 #include <X11/extensions/XTest.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <strings.h>
 #include <string.h>
+#include <getopt.h>
 #include <math.h>
 #include <assert.h>
-#include "drawing-brush.h"
 #include "grabbing.h"
 #include "gestures.h"
 #include "wm.h"
+#include <X11/extensions/XInput2.h>
 #include "drawing-brush-image.h"
 
 #define DELTA_MIN	30 /*TODO*/
 #define MAX_STROKE_SEQUENCE 63 /*TODO*/
 
-struct key_press {
-	KeySym key;
-	struct key_press * next;
-};
+const char *modifiers_names[] = { "SHIFT", "CTRL", "ALT", "WIN", "SCROLL",
+		"NUM", "CAPS" };
 
-grabbing * grabbing_new() {
-	grabbing * new = malloc(sizeof(grabbing));
-	bzero(new, sizeof(grabbing));
-	return new;
-}
+/* valid strokes */
+const char stroke_names[] = { 'N', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
 
-/*
- * Get the parent window.
- *
- * PRIVATE
- */
-static Window get_parent_window(Display *dpy, Window w) {
-	Window root_return, parent_return, *child_return = NULL;
-	unsigned int nchildren_return;
-	int ret;
-	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return,
-			&nchildren_return);
+void grabbing_set_brush_color(struct grabbing * self, char * color) {
 
-	if (ret) {
-		XFree(child_return);
+	assert(self);
+
+	if (color) {
+
+		if (strcmp(color, "red") == 0)
+			self->brush_image = &brush_image_red;
+		else if (strcmp(color, "green") == 0)
+			self->brush_image = &brush_image_green;
+		else if (strcmp(color, "yellow") == 0)
+			self->brush_image = &brush_image_yellow;
+		else if (strcmp(color, "white") == 0)
+			self->brush_image = &brush_image_white;
+		else if (strcmp(color, "purple") == 0)
+			self->brush_image = &brush_image_purple;
+		else if (strcmp(color, "blue") == 0)
+			self->brush_image = &brush_image_blue;
+		else
+			printf("no such color, %s. using \"blue\"\n", color);
+
 	}
-
-	return parent_return;
-}
-
-/*
- * Return the focused window at the given display.
- *
- * PRIVATE
- */
-static Window get_focused_window(Display *dpy) {
-
-	Window win = 0;
-	int val = 0;
-
-	XGetInputFocus(dpy, &win, &val);
-
-	if (val == RevertToParent) {
-		win = get_parent_window(dpy, win);
-	}
-
-	return win;
-
-}
-
-void grabbing_iconify(grabbing * self) {
-	generic_iconify(self->dpy, get_focused_window(self->dpy));
-}
-
-void grabbing_kill(grabbing * self) {
-	generic_kill(self->dpy, get_focused_window(self->dpy));
-}
-
-void grabbing_raise(grabbing * self) {
-	generic_raise(self->dpy, get_focused_window(self->dpy));
-}
-
-void grabbing_lower(grabbing * self) {
-	generic_lower(self->dpy, get_focused_window(self->dpy));
-}
-
-void grabbing_maximize(grabbing * self) {
-	generic_maximize(self->dpy, get_focused_window(self->dpy));
-}
-
-void grabbing_root_send(grabbing * self, char *keys) {
-	generic_root_send(self->dpy, keys);
-}
-
-void grabbing_free_capture(capture * free_me) {
-
-	assert(free_me);
-
-	free(free_me->movement_representations[1]);
-	free(free_me->movement_representations[0]);
-	free(free_me->movement_representations);
-	free(free_me->window_class);
-	free(free_me->window_title);
-	free(free_me);
-}
-
-/**
- * Clear previous movement data.
- */
-static void start_movement(grabbing * self, XButtonEvent *e) {
-
-	// clear captured sequences
-	self->accurate_stroke_sequence[0] = '\0';
-	self->fuzzy_stroke_sequence[0] = '\0';
-
-	// guarda a localização do início do movimento
-	self->old_x = e->x_root;
-	self->old_y = e->y_root;
-
-	self->old_x_2 = e->x_root;
-	self->old_y_2 = e->y_root;
-
-	if (!(self->without_brush)) {
-		backing_save(self->backing, e->x_root - self->brush->image_width,
-				e->y_root - self->brush->image_height);
-		backing_save(self->backing, e->x_root + self->brush->image_width,
-				e->y_root + self->brush->image_height);
-
-		brush_draw(self->brush, self->old_x, self->old_y);
-	}
-	return;
-}
-
-void grabbing_set_button(grabbing * self, int b) {
-	self->button = b;
-}
-
-void grabbing_set_without_brush(grabbing * self, int b) {
-	self->without_brush = b;
-}
-
-void grabbing_set_brush_color(grabbing * self, char * color) {
-
-	// default: blue
-	self->brush_image = &brush_image_blue;
-
-	if (strcmp(color, "red") == 0)
-		self->brush_image = &brush_image_red;
-	else if (strcmp(color, "green") == 0)
-		self->brush_image = &brush_image_green;
-	else if (strcmp(color, "yellow") == 0)
-		self->brush_image = &brush_image_yellow;
-	else if (strcmp(color, "white") == 0)
-		self->brush_image = &brush_image_white;
-	else if (strcmp(color, "purple") == 0)
-		self->brush_image = &brush_image_purple;
-	else
-		printf("no such color, %s. using \"blue\"\n", color);
-	return;
-
-}
-
-static int grab_pointer(grabbing * self) {
-	int result = 0, i = 0;
-	int screen = 0;
-
-	for (screen = 0; screen < ScreenCount(self->dpy); screen++) {
-
-		result += XGrabButton(self->dpy, self->button, AnyModifier, RootWindow(self->dpy, screen),
-		False,
-		PointerMotionMask | ButtonReleaseMask | ButtonPressMask,
-		GrabModeAsync, GrabModeAsync, None, None);
-	}
-
-	return result;
-}
-
-static int ungrab_pointer(grabbing * self) {
-	int result = 0, i = 0;
-	int screen = 0;
-
-	for (screen = 0; screen < ScreenCount(self->dpy); screen++) {
-
-		result += XUngrabButton(self->dpy, self->button, AnyModifier,
-				RootWindow(self->dpy, screen));
-	}
-
-	return result;
-}
-
-/*
- * Emulate a mouse click at the given display.
- *
- * PRIVATE
- */
-static void mouse_click(grabbing * self) {
-	XTestFakeButtonEvent(self->dpy, self->button, True, CurrentTime);
-	usleep(1);
-	XTestFakeButtonEvent(self->dpy, self->button, False, CurrentTime);
 }
 
 /*
@@ -222,12 +76,8 @@ static void mouse_click(grabbing * self) {
  *
  * PRIVATE
  */
-static Status fetch_window_title(Display *dpy, Window w,
-		char **out_window_title) {
+Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
 	int status;
-
-	// TODO: investigate memory leak here... see XTextProperty
-
 	XTextProperty text_prop;
 	char **list;
 	int num;
@@ -254,13 +104,15 @@ static Status fetch_window_title(Display *dpy, Window w,
  *
  * PRIVATE
  */
-static void get_window_info(Display* dpy, Window win, char ** out_window_title,
-		char ** out_window_class) {
+struct window_info * get_window_info(Display* dpy, Window win) {
 
-	int val;
+	int ret, val;
 
 	char *win_title;
-	fetch_window_title(dpy, win, &win_title);
+	ret = fetch_window_title(dpy, win, &win_title);
+
+	struct window_info *ans = malloc(sizeof(struct window_info));
+	bzero(ans, sizeof(struct window_info));
 
 	char *win_class = NULL;
 
@@ -271,7 +123,7 @@ static void get_window_info(Display* dpy, Window win, char ** out_window_title,
 	if (result) {
 
 		if (class_hints.res_class != NULL)
-			win_class = strdup(class_hints.res_class);
+			win_class = class_hints.res_class;
 
 		if (win_class == NULL) {
 			win_class = "";
@@ -279,189 +131,298 @@ static void get_window_info(Display* dpy, Window win, char ** out_window_title,
 		}
 	}
 
-	XFree(class_hints.res_name);
-	XFree(class_hints.res_class);
-
 	if (win_class) {
-		*out_window_class = win_class;
+		ans->class = win_class;
 	} else {
-		*out_window_class = "";
+		ans->class = "";
 	}
 
 	if (win_title) {
-		*out_window_title = win_title;
+		ans->title = win_title;
 	} else {
-		*out_window_title = "";
+		ans->title = "";
 	}
 
-}
-
-/* alloc a key_press struct ???? */
-static struct key_press * alloc_key_press(void) {
-	struct key_press *ans = malloc(sizeof(struct key_press));
-	bzero(ans, sizeof(struct key_press));
 	return ans;
-}
-
-/* alloc a key_press struct ???? */
-static void free_key_press(struct key_press *free_me) {
-
-	assert(free_me);
-
-	if (free_me->next) {
-		free_key_press(free_me->next);
-	}
-
-	free(free_me);
 
 }
 
-/**
- * Creates a Keysym from a char sequence
+/*
+ * Get the parent window.
  *
  * PRIVATE
  */
-static struct key_press *string_to_keypress(char *string) {
+Window get_parent_window(Display *dpy, Window w) {
+	Window root_return, parent_return, *child_return;
+	unsigned int nchildren_return;
+	int ret;
+	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return,
+			&nchildren_return);
 
-	char * copy = strdup(string);
-	char * copy2 = copy;
+	return parent_return;
+}
 
-	char ** string_ptr = &copy2;
+void grabbing_grab(struct grabbing * self) {
 
-	struct key_press * ans = NULL;
-	struct key_press * pointer = NULL;
+	int count = XScreenCount(self->dpy);
 
-	KeySym k;
-	char *token = NULL;
+	XIEventMask * eventmask = malloc(sizeof(XIEventMask));
+	eventmask->deviceid = self->deviceid;
 
-	token = strsep(string_ptr, "+\n ");
+	int screen;
+	for (screen = 0; screen < count; screen++) {
 
-	while (token != NULL) {
+		Window rootwindow = RootWindow(self->dpy, screen);
 
-		k = XStringToKeysym(token);
+		if (self->is_direct_touch) {
 
-		if (k == NoSymbol) {
-			fprintf(stderr, "Warning: error converting %s to keysym\n", token);
-			free_key_press(ans);
-			ans = NULL;
-			break;
-		}
+			if (!self->button) {
+				self->button = 1;
+			}
 
-		if (!pointer) {
-			pointer = alloc_key_press();
-			ans = pointer;
+			unsigned char mask[1] = { 0 }; /* the actual mask */
+
+			eventmask->mask_len = sizeof(mask); /* always in bytes */
+			eventmask->mask = mask;
+
+			XISetMask(mask, XI_ButtonPress);
+			XISetMask(mask, XI_ButtonRelease);
+			XISetMask(mask, XI_Motion);
+
+			int status = XIGrabDevice(self->dpy, self->deviceid, rootwindow,
+			CurrentTime, None,
+			GrabModeAsync,
+			GrabModeAsync, False, eventmask);
+
+			printf("Draw the gesture touching device '%s'\n", self->devicename);
+
 		} else {
-			pointer->next = alloc_key_press();
-			pointer = pointer->next;
+
+			if (!self->button) {
+				self->button = 3;
+			}
+
+			XIGrabModifiers modifiers[4] = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0,
+					0 } };
+
+			static unsigned char mask[2];
+			eventmask->mask = mask;
+
+			eventmask->mask_len = sizeof(mask);
+
+			memset(eventmask->mask, 0, eventmask->mask_len);
+			XISetMask(eventmask->mask, XI_ButtonPress);
+			XISetMask(eventmask->mask, XI_ButtonRelease);
+			XISetMask(eventmask->mask, XI_Motion);
+
+			XIGrabButton(self->dpy, self->deviceid, self->button, rootwindow,
+			None, GrabModeAsync, GrabModeAsync, False, eventmask, 1, modifiers);
+
 		}
 
-		pointer->key = k;
-
-		token = strsep(string_ptr, "+\n ");
 	}
-
-	free(copy);
-	return ans;
 
 }
 
-/**
- * Fake key event
+void grabbing_ungrab(struct grabbing * self) {
+
+	int count = XScreenCount(self->dpy);
+
+	int screen;
+	for (screen = 0; screen < count; screen++) {
+
+		Window rootwindow = RootWindow(self->dpy, screen);
+
+		/* select on the window */
+		//XISelectEvents(display, w, &eventmask, 1);
+		if (self->is_direct_touch) {
+
+			int status = XIUngrabDevice(self->dpy, self->deviceid, CurrentTime);
+			printf("ungrab status = %d \n", status);
+
+		} else {
+			XIGrabModifiers modifiers[4] = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0,
+					0 } };
+
+			XIUngrabButton(self->dpy, self->deviceid, self->button, rootwindow,
+					1, modifiers);
+		}
+
+	}
+
+}
+
+/*
+ * Emulate a mouse click at the given display.
+ *
+ * PRIVATE
  */
-static void press_key(Display *dpy, KeySym key, Bool is_press) {
+void mouse_click(Display *display, int button, int x, int y) {
 
-	assert(key);
+	// fix position
+	XTestFakeMotionEvent(display, DefaultScreen(display), x, y, 0);
 
-	XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, key), is_press, CurrentTime);
+	XTestFakeButtonEvent(display, button, True, CurrentTime);
+	XTestFakeButtonEvent(display, button, False, CurrentTime);
+}
+
+/**
+ * Clear previous movement data.
+ */
+void grabbing_start_movement(struct grabbing * self, int new_x, int new_y) {
+
+	self->started = 1;
+
+	// clear captured sequences
+	self->fine_direction_sequence[0] = '\0';
+	self->rought_direction_sequence[0] = '\0';
+
+	// guarda a localização do início do movimento
+	self->old_x = new_x;
+	self->old_y = new_y;
+
+	self->rought_old_x = new_x;
+	self->rought_old_y = new_y;
+
+	if (!self->without_brush) {
+
+		XFlush(self->dpy);
+		backing_save(&(self->backing), new_x - self->brush.image_width,
+				new_y - self->brush.image_height);
+		//backing_save(&(self->backing), new_x - self->brush.image_width,
+		//		new_y - self->brush.image_height);
+
+		brush_draw(&(self->brush), self->old_x, self->old_y);
+
+	}
+	return;
+}
+
+/*
+ * Return the focused window at the given display.
+ *
+ * PRIVATE
+ */
+Window get_focused_window(Display *dpy) {
+
+	Window win = 0;
+	int ret, val;
+	ret = XGetInputFocus(dpy, &win, &val);
+
+	if (val == RevertToParent) {
+		win = get_parent_window(dpy, win);
+	}
+
+	return win;
+
+}
+
+/* release a key_press struct */
+void free_key_press(struct key_press *free_me) {
+	free(free_me);
 	return;
 }
 
 /**
- * Fake sequence key events
+ * Execute an action
  */
-void generic_root_send(Display *dpy, char *keys) {
+void execute_action(Display *dpy, struct action *action, Window focused_window) {
+	int id;
 
-	assert(keys);
+	// if there is an action
+	if (action != NULL) {
 
-	struct key_press * keys_compiled = string_to_keypress(keys);
+		switch (action->type) {
+		case ACTION_EXECUTE:
+			id = fork();
+			if (id == 0) {
+				int i = system(action->original_str);
+				exit(i);
+			}
+			if (id < 0) {
+				fprintf(stderr, "Error forking.\n");
+			}
 
-	if (keys_compiled) {
-
-		struct key_press *first_key;
-		struct key_press *tmp;
-
-		first_key = (struct key_press *) keys_compiled;
-
-		for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
-			press_key(dpy, (KeySym) tmp->key, True);
+			break;
+		case ACTION_ICONIFY:
+			generic_iconify(dpy, focused_window);
+			break;
+		case ACTION_KILL:
+			generic_kill(dpy, focused_window);
+			break;
+		case ACTION_RAISE:
+			generic_raise(dpy, focused_window);
+			break;
+		case ACTION_LOWER:
+			generic_lower(dpy, focused_window);
+			break;
+		case ACTION_MAXIMIZE:
+			generic_maximize(dpy, focused_window);
+			break;
+		case ACTION_ROOT_SEND:
+			generic_root_send(dpy, action->original_str);
+			break;
+		default:
+			fprintf(stderr, "found an unknown gesture \n");
 		}
-
-		for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
-			press_key(dpy, (KeySym) tmp->key, False);
-		}
-
-		free_key_press(keys_compiled);
-
 	}
-
 	return;
 }
 
 /**
  * Obtém o resultado dos dois algoritmos de captura de movimentos, e envia para serem processadas.
  */
-static capture * end_movement(grabbing * self, XButtonEvent *e) {
+struct grabbed * grabbing_end_movement(struct grabbing * self, int new_x,
+		int new_y) {
 
-	capture * captured = NULL;
+	struct grabbed * result = NULL;
+
+	self->started = 0;
 
 	// if is drawing
-	if (!(self->without_brush)) {
-		backing_restore(self->backing);
-		XSync(e->display, False);
+	if (!self->without_brush) {
+		backing_restore(&(self->backing));
+		XFlush(self->dpy);
 	};
 
-	if ((strlen(self->fuzzy_stroke_sequence) == 0)
-			&& (strlen(self->accurate_stroke_sequence) == 0)) {
+	if ((strlen(self->rought_direction_sequence) == 0)
+			&& (strlen(self->fine_direction_sequence) == 0)) {
 
 		// temporary ungrab button
-		ungrab_pointer(self);
+		grabbing_ungrab(self);
 
 		// emulate the click
-		mouse_click(self);
+		mouse_click(self->dpy, self->button, new_x, new_y);
 
 		// restart grabbing
-		grab_pointer(self);
+		grabbing_grab(self);
 
 	} else {
 
-		captured = malloc(sizeof(capture));
+		int sequences_count = 2;
+		char ** sequences = malloc(sizeof(char *) * sequences_count);
 
-		captured->movement_representations = malloc(sizeof(captured) * 2);
-		captured->movement_representations_count = 2;
+		sequences[0] = self->fine_direction_sequence;
+		sequences[1] = self->rought_direction_sequence;
 
-		captured->movement_representations[0] = strdup(
-				self->accurate_stroke_sequence);
-		captured->movement_representations[1] = strdup(self->fuzzy_stroke_sequence);
+		struct window_info * focused_window = get_window_info(self->dpy,
+				get_focused_window(self->dpy));
 
-		char * window_title;
-		char * window_class;
+		result = malloc(sizeof(struct grabbed));
 
-		get_window_info(self->dpy, get_focused_window(self->dpy), &window_title,
-				&window_class);
-
-		captured->window_class = window_class;
-		captured->window_title = window_title;
+		result->sequences_count = sequences_count;
+		result->sequences = sequences;
+		result->focused_window = focused_window;
 
 	}
 
-	return captured;
-
+	return result;
 }
 
-static char stroke_sequence_complex_detect_stroke(int x_delta, int y_delta) {
+char get_fine_direction_from_deltas(int x_delta, int y_delta) {
 
 	if ((x_delta == 0) && (y_delta == 0)) {
-		return NO_DIRECTION;
+		return stroke_names[NONE];
 	}
 
 	// check if the movement is near main axes
@@ -473,18 +434,18 @@ static char stroke_sequence_complex_detect_stroke(int x_delta, int y_delta) {
 		if (abs(x_delta) > abs(y_delta)) {
 
 			if (x_delta > 0) {
-				return RIGHT_DIRECTION;
+				return stroke_names[RIGHT];
 			} else {
-				return LEFT_DIRECTION;
+				return stroke_names[LEFT];
 			}
 
 			// y axe
 		} else {
 
 			if (y_delta > 0) {
-				return DOWN_DIRECTION;
+				return stroke_names[DOWN];
 			} else {
-				return UP_DIRECTION;
+				return stroke_names[UP];
 			}
 
 		}
@@ -494,52 +455,52 @@ static char stroke_sequence_complex_detect_stroke(int x_delta, int y_delta) {
 
 		if (y_delta < 0) {
 			if (x_delta < 0) {
-				return UPPER_LEFT_DIRECTION;
+				return stroke_names[SEVEN];
 			} else if (x_delta > 0) { // RIGHT
-				return UPPER_RIGHT_DIRECTION;
+				return stroke_names[NINE];
 			}
 		} else if (y_delta > 0) { // DOWN
 			if (x_delta < 0) { // RIGHT
-				return BOTTOM_LEFT_DIRECTION;
+				return stroke_names[ONE];
 			} else if (x_delta > 0) {
-				return BOTTOM_RIGHT_DIRECTION;
+				return stroke_names[THREE];
 			}
 		}
 
 	}
 
-	return NO_DIRECTION;
+	return stroke_names[NONE];
 
 }
 
-static char get_fuzzy_stroke(int x_delta, int y_delta) {
+char get_direction_from_deltas(int x_delta, int y_delta) {
 
 	if (abs(y_delta) > abs(x_delta)) {
 		if (y_delta > 0) {
-			return DOWN_DIRECTION;
+			return stroke_names[DOWN];
 		} else {
-			return UP_DIRECTION;
+			return stroke_names[UP];
 		}
 
 	} else {
 		if (x_delta > 0) {
-			return RIGHT_DIRECTION;
+			return stroke_names[RIGHT];
 		} else {
-			return LEFT_DIRECTION;
+			return stroke_names[LEFT];
 		}
 
 	}
 
 }
 
-static void stroke_sequence_push_stroke(char* stroke_sequence, char stroke) {
+void movement_add_direction(char* stroke_sequence, char direction) {
 	// grab stroke
 	int len = strlen(stroke_sequence);
-	if ((len == 0) || (stroke_sequence[len - 1] != stroke)) {
+	if ((len == 0) || (stroke_sequence[len - 1] != direction)) {
 
 		if (len < MAX_STROKE_SEQUENCE) {
 
-			stroke_sequence[len] = stroke;
+			stroke_sequence[len] = direction;
 			stroke_sequence[len + 1] = '\0';
 
 		}
@@ -547,28 +508,31 @@ static void stroke_sequence_push_stroke(char* stroke_sequence, char stroke) {
 	}
 }
 
-static void update_movement(grabbing * self, XMotionEvent *e) {
+void update_movement(struct grabbing * self, int new_x, int new_y) {
 
-	// se for o caso, desenha o movimento na tela
-	if (!(self->without_brush)) {
-		backing_save(self->backing, e->x_root - self->brush->image_width,
-				e->y_root - self->brush->image_height);
-		backing_save(self->backing, e->x_root + self->brush->image_width,
-				e->y_root + self->brush->image_height);
-		brush_line_to(self->brush, e->x_root, e->y_root);
+	if (!self->started) {
+		return;
 	}
 
-	int new_x = e->x_root;
-	int new_y = e->y_root;
+	// se for o caso, desenha o movimento na tela
+	if (!self->without_brush) {
+		backing_save(&(self->backing), new_x - self->brush.image_width,
+				new_y - self->brush.image_height);
+		//backing_save(&(self->backing), new_x - self->brush.image_width,
+		//		new_y - self->brush.image_height);
+
+		brush_line_to(&(self->brush), new_x, new_y);
+		XFlush(self->dpy);
+	}
 
 	int x_delta = (new_x - self->old_x);
 	int y_delta = (new_y - self->old_y);
 
 	if ((abs(x_delta) > DELTA_MIN) || (abs(y_delta) > DELTA_MIN)) {
 
-		char stroke = stroke_sequence_complex_detect_stroke(x_delta, y_delta);
+		char stroke = get_fine_direction_from_deltas(x_delta, y_delta);
 
-		stroke_sequence_push_stroke(self->accurate_stroke_sequence, stroke);
+		movement_add_direction(self->fine_direction_sequence, stroke);
 
 		// reset start position
 		self->old_x = new_x;
@@ -576,131 +540,281 @@ static void update_movement(grabbing * self, XMotionEvent *e) {
 
 	}
 
-	int x_delta_2 = new_x - self->old_x_2;
-	int y_delta_2 = new_y - self->old_y_2;
+	int rought_delta_x = new_x - self->rought_old_x;
+	int rought_delta_y = new_y - self->rought_old_y;
 
-	char fuzzy_stroke = get_fuzzy_stroke(x_delta_2, y_delta_2);
+	char rought_direction = get_direction_from_deltas(rought_delta_x,
+			rought_delta_y);
 
-	int square_distance_2 = x_delta_2 * x_delta_2 + y_delta_2 * y_delta_2;
+	int square_distance_2 = rought_delta_x * rought_delta_x
+			+ rought_delta_y * rought_delta_y;
 
 	if ( DELTA_MIN * DELTA_MIN < square_distance_2) {
 		// grab stroke
 
-		stroke_sequence_push_stroke(self->fuzzy_stroke_sequence, fuzzy_stroke);
+		movement_add_direction(self->rought_direction_sequence,
+				rought_direction);
 
 		// reset start position
-		self->old_x_2 = new_x;
-		self->old_y_2 = new_y;
+		self->rought_old_x = new_x;
+		self->rought_old_y = new_y;
 	}
 
 	return;
 }
 
-/*
- * Capture next event.
- */
-capture * grabbing_capture(grabbing * self) {
+void free_grabbed(struct grabbed * free_me) {
+	assert(free_me);
+	free(free_me->focused_window);
+	free(free_me);
+}
 
-	XEvent e;
+void grabbing_event_loop(struct grabbing * self, struct engine * conf) {
 
-	capture * captured = NULL;
+	XEvent ev;
 
-	XNextEvent(self->dpy, &e);
+	grabbing_grab(self);
 
-	switch (e.type) {
+	printf("\n");
+	if (self->is_direct_touch) {
+		printf(
+				"Mygestures running on device '%s'. Touch the device to start drawing the gesture.\n",
+				self->devicename);
+	} else {
+		printf(
+				"Mygestures running on device '%s'. Use button %d to draw the gesture.\n",
+				self->devicename, self->button);
+	}
 
-	case MotionNotify:
-		update_movement(self, (XMotionEvent *) &e);
-		break;
+	printf("\n");
 
-	case ButtonPress:
-		start_movement(self, (XButtonEvent *) &e);
-		break;
+	while (!self->shut_down) {
 
-	case ButtonRelease:
+		XNextEvent(self->dpy, &ev);
 
-		captured = end_movement(self, (XButtonEvent *) &e);
-		break;
+		if (ev.xcookie.type == GenericEvent
+				&& ev.xcookie.extension == self->opcode
+				&& XGetEventData(self->dpy, &ev.xcookie)) {
+
+			XIDeviceEvent* data = NULL;
+
+			switch (ev.xcookie.evtype) {
+
+			case XI_Motion:
+				data = (XIDeviceEvent*) ev.xcookie.data;
+				update_movement(self, data->root_x, data->root_y);
+				break;
+
+			case XI_ButtonPress:
+				data = (XIDeviceEvent*) ev.xcookie.data;
+				grabbing_start_movement(self, data->root_x, data->root_y);
+				break;
+
+			case XI_ButtonRelease:
+				data = (XIDeviceEvent*) ev.xcookie.data;
+				struct grabbed * grab = grabbing_end_movement(self,
+						data->root_x, data->root_y);
+
+				if (grab) {
+
+					printf("\n");
+					printf("Window Title = \"%s\"\n",
+							grab->focused_window->title);
+					printf("Window Class = \"%s\"\n",
+							grab->focused_window->class);
+
+					struct gesture * gest = engine_process_gesture(conf, grab);
+
+					if (gest) {
+
+						int j = 0;
+
+						for (j = 0; j < gest->actions_count; ++j) {
+							struct action * a = gest->actions[j];
+							printf(" (%s)\n", a->original_str);
+							execute_action(self->dpy, a,
+									get_focused_window(self->dpy));
+						}
+
+					}
+
+					free_grabbed(grab);
+
+				}
+
+				break;
+
+			}
+		}
+		XFreeEventData(self->dpy, &ev.xcookie);
 
 	}
 
-	return captured;
+	grabbing_ungrab(self);
 
 }
 
-int grabbing_prepare(grabbing * self) {
+int get_touch_status(XIDeviceInfo * device) {
+
+	int j = 0;
+
+	for (j = 0; j < device->num_classes; j++) {
+		XIAnyClassInfo *class = device->classes[j];
+		XITouchClassInfo *t = (XITouchClassInfo*) class;
+
+		if (class->type != XITouchClass)
+			continue;
+
+		if (t->mode == XIDirectTouch) {
+			return 1;
+		}
+		/*
+		 if (print_devices) {
+		 printf("        %s touch device, supporting %d touches. ",
+		 (t->mode == XIDirectTouch) ? "direct" : "dependent",
+		 t->num_touches);
+		 }
+		 */
+	}
+	return 0;
+}
+
+void open_display(struct grabbing * self) {
+
+	self->dpy = XOpenDisplay(NULL);
+
+	if (!XQueryExtension(self->dpy, "XInputExtension", &(self->opcode),
+			&(self->event), &(self->error))) {
+		printf("X Input extension not available.\n");
+		exit(-1);
+	}
+
+	/* Which version of XI2? We support 2.0 */
+	int major = 2, minor = 0;
+	if (XIQueryVersion(self->dpy, &major, &minor) == BadRequest) {
+		printf("XI2 not available. Server supports %d.%d\n", major, minor);
+		exit(-1);
+	}
+
+}
+
+char * engine_get_device_name(struct grabbing * self) {
+	return self->devicename;
+}
+
+struct grabbing * grabber_connect_device(char * device_name, int button,
+		int without_brush, int print_devices, char * brush_color) {
+
+	struct grabbing * self = malloc(sizeof(struct grabbing));
+	bzero(self, sizeof(struct grabbing));
 
 	assert(self);
 
-	char *s = NULL;
-	s = XDisplayName(NULL);
+	open_display(self);
 
-	self->dpy = XOpenDisplay(s);
-	if (!(self->dpy)) {
-		fprintf(stderr, "Can't open display %s\n", s);
-		return 1;
+	self->button = button;
+	self->without_brush = without_brush;
+
+	self->devicename = device_name;
+	if (!self->devicename) {
+		self->devicename = "Virtual core pointer";
 	}
 
-	if (!(self->button)) {
-		self->button = 3;
+	grabbing_set_brush_color(self, brush_color);
+
+	int ndevices;
+	int i;
+	XIDeviceInfo * device;
+	XIDeviceInfo * devices;
+
+	int deviceid = -1;
+
+	devices = XIQueryDevice(self->dpy, XIAllDevices, &ndevices);
+
+	for (i = 0; i < ndevices; i++) {
+		device = &devices[i];
+
+		switch (device->use) {
+		/// ṕointers
+		case XIMasterPointer:
+		case XISlavePointer:
+		case XIFloatingSlave:
+
+			if (print_devices) {
+				printf("    Device %d: '%s'\n", device->deviceid, device->name);
+			}
+
+			if (strcmp(device->name, self->devicename) == 0) {
+				self->deviceid = device->deviceid;
+				self->is_direct_touch = get_touch_status(device);
+			}
+
+			break;
+
+		case XIMasterKeyboard:
+			//printf("master keyboard\n");
+			break;
+		case XISlaveKeyboard:
+			//printf("slave keyboard\n");
+			break;
+		}
+
 	}
 
-	self->accurate_stroke_sequence = (char *) malloc(
-			sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
-	self->accurate_stroke_sequence[0] = '\0';
+	XIFreeDeviceInfo(devices);
 
-	self->fuzzy_stroke_sequence = (char *) malloc(
+	if (print_devices) {
+		exit(0);
+	}
+
+	self->fine_direction_sequence = (char *) malloc(
 			sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
-	self->fuzzy_stroke_sequence[0] = '\0';
+	self->fine_direction_sequence[0] = '\0';
+
+	self->rought_direction_sequence = (char *) malloc(
+			sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
+	self->rought_direction_sequence[0] = '\0';
 
 	int err = 0;
 	int scr = DefaultScreen(self->dpy);
 
 	XAllowEvents(self->dpy, AsyncBoth, CurrentTime);
 
-	if (!(self->without_brush)) {
+	if (!self->without_brush) {
 
-		self->backing = backing_new();
+		if (!self->brush_image) {
+			self->brush_image = &brush_image_red;
+		}
 
-		err = backing_init(self->backing, self->dpy, DefaultRootWindow(self->dpy),
-				DisplayWidth(self->dpy, scr), DisplayHeight(self->dpy, scr),
-				DefaultDepth(self->dpy, scr));
+		err = backing_init(&(self->backing), self->dpy,
+				DefaultRootWindow(self->dpy), DisplayWidth(self->dpy, scr),
+				DisplayHeight(self->dpy, scr), DefaultDepth(self->dpy, scr));
 		if (err) {
 			fprintf(stderr, "cannot open backing store.... \n");
-			return err;
+			return NULL;
 		}
 
-		if (!self->brush_image){
-			self->brush_image = &brush_image_blue;
-		}
-
-		self->brush = brush_new();
-
-		err = brush_init(self->brush, self->backing, self->brush_image);
+		err = brush_init(&(self->brush), &(self->backing), self->brush_image);
 		if (err) {
 			fprintf(stderr, "cannot init brush.... \n");
-			return err;
+			return NULL;
 		}
 	}
 
-	/* last, start grabbing the pointer ...*/
+	self->old_x = -1;
+	self->old_y = -1;
 
-	int res = grab_pointer(self);
-	if (res == 0) {
-		err = -1;
-	}
+	self->rought_old_x = -1;
+	self->rought_old_y = -1;
 
-	return err;
+	return self;
 }
 
-void grabbing_finalize(grabbing * self) {
+void engine_finalize(struct grabbing * self) {
 	if (!(self->without_brush)) {
-		brush_deinit(self->brush);
-		backing_deinit(self->backing);
+		brush_deinit(&(self->brush));
+		backing_deinit(&(self->backing));
 	}
-
-	free(self->accurate_stroke_sequence);
-	free(self->fuzzy_stroke_sequence);
 
 	XCloseDisplay(self->dpy);
 	return;

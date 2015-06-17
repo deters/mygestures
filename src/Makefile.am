@@ -6,6 +6,7 @@ bin_PROGRAMS=mygestures
 mygestures_SOURCES = \
 	main.c \
 	gestures.c gestures.h \
+        configuration.c configuration.h \
 	generic_wm.c wm.h \
 	grabbing.c grabbing.h \
 	drawing-backing.c \
@@ -18,4 +19,4 @@ mygestures_SOURCES = \
 	drawing-bresenham.c \
 	drawing-bresenham.h
 
-mygestures_LDADD=$(libXML_LIBS) $(X11_LIBS) $(Xrender_LIBS) $(Xtst_LIBS) $(libXML_LIBS)
+mygestures_LDADD=$(libXML_LIBS) $(X11_LIBS) $(Xrender_LIBS) $(Xtst_LIBS) $(libXML_LIBS) $(Xi_LIBS)
