@@ -1,15 +1,40 @@
+Make sure you have this packages installed on your system:
 
-Pre-Reqs (debian)
+  autoconf 
+  libtool 
+  libx11-dev 
+  pkg-config 
+  libxrender-dev 
+  libxtst-dev 
+  libxml2-dev
 
- $ sudo apt-get install \
-   autoconf libtool libx11-dev pkg-config libxrender-dev libxtst-dev libxml2-dev
+Building & installing from source tarball:
 
-Build & Install from source:
+  wget https://sourceforge.net/projects/mygestures/files/latest/download?source=files -O mygestures.tar.xz
+  tar xvf mygestures.tar.xz
+  cd mygestures-git
+  sh autogen.sh
+  ./configure
+  make
+  sudo make install
 
- $ cd mygestures/
- $ autogen.sh
- $ make
- $ sudo make install
+Building & installing from git ("master" branch)
 
+  git clone git://git.code.sf.net/p/mygestures/git mygestures-git
+  cd mygestures-git
+  sh autogen.sh
+  ./configure
+  make
+  sudo make install
 
-
+Hacking mygestures & generating debian&dist packages
+  
+  git commit -a                  # commit your changes on "master" branch                 
+  git checkout -b debian origin/debian # switch to "debian" branch from the origin.
+  git merge master               # merge "master" into "debian"
+  sh autogen.sh                  
+  ./configure
+  make
+  dpkg-buildpackage  -uc -us     # generate your unsigned packages
+  ls -l ../mygestures_*          # list generated packages
+  

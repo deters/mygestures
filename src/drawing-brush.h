@@ -19,6 +19,7 @@
 #include <X11/extensions/Xrender.h>
 
 #include "drawing-backing.h"
+#include "drawing-brush-image.h"
 
 struct brush
 {
@@ -40,7 +41,8 @@ struct brush
 };
 typedef struct brush brush_t;
 
-int brush_init(brush_t *brush, backing_t *backing);
+brush_t * brush_new();
+int brush_init(brush_t *brush, backing_t *backing, struct brush_image_t *brush_image);
 void brush_deinit(brush_t *brush);
 
 void brush_draw(brush_t *brush, int x, int y);

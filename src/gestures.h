@@ -14,29 +14,28 @@
 
 #ifndef __GESTURES_h
 #define __GESTURES_h
-#include <X11/Xlib.h>
-#include <X11/keysym.h>
+
 #include <regex.h>
 
-#define GEST_SEQUENCE_MAX 64
-#define GEST_ACTION_NAME_MAX 32
+#define MOVEMENT_MAX_DIRECTIONS 64
+#define NAMES_MAX_SIZE 64
 #define GEST_EXTRA_DATA_MAX 4096
 
-#define CONTROL_L_MASK (1<<0)
-#define CONTROL_R_MASK (1<<1)
-#define SHIFT_L_MASK (1<<2)
-#define SHIFT_R_MASK (1<<3)
-#define ALT_L_MASK (1<<4)
-#define ALT_R_MASK (1<<5)
-#define TAB_MASK (1<<6)
+#define NO_DIRECTION  '\0'
+#define LEFT_DIRECTION  'L'
+#define RIGHT_DIRECTION  'R'
+#define UP_DIRECTION  'U'
+#define DOWN_DIRECTION  'D'
+#define UPPER_RIGHT_DIRECTION  '9'
+#define UPPER_LEFT_DIRECTION  '7'
+#define BOTTOM_RIGHT_DIRECTION  '3'
+#define BOTTOM_LEFT_DIRECTION  '1'
 
-
-/* the movements */
-enum STROKES {
-	NONE, LEFT, RIGHT, UP, DOWN, ONE, THREE, SEVEN, NINE
-};
-
-
+#define CONFIG_OK  0
+#define CONFIG_FILE_NOT_FOUND  -1
+#define CONFIG_PARSE_ERROR  -2
+#define CONFIG_SEMANTIC_ERROR  -3
+#define CONFIG_CREATE_ERROR  -4
 
 
 struct movement {
@@ -45,14 +44,17 @@ struct movement {
 	regex_t * compiled;
 };
 
-
-
 struct context {
 	char *name;
 	char *title;
 	char *class;
 	struct gesture ** gestures;
 	int gestures_count;
+	struct context ** context_list;
+	int context_count;
+	struct movement ** movements;
+	int movement_count;
+	struct context * parent; /* weak */
 	int abort;
 	regex_t * title_compiled;
 	regex_t * class_compiled;
@@ -68,21 +70,44 @@ struct gesture {
 };
 
 
+typedef struct _capture {
+	char **movement_representations;
+	int movement_representations_count;
+	char *window_title;
+	char *window_class;
+} capture;
 
-struct window_info {
-	char *title;
-	char *class;
-};
 
-struct gesture_engine {
+typedef struct _config {
 	char * config_file;
+	struct context * root_context;
+} config;
+
+/* Actions */
+enum {
+	ACTION_ERROR,
+	ACTION_EXIT_GEST,
+	ACTION_EXECUTE,
+	ACTION_ICONIFY,
+	ACTION_KILL,
+	ACTION_RECONF,
+	ACTION_RAISE,
+	ACTION_LOWER,
+	ACTION_MAXIMIZE,
+	ACTION_ROOT_SEND,
+	ACTION_ABORT,
+	ACTION_LAST
 };
 
-int gestures_init();
+struct action {
+	int type;
+	char *data;
+};
 
-void gestures_set_config_file(char * config_file);
-
-void gesture_process_movement(Display * dpy,
-		char **sequences, int sequences_count);
+config * config_new();
+void config_free();
+int config_load_from_file(config * conf, char * filename);
+int config_load_from_default(config * conf);
+struct gesture * config_match_captured(config * conf, capture * captured);
 
 #endif
