@@ -112,22 +112,11 @@ struct engine * engine_new();
 char * config_get_default_filename();
 char * config_get_template_filename();
 
-struct movement * engine_create_movement(struct engine * self,
-		char *movement_name, char *movement_expression);
-
-struct gesture * context_create_gesture(struct context * self,
-		char * gesture_name, char * gesture_movement);
-
-struct action *gesture_create_action(struct gesture * self, int action_type,
-		char * original_str);
-
-struct context *engine_create_context(struct engine * self, char * context_name,
-		char *window_title, char *window_class);
-
-struct movement * engine_find_movement_by_name(struct engine * self,
-		char * movement_name);
-
-struct gesture * engine_process_gesture(struct engine * self,
-		struct grabbed * grab);
+struct movement * engine_create_movement(struct engine * self, char *movement_name, char *movement_expression);
+struct gesture * context_create_gesture(struct context * self, char * gesture_name, char * gesture_movement);
+struct action *gesture_create_action(struct gesture * self, int action_type, char * original_str);
+struct context *engine_create_context(struct engine * self, char * context_name, char *window_title, char *window_class);
+struct movement * engine_find_movement_by_name(struct engine * self, char * movement_name);
+struct gesture * engine_process_gesture(struct engine * self, struct grabbed * grab);
 
 #endif

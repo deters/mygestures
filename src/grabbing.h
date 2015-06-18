@@ -61,8 +61,7 @@ struct grabbing {
 
 };
 
-struct grabbing * grabber_connect_device(char * device_name, int button,
-		int without_brush, int print_devices, char * brush_color);
+struct grabbing * grabber_connect_device(char * device_name, int button, int without_brush, int print_devices, char * brush_color);
 
 char * engine_get_device_name(struct grabbing * self);
 

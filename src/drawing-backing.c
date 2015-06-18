@@ -22,8 +22,7 @@
 #include "dmalloc.h"
 #endif
 
-int backing_init(backing_t *backing, Display *dpy, Window root, int width,
-		int height, int depth) {
+int backing_init(backing_t *backing, Display *dpy, Window root, int width, int height, int depth) {
 
 	XRenderPictFormat templ;
 	int screen = DefaultScreen(dpy);
@@ -47,8 +46,7 @@ int backing_init(backing_t *backing, Display *dpy, Window root, int width,
 	backing->root_pict = 0;
 	backing->brush_pict = 0;
 
-	backing->root_format = XRenderFindVisualFormat(dpy,
-			DefaultVisual(dpy, screen));
+	backing->root_format = XRenderFindVisualFormat(dpy, DefaultVisual(dpy, screen));
 
 	templ.type = PictTypeDirect;
 	templ.depth = 32;
@@ -98,35 +96,31 @@ void backing_deinit(backing_t *backing) {
 int backing_save(backing_t *backing, int x, int y) {
 
 	if (backing->active == 0) {
-		backing_reconfigure(backing, backing->total_width,
-				backing->total_height, backing->depth);
+		backing_reconfigure(backing, backing->total_width, backing->total_height, backing->depth);
 		backing->active = 1;
 
 		backing->x = BACKING_INC * (x / BACKING_INC);
 		backing->y = BACKING_INC * (y / BACKING_INC);
 		backing->width = BACKING_INC;
 		backing->height = BACKING_INC;
-		XCopyArea(backing->dpy, backing->root, backing->root_pixmap,
-				backing->gc, backing->x, backing->y, backing->width,
-				backing->height, backing->x, backing->y);
+		XCopyArea(backing->dpy, backing->root, backing->root_pixmap, backing->gc, backing->x,
+				backing->y, backing->width, backing->height, backing->x, backing->y);
 	} else {
 		if (x >= backing->x + backing->width) {
 			int new_max_x, width_inc;
 			new_max_x = BACKING_INC * ((x / BACKING_INC) + 1);
 			width_inc = new_max_x - (backing->x + backing->width);
-			XCopyArea(backing->dpy, backing->root, backing->root_pixmap,
-					backing->gc, backing->x + backing->width, backing->y,
-					width_inc, backing->height, backing->x + backing->width,
-					backing->y);
+			XCopyArea(backing->dpy, backing->root, backing->root_pixmap, backing->gc,
+					backing->x + backing->width, backing->y, width_inc, backing->height,
+					backing->x + backing->width, backing->y);
 			backing->width += width_inc;
 		}
 		if (x < backing->x) {
 			int new_x, width_inc;
 			new_x = BACKING_INC * (x / BACKING_INC);
 			width_inc = backing->x - new_x;
-			XCopyArea(backing->dpy, backing->root, backing->root_pixmap,
-					backing->gc, new_x, backing->y, width_inc, backing->height,
-					new_x, backing->y);
+			XCopyArea(backing->dpy, backing->root, backing->root_pixmap, backing->gc, new_x,
+					backing->y, width_inc, backing->height, new_x, backing->y);
 			backing->width += width_inc;
 			backing->x = new_x;
 		}
@@ -134,9 +128,8 @@ int backing_save(backing_t *backing, int x, int y) {
 			int new_max_y, height_inc;
 			new_max_y = BACKING_INC * ((y / BACKING_INC) + 1);
 			height_inc = new_max_y - (backing->y + backing->height);
-			XCopyArea(backing->dpy, backing->root, backing->root_pixmap,
-					backing->gc, backing->x, backing->y + backing->height,
-					backing->width, height_inc, backing->x,
+			XCopyArea(backing->dpy, backing->root, backing->root_pixmap, backing->gc, backing->x,
+					backing->y + backing->height, backing->width, height_inc, backing->x,
 					backing->y + backing->height);
 			backing->height += height_inc;
 		}
@@ -144,9 +137,8 @@ int backing_save(backing_t *backing, int x, int y) {
 			int new_y, height_inc;
 			new_y = BACKING_INC * (y / BACKING_INC);
 			height_inc = backing->y - new_y;
-			XCopyArea(backing->dpy, backing->root, backing->root_pixmap,
-					backing->gc, backing->x, new_y, backing->width, height_inc,
-					backing->x, new_y);
+			XCopyArea(backing->dpy, backing->root, backing->root_pixmap, backing->gc, backing->x,
+					new_y, backing->width, height_inc, backing->x, new_y);
 			backing->height += height_inc;
 			backing->y = new_y;
 		}
@@ -158,9 +150,8 @@ int backing_restore(backing_t *backing) {
 
 	if (backing->active != 0) {
 
-		XCopyArea(backing->dpy, backing->root_pixmap, backing->root,
-				backing->gc, backing->x, backing->y, backing->width,
-				backing->height, backing->x, backing->y);
+		XCopyArea(backing->dpy, backing->root_pixmap, backing->root, backing->gc, backing->x,
+				backing->y, backing->width, backing->height, backing->x, backing->y);
 
 		backing->active = 0;
 
@@ -189,31 +180,28 @@ int backing_reconfigure(backing_t *backing, int width, int height, int depth) {
 	backing->total_height = height;
 	backing->depth = depth;
 
-	backing->root_pixmap = XCreatePixmap(backing->dpy, backing->root,
-			backing->total_width, backing->total_height, depth);
+	backing->root_pixmap = XCreatePixmap(backing->dpy, backing->root, backing->total_width,
+			backing->total_height, depth);
 	attr.subwindow_mode = IncludeInferiors;
-	backing->root_pict = XRenderCreatePicture(backing->dpy, backing->root,
-			backing->root_format,
-			CPSubwindowMode, &attr);
+	backing->root_pict = XRenderCreatePicture(backing->dpy, backing->root, backing->root_format,
+	CPSubwindowMode, &attr);
 
-	backing->brush_pixmap = XCreatePixmap(backing->dpy, backing->root,
-			backing->total_width, backing->total_height, 32);
-	backing->brush_pict = XRenderCreatePicture(backing->dpy,
-			backing->brush_pixmap, backing->brush_format, 0, 0);
+	backing->brush_pixmap = XCreatePixmap(backing->dpy, backing->root, backing->total_width,
+			backing->total_height, 32);
+	backing->brush_pict = XRenderCreatePicture(backing->dpy, backing->brush_pixmap,
+			backing->brush_format, 0, 0);
 
 	color.red = 0;
 	color.green = 0;
 	color.blue = 0;
 	color.alpha = 0;
 	XRenderFillRectangle(backing->dpy,
-	PictOpSrc, backing->brush_pict, &color, 0, 0, backing->total_width,
-			backing->total_height);
+	PictOpSrc, backing->brush_pict, &color, 0, 0, backing->total_width, backing->total_height);
 
 	if (old_backing.root_pixmap) {
 		if (old_backing.depth == depth) {
-			XCopyArea(backing->dpy, old_backing.root_pixmap,
-					backing->root_pixmap, backing->gc, old_backing.x,
-					old_backing.y, old_backing.width, old_backing.height,
+			XCopyArea(backing->dpy, old_backing.root_pixmap, backing->root_pixmap, backing->gc,
+					old_backing.x, old_backing.y, old_backing.width, old_backing.height,
 					old_backing.x, old_backing.y);
 		}
 		XFreePixmap(old_backing.dpy, old_backing.root_pixmap);
@@ -223,8 +211,8 @@ int backing_reconfigure(backing_t *backing, int width, int height, int depth) {
 	}
 	if (old_backing.brush_pixmap) {
 		XRenderComposite(backing->dpy,
-		PictOpSrc, old_backing.brush_pict, None, backing->brush_pict, 0, 0, 0,
-				0, 0, 0, old_backing.total_width, old_backing.total_height);
+		PictOpSrc, old_backing.brush_pict, None, backing->brush_pict, 0, 0, 0, 0, 0, 0,
+				old_backing.total_width, old_backing.total_height);
 		XFreePixmap(old_backing.dpy, old_backing.brush_pixmap);
 		old_backing.brush_pixmap = 0;
 		XRenderFreePicture(old_backing.dpy, old_backing.brush_pict);

@@ -38,8 +38,7 @@
 #include <assert.h>
 
 /* alloc a window struct */
-struct context *engine_create_context(struct engine * self, char * context_name,
-		char *window_title, char *window_class) {
+struct context *engine_create_context(struct engine * self, char * context_name, char *window_title, char *window_class) {
 	struct context *ans = malloc(sizeof(struct context));
 	bzero(ans, sizeof(struct context));
 
@@ -88,8 +87,7 @@ void free_context(struct context *free_me) {
 }
 
 /* alloc a movement struct */
-struct movement *engine_create_movement(struct engine * self,
-		char *movement_name, char *movement_expression) {
+struct movement *engine_create_movement(struct engine * self, char *movement_name, char *movement_expression) {
 
 	struct movement * ans = malloc(sizeof(struct movement));
 	bzero(ans, sizeof(struct movement));
@@ -134,8 +132,7 @@ void free_movement(struct movement *free_me) {
 	return;
 }
 
-struct gesture * context_create_gesture(struct context * self,
-		char * gesture_name, char * gesture_movement) {
+struct gesture * context_create_gesture(struct context * self, char * gesture_name, char * gesture_movement) {
 
 	struct gesture *ans = malloc(sizeof(struct gesture));
 	bzero(ans, sizeof(struct gesture));
@@ -143,8 +140,7 @@ struct gesture * context_create_gesture(struct context * self,
 	struct movement *m = NULL;
 
 	ans->name = gesture_name;
-	ans->movement = engine_find_movement_by_name(self->engine,
-			gesture_movement);
+	ans->movement = engine_find_movement_by_name(self->engine, gesture_movement);
 	ans->context = self;
 	ans->actions_count = 0;
 	ans->actions = malloc(sizeof(struct action) * 20);
@@ -164,8 +160,7 @@ void free_gesture(struct gesture *free_me) {
 }
 
 /* alloc an action struct */
-struct action *gesture_create_action(struct gesture * self, int action_type,
-		char * original_str) {
+struct action *gesture_create_action(struct gesture * self, int action_type, char * original_str) {
 
 	struct action *ans = malloc(sizeof(struct action));
 	bzero(ans, sizeof(struct action));
@@ -184,8 +179,7 @@ void free_action(struct action *free_me) {
 	return;
 }
 
-struct gesture * engine_match_gesture(struct engine * self,
-		char * captured_sequence, struct window_info * window) {
+struct gesture * engine_match_gesture(struct engine * self, char * captured_sequence, struct window_info * window) {
 
 	struct gesture * matched_gesture = NULL;
 
@@ -199,14 +193,13 @@ struct gesture * engine_match_gesture(struct engine * self,
 		struct context * context = self->context_list[c];
 
 		if ((!context->class)
-				|| (regexec(context->class_compiled, window->class, 0,
-						(regmatch_t *) NULL, 0) != 0)) {
+				|| (regexec(context->class_compiled, window->class, 0, (regmatch_t *) NULL, 0) != 0)) {
 			continue;
 		}
 
 		if ((!context->title)
-				|| (regexec(context->title_compiled, window->title, 0,
-						(regmatch_t *) NULL, 0)) != 0) {
+				|| (regexec(context->title_compiled, window->title, 0, (regmatch_t *) NULL, 0))
+						!= 0) {
 			continue;
 		}
 
@@ -221,9 +214,8 @@ struct gesture * engine_match_gesture(struct engine * self,
 				if (gest->movement) {
 
 					if ((gest->movement->compiled)
-							&& (regexec(gest->movement->compiled,
-									captured_sequence, 0, (regmatch_t *) NULL,
-									0) == 0)) {
+							&& (regexec(gest->movement->compiled, captured_sequence, 0,
+									(regmatch_t *) NULL, 0) == 0)) {
 
 						matched_gesture = gest;
 						break;
@@ -241,8 +233,7 @@ struct gesture * engine_match_gesture(struct engine * self,
 	return matched_gesture;
 }
 
-struct gesture * engine_process_gesture(struct engine * self,
-		struct grabbed * grab) {
+struct gesture * engine_process_gesture(struct engine * self, struct grabbed * grab) {
 
 	struct gesture *gest = NULL;
 
@@ -256,9 +247,8 @@ struct gesture * engine_process_gesture(struct engine * self,
 
 		if (gest) {
 
-			printf(
-					"Captured sequence: '%s' --> Movement '%s' --> Gesture '%s'\n",
-					sequence, gest->movement->name, gest->name);
+			printf("Captured sequence: '%s' --> Movement '%s' --> Gesture '%s'\n", sequence,
+					gest->movement->name, gest->name);
 
 			return gest;
 		}
@@ -268,8 +258,7 @@ struct gesture * engine_process_gesture(struct engine * self,
 
 }
 
-struct movement * engine_find_movement_by_name(struct engine * self,
-		char * movement_name) {
+struct movement * engine_find_movement_by_name(struct engine * self, char * movement_name) {
 
 	struct context * ctx;
 
@@ -282,8 +271,7 @@ struct movement * engine_find_movement_by_name(struct engine * self,
 	for (i = 0; i < self->movement_count; ++i) {
 		struct movement * m = self->movement_list[i];
 
-		if ((m->name) && (movement_name)
-				&& (strcasecmp(movement_name, m->name) == 0)) {
+		if ((m->name) && (movement_name) && (strcasecmp(movement_name, m->name) == 0)) {
 			return m;
 		}
 	}

@@ -41,8 +41,7 @@
 #define DELTA_MIN	30 /*TODO*/
 #define MAX_STROKE_SEQUENCE 63 /*TODO*/
 
-const char *modifiers_names[] = { "SHIFT", "CTRL", "ALT", "WIN", "SCROLL",
-		"NUM", "CAPS" };
+const char *modifiers_names[] = { "SHIFT", "CTRL", "ALT", "WIN", "SCROLL", "NUM", "CAPS" };
 
 /* valid strokes */
 const char stroke_names[] = { 'N', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
@@ -156,8 +155,7 @@ Window get_parent_window(Display *dpy, Window w) {
 	Window root_return, parent_return, *child_return;
 	unsigned int nchildren_return;
 	int ret;
-	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return,
-			&nchildren_return);
+	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return, &nchildren_return);
 
 	return parent_return;
 }
@@ -202,8 +200,7 @@ void grabbing_grab(struct grabbing * self) {
 				self->button = 3;
 			}
 
-			XIGrabModifiers modifiers[4] = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0,
-					0 } };
+			XIGrabModifiers modifiers[4] = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } };
 
 			static unsigned char mask[2];
 			eventmask->mask = mask;
@@ -241,11 +238,9 @@ void grabbing_ungrab(struct grabbing * self) {
 			printf("ungrab status = %d \n", status);
 
 		} else {
-			XIGrabModifiers modifiers[4] = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0,
-					0 } };
+			XIGrabModifiers modifiers[4] = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } };
 
-			XIUngrabButton(self->dpy, self->deviceid, self->button, rootwindow,
-					1, modifiers);
+			XIUngrabButton(self->dpy, self->deviceid, self->button, rootwindow, 1, modifiers);
 		}
 
 	}
@@ -372,8 +367,7 @@ void execute_action(Display *dpy, struct action *action, Window focused_window) 
 /**
  * Obtém o resultado dos dois algoritmos de captura de movimentos, e envia para serem processadas.
  */
-struct grabbed * grabbing_end_movement(struct grabbing * self, int new_x,
-		int new_y) {
+struct grabbed * grabbing_end_movement(struct grabbing * self, int new_x, int new_y) {
 
 	struct grabbed * result = NULL;
 
@@ -426,8 +420,7 @@ char get_fine_direction_from_deltas(int x_delta, int y_delta) {
 	}
 
 	// check if the movement is near main axes
-	if ((x_delta == 0) || (y_delta == 0)
-			|| (fabs((float) x_delta / (float) y_delta) > 3)
+	if ((x_delta == 0) || (y_delta == 0) || (fabs((float) x_delta / (float) y_delta) > 3)
 			|| (fabs((float) y_delta / (float) x_delta) > 3)) {
 
 		// x axe
@@ -543,17 +536,14 @@ void update_movement(struct grabbing * self, int new_x, int new_y) {
 	int rought_delta_x = new_x - self->rought_old_x;
 	int rought_delta_y = new_y - self->rought_old_y;
 
-	char rought_direction = get_direction_from_deltas(rought_delta_x,
-			rought_delta_y);
+	char rought_direction = get_direction_from_deltas(rought_delta_x, rought_delta_y);
 
-	int square_distance_2 = rought_delta_x * rought_delta_x
-			+ rought_delta_y * rought_delta_y;
+	int square_distance_2 = rought_delta_x * rought_delta_x + rought_delta_y * rought_delta_y;
 
 	if ( DELTA_MIN * DELTA_MIN < square_distance_2) {
 		// grab stroke
 
-		movement_add_direction(self->rought_direction_sequence,
-				rought_direction);
+		movement_add_direction(self->rought_direction_sequence, rought_direction);
 
 		// reset start position
 		self->rought_old_x = new_x;
@@ -581,8 +571,7 @@ void grabbing_event_loop(struct grabbing * self, struct engine * conf) {
 				"Mygestures running on device '%s'. Touch the device to start drawing the gesture.\n",
 				self->devicename);
 	} else {
-		printf(
-				"Mygestures running on device '%s'. Use button %d to draw the gesture.\n",
+		printf("Mygestures running on device '%s'. Use button %d to draw the gesture.\n",
 				self->devicename, self->button);
 	}
 
@@ -592,8 +581,7 @@ void grabbing_event_loop(struct grabbing * self, struct engine * conf) {
 
 		XNextEvent(self->dpy, &ev);
 
-		if (ev.xcookie.type == GenericEvent
-				&& ev.xcookie.extension == self->opcode
+		if (ev.xcookie.type == GenericEvent && ev.xcookie.extension == self->opcode
 				&& XGetEventData(self->dpy, &ev.xcookie)) {
 
 			XIDeviceEvent* data = NULL;
@@ -612,16 +600,13 @@ void grabbing_event_loop(struct grabbing * self, struct engine * conf) {
 
 			case XI_ButtonRelease:
 				data = (XIDeviceEvent*) ev.xcookie.data;
-				struct grabbed * grab = grabbing_end_movement(self,
-						data->root_x, data->root_y);
+				struct grabbed * grab = grabbing_end_movement(self, data->root_x, data->root_y);
 
 				if (grab) {
 
 					printf("\n");
-					printf("Window Title = \"%s\"\n",
-							grab->focused_window->title);
-					printf("Window Class = \"%s\"\n",
-							grab->focused_window->class);
+					printf("Window Title = \"%s\"\n", grab->focused_window->title);
+					printf("Window Class = \"%s\"\n", grab->focused_window->class);
 
 					struct gesture * gest = engine_process_gesture(conf, grab);
 
@@ -632,8 +617,7 @@ void grabbing_event_loop(struct grabbing * self, struct engine * conf) {
 						for (j = 0; j < gest->actions_count; ++j) {
 							struct action * a = gest->actions[j];
 							printf(" (%s)\n", a->original_str);
-							execute_action(self->dpy, a,
-									get_focused_window(self->dpy));
+							execute_action(self->dpy, a, get_focused_window(self->dpy));
 						}
 
 					}
@@ -683,8 +667,8 @@ void open_display(struct grabbing * self) {
 
 	self->dpy = XOpenDisplay(NULL);
 
-	if (!XQueryExtension(self->dpy, "XInputExtension", &(self->opcode),
-			&(self->event), &(self->error))) {
+	if (!XQueryExtension(self->dpy, "XInputExtension", &(self->opcode), &(self->event),
+			&(self->error))) {
 		printf("X Input extension not available.\n");
 		exit(-1);
 	}
@@ -702,8 +686,7 @@ char * engine_get_device_name(struct grabbing * self) {
 	return self->devicename;
 }
 
-struct grabbing * grabber_connect_device(char * device_name, int button,
-		int without_brush, int print_devices, char * brush_color) {
+struct grabbing * grabber_connect_device(char * device_name, int button, int without_brush, int print_devices, char * brush_color) {
 
 	struct grabbing * self = malloc(sizeof(struct grabbing));
 	bzero(self, sizeof(struct grabbing));
@@ -767,12 +750,10 @@ struct grabbing * grabber_connect_device(char * device_name, int button,
 		exit(0);
 	}
 
-	self->fine_direction_sequence = (char *) malloc(
-			sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
+	self->fine_direction_sequence = (char *) malloc(sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
 	self->fine_direction_sequence[0] = '\0';
 
-	self->rought_direction_sequence = (char *) malloc(
-			sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
+	self->rought_direction_sequence = (char *) malloc(sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
 	self->rought_direction_sequence[0] = '\0';
 
 	int err = 0;
@@ -786,9 +767,9 @@ struct grabbing * grabber_connect_device(char * device_name, int button,
 			self->brush_image = &brush_image_red;
 		}
 
-		err = backing_init(&(self->backing), self->dpy,
-				DefaultRootWindow(self->dpy), DisplayWidth(self->dpy, scr),
-				DisplayHeight(self->dpy, scr), DefaultDepth(self->dpy, scr));
+		err = backing_init(&(self->backing), self->dpy, DefaultRootWindow(self->dpy),
+				DisplayWidth(self->dpy, scr), DisplayHeight(self->dpy, scr),
+				DefaultDepth(self->dpy, scr));
 		if (err) {
 			fprintf(stderr, "cannot open backing store.... \n");
 			return NULL;

@@ -52,21 +52,16 @@ void usage() {
 	printf("\n");
 	printf("OPTIONS:\n");
 	printf(" -b, --button <BUTTON>      : Button used to draw the gesture\n");
-	printf(
-			"                              Default: '1' on touchscreen devices,\n");
-	printf(
-			"                                       '3' on other pointer devices\n");
+	printf("                              Default: '1' on touchscreen devices,\n");
+	printf("                                       '3' on other pointer devices\n");
 	printf(" -d, --device <DEVICENAME>  : Device to grab.\n");
 	printf("                              Default: 'Virtual core pointer'\n");
-	printf(
-			" -l, --device-list          : Print all available devices an exit.\n");
+	printf(" -l, --device-list          : Print all available devices an exit.\n");
 	printf(" -z, --daemonize            : Fork the process and return.\n");
 	printf(" -x, --brush-color          : Brush color.\n");
 	printf("                              Default: blue\n");
-	printf(
-			"                              Options: yellow, white, red, green, purple, blue\n");
-	printf(
-			" -w, --without-brush        : Don't paint the gesture on screen.\n");
+	printf("                              Options: yellow, white, red, green, purple, blue\n");
+	printf(" -w, --without-brush        : Don't paint the gesture on screen.\n");
 	printf(" -h, --help                 : Help\n");
 }
 
@@ -76,8 +71,7 @@ void usage() {
 void be_unique(char * device_name) {
 
 	// the unique_identifier = mygestures + uid + device being grabbed
-	int bytes = asprintf(&unique_identifier, "/mygestures_uid_%d_dev_%s",
-			getuid(), device_name);
+	int bytes = asprintf(&unique_identifier, "/mygestures_uid_%d_dev_%s", getuid(), device_name);
 
 	int shared_seg_size = sizeof(struct shared_structure);
 	int shmfd = shm_open(unique_identifier, O_CREAT | O_RDWR, 0600);
@@ -95,9 +89,7 @@ void be_unique(char * device_name) {
 
 	/* if shared message contains a PID, kill that process */
 	if (message->pid > 0) {
-		fprintf(stdout,
-				"Asking mygestures running on pid %d to kill himself.\n",
-				message->pid);
+		fprintf(stdout, "Asking mygestures running on pid %d to kill himself.\n", message->pid);
 
 		int running = message->pid;
 
@@ -175,11 +167,11 @@ struct args_t {
 struct args_t * handle_args(int argc, char * const *argv) {
 
 	char opt;
-	static struct option opts[] = { { "help", no_argument, 0, 'h' }, {
-			"without-brush", no_argument, 0, 'w' }, { "daemonize", no_argument,
-			0, 'z' }, { "button", required_argument, 0, 'b' }, { "config",
-	required_argument, 0, 'c' }, { "brush-color", required_argument, 0, 'l' }, {
-			"device", required_argument, 0, 'd' }, { 0, 0, 0, 0 } };
+	static struct option opts[] = { { "help", no_argument, 0, 'h' }, { "without-brush", no_argument,
+			0, 'w' }, { "daemonize", no_argument, 0, 'z' }, { "button", required_argument, 0, 'b' },
+			{ "config",
+			required_argument, 0, 'c' }, { "brush-color", required_argument, 0, 'l' }, { "device",
+			required_argument, 0, 'd' }, { 0, 0, 0, 0 } };
 
 	struct args_t * result = malloc(sizeof(struct args_t));
 	bzero(result, sizeof(struct args_t));

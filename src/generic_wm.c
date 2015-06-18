@@ -110,8 +110,7 @@ void generic_maximize(Display *dpy, Window w) {
 	xev.xclient.data.l[1] = max_horz;
 	xev.xclient.data.l[2] = max_vert;
 
-	XSendEvent(dpy, DefaultRootWindow(dpy), False, SubstructureNotifyMask,
-			&xev);
+	XSendEvent(dpy, DefaultRootWindow(dpy), False, SubstructureNotifyMask, &xev);
 
 	fprintf(stderr, "maximizou\n");
 
