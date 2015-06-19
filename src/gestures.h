@@ -51,72 +51,72 @@ enum {
 	ACTION_LAST
 };
 
-struct action {
-	int type;
-	//struct key_press *data;
-	char *original_str;
-};
-
-struct movement {
+typedef struct movement_ {
 	char *name;
 	void *expression;
 	regex_t * compiled;
-};
+} Movement;
 
-struct context {
+typedef struct context_ {
 	char *name;
 	char *title;
 	char *class;
 
-	struct engine * engine;
+	struct engine_ * engine;
 
-	struct gesture ** gestures;
+	struct gesture_ ** gestures;
 	int gestures_count;
 
 	int abort;
 	regex_t * title_compiled;
 	regex_t * class_compiled;
 
-};
+} Context;
 
-struct gesture {
-	char * name;
-	struct context *context;
-	struct movement *movement;
-	struct action **actions;
-	int actions_count;
-};
+typedef struct engine_ {
 
-struct window_info {
-	char *title;
-	char *class;
-};
-
-struct engine {
-
-	struct movement** movement_list;
+	Movement** movement_list;
 	int movement_count;
 
-	struct context** context_list;
+	Context ** context_list;
 	int context_count;
-};
+} Engine;
 
-struct grabbed {
+typedef struct action_ {
+	int type;
+	//struct key_press *data;
+	char *original_str;
+} Action;
+
+typedef struct gesture_ {
+	char * name;
+	Context *context;
+	Movement *movement;
+	Action **actions;
+	int actions_count;
+} Gesture;
+
+typedef struct window_info_ {
+	char *title;
+	char *class;
+} Window_info;
+
+typedef struct grabbed_ {
 	int sequences_count;
 	char ** sequences;
-	struct window_info * focused_window;
-};
+	Window_info * focused_window;
+} Grabbed;
 
-struct engine * engine_new();
+Engine * engine_new();
 
-char * config_get_default_filename();
-char * config_get_template_filename();
+char * xml_get_default_filename();
+char * xml_get_template_filename();
 
-struct movement * engine_create_movement(struct engine * self, char *movement_name, char *movement_expression);
-struct gesture * context_create_gesture(struct context * self, char * gesture_name, char * gesture_movement);
-struct action *gesture_create_action(struct gesture * self, int action_type, char * original_str);
-struct context *engine_create_context(struct engine * self, char * context_name, char *window_title, char *window_class);
-struct movement * engine_find_movement_by_name(struct engine * self, char * movement_name);
-struct gesture * engine_process_gesture(struct engine * self, struct grabbed * grab);
+Movement * engine_create_movement(Engine * self, char *movement_name, char *movement_expression);
+Gesture * context_create_gesture(Context * self, char * gesture_name, char * gesture_movement);
+Action *gesture_create_action(Gesture * self, int action_type, char * original_str);
+Context *engine_create_context(Engine * self, char * context_name, char *window_title, char *window_class);
+Movement * engine_find_movement_by_name(Engine * self, char * movement_name);
+Gesture * engine_process_gesture(Engine * self, Grabbed * grab);
 
 #endif

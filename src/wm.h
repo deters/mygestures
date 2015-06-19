@@ -29,6 +29,6 @@ void generic_lower(Display *dpy, Window w);
 void generic_maximize(Display *dpy, Window w);
 void generic_root_send(Display *dpy, char *data);
 
-void execute_action(Display *dpy, struct action *action, Window focused_window);
+void execute_action(Display *dpy, Action *action, Window focused_window);
 
 #endif

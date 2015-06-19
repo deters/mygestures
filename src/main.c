@@ -41,11 +41,11 @@ void usage() {
 	printf("\n");
 	printf("CONFIG_FILE:\n");
 
-	char * default_file = config_get_default_filename();
+	char * default_file = xml_get_default_filename();
 	printf(" Default: %s\n", default_file);
 	free(default_file);
 
-	char * template_file = config_get_template_filename();
+	char * template_file = xml_get_template_filename();
 	printf(" Default: %s\n", template_file);
 	free(template_file);
 
@@ -247,15 +247,15 @@ int main(int argc, char * const * argv) {
 	if (args->is_daemonized)
 		daemonize();
 
-	struct engine * gestures = config_load_from_file(args->config);
+	Engine * engine = xml_engine_load(args->config);
 
-	struct grabbing * grabber = grabber_connect_device(args->device, args->button,
-			args->without_brush, args->list_devices, args->brush_color);
+	Grabbing * grabber = grabber_init(args->device, args->button, args->without_brush,
+			args->list_devices, args->brush_color);
 
-	be_unique(engine_get_device_name(grabber));
+	be_unique(grabber_get_device_name(grabber));
 
-	grabbing_event_loop(grabber, gestures);
-	engine_finalize(grabber);
+	grabber_event_loop(grabber, engine);
+	grabber_finalize(grabber);
 
 	exit(0);
 

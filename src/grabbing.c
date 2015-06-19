@@ -46,7 +46,7 @@ const char *modifiers_names[] = { "SHIFT", "CTRL", "ALT", "WIN", "SCROLL", "NUM"
 /* valid strokes */
 const char stroke_names[] = { 'N', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
 
-void grabbing_set_brush_color(struct grabbing * self, char * color) {
+void grabbing_set_brush_color(Grabbing * self, char * color) {
 
 	assert(self);
 
@@ -103,15 +103,15 @@ Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
  *
  * PRIVATE
  */
-struct window_info * get_window_info(Display* dpy, Window win) {
+Window_info * get_window_info(Display* dpy, Window win) {
 
 	int ret, val;
 
 	char *win_title;
 	ret = fetch_window_title(dpy, win, &win_title);
 
-	struct window_info *ans = malloc(sizeof(struct window_info));
-	bzero(ans, sizeof(struct window_info));
+	Window_info *ans = malloc(sizeof(Window_info));
+	bzero(ans, sizeof(Window_info));
 
 	char *win_class = NULL;
 
@@ -160,7 +160,7 @@ Window get_parent_window(Display *dpy, Window w) {
 	return parent_return;
 }
 
-void grabbing_grab(struct grabbing * self) {
+void grabbing_grab(Grabbing * self) {
 
 	int count = XScreenCount(self->dpy);
 
@@ -221,7 +221,7 @@ void grabbing_grab(struct grabbing * self) {
 
 }
 
-void grabbing_ungrab(struct grabbing * self) {
+void grabbing_ungrab(Grabbing * self) {
 
 	int count = XScreenCount(self->dpy);
 
@@ -264,7 +264,7 @@ void mouse_click(Display *display, int button, int x, int y) {
 /**
  * Clear previous movement data.
  */
-void grabbing_start_movement(struct grabbing * self, int new_x, int new_y) {
+void grabbing_start_movement(Grabbing * self, int new_x, int new_y) {
 
 	self->started = 1;
 
@@ -321,7 +321,7 @@ void free_key_press(struct key_press *free_me) {
 /**
  * Execute an action
  */
-void execute_action(Display *dpy, struct action *action, Window focused_window) {
+void execute_action(Display *dpy, Action *action, Window focused_window) {
 	int id;
 
 	// if there is an action
@@ -367,9 +367,9 @@ void execute_action(Display *dpy, struct action *action, Window focused_window) 
 /**
  * Obtém o resultado dos dois algoritmos de captura de movimentos, e envia para serem processadas.
  */
-struct grabbed * grabbing_end_movement(struct grabbing * self, int new_x, int new_y) {
+Grabbed * grabbing_end_movement(Grabbing * self, int new_x, int new_y) {
 
-	struct grabbed * result = NULL;
+	Grabbed * result = NULL;
 
 	self->started = 0;
 
@@ -399,10 +399,9 @@ struct grabbed * grabbing_end_movement(struct grabbing * self, int new_x, int ne
 		sequences[0] = self->fine_direction_sequence;
 		sequences[1] = self->rought_direction_sequence;
 
-		struct window_info * focused_window = get_window_info(self->dpy,
-				get_focused_window(self->dpy));
+		Window_info * focused_window = get_window_info(self->dpy, get_focused_window(self->dpy));
 
-		result = malloc(sizeof(struct grabbed));
+		result = malloc(sizeof(Grabbed));
 
 		result->sequences_count = sequences_count;
 		result->sequences = sequences;
@@ -501,7 +500,7 @@ void movement_add_direction(char* stroke_sequence, char direction) {
 	}
 }
 
-void update_movement(struct grabbing * self, int new_x, int new_y) {
+void update_movement(Grabbing * self, int new_x, int new_y) {
 
 	if (!self->started) {
 		return;
@@ -553,13 +552,13 @@ void update_movement(struct grabbing * self, int new_x, int new_y) {
 	return;
 }
 
-void free_grabbed(struct grabbed * free_me) {
+void free_grabbed(Grabbed * free_me) {
 	assert(free_me);
 	free(free_me->focused_window);
 	free(free_me);
 }
 
-void grabbing_event_loop(struct grabbing * self, struct engine * conf) {
+void grabber_event_loop(Grabbing * self, Engine * conf) {
 
 	XEvent ev;
 
@@ -600,7 +599,7 @@ void grabbing_event_loop(struct grabbing * self, struct engine * conf) {
 
 			case XI_ButtonRelease:
 				data = (XIDeviceEvent*) ev.xcookie.data;
-				struct grabbed * grab = grabbing_end_movement(self, data->root_x, data->root_y);
+				Grabbed * grab = grabbing_end_movement(self, data->root_x, data->root_y);
 
 				if (grab) {
 
@@ -608,14 +607,14 @@ void grabbing_event_loop(struct grabbing * self, struct engine * conf) {
 					printf("Window Title = \"%s\"\n", grab->focused_window->title);
 					printf("Window Class = \"%s\"\n", grab->focused_window->class);
 
-					struct gesture * gest = engine_process_gesture(conf, grab);
+					Gesture * gest = engine_process_gesture(conf, grab);
 
 					if (gest) {
 
 						int j = 0;
 
 						for (j = 0; j < gest->actions_count; ++j) {
-							struct action * a = gest->actions[j];
+							Action * a = gest->actions[j];
 							printf(" (%s)\n", a->original_str);
 							execute_action(self->dpy, a, get_focused_window(self->dpy));
 						}
@@ -663,7 +662,7 @@ int get_touch_status(XIDeviceInfo * device) {
 	return 0;
 }
 
-void open_display(struct grabbing * self) {
+void open_display(Grabbing * self) {
 
 	self->dpy = XOpenDisplay(NULL);
 
@@ -682,14 +681,14 @@ void open_display(struct grabbing * self) {
 
 }
 
-char * engine_get_device_name(struct grabbing * self) {
+char * grabber_get_device_name(Grabbing * self) {
 	return self->devicename;
 }
 
-struct grabbing * grabber_connect_device(char * device_name, int button, int without_brush, int print_devices, char * brush_color) {
+Grabbing * grabber_init(char * device_name, int button, int without_brush, int print_devices, char * brush_color) {
 
-	struct grabbing * self = malloc(sizeof(struct grabbing));
-	bzero(self, sizeof(struct grabbing));
+	Grabbing * self = malloc(sizeof(Grabbing));
+	bzero(self, sizeof(Grabbing));
 
 	assert(self);
 
@@ -791,7 +790,7 @@ struct grabbing * grabber_connect_device(char * device_name, int button, int wit
 	return self;
 }
 
-void engine_finalize(struct grabbing * self) {
+void grabber_finalize(Grabbing * self) {
 	if (!(self->without_brush)) {
 		brush_deinit(&(self->brush));
 		backing_deinit(&(self->backing));

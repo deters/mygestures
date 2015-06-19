@@ -26,7 +26,7 @@ extern const char stroke_names[];
 
 //void mouse_click(Display *display, int button);
 
-struct grabbing {
+typedef struct {
 
 	Display * dpy;
 
@@ -59,16 +59,13 @@ struct grabbing {
 
 	struct brush_image_t *brush_image;
 
-};
+} Grabbing;
 
-struct grabbing * grabber_connect_device(char * device_name, int button, int without_brush, int print_devices, char * brush_color);
+Grabbing * grabber_init(char * device_name, int button, int without_brush, int print_devices, char * brush_color);
+void grabber_event_loop(Grabbing * self, Engine * conf);
+void grabber_finalize(Grabbing * self);
 
-char * engine_get_device_name(struct grabbing * self);
-
-void grabbing_print_devices(struct grabbing * self);
-
-void grabbing_event_loop(struct grabbing * self, struct engine * conf);
-void engine_finalize(struct grabbing * self);
+char * grabber_get_device_name(Grabbing * self);
 
 #endif /* GRABBING_H_ */
 

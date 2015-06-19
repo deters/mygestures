@@ -38,9 +38,9 @@
 #include <assert.h>
 
 /* alloc a window struct */
-struct context *engine_create_context(struct engine * self, char * context_name, char *window_title, char *window_class) {
-	struct context *ans = malloc(sizeof(struct context));
-	bzero(ans, sizeof(struct context));
+Context *engine_create_context(Engine * self, char * context_name, char *window_title, char *window_class) {
+	Context *ans = malloc(sizeof(Context));
+	bzero(ans, sizeof(Context));
 
 	ans->name = context_name;
 	ans->title = window_title;
@@ -71,7 +71,7 @@ struct context *engine_create_context(struct engine * self, char * context_name,
 	}
 	ans->class_compiled = class_compiled;
 
-	ans->gestures = malloc(sizeof(struct gesture) * 255);
+	ans->gestures = malloc(sizeof(Gesture) * 255);
 
 	self->context_list[self->context_count++] = ans;
 
@@ -79,7 +79,7 @@ struct context *engine_create_context(struct engine * self, char * context_name,
 }
 
 /* release a window struct */
-void free_context(struct context *free_me) {
+void free_context(Context *free_me) {
 	free(free_me->title);
 	free(free_me->class);
 	free(free_me);
@@ -87,10 +87,10 @@ void free_context(struct context *free_me) {
 }
 
 /* alloc a movement struct */
-struct movement *engine_create_movement(struct engine * self, char *movement_name, char *movement_expression) {
+Movement *engine_create_movement(Engine * self, char *movement_name, char *movement_expression) {
 
-	struct movement * ans = malloc(sizeof(struct movement));
-	bzero(ans, sizeof(struct movement));
+	Movement * ans = malloc(sizeof(Movement));
+	bzero(ans, sizeof(Movement));
 
 	ans->name = movement_name;
 	ans->expression = movement_expression;
@@ -124,7 +124,7 @@ struct movement *engine_create_movement(struct engine * self, char *movement_nam
 }
 
 /* release a movement struct */
-void free_movement(struct movement *free_me) {
+void free_movement(Movement *free_me) {
 	free(free_me->name);
 	free(free_me->expression);
 	//free(free_me->movement_compiled);
@@ -132,18 +132,18 @@ void free_movement(struct movement *free_me) {
 	return;
 }
 
-struct gesture * context_create_gesture(struct context * self, char * gesture_name, char * gesture_movement) {
+Gesture * context_create_gesture(Context * self, char * gesture_name, char * gesture_movement) {
 
-	struct gesture *ans = malloc(sizeof(struct gesture));
-	bzero(ans, sizeof(struct gesture));
+	Gesture *ans = malloc(sizeof(Gesture));
+	bzero(ans, sizeof(Gesture));
 
-	struct movement *m = NULL;
+	Movement *m = NULL;
 
 	ans->name = gesture_name;
 	ans->movement = engine_find_movement_by_name(self->engine, gesture_movement);
 	ans->context = self;
 	ans->actions_count = 0;
-	ans->actions = malloc(sizeof(struct action) * 20);
+	ans->actions = malloc(sizeof(Action) * 20);
 
 	self->gestures[self->gestures_count++] = ans;
 
@@ -152,7 +152,7 @@ struct gesture * context_create_gesture(struct context * self, char * gesture_na
 
 //todo gerenciamento de memória
 /* release a gesture struct */
-void free_gesture(struct gesture *free_me) {
+void free_gesture(Gesture *free_me) {
 	free(free_me->actions);
 	free(free_me);
 
@@ -160,10 +160,10 @@ void free_gesture(struct gesture *free_me) {
 }
 
 /* alloc an action struct */
-struct action *gesture_create_action(struct gesture * self, int action_type, char * original_str) {
+Action *gesture_create_action(Gesture * self, int action_type, char * original_str) {
 
-	struct action *ans = malloc(sizeof(struct action));
-	bzero(ans, sizeof(struct action));
+	Action *ans = malloc(sizeof(Action));
+	bzero(ans, sizeof(Action));
 
 	ans->type = action_type;
 	ans->original_str = original_str;
@@ -174,14 +174,14 @@ struct action *gesture_create_action(struct gesture * self, int action_type, cha
 }
 
 /* release an action struct */
-void free_action(struct action *free_me) {
+void free_action(Action *free_me) {
 	free(free_me);
 	return;
 }
 
-struct gesture * engine_match_gesture(struct engine * self, char * captured_sequence, struct window_info * window) {
+Gesture * engine_match_gesture(Engine * self, char * captured_sequence, Window_info * window) {
 
-	struct gesture * matched_gesture = NULL;
+	Gesture * matched_gesture = NULL;
 
 	int c = 0;
 
@@ -190,7 +190,7 @@ struct gesture * engine_match_gesture(struct engine * self, char * captured_sequ
 		if (matched_gesture)
 			break;
 
-		struct context * context = self->context_list[c];
+		Context * context = self->context_list[c];
 
 		if ((!context->class)
 				|| (regexec(context->class_compiled, window->class, 0, (regmatch_t *) NULL, 0) != 0)) {
@@ -209,7 +209,7 @@ struct gesture * engine_match_gesture(struct engine * self, char * captured_sequ
 
 			for (g = 0; g < context->gestures_count; ++g) {
 
-				struct gesture * gest = context->gestures[g];
+				Gesture * gest = context->gestures[g];
 
 				if (gest->movement) {
 
@@ -233,9 +233,9 @@ struct gesture * engine_match_gesture(struct engine * self, char * captured_sequ
 	return matched_gesture;
 }
 
-struct gesture * engine_process_gesture(struct engine * self, struct grabbed * grab) {
+Gesture * engine_process_gesture(Engine * self, Grabbed * grab) {
 
-	struct gesture *gest = NULL;
+	Gesture *gest = NULL;
 
 	int i = 0;
 
@@ -258,9 +258,9 @@ struct gesture * engine_process_gesture(struct engine * self, struct grabbed * g
 
 }
 
-struct movement * engine_find_movement_by_name(struct engine * self, char * movement_name) {
+Movement * engine_find_movement_by_name(Engine * self, char * movement_name) {
 
-	struct context * ctx;
+	Context * ctx;
 
 	if (!movement_name) {
 		return NULL;
@@ -269,7 +269,7 @@ struct movement * engine_find_movement_by_name(struct engine * self, char * move
 	int i = 0;
 
 	for (i = 0; i < self->movement_count; ++i) {
-		struct movement * m = self->movement_list[i];
+		Movement * m = self->movement_list[i];
 
 		if ((m->name) && (movement_name) && (strcasecmp(movement_name, m->name) == 0)) {
 			return m;
@@ -280,16 +280,16 @@ struct movement * engine_find_movement_by_name(struct engine * self, char * move
 
 }
 
-struct engine * engine_new() {
+Engine * engine_new() {
 
-	struct engine * self = malloc(sizeof(struct engine));
-	bzero(self, sizeof(struct engine));
+	Engine * self = malloc(sizeof(Engine));
+	bzero(self, sizeof(Engine));
 
 	self->movement_count = 0;
-	self->movement_list = malloc(sizeof(struct movement *) * 254);
+	self->movement_list = malloc(sizeof(Movement *) * 254);
 
 	self->context_count = 0;
-	self->context_list = malloc(sizeof(struct context *) * 254);
+	self->context_list = malloc(sizeof(Context *) * 254);
 
 	return self;
 
