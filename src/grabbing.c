@@ -722,6 +722,7 @@ Grabbing * grabber_init(char * device_name, int button, int without_brush, int p
 			}
 
 			if (strcmp(device->name, self->devicename) == 0) {
+				printf("Selected device %d = %s\n", device->deviceid, device->name);
 				self->deviceid = device->deviceid;
 				self->is_direct_touch = get_touch_status(device);
 			}
