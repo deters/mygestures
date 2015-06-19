@@ -17,26 +17,21 @@
 #if HAVE_CONFIG_H
 #include <config.h>
 #endif
-
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <unistd.h>
 #include <X11/Xlib.h>
-#include <X11/keysym.h>
-#include <X11/XKBlib.h>
 #include <X11/extensions/XTest.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <strings.h>
 #include <string.h>
-#include <getopt.h>
 #include <math.h>
 #include <assert.h>
+#include <X11/extensions/XInput2.h>
+
+#include "drawing-brush-image.h"
+
 #include "grabbing.h"
 #include "gestures.h"
 #include "wm.h"
-#include <X11/extensions/XInput2.h>
-#include "drawing-brush-image.h"
 
 #define DELTA_MIN	30 /*TODO*/
 #define MAX_STROKE_SEQUENCE 63 /*TODO*/

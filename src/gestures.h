@@ -22,14 +22,6 @@
 #define GEST_ACTION_NAME_MAX 32
 #define GEST_EXTRA_DATA_MAX 4096
 
-#define CONTROL_L_MASK (1<<0)
-#define CONTROL_R_MASK (1<<1)
-#define SHIFT_L_MASK (1<<2)
-#define SHIFT_R_MASK (1<<3)
-#define ALT_L_MASK (1<<4)
-#define ALT_R_MASK (1<<5)
-#define TAB_MASK (1<<6)
-
 /* the movements */
 enum STROKES {
 	NONE, LEFT, RIGHT, UP, DOWN, ONE, THREE, SEVEN, NINE
@@ -112,10 +104,10 @@ Engine * engine_new();
 char * xml_get_default_filename();
 char * xml_get_template_filename();
 
-Movement * engine_create_movement(Engine * self, char *movement_name, char *movement_expression);
+Context * engine_create_context(Engine * self, char * context_name, char *window_title, char *window_class);
 Gesture * context_create_gesture(Context * self, char * gesture_name, char * gesture_movement);
-Action *gesture_create_action(Gesture * self, int action_type, char * original_str);
-Context *engine_create_context(Engine * self, char * context_name, char *window_title, char *window_class);
+Movement * engine_create_movement(Engine * self, char *movement_name, char *movement_expression);
+Action * gesture_create_action(Gesture * self, int action_type, char * original_str);
 Movement * engine_find_movement_by_name(Engine * self, char * movement_name);
 Gesture * engine_process_gesture(Engine * self, Grabbed * grab);
 

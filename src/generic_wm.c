@@ -18,15 +18,12 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/XTest.h>
 #include <stdio.h>
-#include "wm.h"
-#include "gestures.h"
-
-// mouse click
-
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <X11/Xutil.h>
+
+
+#include "wm.h"
+#include "gestures.h"
 
 enum {
 	_NET_WM_STATE_REMOVE = 0, _NET_WM_STATE_ADD = 1, _NET_WM_STATE_TOGGLE = 2

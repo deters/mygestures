@@ -20,22 +20,13 @@
 #include <config.h>
 #endif
 
-#include <X11/keysym.h>
-#include <X11/extensions/XTest.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "gestures.h"
-#include "wm.h"
 #include <regex.h>
-#include <X11/Xutil.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <libgen.h>
-#include <sys/stat.h>
 #include <assert.h>
+
+#include "gestures.h"
 
 /* alloc a window struct */
 Context *engine_create_context(Engine * self, char * context_name, char *window_title, char *window_class) {

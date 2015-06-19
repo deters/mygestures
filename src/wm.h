@@ -14,6 +14,7 @@
 #ifndef __WM_H__
 #define __WM_H__
 #include <X11/Xlib.h>
+
 #include "gestures.h"
 
 struct key_press {
