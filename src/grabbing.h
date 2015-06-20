@@ -9,8 +9,8 @@
 #define GRABBING_H_
 
 #include <X11/Xlib.h>
-#include "drawing-backing.h"
-#include "drawing-brush.h"
+#include "drawing/drawing-backing.h"
+#include "drawing/drawing-brush.h"
 #include "gestures.h"
 
 /* modifier keys */

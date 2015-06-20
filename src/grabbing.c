@@ -27,7 +27,7 @@
 #include <assert.h>
 #include <X11/extensions/XInput2.h>
 
-#include "drawing-brush-image.h"
+#include "drawing/drawing-brush-image.h"
 
 #include "grabbing.h"
 #include "gestures.h"

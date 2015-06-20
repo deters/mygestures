@@ -9,14 +9,17 @@ mygestures_SOURCES = \
         configuration.c configuration.h \
 	generic_wm.c wm.h \
 	grabbing.c grabbing.h \
-	drawing-backing.c \
-	drawing-backing.h \
-	drawing-brush.c \
-	drawing-brush.h \
-	drawing-brush-image.h \
-	drawing-brush-shadow.h \
-	drawing-brush-image.c \
-	drawing-bresenham.c \
-	drawing-bresenham.h
+        drawing/drawing-backing.c \
+        drawing/drawing-backing.h \
+        drawing/drawing-brush.c \
+        drawing/drawing-brush.h \
+        drawing/drawing-brush-image.h \
+        drawing/drawing-brush-shadow.h \
+        drawing/drawing-brush-image.c \
+        drawing/drawing-bresenham.c \
+        drawing/drawing-bresenham.h
+
+
+#SUBDIRS=drawing
 
 mygestures_LDADD=$(libXML_LIBS) $(X11_LIBS) $(Xrender_LIBS) $(Xtst_LIBS) $(libXML_LIBS) $(Xi_LIBS)

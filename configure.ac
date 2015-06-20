@@ -3,7 +3,7 @@
 
 AC_PREREQ([2.69])
 AC_INIT([MyGestures], [1.3], [lucasdeters@users.sourceforge.net])
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([subdir-objects])
 AC_CONFIG_SRCDIR([src/main.c])
 AC_CONFIG_HEADERS([src/config.h])
 
