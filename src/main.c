@@ -26,16 +26,16 @@
 #include "configuration.h"
 #include "config.h"
 
-char * unique_identifier = NULL;
+static char * unique_identifier = NULL;
 
 struct shared_structure {
 	int pid;
 	int kill;
 };
 
-struct shared_structure * message;
+static struct shared_structure * message;
 
-void usage() {
+static void usage() {
 	printf("%s\n\n", PACKAGE_STRING);
 	printf("Usage: mygestures [OPTIONS] [CONFIG_FILE]\n");
 	printf("\n");
@@ -68,7 +68,7 @@ void usage() {
 /*
  * Ask other instances with same unique_identifier to exit.
  */
-void be_unique(char * device_name) {
+static void be_unique(char * device_name) {
 
 	// the unique_identifier = mygestures + uid + device being grabbed
 	int bytes = asprintf(&unique_identifier, "/mygestures_uid_%d_dev_%s", getuid(), device_name);
@@ -109,7 +109,7 @@ void be_unique(char * device_name) {
 
 }
 
-void clean_shared_memory() {
+static void clean_shared_memory() {
 
 	/*  If your head comes away from your neck, it's over! */
 
@@ -125,12 +125,12 @@ void clean_shared_memory() {
 	}
 }
 
-void on_kill(int a) {
+static void on_kill(int a) {
 	clean_shared_memory();
 	exit(0);
 }
 
-void on_interrupt(int a) {
+static void on_interrupt(int a) {
 
 	if (message->kill) {
 		printf("PID %d asked me to exit.\n", message->pid);
@@ -140,7 +140,7 @@ void on_interrupt(int a) {
 	exit(0);
 }
 
-void daemonize() {
+static void daemonize() {
 	int i;
 
 	i = fork();
@@ -164,7 +164,7 @@ struct args_t {
 	char * config;
 };
 
-struct args_t * handle_args(int argc, char * const *argv) {
+static struct args_t * handle_args(int argc, char * const *argv) {
 
 	char opt;
 	static struct option opts[] = { { "help", no_argument, 0, 'h' }, { "without-brush", no_argument,
@@ -247,9 +247,9 @@ int main(int argc, char * const * argv) {
 	if (args->is_daemonized)
 		daemonize();
 
-	Engine * engine = xml_engine_load(args->config);
+	Engine * engine = xml_load_engine(args->config);
 
-	Grabbing * grabber = grabber_init(args->device, args->button, args->without_brush,
+	Grabber * grabber = grabber_init(args->device, args->button, args->without_brush,
 			args->list_devices, args->brush_color);
 
 	be_unique(grabber_get_device_name(grabber));

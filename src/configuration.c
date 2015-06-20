@@ -6,31 +6,7 @@
 #include "configuration.h"
 #include "gestures.h"
 
-char * xml_get_default_filename() {
-
-	char * filename = malloc(sizeof(char) * 4096);
-
-	char * xdg;
-
-	xdg = getenv("XDG_CONFIG_HOME");
-
-	if (xdg) {
-		sprintf(filename, "%s/mygestures/mygestures.xml", xdg);
-	} else {
-		char * home = getenv("HOME");
-		sprintf(filename, "%s/.config/mygestures/mygestures.xml", home);
-	}
-
-	return filename;
-}
-
-char * xml_get_template_filename() {
-	char * template_file = malloc(sizeof(char *) * 4096);
-	sprintf(template_file, "%s/mygestures.xml", SYSCONFIR);
-	return template_file;
-}
-
-Action * xml_parse_action(xmlNode *node, Gesture * gest) {
+static Action * xml_parse_action(xmlNode *node, Gesture * gest) {
 
 	char * action_name = NULL;
 	char * action_value = NULL;
@@ -89,7 +65,7 @@ Action * xml_parse_action(xmlNode *node, Gesture * gest) {
 
 }
 
-Gesture * xml_parse_gesture(xmlNode *node, Context * context) {
+static Gesture * xml_parse_gesture(xmlNode *node, Context * context) {
 
 	char * gesture_name = NULL;
 	char * gesture_movement = NULL;
@@ -131,7 +107,7 @@ Gesture * xml_parse_gesture(xmlNode *node, Context * context) {
 
 }
 
-Context * xml_parse_context(xmlNode *node, Engine * eng) {
+static Context * xml_parse_context(xmlNode *node, Engine * eng) {
 
 	char * context_name = NULL;
 	char * window_title = NULL;
@@ -194,7 +170,7 @@ Context * xml_parse_context(xmlNode *node, Engine * eng) {
 
 }
 
-Movement * xml_parse_movement(xmlNode *node, Engine * eng) {
+static Movement * xml_parse_movement(xmlNode *node, Engine * eng) {
 
 	xmlNode *cur_node = NULL;
 
@@ -227,7 +203,7 @@ Movement * xml_parse_movement(xmlNode *node, Engine * eng) {
 
 }
 
-int xml_parse_root(xmlNode *node, Engine * eng) {
+static int xml_parse_root(xmlNode *node, Engine * eng) {
 
 	xmlNode *cur_node = NULL;
 
@@ -263,7 +239,7 @@ int xml_parse_root(xmlNode *node, Engine * eng) {
 
 }
 
-int xml_parse_file(Engine * conf, char * filename) {
+static int xml_parse_file(Engine * conf, char * filename) {
 	int result = 0;
 
 	xmlDocPtr doc = NULL;
@@ -286,10 +262,34 @@ int xml_parse_file(Engine * conf, char * filename) {
 
 }
 
+char * xml_get_default_filename() {
+
+	char * filename = malloc(sizeof(char) * 4096);
+
+	char * xdg;
+
+	xdg = getenv("XDG_CONFIG_HOME");
+
+	if (xdg) {
+		sprintf(filename, "%s/mygestures/mygestures.xml", xdg);
+	} else {
+		char * home = getenv("HOME");
+		sprintf(filename, "%s/.config/mygestures/mygestures.xml", home);
+	}
+
+	return filename;
+}
+
+char * xml_get_template_filename() {
+	char * template_file = malloc(sizeof(char *) * 4096);
+	sprintf(template_file, "%s/mygestures.xml", SYSCONFIR);
+	return template_file;
+}
+
 /**
  * Reads the conf file
  */
-Engine * xml_engine_load(char * filename) {
+Engine * xml_load_engine(char * filename) {
 
 	Engine * eng = engine_new();
 
@@ -327,3 +327,4 @@ Engine * xml_engine_load(char * filename) {
 	return eng;
 
 }
+

@@ -14,8 +14,6 @@
 
 #ifndef __GESTURES_h
 #define __GESTURES_h
-#include <X11/Xlib.h>
-#include <X11/keysym.h>
 #include <regex.h>
 
 #define GEST_SEQUENCE_MAX 64
@@ -101,8 +99,6 @@ typedef struct grabbed_ {
 
 Engine * engine_new();
 
-char * xml_get_default_filename();
-char * xml_get_template_filename();
 
 Context * engine_create_context(Engine * self, char * context_name, char *window_title, char *window_class);
 Gesture * context_create_gesture(Context * self, char * gesture_name, char * gesture_movement);

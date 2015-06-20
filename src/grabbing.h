@@ -59,13 +59,13 @@ typedef struct {
 
 	struct brush_image_t *brush_image;
 
-} Grabbing;
+} Grabber;
 
-Grabbing * grabber_init(char * device_name, int button, int without_brush, int print_devices, char * brush_color);
-void grabber_event_loop(Grabbing * self, Engine * conf);
-void grabber_finalize(Grabbing * self);
+Grabber * grabber_init(char * device_name, int button, int without_brush, int print_devices, char * brush_color);
+void grabber_event_loop(Grabber * self, Engine * conf);
+void grabber_finalize(Grabber * self);
 
-char * grabber_get_device_name(Grabbing * self);
+char * grabber_get_device_name(Grabber * self);
 
 #endif /* GRABBING_H_ */
 

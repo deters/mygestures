@@ -233,16 +233,14 @@ Gesture * engine_process_gesture(Engine * self, Grabbed * grab) {
 	for (i = 0; i < grab->sequences_count; ++i) {
 
 		char * sequence = grab->sequences[i];
-
 		gest = engine_match_gesture(self, sequence, grab->focused_window);
 
 		if (gest) {
-
 			printf("Captured sequence: '%s' --> Movement '%s' --> Gesture '%s'\n", sequence,
 					gest->movement->name, gest->name);
-
 			return gest;
 		}
+
 	}
 
 	return NULL;

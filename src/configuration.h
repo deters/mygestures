@@ -3,6 +3,9 @@
 
 #include "gestures.h"
 
-Engine * xml_engine_load(char * filename);
+char * xml_get_default_filename();
+char * xml_get_template_filename();
+
+Engine * xml_load_engine(char * filename);
 
 #endif
