@@ -105,6 +105,7 @@ Gesture * context_create_gesture(Context * self, char * gesture_name, char * ges
 Movement * engine_create_movement(Engine * self, char *movement_name, char *movement_expression);
 Action * gesture_create_action(Gesture * self, int action_type, char * original_str);
 Movement * engine_find_movement_by_name(Engine * self, char * movement_name);
+int engine_get_gestures_count(Engine * self);
 Gesture * engine_process_gesture(Engine * self, Grabbed * grab);
 
 #endif

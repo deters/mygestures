@@ -236,8 +236,6 @@ Gesture * engine_process_gesture(Engine * self, Grabbed * grab) {
 		gest = engine_match_gesture(self, sequence, grab->focused_window);
 
 		if (gest) {
-			printf("Captured sequence: '%s' --> Movement '%s' --> Gesture '%s'\n", sequence,
-					gest->movement->name, gest->name);
 			return gest;
 		}
 
@@ -266,6 +264,18 @@ Movement * engine_find_movement_by_name(Engine * self, char * movement_name) {
 	}
 
 	return NULL;
+
+}
+
+int engine_get_gestures_count(Engine * self){
+
+	int count = 0;
+
+	for (int c = 0; c < self->context_count; ++c) {
+		count += self->context_list[c]->gestures_count;
+	}
+
+	return count;
 
 }
 

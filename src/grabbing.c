@@ -206,8 +206,6 @@ void grabbing_grab(Grabber * self) {
 			GrabModeAsync,
 			GrabModeAsync, False, eventmask);
 
-			printf("Draw the gesture touching device '%s'\n", self->devicename);
-
 		} else {
 
 			if (!self->button) {
@@ -625,6 +623,10 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 
 	devices = XIQueryDevice(self->dpy, XIAllDevices, &ndevices);
 
+	if (print_devices) {
+		printf("\nDevices:\n");
+	}
+
 	for (i = 0; i < ndevices; i++) {
 		device = &devices[i];
 
@@ -635,13 +637,14 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 		case XIFloatingSlave:
 
 			if (print_devices) {
-				printf("    Device %d: '%s'\n", device->deviceid, device->name);
-			}
+				printf("   '%s'\n", device->name);
+			} else {
 
-			if (strcmp(device->name, self->devicename) == 0) {
-				printf("Selected device %d = %s\n", device->deviceid, device->name);
-				self->deviceid = device->deviceid;
-				self->is_direct_touch = get_touch_status(device);
+				if (strcmp(device->name, self->devicename) == 0) {
+					self->deviceid = device->deviceid;
+					self->is_direct_touch = get_touch_status(device);
+				}
+
 			}
 
 			break;
@@ -654,6 +657,10 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 			break;
 		}
 
+	}
+
+	if (print_devices) {
+		printf("\nRun  mygestures -d 'DEVICE'  to use a device.\n");
 	}
 
 	XIFreeDeviceInfo(devices);
@@ -712,10 +719,11 @@ void grabber_event_loop(Grabber * self, Engine * conf) {
 	printf("\n");
 	if (self->is_direct_touch) {
 		printf(
-				"Mygestures running on device '%s'. Touch the device to start drawing the gesture.\n",
+				"Mygestures is running on device '%s'. Draw a gesture by touching the screen or run `mygestures -l` to list other devices.\n",
 				self->devicename);
 	} else {
-		printf("Mygestures running on device '%s'. Use button %d to draw the gesture.\n",
+		printf(
+				"Mygestures is running on device '%s'. Use button %d on this device to draw a gesture or run `mygestures -l` to list other devices.\n",
 				self->devicename, self->button);
 	}
 
@@ -749,10 +757,18 @@ void grabber_event_loop(Grabber * self, Engine * conf) {
 				if (grab) {
 
 					printf("\n");
-					printf("Window Title = \"%s\"\n", grab->focused_window->title);
-					printf("Window Class = \"%s\"\n", grab->focused_window->class);
+					printf("Window information:\n");
+					printf("     Title = \"%s\"\n", grab->focused_window->title);
+					printf("     Class = \"%s\"\n", grab->focused_window->class);
 
 					Gesture * gest = engine_process_gesture(conf, grab);
+
+					if (gest){
+						printf("Gesture information:\n");
+						printf("     Movement '%s' triggered gesture '%s'\n",
+							gest->movement->name, gest->name);
+					}
+
 
 					if (gest) {
 
@@ -760,7 +776,7 @@ void grabber_event_loop(Grabber * self, Engine * conf) {
 
 						for (j = 0; j < gest->actions_count; ++j) {
 							Action * a = gest->actions[j];
-							printf(" (%s)\n", a->original_str);
+							printf("      Action: %s\n", a->original_str);
 							execute_action(self->dpy, a, get_focused_window(self->dpy));
 						}
 

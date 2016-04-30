@@ -233,8 +233,7 @@ static int xml_parse_root(xmlNode *node, Engine * eng) {
 
 	}
 
-	//fprintf(stdout, "Loaded %i movements.\n", new_movement_count);
-	fprintf(stdout, "Loaded %i gestures in %i contexts.\n", gestures_count, contexts_count);
+	//fprintf(stdout, "Loaded %i gestures in %i contexts.\n", gestures_count, contexts_count);
 	return 0;
 
 }
@@ -304,7 +303,7 @@ Engine * xml_load_engine(char * filename) {
 
 	} else {
 
-		char * filename = "";
+		//char * filename = "";
 
 		filename = xml_get_default_filename();
 		err = xml_parse_file(eng, filename);
@@ -323,6 +322,9 @@ Engine * xml_load_engine(char * filename) {
 		}
 
 	}
+
+	printf("Loaded %i gestures from '%s'.\n", engine_get_gestures_count(eng), filename);
+
 
 	return eng;
 

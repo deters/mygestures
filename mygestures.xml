@@ -75,7 +75,7 @@
 
     <context name="Terminal windows" windowclass=".*(Term|term).*" windowtitle=".*">
 
-        <gesture name="Open new tab (Ctrl+Shift+T)" movement="T">
+        <gesture name="Open new tab (Ctrl+Shift+T)" movement="Down">
             <do action="keypress" value="Control_L+Shift_L+T" />
         </gesture>
 
@@ -155,6 +155,10 @@
             <do action="keypress" value="Control_L+S" />
         </gesture>
 
+        <gesture name="New tab (Ctrl+T)" movement="Down">
+            <do action="keypress" value="Control_L+T" />
+        </gesture>
+
         <gesture name="New tab (Ctrl+T)" movement="T">
             <do action="keypress" value="Control_L+T" />
         </gesture>
@@ -165,10 +169,6 @@
 
       <!-- Custom actions -->
 
-        <gesture name="Run default terminal" movement="Down">
-            <do action="exec" value="x-terminal-emulator" />
-        </gesture>      
-        
         <gesture name="Run default browser" movement="W">
          <do action="exec" value="x-www-browser" />
         </gesture>
