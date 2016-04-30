@@ -17,288 +17,421 @@
 #if HAVE_CONFIG_H
 #include <config.h>
 #endif
-
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <unistd.h>
 #include <X11/Xlib.h>
-#include <X11/keysym.h>
-#include <X11/XKBlib.h>
 #include <X11/extensions/XTest.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <strings.h>
 #include <string.h>
-#include <getopt.h>
 #include <math.h>
-#include "drawing-brush.h"
+#include <assert.h>
+#include <X11/extensions/XInput2.h>
+
+#include "drawing/drawing-brush-image.h"
+
 #include "grabbing.h"
 #include "gestures.h"
-#include "drawing-brush-image.h"
+#include "wm.h"
 
 #define DELTA_MIN	30 /*TODO*/
 #define MAX_STROKE_SEQUENCE 63 /*TODO*/
 
-Display * dpy = NULL;
-
-
-/* the button to grab */
-int button = 0;
-
-/* the modifier key (TODO: REVIEW) */
-unsigned int button_modifier = 0;
-
-/* Not draw the movement on the screen */
-int without_brush = 0;
-
-/* modifier keys */
-enum {
-	SHIFT = 0, CTRL, ALT, WIN, SCROLL, NUM, CAPS, MOD_END
-};
-
-/* names of the modifier keys */
-char *modifiers_names[MOD_END] = { "SHIFT", "CTRL", "ALT", "WIN", "SCROLL",
-		"NUM", "CAPS" };
-
-/* Filter to capture the events of the mouse */
-unsigned int valid_masks[MOD_END];
-
-
-/* Initial position of the movement (algorithm 1) */
-int old_x = -1;
-int old_y = -1;
-
-/* Initial position of the movement (algorithm 2) */
-int old_x_2 = -1;
-int old_y_2 = -1;
+const char *modifiers_names[] = { "SHIFT", "CTRL", "ALT", "WIN", "SCROLL", "NUM", "CAPS" };
 
 /* valid strokes */
-char stroke_names[] = { 'N', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
+const char stroke_names[] = { 'N', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
 
-/* movements stack (first capture algoritm) */
-char * accurate_stroke_sequence;
+static void open_display(Grabber * self) {
 
-/* movements stack (secound capture algoritm) */
-char * fuzzy_stroke_sequence;
+	self->dpy = XOpenDisplay(NULL);
 
-
-
-/* back of the draw */
-backing_t backing;
-brush_t brush;
-
-/* close xgestures */
-int shut_down = 0;
-
-
-
-
-
-/**
- * Clear previous movement data.
- */
-void start_movement(XButtonEvent *e) {
-
-	// clear captured sequences
-	accurate_stroke_sequence[0] = '\0';
-	fuzzy_stroke_sequence[0] = '\0';
-
-	// guarda a localização do início do movimento
-	old_x = e->x_root;
-	old_y = e->y_root;
-
-	old_x_2 = e->x_root;
-	old_y_2 = e->y_root;
-
-	if (!without_brush) {
-		backing_save(&backing, e->x_root - brush.image_width,
-				e->y_root - brush.image_height);
-		backing_save(&backing, e->x_root + brush.image_width,
-				e->y_root + brush.image_height);
-
-		brush_draw(&brush, old_x, old_y);
-	}
-	return;
-}
-
-void create_masks(unsigned int *arr) {
-	unsigned int i, j;
-
-	for (i = 0; i < (1 << (MOD_END)); i++) {
-		arr[i] = 0;
-		for (j = 0; j < MOD_END; j++) {
-			if ((1 << j) & i) {
-				arr[i] |= valid_masks[j];
-			}
-		}
-	}
-
-	return;
-}
-
-void grabbing_set_button(int b) {
-	button = b;
-}
-
-
-unsigned int str_to_modifier(char *str) {
-	int i;
-
-	if (str == NULL) {
-		fprintf(stderr, "no modifier supplied.\n");
+	if (!XQueryExtension(self->dpy, "XInputExtension", &(self->opcode), &(self->event),
+			&(self->error))) {
+		printf("X Input extension not available.\n");
 		exit(-1);
 	}
 
-	if (strncasecmp(str, "AnyModifier", 11) == 0)
-		return AnyModifier;
-
-	for (i = 0; i < MOD_END; i++)
-		if (strncasecmp(str, modifiers_names[i], strlen(modifiers_names[i]))
-				== 0)
-			return valid_masks[i];
-	/* no match... */
-	return valid_masks[SHIFT];
-}
-
-
-void grabbing_set_button_modifier(char *button_modifier_str) {
-
-	button_modifier = str_to_modifier(button_modifier_str);
-
-}
-
-void grabbing_set_without_brush(int b) {
-	without_brush = b;
-}
-
-void grabbing_set_brush_color(char * color) {
-
-	if (strcmp(color, "red") == 0)
-		brush_image = &brush_image_red;
-	else if (strcmp(color, "green") == 0)
-		brush_image = &brush_image_green;
-	else if (strcmp(color, "yellow") == 0)
-		brush_image = &brush_image_yellow;
-	else if (strcmp(color, "white") == 0)
-		brush_image = &brush_image_white;
-	else if (strcmp(color, "purple") == 0)
-		brush_image = &brush_image_purple;
-	else if (strcmp(color, "blue") == 0)
-		brush_image = &brush_image_blue;
-	else
-		printf("no such color, %s. using \"blue\"\n", color);
-	return;
-
-}
-
-int grab_pointer(Display *dpy) {
-	int result = 0, i = 0;
-	int screen = 0;
-	unsigned int masks[(1 << (MOD_END))];
-	bzero(masks, (1 << (MOD_END)) * sizeof(unsigned int));
-
-	if (button_modifier != AnyModifier)
-		create_masks(masks);
-
-	for (screen = 0; screen < ScreenCount (dpy); screen++) {
-		for (i = 1; i < (1 << (MOD_END)); i++)
-			result += XGrabButton(dpy, button, /*AnyModifier */
-			button_modifier | masks[i],
-			RootWindow (dpy, screen),
-			False,
-			PointerMotionMask | ButtonReleaseMask | ButtonPressMask,
-			GrabModeAsync, GrabModeAsync, None, None);
+	/* Which version of XI2? We support 2.0 */
+	int major = 2, minor = 0;
+	if (XIQueryVersion(self->dpy, &major, &minor) == BadRequest) {
+		printf("XI2 not available. Server supports %d.%d\n", major, minor);
+		exit(-1);
 	}
 
-	return result;
 }
 
+static void grabbing_set_brush_color(Grabber * self, char * color) {
 
-int ungrab_pointer(Display *dpy) {
-	int result = 0, i = 0;
-	int screen = 0;
-	unsigned int masks[(1 << (MOD_END))];
-	bzero(masks, (1 << (MOD_END)) * sizeof(unsigned int));
+	assert(self);
 
-	if (button_modifier != AnyModifier)
-		create_masks(masks);
+	if (color) {
 
-	for (screen = 0; screen < ScreenCount (dpy); screen++) {
-		for (i = 1; i < (1 << (MOD_END)); i++)
+		if (strcmp(color, "red") == 0)
+			self->brush_image = &brush_image_red;
+		else if (strcmp(color, "green") == 0)
+			self->brush_image = &brush_image_green;
+		else if (strcmp(color, "yellow") == 0)
+			self->brush_image = &brush_image_yellow;
+		else if (strcmp(color, "white") == 0)
+			self->brush_image = &brush_image_white;
+		else if (strcmp(color, "purple") == 0)
+			self->brush_image = &brush_image_purple;
+		else if (strcmp(color, "blue") == 0)
+			self->brush_image = &brush_image_blue;
+		else
+			printf("no such color, %s. using \"blue\"\n", color);
 
-			result += XUngrabButton(dpy, button, button_modifier | masks[i],
-					RootWindow (dpy, screen));
+	}
+}
+
+/*
+ * Get the title of a given window at out_window_title.
+ *
+ * PRIVATE
+ */
+static Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
+	int status;
+	XTextProperty text_prop;
+	char **list;
+	int num;
+
+	status = XGetWMName(dpy, w, &text_prop);
+	if (!status || !text_prop.value || !text_prop.nitems) {
+		*out_window_title = "";
+	}
+	status = Xutf8TextPropertyToTextList(dpy, &text_prop, &list, &num);
+
+	if (status < Success || !num || !*list) {
+		*out_window_title = "";
+	} else {
+		*out_window_title = (char *) strdup(*list);
+	}
+	XFree(text_prop.value);
+	XFreeStringList(list);
+
+	return 1;
+}
+
+/*
+ * Return a window_info struct for the focused window at a given Display.
+ *
+ * PRIVATE
+ */
+static Window_info * get_window_info(Display* dpy, Window win) {
+
+	int ret, val;
+
+	char *win_title;
+	ret = fetch_window_title(dpy, win, &win_title);
+
+	Window_info *ans = malloc(sizeof(Window_info));
+	bzero(ans, sizeof(Window_info));
+
+	char *win_class = NULL;
+
+	XClassHint class_hints;
+
+	int result = XGetClassHint(dpy, win, &class_hints);
+
+	if (result) {
+
+		if (class_hints.res_class != NULL)
+			win_class = class_hints.res_class;
+
+		if (win_class == NULL) {
+			win_class = "";
+
+		}
 	}
 
-	return result;
+	if (win_class) {
+		ans->class = win_class;
+	} else {
+		ans->class = "";
+	}
+
+	if (win_title) {
+		ans->title = win_title;
+	} else {
+		ans->title = "";
+	}
+
+	return ans;
+
 }
 
+/*
+ * Get the parent window.
+ *
+ * PRIVATE
+ */
+static Window get_parent_window(Display *dpy, Window w) {
+	Window root_return, parent_return, *child_return;
+	unsigned int nchildren_return;
+	int ret;
+	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return, &nchildren_return);
+
+	return parent_return;
+}
+
+void grabbing_grab(Grabber * self) {
+
+	int count = XScreenCount(self->dpy);
+
+	XIEventMask * eventmask = malloc(sizeof(XIEventMask));
+	eventmask->deviceid = self->deviceid;
+
+	int screen;
+	for (screen = 0; screen < count; screen++) {
+
+		Window rootwindow = RootWindow(self->dpy, screen);
+
+		if (self->is_direct_touch) {
+
+			if (!self->button) {
+				self->button = 1;
+			}
+
+			unsigned char mask[1] = { 0 }; /* the actual mask */
+
+			eventmask->mask_len = sizeof(mask); /* always in bytes */
+			eventmask->mask = mask;
+
+			XISetMask(mask, XI_ButtonPress);
+			XISetMask(mask, XI_ButtonRelease);
+			XISetMask(mask, XI_Motion);
+
+			int status = XIGrabDevice(self->dpy, self->deviceid, rootwindow,
+			CurrentTime, None,
+			GrabModeAsync,
+			GrabModeAsync, False, eventmask);
+
+		} else {
+
+			if (!self->button) {
+				self->button = 3;
+			}
+
+			XIGrabModifiers modifiers[4] = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } };
+
+			static unsigned char mask[2];
+			eventmask->mask = mask;
+
+			eventmask->mask_len = sizeof(mask);
+
+			memset(eventmask->mask, 0, eventmask->mask_len);
+			XISetMask(eventmask->mask, XI_ButtonPress);
+			XISetMask(eventmask->mask, XI_ButtonRelease);
+			XISetMask(eventmask->mask, XI_Motion);
+
+			XIGrabButton(self->dpy, self->deviceid, self->button, rootwindow,
+			None, GrabModeAsync, GrabModeAsync, False, eventmask, 1, modifiers);
+
+		}
+
+	}
+
+}
+
+void grabbing_ungrab(Grabber * self) {
+
+	int count = XScreenCount(self->dpy);
+
+	int screen;
+	for (screen = 0; screen < count; screen++) {
+
+		Window rootwindow = RootWindow(self->dpy, screen);
+
+		/* select on the window */
+		//XISelectEvents(display, w, &eventmask, 1);
+		if (self->is_direct_touch) {
+
+			int status = XIUngrabDevice(self->dpy, self->deviceid, CurrentTime);
+			printf("ungrab status = %d \n", status);
+
+		} else {
+			XIGrabModifiers modifiers[4] = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } };
+
+			XIUngrabButton(self->dpy, self->deviceid, self->button, rootwindow, 1, modifiers);
+		}
+
+	}
+
+}
 
 /*
  * Emulate a mouse click at the given display.
  *
  * PRIVATE
  */
-void mouse_click(Display *display, int button) {
+static void mouse_click(Display *display, int button, int x, int y) {
+
+	// fix position
+	XTestFakeMotionEvent(display, DefaultScreen(display), x, y, 0);
+
 	XTestFakeButtonEvent(display, button, True, CurrentTime);
-	sleep(0.001);
 	XTestFakeButtonEvent(display, button, False, CurrentTime);
+}
+
+/**
+ * Clear previous movement data.
+ */
+void grabbing_start_movement(Grabber * self, int new_x, int new_y) {
+
+	self->started = 1;
+
+	// clear captured sequences
+	self->fine_direction_sequence[0] = '\0';
+	self->rought_direction_sequence[0] = '\0';
+
+	// guarda a localização do início do movimento
+	self->old_x = new_x;
+	self->old_y = new_y;
+
+	self->rought_old_x = new_x;
+	self->rought_old_y = new_y;
+
+	if (!self->without_brush) {
+
+		XFlush(self->dpy);
+		backing_save(&(self->backing), new_x - self->brush.image_width,
+				new_y - self->brush.image_height);
+		//backing_save(&(self->backing), new_x - self->brush.image_width,
+		//		new_y - self->brush.image_height);
+
+		brush_draw(&(self->brush), self->old_x, self->old_y);
+
+	}
+	return;
+}
+
+/*
+ * Return the focused window at the given display.
+ *
+ * PRIVATE
+ */
+static Window get_focused_window(Display *dpy) {
+
+	Window win = 0;
+	int ret, val;
+	ret = XGetInputFocus(dpy, &win, &val);
+
+	if (val == RevertToParent) {
+		win = get_parent_window(dpy, win);
+	}
+
+	return win;
+
+}
+
+/* release a key_press struct */
+static void free_key_press(struct key_press *free_me) {
+	free(free_me);
+	return;
+}
+
+/**
+ * Execute an action
+ */
+static void execute_action(Display *dpy, Action *action, Window focused_window) {
+	int id;
+
+	// if there is an action
+	if (action != NULL) {
+
+		switch (action->type) {
+		case ACTION_EXECUTE:
+			id = fork();
+			if (id == 0) {
+				int i = system(action->original_str);
+				exit(i);
+			}
+			if (id < 0) {
+				fprintf(stderr, "Error forking.\n");
+			}
+
+			break;
+		case ACTION_ICONIFY:
+			generic_iconify(dpy, focused_window);
+			break;
+		case ACTION_KILL:
+			generic_kill(dpy, focused_window);
+			break;
+		case ACTION_RAISE:
+			generic_raise(dpy, focused_window);
+			break;
+		case ACTION_LOWER:
+			generic_lower(dpy, focused_window);
+			break;
+		case ACTION_MAXIMIZE:
+			generic_maximize(dpy, focused_window);
+			break;
+		case ACTION_ROOT_SEND:
+			generic_root_send(dpy, action->original_str);
+			break;
+		default:
+			fprintf(stderr, "found an unknown gesture \n");
+		}
+	}
+	return;
 }
 
 /**
  * Obtém o resultado dos dois algoritmos de captura de movimentos, e envia para serem processadas.
  */
-void end_movement(XButtonEvent *e) {
+Grabbed * grabbing_end_movement(Grabber * self, int new_x, int new_y) {
+
+	Grabbed * result = NULL;
+
+	self->started = 0;
 
 	// if is drawing
-	if (!without_brush) {
-		backing_restore(&backing);
-		XSync(e->display, False);
+	if (!self->without_brush) {
+		backing_restore(&(self->backing));
+		XFlush(self->dpy);
 	};
 
-
-
-	if ((strlen(fuzzy_stroke_sequence) == 0)
-			&& (strlen(accurate_stroke_sequence) == 0)) {
+	if ((strlen(self->rought_direction_sequence) == 0)
+			&& (strlen(self->fine_direction_sequence) == 0)) {
 
 		// temporary ungrab button
-		ungrab_pointer(e->display);
+		grabbing_ungrab(self);
 
 		// emulate the click
-		mouse_click(e->display, button);
+		mouse_click(self->dpy, self->button, new_x, new_y);
 
 		// restart grabbing
-		grab_pointer(e->display);
-
+		grabbing_grab(self);
 
 	} else {
 
 		int sequences_count = 2;
-		char ** sequences = malloc(sizeof(char *)*sequences_count);
+		char ** sequences = malloc(sizeof(char *) * sequences_count);
 
-		sequences[0] = accurate_stroke_sequence;
-		sequences[1] = fuzzy_stroke_sequence;
+		sequences[0] = self->fine_direction_sequence;
+		sequences[1] = self->rought_direction_sequence;
 
-		// sends the both strings to process.
-		gesture_process_movement(dpy,
-				 sequences, sequences_count);
+		Window_info * focused_window = get_window_info(self->dpy, get_focused_window(self->dpy));
+
+		result = malloc(sizeof(Grabbed));
+
+		result->sequences_count = sequences_count;
+		result->sequences = sequences;
+		result->focused_window = focused_window;
 
 	}
 
-
-
-	return;
+	return result;
 }
 
-char stroke_sequence_complex_detect_stroke(int x_delta, int y_delta) {
+static char get_fine_direction_from_deltas(int x_delta, int y_delta) {
 
 	if ((x_delta == 0) && (y_delta == 0)) {
 		return stroke_names[NONE];
 	}
 
 	// check if the movement is near main axes
-	if ((x_delta == 0) || (y_delta == 0)
-			|| (fabs((float) x_delta / (float) y_delta) > 3)
+	if ((x_delta == 0) || (y_delta == 0) || (fabs((float) x_delta / (float) y_delta) > 3)
 			|| (fabs((float) y_delta / (float) x_delta) > 3)) {
 
 		// x axe
@@ -344,7 +477,7 @@ char stroke_sequence_complex_detect_stroke(int x_delta, int y_delta) {
 
 }
 
-char get_fuzzy_stroke(int x_delta, int y_delta) {
+static char get_direction_from_deltas(int x_delta, int y_delta) {
 
 	if (abs(y_delta) > abs(x_delta)) {
 		if (y_delta > 0) {
@@ -364,14 +497,14 @@ char get_fuzzy_stroke(int x_delta, int y_delta) {
 
 }
 
-void stroke_sequence_push_stroke(char* stroke_sequence, char stroke) {
+static void movement_add_direction(char* stroke_sequence, char direction) {
 	// grab stroke
 	int len = strlen(stroke_sequence);
-	if ((len == 0) || (stroke_sequence[len - 1] != stroke)) {
+	if ((len == 0) || (stroke_sequence[len - 1] != direction)) {
 
 		if (len < MAX_STROKE_SEQUENCE) {
 
-			stroke_sequence[len] = stroke;
+			stroke_sequence[len] = direction;
 			stroke_sequence[len + 1] = '\0';
 
 		}
@@ -379,207 +512,303 @@ void stroke_sequence_push_stroke(char* stroke_sequence, char stroke) {
 	}
 }
 
-void update_movement(XMotionEvent *e) {
+static void update_movement(Grabber * self, int new_x, int new_y) {
 
-	// se for o caso, desenha o movimento na tela
-	if (!without_brush) {
-		backing_save(&backing, e->x_root - brush.image_width,
-				e->y_root - brush.image_height);
-		backing_save(&backing, e->x_root + brush.image_width,
-				e->y_root + brush.image_height);
-		brush_line_to(&brush, e->x_root, e->y_root);
+	if (!self->started) {
+		return;
 	}
 
-	int new_x = e->x_root;
-	int new_y = e->y_root;
+	// se for o caso, desenha o movimento na tela
+	if (!self->without_brush) {
+		backing_save(&(self->backing), new_x - self->brush.image_width,
+				new_y - self->brush.image_height);
+		//backing_save(&(self->backing), new_x - self->brush.image_width,
+		//		new_y - self->brush.image_height);
 
-	int x_delta = (new_x - old_x);
-	int y_delta = (new_y - old_y);
+		brush_line_to(&(self->brush), new_x, new_y);
+		XFlush(self->dpy);
+	}
+
+	int x_delta = (new_x - self->old_x);
+	int y_delta = (new_y - self->old_y);
 
 	if ((abs(x_delta) > DELTA_MIN) || (abs(y_delta) > DELTA_MIN)) {
 
-		char stroke = stroke_sequence_complex_detect_stroke(x_delta, y_delta);
+		char stroke = get_fine_direction_from_deltas(x_delta, y_delta);
 
-		stroke_sequence_push_stroke(accurate_stroke_sequence, stroke);
+		movement_add_direction(self->fine_direction_sequence, stroke);
 
 		// reset start position
-		old_x = new_x;
-		old_y = new_y;
+		self->old_x = new_x;
+		self->old_y = new_y;
 
 	}
 
-	int x_delta_2 = new_x - old_x_2;
-	int y_delta_2 = new_y - old_y_2;
+	int rought_delta_x = new_x - self->rought_old_x;
+	int rought_delta_y = new_y - self->rought_old_y;
 
-	char fuzzy_stroke = get_fuzzy_stroke(x_delta_2, y_delta_2);
+	char rought_direction = get_direction_from_deltas(rought_delta_x, rought_delta_y);
 
-	int square_distance_2 = x_delta_2 * x_delta_2 + y_delta_2 * y_delta_2;
+	int square_distance_2 = rought_delta_x * rought_delta_x + rought_delta_y * rought_delta_y;
 
 	if ( DELTA_MIN * DELTA_MIN < square_distance_2) {
 		// grab stroke
 
-		stroke_sequence_push_stroke(fuzzy_stroke_sequence, fuzzy_stroke);
+		movement_add_direction(self->rought_direction_sequence, rought_direction);
 
 		// reset start position
-		old_x_2 = new_x;
-		old_y_2 = new_y;
+		self->rought_old_x = new_x;
+		self->rought_old_y = new_y;
 	}
 
 	return;
 }
 
-void grabbing_event_loop() {
-	XEvent e;
-
-	while ((!shut_down)) {
-
-		XNextEvent(dpy, &e);
-
-		switch (e.type) {
-
-		case MotionNotify:
-			update_movement((XMotionEvent *) &e);
-			break;
-
-		case ButtonPress:
-			start_movement((XButtonEvent *) &e);
-			break;
-
-		case ButtonRelease:
-			end_movement((XButtonEvent *) &e);
-			break;
-
-		}
-
-	}
-
+static void free_grabbed(Grabbed * free_me) {
+	assert(free_me);
+	free(free_me->focused_window);
+	free(free_me);
 }
 
-/* taken from ecore.. */
-int x_key_mask_get(KeySym sym, Display *dpy) {
-	XModifierKeymap *mod;
-	KeySym sym2;
-	int i, j;
-	const int masks[8] = {
-	ShiftMask, LockMask, ControlMask,
-	Mod1Mask, Mod2Mask, Mod3Mask, Mod4Mask, Mod5Mask };
+static int get_touch_status(XIDeviceInfo * device) {
 
-	mod = XGetModifierMapping(dpy);
-	if ((mod) && (mod->max_keypermod > 0)) {
-		for (i = 0; i < (8 * mod->max_keypermod); i++) {
-			for (j = 0; j < 8; j++) {
+	int j = 0;
 
-				sym2 = XkbKeycodeToKeysym(dpy, mod->modifiermap[i], j, 0);
+	for (j = 0; j < device->num_classes; j++) {
+		XIAnyClassInfo *class = device->classes[j];
+		XITouchClassInfo *t = (XITouchClassInfo*) class;
 
-				if (sym2 != 0)
-					break;
-			}
-			if (sym2 == sym) {
-				int mask;
+		if (class->type != XITouchClass)
+			continue;
 
-				mask = masks[i / mod->max_keypermod];
-				if (mod->modifiermap)
-					XFree(mod->modifiermap);
-				XFree(mod);
-				return mask;
-			}
+		if (t->mode == XIDirectTouch) {
+			return 1;
 		}
-	}
-	if (mod) {
-		if (mod->modifiermap)
-			XFree(mod->modifiermap);
-		XFree(mod);
+		/*
+		 if (print_devices) {
+		 printf("        %s touch device, supporting %d touches. ",
+		 (t->mode == XIDirectTouch) ? "direct" : "dependent",
+		 t->num_touches);
+		 }
+		 */
 	}
 	return 0;
 }
 
-void init_masks(Display *dpy) {
-	valid_masks[SHIFT] = x_key_mask_get(XK_Shift_L, dpy);
-	valid_masks[CTRL] = x_key_mask_get(XK_Control_L, dpy);
+Grabber * grabber_init(char * device_name, int button, int without_brush, int print_devices, char * brush_color) {
 
-	/* apple's xdarwin has no alt!!!! */
-	valid_masks[ALT] = x_key_mask_get(XK_Alt_L, dpy);
-	if (!valid_masks[ALT])
-		valid_masks[ALT] = x_key_mask_get(XK_Meta_L, dpy);
-	if (!valid_masks[ALT])
-		valid_masks[ALT] = x_key_mask_get(XK_Super_L, dpy);
+	Grabber * self = malloc(sizeof(Grabber));
+	bzero(self, sizeof(Grabber));
 
-	/* the windows key... a valid modifier :) */
-	valid_masks[WIN] = x_key_mask_get(XK_Super_L, dpy);
-	if (!valid_masks[WIN])
-		valid_masks[WIN] = x_key_mask_get(XK_Mode_switch, dpy);
-	if (!valid_masks[WIN])
-		valid_masks[WIN] = x_key_mask_get(XK_Meta_L, dpy);
+	assert(self);
 
-	valid_masks[SCROLL] = x_key_mask_get(XK_Scroll_Lock, dpy);
-	valid_masks[NUM] = x_key_mask_get(XK_Num_Lock, dpy);
-	valid_masks[CAPS] = x_key_mask_get(XK_Caps_Lock, dpy);
+	open_display(self);
 
-}
+	self->button = button;
+	self->without_brush = without_brush;
 
-
-int grabbing_init() {
-
-	char *s = NULL;
-	s = XDisplayName(NULL);
-
-	dpy = XOpenDisplay(s);
-	if (!dpy) {
-		fprintf(stderr, "Can't open display %s\n", s);
-		return 1;
+	self->devicename = device_name;
+	if (!self->devicename) {
+		self->devicename = "Virtual core pointer";
 	}
 
+	grabbing_set_brush_color(self, brush_color);
 
-	if (!button) {
-		button = 3;
+	int ndevices;
+	int i;
+	XIDeviceInfo * device;
+	XIDeviceInfo * devices;
+
+	int deviceid = -1;
+
+	devices = XIQueryDevice(self->dpy, XIAllDevices, &ndevices);
+
+	if (print_devices) {
+		printf("\nDevices:\n");
 	}
 
-	init_masks(dpy);
+	for (i = 0; i < ndevices; i++) {
+		device = &devices[i];
 
+		switch (device->use) {
+		/// ṕointers
+		case XIMasterPointer:
+		case XISlavePointer:
+		case XIFloatingSlave:
 
-	accurate_stroke_sequence = (char *) malloc(
-			sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
-	accurate_stroke_sequence[0] = '\0';
+			if (print_devices) {
+				printf("   '%s'\n", device->name);
+			} else {
 
-	fuzzy_stroke_sequence = (char *) malloc(
-			sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
-	fuzzy_stroke_sequence[0] = '\0';
+				if (strcmp(device->name, self->devicename) == 0) {
+					self->deviceid = device->deviceid;
+					self->is_direct_touch = get_touch_status(device);
+				}
+
+			}
+
+			break;
+
+		case XIMasterKeyboard:
+			//printf("master keyboard\n");
+			break;
+		case XISlaveKeyboard:
+			//printf("slave keyboard\n");
+			break;
+		}
+
+	}
+
+	if (print_devices) {
+		printf("\nRun  mygestures -d 'DEVICE'  to use a device.\n");
+	}
+
+	XIFreeDeviceInfo(devices);
+
+	if (print_devices) {
+		exit(0);
+	}
+
+	self->fine_direction_sequence = (char *) malloc(sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
+	self->fine_direction_sequence[0] = '\0';
+
+	self->rought_direction_sequence = (char *) malloc(sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
+	self->rought_direction_sequence[0] = '\0';
 
 	int err = 0;
-	int scr = DefaultScreen(dpy);
+	int scr = DefaultScreen(self->dpy);
 
-	XAllowEvents(dpy, AsyncBoth, CurrentTime);
+	XAllowEvents(self->dpy, AsyncBoth, CurrentTime);
 
+	if (!self->without_brush) {
 
-	if (!without_brush) {
-		err = backing_init(&backing, dpy, DefaultRootWindow(dpy),
-		DisplayWidth(dpy, scr), DisplayHeight(dpy, scr),
-		DefaultDepth(dpy, scr));
+		if (!self->brush_image) {
+			self->brush_image = &brush_image_red;
+		}
+
+		err = backing_init(&(self->backing), self->dpy, DefaultRootWindow(self->dpy),
+				DisplayWidth(self->dpy, scr), DisplayHeight(self->dpy, scr),
+				DefaultDepth(self->dpy, scr));
 		if (err) {
 			fprintf(stderr, "cannot open backing store.... \n");
-			return err;
+			return NULL;
 		}
 
-		err = brush_init(&brush, &backing);
+		err = brush_init(&(self->brush), &(self->backing), self->brush_image);
 		if (err) {
 			fprintf(stderr, "cannot init brush.... \n");
-			return err;
+			return NULL;
 		}
 	}
 
-	/* last, start grabbing the pointer ...*/
-	grab_pointer(dpy);
+	self->old_x = -1;
+	self->old_y = -1;
 
-	return err;
+	self->rought_old_x = -1;
+	self->rought_old_y = -1;
+
+	return self;
 }
 
-void grabbing_finalize() {
-	if (!without_brush) {
-		brush_deinit(&brush);
-		backing_deinit(&backing);
+void grabber_event_loop(Grabber * self, Engine * conf) {
+
+	XEvent ev;
+
+	grabbing_grab(self);
+
+	printf("\n");
+	if (self->is_direct_touch) {
+		printf(
+				"Mygestures is running on device '%s'. Draw a gesture by touching the screen or run `mygestures -l` to list other devices.\n",
+				self->devicename);
+	} else {
+		printf(
+				"Mygestures is running on device '%s'. Use button %d on this device to draw a gesture or run `mygestures -l` to list other devices.\n",
+				self->devicename, self->button);
 	}
 
-	XCloseDisplay(dpy);
+	printf("\n");
+
+	while (!self->shut_down) {
+
+		XNextEvent(self->dpy, &ev);
+
+		if (ev.xcookie.type == GenericEvent && ev.xcookie.extension == self->opcode
+				&& XGetEventData(self->dpy, &ev.xcookie)) {
+
+			XIDeviceEvent* data = NULL;
+
+			switch (ev.xcookie.evtype) {
+
+			case XI_Motion:
+				data = (XIDeviceEvent*) ev.xcookie.data;
+				update_movement(self, data->root_x, data->root_y);
+				break;
+
+			case XI_ButtonPress:
+				data = (XIDeviceEvent*) ev.xcookie.data;
+				grabbing_start_movement(self, data->root_x, data->root_y);
+				break;
+
+			case XI_ButtonRelease:
+				data = (XIDeviceEvent*) ev.xcookie.data;
+				Grabbed * grab = grabbing_end_movement(self, data->root_x, data->root_y);
+
+				if (grab) {
+
+					printf("\n");
+					printf("Window information:\n");
+					printf("     Title = \"%s\"\n", grab->focused_window->title);
+					printf("     Class = \"%s\"\n", grab->focused_window->class);
+
+					Gesture * gest = engine_process_gesture(conf, grab);
+
+					if (gest){
+						printf("Gesture information:\n");
+						printf("     Movement '%s' triggered gesture '%s'\n",
+							gest->movement->name, gest->name);
+					}
+
+
+					if (gest) {
+
+						int j = 0;
+
+						for (j = 0; j < gest->actions_count; ++j) {
+							Action * a = gest->actions[j];
+							printf("      Action: %s\n", a->original_str);
+							execute_action(self->dpy, a, get_focused_window(self->dpy));
+						}
+
+					}
+
+					free_grabbed(grab);
+
+				}
+
+				break;
+
+			}
+		}
+		XFreeEventData(self->dpy, &ev.xcookie);
+
+	}
+
+	grabbing_ungrab(self);
+
+}
+
+char * grabber_get_device_name(Grabber * self) {
+	return self->devicename;
+}
+
+void grabber_finalize(Grabber * self) {
+	if (!(self->without_brush)) {
+		brush_deinit(&(self->brush));
+		backing_deinit(&(self->backing));
+	}
+
+	XCloseDisplay(self->dpy);
 	return;
 }
 
