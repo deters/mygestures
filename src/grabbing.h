@@ -66,6 +66,7 @@ void grabber_event_loop(Grabber * self, Engine * conf);
 void grabber_finalize(Grabber * self);
 
 char * grabber_get_device_name(Grabber * self);
+int grabber_get_device_id(Grabber * self);
 
 #endif /* GRABBING_H_ */
 

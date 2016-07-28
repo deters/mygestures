@@ -68,16 +68,16 @@ static void usage() {
 /*
  * Ask other instances with same unique_identifier to exit.
  */
-static void be_unique(char * device_name) {
+static void be_unique(int device_id) {
 
 	// the unique_identifier = mygestures + uid + device being grabbed
-	int bytes = asprintf(&unique_identifier, "/mygestures_uid_%d_dev_%s", getuid(), device_name);
+	int bytes = asprintf(&unique_identifier, "/mygestures_uid_%d_dev_%d", getuid(), device_id);
 
 	int shared_seg_size = sizeof(struct shared_structure);
 	int shmfd = shm_open(unique_identifier, O_CREAT | O_RDWR, 0600);
 	if (shmfd < 0) {
 		perror("In shm_open()");
-		exit(1);
+		exit(shmfd);
 	}
 	int err = ftruncate(shmfd, shared_seg_size);
 	message = (struct shared_structure *) mmap(NULL, shared_seg_size,
@@ -252,7 +252,7 @@ int main(int argc, char * const * argv) {
 	Grabber * grabber = grabber_init(args->device, args->button, args->without_brush,
 			args->list_devices, args->brush_color);
 
-	be_unique(grabber_get_device_name(grabber));
+	be_unique(grabber_get_device_id(grabber));
 
 	grabber_event_loop(grabber, engine);
 	grabber_finalize(grabber);
