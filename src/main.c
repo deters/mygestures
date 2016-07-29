@@ -46,7 +46,7 @@ static void usage() {
 	free(default_file);
 
 	char * template_file = xml_get_template_filename();
-	printf(" Default: %s\n", template_file);
+	printf(" Template: %s\n", template_file);
 	free(template_file);
 
 	printf("\n");
@@ -133,11 +133,15 @@ static void on_kill(int a) {
 static void on_interrupt(int a) {
 
 	if (message->kill) {
-		printf("PID %d asked me to exit.\n", message->pid);
-		on_kill(a);
+		printf("Mygestures on PID %d asked me to exit.\n", message->pid);
+		// shared memory now belongs to the other process. will not be cleaned.
+	} else {
+		printf("Received the interrupt signal.\n");
+		clean_shared_memory();
 	}
 
 	exit(0);
+
 }
 
 static void daemonize() {
@@ -256,6 +260,9 @@ int main(int argc, char * const * argv) {
 
 	grabber_event_loop(grabber, engine);
 	grabber_finalize(grabber);
+
+	clean_shared_memory();
+
 
 	exit(0);
 
