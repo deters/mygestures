@@ -69,13 +69,6 @@ Context *engine_create_context(Engine * self, char * context_name, char *window_
 	return ans;
 }
 
-/* release a window struct */
-void free_context(Context *free_me) {
-	free(free_me->title);
-	free(free_me->class);
-	free(free_me);
-	return;
-}
 
 /* alloc a movement struct */
 Movement *engine_create_movement(Engine * self, char *movement_name, char *movement_expression) {
@@ -114,14 +107,6 @@ Movement *engine_create_movement(Engine * self, char *movement_name, char *movem
 	return ans;
 }
 
-/* release a movement struct */
-void free_movement(Movement *free_me) {
-	free(free_me->name);
-	free(free_me->expression);
-	//free(free_me->movement_compiled);
-	free(free_me);
-	return;
-}
 
 Gesture * context_create_gesture(Context * self, char * gesture_name, char * gesture_movement) {
 
@@ -141,14 +126,6 @@ Gesture * context_create_gesture(Context * self, char * gesture_name, char * ges
 	return ans;
 }
 
-//todo gerenciamento de memória
-/* release a gesture struct */
-void free_gesture(Gesture *free_me) {
-	free(free_me->actions);
-	free(free_me);
-
-	return;
-}
 
 /* alloc an action struct */
 Action *gesture_create_action(Gesture * self, int action_type, char * original_str) {
@@ -162,12 +139,6 @@ Action *gesture_create_action(Gesture * self, int action_type, char * original_s
 	self->actions[self->actions_count++] = ans;
 
 	return ans;
-}
-
-/* release an action struct */
-void free_action(Action *free_me) {
-	free(free_me);
-	return;
 }
 
 Gesture * engine_match_gesture(Engine * self, char * captured_sequence, Window_info * window) {
