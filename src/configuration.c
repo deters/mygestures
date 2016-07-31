@@ -342,7 +342,7 @@ int cp(const char *from, const char *to) {
 	return -1;
 }
 
-Engine * xml_load_engine_from_defaults() {
+Engine * xmlconfig_load_engine_from_defaults() {
 
 	Engine * eng = engine_new();
 
@@ -356,7 +356,7 @@ Engine * xml_load_engine_from_defaults() {
 		char * template = xml_get_template_filename();
 		err = cp(template, filename);
 		if (err) {
-			printf("Error creating default configuration on '%s' from '%s'\n", filename, template);
+			fprintf(stderr,"Error creating default configuration on '%s' from '%s'\n", filename, template);
 			return err;
 		}
 	} else {
@@ -366,10 +366,10 @@ Engine * xml_load_engine_from_defaults() {
 	err = xml_parse_file(eng, filename);
 
 	if (err) {
-		printf("Error loading configuration from '%s'\n", filename);
+		fprintf(stderr,"Error loading configuration from \n'%s'\n\n", filename);
 	}
 
-	printf("Loaded %i gestures from '%s'.\n", engine_get_gestures_count(eng), filename);
+	printf("Loaded %i gestures from \n'%s'.\n\n", engine_get_gestures_count(eng), filename);
 
 	return eng;
 
@@ -388,7 +388,7 @@ Engine * xml_load_engine_from_file(char * filename) {
 		return NULL;
 	}
 
-	printf("Loaded %i gestures from '%s'.\n", engine_get_gestures_count(eng), filename);
+	printf("Loaded %i gestures from \n'%s'.\n\n", engine_get_gestures_count(eng), filename);
 
 	return eng;
 

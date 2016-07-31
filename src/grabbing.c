@@ -41,7 +41,7 @@ const char *modifiers_names[] = { "SHIFT", "CTRL", "ALT", "WIN", "SCROLL", "NUM"
 /* valid strokes */
 const char stroke_names[] = { 'N', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
 
-static void open_display(Grabber * self) {
+static void grabber_open_display(Grabber * self) {
 
 	self->dpy = XOpenDisplay(NULL);
 
@@ -605,7 +605,7 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 
 	assert(self);
 
-	open_display(self);
+	grabber_open_display(self);
 
 	self->button = button;
 	self->without_brush = without_brush;
@@ -722,11 +722,11 @@ void grabber_event_loop(Grabber * self, Engine * conf) {
 	printf("\n");
 	if (self->is_direct_touch) {
 		printf(
-				"Mygestures is running on device '%s'. Draw a gesture by touching it or run `mygestures -l` to list other devices.\n",
+				"Mygestures is running on device '%s'.\nDraw a gesture by touching it or run `mygestures -l` to list other devices.\n\n",
 				self->devicename);
 	} else {
 		printf(
-				"Mygestures is running on device '%s'. Use button %d on this device to draw a gesture or run `mygestures -l` to list other devices.\n",
+				"Mygestures is running on device '%s'.\nUse button %d on this device to draw a gesture or run `mygestures -l` to list other devices.\n\n",
 				self->devicename, self->button);
 	}
 
