@@ -7,7 +7,7 @@ mygestures_SOURCES = \
 	main.c \
 	gestures.c gestures.h \
         configuration.c configuration.h \
-	generic_wm.c wm.h \
+	actions.c actions.h \
 	grabbing.c grabbing.h \
         drawing/drawing-backing.c \
         drawing/drawing-backing.h \

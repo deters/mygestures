@@ -79,7 +79,7 @@ static void mygestures_usage() {
 	printf(" -h, --help                 : Help\n");
 }
 
-char *char_replace(char *str, char oldChar, char newChar) {
+char * char_replace(char *str, char oldChar, char newChar) {
 
 	assert(str);
 

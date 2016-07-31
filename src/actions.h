@@ -15,19 +15,17 @@
 #define __WM_H__
 #include <X11/Xlib.h>
 
-#include "gestures.h"
-
 struct key_press {
 	KeySym key;
 	struct key_press * next;
 	char *original_str;
 };
 
-void generic_iconify(Display *dpy, Window w);
-void generic_kill(Display *dpy, Window w);
-void generic_raise(Display *dpy, Window w);
-void generic_lower(Display *dpy, Window w);
-void generic_maximize(Display *dpy, Window w);
-void generic_root_send(Display *dpy, char *data);
+void action_iconify(Display *dpy, Window w);
+void action_kill(Display *dpy, Window w);
+void action_raise(Display *dpy, Window w);
+void action_lower(Display *dpy, Window w);
+void action_maximize(Display *dpy, Window w);
+void action_keypress(Display *dpy, char *data);
 
 #endif

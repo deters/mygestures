@@ -13,6 +13,7 @@
 #include "drawing/drawing-brush.h"
 #include "gestures.h"
 
+
 /* modifier keys */
 enum {
 	SHIFT = 0, CTRL, ALT, WIN, SCROLL, NUM, CAPS, MOD_END

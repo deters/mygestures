@@ -30,8 +30,8 @@
 #include "drawing/drawing-brush-image.h"
 
 #include "grabbing.h"
-#include "gestures.h"
-#include "wm.h"
+#include "actions.h"
+
 
 #define DELTA_MIN	30 /*TODO*/
 #define MAX_STROKE_SEQUENCE 63 /*TODO*/
@@ -327,11 +327,6 @@ static Window get_focused_window(Display *dpy) {
 
 }
 
-/* release a key_press struct */
-static void free_key_press(struct key_press *free_me) {
-	free(free_me);
-	return;
-}
 
 /**
  * Execute an action
@@ -355,22 +350,22 @@ static void execute_action(Display *dpy, Action *action, Window focused_window) 
 
 			break;
 		case ACTION_ICONIFY:
-			generic_iconify(dpy, focused_window);
+			action_iconify(dpy, focused_window);
 			break;
 		case ACTION_KILL:
-			generic_kill(dpy, focused_window);
+			action_kill(dpy, focused_window);
 			break;
 		case ACTION_RAISE:
-			generic_raise(dpy, focused_window);
+			action_raise(dpy, focused_window);
 			break;
 		case ACTION_LOWER:
-			generic_lower(dpy, focused_window);
+			action_lower(dpy, focused_window);
 			break;
 		case ACTION_MAXIMIZE:
-			generic_maximize(dpy, focused_window);
+			action_maximize(dpy, focused_window);
 			break;
 		case ACTION_ROOT_SEND:
-			generic_root_send(dpy, action->original_str);
+			action_keypress(dpy, action->original_str);
 			break;
 		default:
 			fprintf(stderr, "found an unknown gesture \n");

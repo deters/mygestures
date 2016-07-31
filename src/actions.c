@@ -22,7 +22,7 @@
 #include <string.h>
 
 
-#include "wm.h"
+#include "actions.h"
 #include "gestures.h"
 
 enum {
@@ -34,7 +34,7 @@ enum {
  *
  * PUBLIC
  */
-void generic_iconify(Display *dpy, Window w) {
+void action_iconify(Display *dpy, Window w) {
 	if (w != None)
 		XIconifyWindow(dpy, w, 0);
 
@@ -46,7 +46,7 @@ void generic_iconify(Display *dpy, Window w) {
  *
  * PUBLIC
  */
-void generic_kill(Display *dpy, Window w) {
+void action_kill(Display *dpy, Window w) {
 
 	/* dont kill root window */
 	if (w == RootWindow(dpy, DefaultScreen(dpy)))
@@ -63,7 +63,7 @@ void generic_kill(Display *dpy, Window w) {
  *
  * PUBLIC
  */
-void generic_raise(Display *dpy, Window w) {
+void action_raise(Display *dpy, Window w) {
 	XRaiseWindow(dpy, w);
 	return;
 }
@@ -73,7 +73,7 @@ void generic_raise(Display *dpy, Window w) {
  *
  * PUBLIC
  */
-void generic_lower(Display *dpy, Window w) {
+void action_lower(Display *dpy, Window w) {
 	XLowerWindow(dpy, w);
 	return;
 }
@@ -83,7 +83,7 @@ void generic_lower(Display *dpy, Window w) {
  *
  * PUBLIC
  */
-void generic_maximize(Display *dpy, Window w) {
+void action_maximize(Display *dpy, Window w) {
 	/*
 	 int width = XDisplayWidth(dpy, DefaultScreen(dpy));
 	 int heigth = XDisplayHeight(dpy, DefaultScreen(dpy));
@@ -172,7 +172,7 @@ struct key_press * string_to_keypress(char *str_ptr) {
 /**
  * Fake sequence key events
  */
-void generic_root_send(Display *dpy, char *data) {
+void action_keypress(Display *dpy, char *data) {
 
 	struct key_press * keys = string_to_keypress(data);
 
