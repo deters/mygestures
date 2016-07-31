@@ -96,7 +96,7 @@ static void send_kill_message() {
 
 	/* if shared message contains a PID, kill that process */
 	if (message->pid > 0) {
-		fprintf(stdout, "Asking mygestures running on pid %d to exit.\n", message->pid);
+		fprintf(stdout, "Asking mygestures running on pid %d to exit.\n\n", message->pid);
 
 		int running = message->pid;
 
@@ -329,7 +329,7 @@ void mygestures_parse_arguments(Mygestures * self, int argc, char * const *argv)
 
 
 
-void mygestures_start(Mygestures * self) {
+void mygestures_run(Mygestures * self) {
 
 	Grabber * grabber = grabber_init(self->device, self->button, self->without_brush,
 			self->list_devices, self->brush_color);
@@ -349,7 +349,7 @@ int main(int argc, char * const * argv) {
 	signal(SIGINT, on_interrupt);
 	signal(SIGKILL, on_kill);
 
-	mygestures_start(self);
+	mygestures_run(self);
 
 	exit(0);
 

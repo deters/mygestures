@@ -9,6 +9,7 @@
 
 #include "configuration.h"
 #include "gestures.h"
+#include "actions.h"
 
 const char * CONFIG_FILE_NAME = "mygestures.xml";
 
@@ -62,7 +63,7 @@ static Action * xml_parse_action(xmlNode *node, Gesture * gest) {
 	} else if (strcasecmp(action_name, "toggle-maximized") == 0) {
 		id = ACTION_TOGGLE_MAXIMIZED;
 	} else if (strcasecmp(action_name, "keypress") == 0) {
-		id = ACTION_ROOT_SEND;
+		id = ACTION_KEYPRESS;
 	} else if (strcasecmp(action_name, "exec") == 0) {
 		id = ACTION_EXECUTE;
 	} else {
@@ -295,7 +296,7 @@ char * xml_get_template_filename() {
 	return template_file;
 }
 
-int cp(const char *from, const char *to) {
+int file_copy(const char *from, const char *to) {
 	int fd_to, fd_from;
 	char buf[4096];
 	ssize_t nread;
@@ -358,7 +359,7 @@ Engine * xmlconfig_load_engine_from_defaults() {
 
 	if (!file) {
 		char * template = xml_get_template_filename();
-		err = cp(template, filename);
+		err = file_copy(template, filename);
 		if (err) {
 			fprintf(stderr,"Error creating default configuration on '%s' from '%s'\n", filename, template);
 			return NULL;

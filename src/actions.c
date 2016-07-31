@@ -24,9 +24,35 @@
 #include "actions.h"
 #include "gestures.h"
 
+
+/* Actions */
+const char * action_name [ACTION_COUNT] = {
+	"ERROR",
+	"EXIT_GEST",
+	"EXECUTE",
+	"ICONIFY",
+	"KILL",
+	"RECONF",
+	"RAISE",
+	"LOWER",
+	"MAXIMIZE",
+	"RESTORE",
+	"TOGGLE_MAXIMIZED",
+	"KEYPRESS",
+	"ABORT",
+	"LAST" };
+
+
+
+const char * get_action_name( int action ){
+	return action_name[action];
+};
+
+
 enum {
 	_NET_WM_STATE_REMOVE = 0, _NET_WM_STATE_ADD = 1, _NET_WM_STATE_TOGGLE = 2
 };
+
 
 /*
  * Iconify the focused window at given display.
@@ -279,4 +305,5 @@ void action_keypress(Display *dpy, char *data) {
 
 	return;
 }
+
 

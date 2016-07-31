@@ -15,11 +15,34 @@
 #define __WM_H__
 #include <X11/Xlib.h>
 
+
+#define ACTION_COUNT 14
+
+/* Actions */
+enum {
+	ACTION_ERROR,
+	ACTION_EXIT_GEST,
+	ACTION_EXECUTE,
+	ACTION_ICONIFY,
+	ACTION_KILL,
+	ACTION_RECONF,
+	ACTION_RAISE,
+	ACTION_LOWER,
+	ACTION_MAXIMIZE,
+	ACTION_RESTORE,
+	ACTION_TOGGLE_MAXIMIZED,
+	ACTION_KEYPRESS,
+	ACTION_ABORT,
+	ACTION_LAST
+};
+
 struct key_press {
 	KeySym key;
 	struct key_press * next;
 	char *original_str;
 };
+
+const char * get_action_name( int action );
 
 void action_iconify(Display *dpy, Window w);
 void action_kill(Display *dpy, Window w);

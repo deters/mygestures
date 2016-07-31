@@ -110,11 +110,11 @@
         </gesture>
 
         <gesture name="Maximize window" movement="NorthEast">
-            <do action="keypress" value="Alt_L+F5" /> <!-- check your Window Manager for the correct keybinding -->
+            <do action="toggle-maximized"/> <!-- you can use the "maximize" action too -->
         </gesture>
 
-        <gesture name="Restore window" movement="NorthWest">
-            <do action="keypress" value="Alt_L+F5" /> <!-- check your Window Manager for the correct keybinding -->
+        <gesture name="Restore window from maximized state" movement="NorthWest">
+            <do action="restore" />
         </gesture>
 
         <gesture name="Iconify window" movement="SouthWest">
@@ -170,11 +170,11 @@
       <!-- Custom actions -->
 
         <gesture name="Run default browser" movement="W">
-         <do action="exec" value="x-www-browser" />
+            <do action="exec" value="x-www-browser" />
         </gesture>
 
         <gesture name="Run gedit" movement="G">
-         <do action="exec" value="gedit" />
+            <do action="exec" value="gedit" />
         </gesture>
 
     </context> 

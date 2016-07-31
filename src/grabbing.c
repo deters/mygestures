@@ -36,10 +36,9 @@
 #define DELTA_MIN	30 /*TODO*/
 #define MAX_STROKE_SEQUENCE 63 /*TODO*/
 
-const char *modifiers_names[] = { "SHIFT", "CTRL", "ALT", "WIN", "SCROLL", "NUM", "CAPS" };
 
 /* valid strokes */
-const char stroke_names[] = { 'N', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
+const char stroke_names[] = { '_', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
 
 static void grabber_open_display(Grabber * self) {
 
@@ -250,7 +249,6 @@ void grabbing_ungrab(Grabber * self) {
 		if (self->is_direct_touch) {
 
 			int status = XIUngrabDevice(self->dpy, self->deviceid, CurrentTime);
-			printf("ungrab status = %d \n", status);
 
 		} else {
 			XIGrabModifiers modifiers[4] = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } };
@@ -370,7 +368,7 @@ static void execute_action(Display *dpy, Action *action, Window focused_window) 
 		case ACTION_TOGGLE_MAXIMIZED:
 			action_toggle_maximized(dpy, focused_window);
 			break;
-		case ACTION_ROOT_SEND:
+		case ACTION_KEYPRESS:
 			action_keypress(dpy, action->original_str);
 			break;
 		default:
@@ -780,7 +778,7 @@ void grabber_event_loop(Grabber * self, Engine * conf) {
 
 						for (j = 0; j < gest->actions_count; ++j) {
 							Action * a = gest->actions[j];
-							printf("      Executing action: %s\n", a->original_str);
+							printf("      Executing action: %s %s\n", get_action_name(a->type), a->original_str);
 							execute_action(self->dpy, a, get_focused_window(self->dpy));
 						}
 

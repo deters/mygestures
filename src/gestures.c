@@ -30,6 +30,12 @@
 
 /* alloc a window struct */
 Context *engine_create_context(Engine * self, char * context_name, char *window_title, char *window_class) {
+
+	assert(self);
+	assert(context_name);
+	assert(window_title);
+	assert(window_class);
+
 	Context *ans = malloc(sizeof(Context));
 	bzero(ans, sizeof(Context));
 
@@ -69,9 +75,12 @@ Context *engine_create_context(Engine * self, char * context_name, char *window_
 	return ans;
 }
 
-
 /* alloc a movement struct */
 Movement *engine_create_movement(Engine * self, char *movement_name, char *movement_expression) {
+
+	assert(self);
+	assert(movement_name);
+	assert(movement_expression);
 
 	Movement * ans = malloc(sizeof(Movement));
 	bzero(ans, sizeof(Movement));
@@ -107,8 +116,11 @@ Movement *engine_create_movement(Engine * self, char *movement_name, char *movem
 	return ans;
 }
 
-
 Gesture * context_create_gesture(Context * self, char * gesture_name, char * gesture_movement) {
+
+	assert(self);
+	assert(gesture_name);
+	assert(gesture_movement);
 
 	Gesture *ans = malloc(sizeof(Gesture));
 	bzero(ans, sizeof(Gesture));
@@ -126,15 +138,18 @@ Gesture * context_create_gesture(Context * self, char * gesture_name, char * ges
 	return ans;
 }
 
-
 /* alloc an action struct */
-Action *gesture_create_action(Gesture * self, int action_type, char * original_str) {
+Action *gesture_create_action(Gesture * self, int action_type, char * action_data) {
+
+	assert(self);
+	assert(action_type);
+	assert(action_data);
 
 	Action *ans = malloc(sizeof(Action));
 	bzero(ans, sizeof(Action));
 
 	ans->type = action_type;
-	ans->original_str = original_str;
+	ans->original_str = action_data;
 
 	self->actions[self->actions_count++] = ans;
 
@@ -142,6 +157,10 @@ Action *gesture_create_action(Gesture * self, int action_type, char * original_s
 }
 
 Gesture * engine_match_gesture(Engine * self, char * captured_sequence, Window_info * window) {
+
+	assert(self);
+	assert(captured_sequence);
+	assert(window);
 
 	Gesture * matched_gesture = NULL;
 
@@ -175,9 +194,10 @@ Gesture * engine_match_gesture(Engine * self, char * captured_sequence, Window_i
 
 				if (gest->movement) {
 
-					if ((gest->movement->compiled)
-							&& (regexec(gest->movement->compiled, captured_sequence, 0,
-									(regmatch_t *) NULL, 0) == 0)) {
+					assert(gest->movement->compiled);
+
+					if (regexec(gest->movement->compiled, captured_sequence, 0, (regmatch_t *) NULL,
+							0) == 0) {
 
 						matched_gesture = gest;
 						break;
@@ -196,6 +216,9 @@ Gesture * engine_match_gesture(Engine * self, char * captured_sequence, Window_i
 }
 
 Gesture * engine_process_gesture(Engine * self, Grabbed * grab) {
+
+	assert(self);
+	assert(grab);
 
 	Gesture *gest = NULL;
 
@@ -218,6 +241,9 @@ Gesture * engine_process_gesture(Engine * self, Grabbed * grab) {
 
 Movement * engine_find_movement_by_name(Engine * self, char * movement_name) {
 
+	assert(self);
+	assert(movement_name);
+
 	Context * ctx;
 
 	if (!movement_name) {
@@ -238,7 +264,9 @@ Movement * engine_find_movement_by_name(Engine * self, char * movement_name) {
 
 }
 
-int engine_get_gestures_count(Engine * self){
+int engine_get_gestures_count(Engine * self) {
+
+	assert(self);
 
 	int count = 0;
 
