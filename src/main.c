@@ -25,17 +25,33 @@
 #include "gestures.h"
 #include "configuration.h"
 #include "config.h"
+#include "assert.h"
 
-static char * unique_identifier = NULL;
-
-struct shared_structure {
+struct shm_message {
 	int pid;
 	int kill;
 };
 
-static struct shared_structure * message;
+char * unique_identifier;
+struct shm_message * message;
 
-static void usage() {
+typedef struct mygestures_ {
+
+	int help;
+	int button;
+	int without_brush;
+	int run_as_daemon;
+	int list_devices;
+
+	char * device;
+	char * brush_color;
+	char * config;
+
+	Engine * engine;
+
+} Mygestures;
+
+static void mygestures_usage() {
 	printf("%s\n\n", PACKAGE_STRING);
 	printf("Usage: mygestures [OPTIONS] [CONFIG_FILE]\n");
 	printf("\n");
@@ -65,22 +81,41 @@ static void usage() {
 	printf(" -h, --help                 : Help\n");
 }
 
+char *replace(char *str, char oldChar, char newChar) {
+
+	assert(str);
+
+	char *strPtr = str;
+	while ((strPtr = strchr(strPtr, oldChar)) != NULL)
+		*strPtr++ = newChar;
+	return str;
+}
+
 /*
  * Ask other instances with same unique_identifier to exit.
  */
-static void be_unique(int device_id) {
+static void be_unique(char * device_name) {
 
 	// the unique_identifier = mygestures + uid + device being grabbed
-	int bytes = asprintf(&unique_identifier, "/mygestures_uid_%d_dev_%d", getuid(), device_id);
 
-	int shared_seg_size = sizeof(struct shared_structure);
+	if (device_name) {
+		asprintf(&unique_identifier, "/mygestures_uid_%d_dev_%s", getuid(),
+				replace(device_name, '/', '%'));
+	} else {
+		asprintf(&unique_identifier, "/mygestures_uid_%d_dev_%s", getuid(),
+						"DEFAULT_DEVICE");
+	}
+
+	int shared_seg_size = sizeof(struct shm_message);
 	int shmfd = shm_open(unique_identifier, O_CREAT | O_RDWR, 0600);
 	if (shmfd < 0) {
 		perror("In shm_open()");
 		exit(shmfd);
 	}
 	int err = ftruncate(shmfd, shared_seg_size);
-	message = (struct shared_structure *) mmap(NULL, shared_seg_size,
+
+	message = (struct shm_message *) mmap(NULL, shared_seg_size,
+
 	PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);
 	if (message == NULL) {
 		perror("In mmap()");
@@ -89,12 +124,12 @@ static void be_unique(int device_id) {
 
 	/* if shared message contains a PID, kill that process */
 	if (message->pid > 0) {
-		fprintf(stdout, "Asking mygestures running on pid %d to kill himself.\n", message->pid);
+		fprintf(stdout, "Asking mygestures running on pid %d to exit.\n", message->pid);
 
 		int running = message->pid;
 
-		message->kill = 1;
 		message->pid = getpid();
+		message->kill = 1;
 
 		int err = kill(running, SIGINT);
 
@@ -109,7 +144,7 @@ static void be_unique(int device_id) {
 
 }
 
-static void clean_shared_memory() {
+static void mygestures_release_shm_file() {
 
 	/*  If your head comes away from your neck, it's over! */
 
@@ -126,7 +161,7 @@ static void clean_shared_memory() {
 }
 
 static void on_kill(int a) {
-	clean_shared_memory();
+	mygestures_release_shm_file();
 	exit(0);
 }
 
@@ -137,7 +172,7 @@ static void on_interrupt(int a) {
 		// shared memory now belongs to the other process. will not be cleaned.
 	} else {
 		printf("Received the interrupt signal.\n");
-		clean_shared_memory();
+		mygestures_release_shm_file();
 	}
 
 	exit(0);
@@ -155,20 +190,16 @@ static void daemonize() {
 	return;
 }
 
-struct args_t {
+Mygestures * mygestures_new() {
+	Mygestures *self = malloc(sizeof(Mygestures));
+	bzero(self, sizeof(Mygestures));
+	self->brush_color;
+	self->config;
+	self->device;
+	return self;
+}
 
-	int help;
-	int button;
-	int without_brush;
-	int is_daemonized;
-	int list_devices;
-
-	char * device;
-	char * brush_color;
-	char * config;
-};
-
-static struct args_t * handle_args(int argc, char * const *argv) {
+void mygestures_parse_arguments(Mygestures * self, int argc, char * const *argv) {
 
 	char opt;
 	static struct option opts[] = { { "help", no_argument, 0, 'h' }, { "without-brush", no_argument,
@@ -176,9 +207,6 @@ static struct args_t * handle_args(int argc, char * const *argv) {
 			{ "config",
 			required_argument, 0, 'c' }, { "brush-color", required_argument, 0, 'l' }, { "device",
 			required_argument, 0, 'd' }, { 0, 0, 0, 0 } };
-
-	struct args_t * result = malloc(sizeof(struct args_t));
-	bzero(result, sizeof(struct args_t));
 
 	while (1) {
 		opt = getopt_long(argc, argv, "b:c:d:hlwx:z", opts, NULL);
@@ -188,35 +216,35 @@ static struct args_t * handle_args(int argc, char * const *argv) {
 		switch (opt) {
 
 		case 'd':
-			result->device = optarg;
+			self->device = optarg;
 			break;
 
 		case 'b':
-			result->button = atoi(optarg);
+			self->button = atoi(optarg);
 			break;
 
 		case 'c':
-			result->config = optarg;
+			self->config = optarg;
 			break;
 
 		case 'x':
-			result->brush_color = optarg;
+			self->brush_color = optarg;
 			break;
 
 		case 'w':
-			result->without_brush = 1;
+			self->without_brush = 1;
 			break;
 
 		case 'l':
-			result->list_devices = 1;
+			self->list_devices = 1;
 			break;
 
 		case 'z':
-			result->is_daemonized = 1;
+			self->run_as_daemon = 1;
 			break;
 
 		case 'h':
-			result->help = 1;
+			self->help = 1;
 			break;
 
 		}
@@ -224,7 +252,7 @@ static struct args_t * handle_args(int argc, char * const *argv) {
 	}
 
 	if (optind < argc) {
-		result->config = argv[optind++];
+		self->config = argv[optind++];
 	}
 
 	if (optind < argc) {
@@ -233,36 +261,59 @@ static struct args_t * handle_args(int argc, char * const *argv) {
 			printf("%s ", argv[optind++]);
 		putchar('\n');
 	}
-	return result;
+
+}
+
+void mygestures_reload(Mygestures * self) {
+
+	if (self->config) {
+		printf("Loading custom configuration from %s\n", self->config);
+		self->engine = xml_load_engine_from_file(self->config);
+	} else {
+		printf("Loading default configuration\n");
+		self->engine = xml_load_engine_from_defaults();
+	}
+
+
+
+}
+
+void mygestures_start(Mygestures * self) {
+
+	Grabber * grabber = grabber_init(self->device, self->button, self->without_brush,
+			self->list_devices, self->brush_color);
+
+	grabber_event_loop(grabber, self->engine);
+
+
+
+
 }
 
 int main(int argc, char * const * argv) {
 
+	Mygestures *self = mygestures_new();
+
+	mygestures_parse_arguments(self, argc, argv);
+
 	signal(SIGINT, on_interrupt);
 	signal(SIGKILL, on_kill);
 
-	struct args_t * args = handle_args(argc, argv);
+	if (self->run_as_daemon)
+		daemonize();
 
-	if (args->help) {
-		usage();
+	if (self->help) {
+		mygestures_usage();
 		exit(0);
 	}
 
-	if (args->is_daemonized)
-		daemonize();
+	be_unique(self->device);
 
-	Engine * engine = xml_load_engine(args->config);
+	mygestures_reload(self);
 
-	Grabber * grabber = grabber_init(args->device, args->button, args->without_brush,
-			args->list_devices, args->brush_color);
+	mygestures_start(self);
 
-	be_unique(grabber_get_device_id(grabber));
-
-	grabber_event_loop(grabber, engine);
-	grabber_finalize(grabber);
-
-	clean_shared_memory();
-
+	mygestures_release_shm_file(self);
 
 	exit(0);
 

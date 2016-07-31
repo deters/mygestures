@@ -3,9 +3,7 @@
 
 #include "gestures.h"
 
-char * xml_get_default_filename();
-char * xml_get_template_filename();
-
-Engine * xml_load_engine(char * filename);
+Engine * xml_load_engine_from_file(char * filename);
+Engine * xml_load_engine_from_defaults();
 
 #endif

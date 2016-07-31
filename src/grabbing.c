@@ -66,7 +66,9 @@ static void grabbing_set_brush_color(Grabber * self, char * color) {
 
 	if (color) {
 
-		if (strcmp(color, "red") == 0)
+		if (strcmp(color, "") == 0)
+			self->brush_image = &brush_image_blue;
+		else if (strcmp(color, "green") == 0)
 			self->brush_image = &brush_image_red;
 		else if (strcmp(color, "green") == 0)
 			self->brush_image = &brush_image_green;
@@ -78,6 +80,7 @@ static void grabbing_set_brush_color(Grabber * self, char * color) {
 			self->brush_image = &brush_image_purple;
 		else if (strcmp(color, "blue") == 0)
 			self->brush_image = &brush_image_blue;
+
 		else
 			printf("no such color, %s. using \"blue\"\n", color);
 
@@ -719,7 +722,7 @@ void grabber_event_loop(Grabber * self, Engine * conf) {
 	printf("\n");
 	if (self->is_direct_touch) {
 		printf(
-				"Mygestures is running on device '%s'. Draw a gesture by touching the screen or run `mygestures -l` to list other devices.\n",
+				"Mygestures is running on device '%s'. Draw a gesture by touching it or run `mygestures -l` to list other devices.\n",
 				self->devicename);
 	} else {
 		printf(

@@ -3,8 +3,14 @@
 #include <libxml/tree.h>
 #include "assert.h"
 
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+
 #include "configuration.h"
 #include "gestures.h"
+
+const char * CONFIG_FILE_NAME = "mygestures.xml";
 
 static Action * xml_parse_action(xmlNode *node, Gesture * gest) {
 
@@ -285,46 +291,104 @@ char * xml_get_template_filename() {
 	return template_file;
 }
 
-/**
- * Reads the conf file
- */
-Engine * xml_load_engine(char * filename) {
+int cp(const char *from, const char *to) {
+	int fd_to, fd_from;
+	char buf[4096];
+	ssize_t nread;
+	int saved_errno;
+
+	fd_from = open(from, O_RDONLY);
+	if (fd_from < 0)
+		return -1;
+
+	fd_to = open(to, O_WRONLY | O_CREAT | O_EXCL, 0666);
+	if (fd_to < 0)
+		goto out_error;
+
+	while (nread = read(fd_from, buf, sizeof buf), nread > 0) {
+		char *out_ptr = buf;
+		ssize_t nwritten;
+
+		do {
+			nwritten = write(fd_to, out_ptr, nread);
+
+			if (nwritten >= 0) {
+				nread -= nwritten;
+				out_ptr += nwritten;
+			} else if (errno != EINTR) {
+				goto out_error;
+			}
+		} while (nread > 0);
+	}
+
+	if (nread == 0) {
+		if (close(fd_to) < 0) {
+			fd_to = -1;
+			goto out_error;
+		}
+		close(fd_from);
+
+		/* Success! */
+		return 0;
+	}
+
+	out_error: saved_errno = errno;
+
+	close(fd_from);
+	if (fd_to >= 0)
+		close(fd_to);
+
+	errno = saved_errno;
+	return -1;
+}
+
+Engine * xml_load_engine_from_defaults() {
 
 	Engine * eng = engine_new();
 
 	int err = 0;
 
-	if (filename) {
-		err = xml_parse_file(eng, filename);
+	char * filename = xml_get_default_filename();
 
+	FILE * file = fopen(filename, "r");
+
+	if (!file) {
+		char * template = xml_get_template_filename();
+		err = cp(template, filename);
 		if (err) {
-			printf("Error loading custom configuration from '%s'\n", filename);
+			printf("Error creating default configuration on '%s' from '%s'\n", filename, template);
+			return err;
 		}
-
 	} else {
+		fclose(file);
+	}
 
-		//char * filename = "";
+	err = xml_parse_file(eng, filename);
 
-		filename = xml_get_default_filename();
-		err = xml_parse_file(eng, filename);
-
-		if (err) {
-			printf("Error loading default configuration from '%s'\n", filename);
-
-			filename = xml_get_template_filename();
-			err = xml_parse_file(eng, filename);
-
-			if (err) {
-				printf("Error loading template configuration from '%s'\n", filename);
-
-			}
-
-		}
-
+	if (err) {
+		printf("Error loading configuration from '%s'\n", filename);
 	}
 
 	printf("Loaded %i gestures from '%s'.\n", engine_get_gestures_count(eng), filename);
 
+	return eng;
+
+}
+
+Engine * xml_load_engine_from_file(char * filename) {
+
+	Engine * eng = engine_new();
+
+	int err = 0;
+
+	err = xml_parse_file(eng, filename);
+
+	if (err) {
+		printf("Error loading custom configuration from '%s'\n", filename);
+		return NULL;
+	}
+
+	printf("Loaded %i gestures from '%s'.\n", engine_get_gestures_count(eng), filename);
 
 	return eng;
 
