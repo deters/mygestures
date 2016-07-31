@@ -801,10 +801,6 @@ void grabber_event_loop(Grabber * self, Engine * conf) {
 
 }
 
-int grabber_get_device_id(Grabber * self) {
-	return self->deviceid;
-}
-
 
 char * grabber_get_device_name(Grabber * self) {
 	return self->devicename;

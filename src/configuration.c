@@ -357,7 +357,7 @@ Engine * xmlconfig_load_engine_from_defaults() {
 		err = cp(template, filename);
 		if (err) {
 			fprintf(stderr,"Error creating default configuration on '%s' from '%s'\n", filename, template);
-			return err;
+			return NULL;
 		}
 	} else {
 		fclose(file);

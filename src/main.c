@@ -220,9 +220,6 @@ static void daemonize() {
 Mygestures * mygestures_new() {
 	Mygestures *self = malloc(sizeof(Mygestures));
 	bzero(self, sizeof(Mygestures));
-	self->brush_color;
-	self->custom_config_file;
-	self->device;
 	return self;
 }
 
@@ -338,6 +335,8 @@ void mygestures_start(Mygestures * self) {
 			self->list_devices, self->brush_color);
 
 	grabber_event_loop(grabber, self->gestures_configuration);
+
+	grabber_finalize(grabber);
 
 }
 

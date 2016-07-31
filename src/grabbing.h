@@ -24,7 +24,6 @@ extern const char *modifiers_names[];
 /* valid strokes */
 extern const char stroke_names[];
 
-//void mouse_click(Display *display, int button);
 
 typedef struct {
 
@@ -64,9 +63,6 @@ typedef struct {
 Grabber * grabber_init(char * device_name, int button, int without_brush, int print_devices, char * brush_color);
 void grabber_event_loop(Grabber * self, Engine * conf);
 void grabber_finalize(Grabber * self);
-
-char * grabber_get_device_name(Grabber * self);
-int grabber_get_device_id(Grabber * self);
 
 #endif /* GRABBING_H_ */
 
