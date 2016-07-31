@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 #include "actions.h"
 #include "gestures.h"
 
@@ -78,42 +77,126 @@ void action_lower(Display *dpy, Window w) {
 	return;
 }
 
+/*
+ * Taken from wmctrl
+ */
+static int client_msg(Display *disp, Window win, char *msg, unsigned long data0, unsigned long data1, unsigned long data2, unsigned long data3, unsigned long data4) {
+	XEvent event;
+	long mask = SubstructureRedirectMask | SubstructureNotifyMask;
+
+	event.xclient.type = ClientMessage;
+	event.xclient.serial = 0;
+	event.xclient.send_event = True;
+	event.xclient.message_type = XInternAtom(disp, msg, False);
+	event.xclient.window = win;
+	event.xclient.format = 32;
+	event.xclient.data.l[0] = data0;
+	event.xclient.data.l[1] = data1;
+	event.xclient.data.l[2] = data2;
+	event.xclient.data.l[3] = data3;
+	event.xclient.data.l[4] = data4;
+
+	if (XSendEvent(disp, DefaultRootWindow(disp), False, mask, &event)) {
+		return EXIT_SUCCESS;
+	} else {
+		fprintf(stderr, "Cannot send %s event.\n", msg);
+		return EXIT_FAILURE;
+	}
+
+
+
+
+
+}
+
+
+
+
+/**
+ * Maximize the focused window at the given Display.
+ *
+ * PUBLIC
+ */
+void action_toggle_maximized(Display *dpy, Window w) {
+
+
+	unsigned long action;
+		Atom prop1 = 0;
+		Atom prop2 = 0;
+
+		action = _NET_WM_STATE_TOGGLE;
+
+		char *tmp_prop2, *tmp2;
+		tmp_prop2 = "_NET_WM_STATE_MAXIMIZED_HORZ";
+		prop2 = XInternAtom(dpy, tmp_prop2, False);
+		char * tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
+
+		prop1 = XInternAtom(dpy, tmp_prop1, False);
+
+		 client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long) prop1,
+				(unsigned long) prop2, 0, 0);
+
+}
+
+
+
+/**
+ * Maximize the focused window at the given Display.
+ *
+ * PUBLIC
+ */
+void action_restore(Display *dpy, Window w) {
+
+
+	unsigned long action;
+		Atom prop1 = 0;
+		Atom prop2 = 0;
+
+		action = _NET_WM_STATE_REMOVE;
+
+		char *tmp_prop2, *tmp2;
+		tmp_prop2 = "_NET_WM_STATE_MAXIMIZED_HORZ";
+		prop2 = XInternAtom(dpy, tmp_prop2, False);
+		char * tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
+
+		prop1 = XInternAtom(dpy, tmp_prop1, False);
+
+		 client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long) prop1,
+				(unsigned long) prop2, 0, 0);
+
+}
+
+
+
+
 /**
  * Maximize the focused window at the given Display.
  *
  * PUBLIC
  */
 void action_maximize(Display *dpy, Window w) {
-	/*
-	 int width = XDisplayWidth(dpy, DefaultScreen(dpy));
-	 int heigth = XDisplayHeight(dpy, DefaultScreen(dpy));
 
-	 XMoveResizeWindow(dpy, w, 0, 0, width, heigth - 50);
 
-	 return;
+	unsigned long action;
+		Atom prop1 = 0;
+		Atom prop2 = 0;
 
-	 */
-	XEvent xev;
-	Atom wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
-	Atom max_horz = XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-	Atom max_vert = XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_VERT", False);
+		action = _NET_WM_STATE_ADD;
 
-	memset(&xev, 0, sizeof(xev));
-	xev.type = ClientMessage;
-	xev.xclient.window = w;
-	xev.xclient.message_type = wm_state;
-	xev.xclient.format = 32;
-	xev.xclient.data.l[0] = _NET_WM_STATE_ADD;
-	xev.xclient.data.l[1] = max_horz;
-	xev.xclient.data.l[2] = max_vert;
+		char *tmp_prop2, *tmp2;
+		tmp_prop2 = "_NET_WM_STATE_MAXIMIZED_HORZ";
+		prop2 = XInternAtom(dpy, tmp_prop2, False);
+		char * tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
 
-	XSendEvent(dpy, DefaultRootWindow(dpy), False, SubstructureNotifyMask, &xev);
+		prop1 = XInternAtom(dpy, tmp_prop1, False);
 
-	fprintf(stderr, "maximizou\n");
-
-	return;
+		 client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long) prop1,
+				(unsigned long) prop2, 0, 0);
 
 }
+
+
+
 
 /**
  * Fake key event

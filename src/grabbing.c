@@ -364,6 +364,12 @@ static void execute_action(Display *dpy, Action *action, Window focused_window) 
 		case ACTION_MAXIMIZE:
 			action_maximize(dpy, focused_window);
 			break;
+		case ACTION_RESTORE:
+			action_restore(dpy, focused_window);
+			break;
+		case ACTION_TOGGLE_MAXIMIZED:
+			action_toggle_maximized(dpy, focused_window);
+			break;
 		case ACTION_ROOT_SEND:
 			action_keypress(dpy, action->original_str);
 			break;
@@ -755,15 +761,15 @@ void grabber_event_loop(Grabber * self, Engine * conf) {
 				if (grab) {
 
 					printf("\n");
-					printf("Window information:\n");
-					printf("     Title = \"%s\"\n", grab->focused_window->title);
-					printf("     Class = \"%s\"\n", grab->focused_window->class);
+					printf("Active window:\n");
+					printf("     Title: \"%s\"\n", grab->focused_window->title);
+					printf("     Class: \"%s\"\n", grab->focused_window->class);
 
 					Gesture * gest = engine_process_gesture(conf, grab);
 
 					if (gest){
-						printf("Gesture information:\n");
-						printf("     Movement '%s' triggered gesture '%s'\n",
+						printf("Found gesture:\n");
+						printf("     Movement '%s' matched gesture '%s'\n",
 							gest->movement->name, gest->name);
 					}
 
@@ -774,7 +780,7 @@ void grabber_event_loop(Grabber * self, Engine * conf) {
 
 						for (j = 0; j < gest->actions_count; ++j) {
 							Action * a = gest->actions[j];
-							printf("      Action: %s\n", a->original_str);
+							printf("      Executing action: %s\n", a->original_str);
 							execute_action(self->dpy, a, get_focused_window(self->dpy));
 						}
 

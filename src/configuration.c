@@ -57,6 +57,10 @@ static Action * xml_parse_action(xmlNode *node, Gesture * gest) {
 		id = ACTION_RAISE;
 	} else if (strcasecmp(action_name, "maximize") == 0) {
 		id = ACTION_MAXIMIZE;
+	} else if (strcasecmp(action_name, "restore") == 0) {
+		id = ACTION_RESTORE;
+	} else if (strcasecmp(action_name, "toggle-maximized") == 0) {
+		id = ACTION_TOGGLE_MAXIMIZED;
 	} else if (strcasecmp(action_name, "keypress") == 0) {
 		id = ACTION_ROOT_SEND;
 	} else if (strcasecmp(action_name, "exec") == 0) {

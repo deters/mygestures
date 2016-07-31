@@ -26,6 +26,8 @@ void action_kill(Display *dpy, Window w);
 void action_raise(Display *dpy, Window w);
 void action_lower(Display *dpy, Window w);
 void action_maximize(Display *dpy, Window w);
+void action_restore(Display *dpy, Window w);
+void action_toggle_maximized(Display *dpy, Window w);
 void action_keypress(Display *dpy, char *data);
 
 #endif
