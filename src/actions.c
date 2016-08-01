@@ -130,7 +130,7 @@ static int client_msg(Display *disp, Window win, char *msg, unsigned long data0,
 	}
 
 
-
+	XFlush(disp);
 
 
 }
@@ -161,6 +161,7 @@ void action_toggle_maximized(Display *dpy, Window w) {
 
 		 client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long) prop1,
 				(unsigned long) prop2, 0, 0);
+
 
 }
 
@@ -218,6 +219,8 @@ void action_maximize(Display *dpy, Window w) {
 
 		 client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long) prop1,
 				(unsigned long) prop2, 0, 0);
+
+
 
 }
 

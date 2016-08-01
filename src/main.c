@@ -116,7 +116,6 @@ static void send_kill_message() {
 
 }
 
-
 static void send_reload_message() {
 
 	/* if shared message contains a PID, kill that process */
@@ -132,9 +131,7 @@ static void send_reload_message() {
 
 	}
 
-
 }
-
 
 static void alloc_shared_memory(char * device_name) {
 	// the unique_identifier = mygestures + uid + device being grabbed
@@ -143,7 +140,8 @@ static void alloc_shared_memory(char * device_name) {
 		int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s", getuid(),
 				char_replace(device_name, '/', '%'));
 	} else {
-		int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s", getuid(), "DEFAULT_DEVICE");
+		int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s", getuid(),
+				"DEFAULT_DEVICE");
 	}
 
 	int shared_seg_size = sizeof(struct shm_message);
@@ -161,8 +159,6 @@ static void alloc_shared_memory(char * device_name) {
 		perror("In mmap()");
 		exit(1);
 	}
-
-
 
 }
 
@@ -192,7 +188,7 @@ static void on_interrupt(int a) {
 	if (message->kill) {
 		printf("\nMygestures on PID %d asked me to exit.\n", message->pid);
 		// shared memory now belongs to the other process. will not be released
-	} else if (message->reload){
+	} else if (message->reload) {
 		printf("\nMygestures on PID %d asked me to reload.\n", message->pid);
 		message->pid = getpid();
 		message->reload = 0;
@@ -222,7 +218,6 @@ Mygestures * mygestures_new() {
 	bzero(self, sizeof(Mygestures));
 	return self;
 }
-
 
 void mygestures_load_configuration(Mygestures * self) {
 
@@ -327,15 +322,11 @@ void mygestures_parse_arguments(Mygestures * self, int argc, char * const *argv)
 
 }
 
-
-
 void mygestures_run(Mygestures * self) {
 
 	Grabber * grabber = grabber_init(self->device, self->button, self->without_brush,
 			self->list_devices, self->brush_color);
-
-	grabber_event_loop(grabber, self->gestures_configuration);
-
+	grabber_loop(grabber, self->gestures_configuration);
 	grabber_finalize(grabber);
 
 }

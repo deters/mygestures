@@ -13,7 +13,6 @@
 #include "drawing/drawing-brush.h"
 #include "gestures.h"
 
-
 /* modifier keys */
 enum {
 	SHIFT = 0, CTRL, ALT, WIN, SCROLL, NUM, CAPS, MOD_END
@@ -24,7 +23,6 @@ extern const char *modifiers_names[];
 
 /* valid strokes */
 extern const char stroke_names[];
-
 
 typedef struct {
 
@@ -46,6 +44,10 @@ typedef struct {
 	int old_x;
 	int old_y;
 
+	int delta_min;
+
+	int synaptics;
+
 	int rought_old_x;
 	int rought_old_y;
 
@@ -62,7 +64,7 @@ typedef struct {
 } Grabber;
 
 Grabber * grabber_init(char * device_name, int button, int without_brush, int print_devices, char * brush_color);
-void grabber_event_loop(Grabber * self, Engine * conf);
+void grabber_loop(Grabber * self, Engine * conf);
 void grabber_finalize(Grabber * self);
 
 #endif /* GRABBING_H_ */
