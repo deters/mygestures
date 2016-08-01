@@ -1,0 +1,27 @@
+mygestures (1.2) stable; urgency=low
+
+  * Fixed unused dependencies
+  * Fixed identation of configuration file.
+  * Releasing package as "stable".
+
+ -- Lucas Augusto Deters <lucasdeters@gmail.com>  Thu, 16 Oct 2014 10:22:00 -0300
+
+mygestures (1.1) unstable; urgency=low
+
+  * Fixed segfault geting window classes
+
+ -- Lucas Augusto Deters <lucasdeters@gmail.com>  Thu, 08 Aug 2014 23:41:50 -0300
+
+mygestures (1.0) unstable; urgency=low
+
+  * First stable release.
+  * Fixed known bugs
+  * Fixed known problems with build system.
+
+ -- Lucas Augusto Deters <lucasdeters@gmail.com>  Thu, 07 Aug 2014 11:04:03 -0300
+
+mygestures (0.9) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Lucas Augusto Deters <lucasdeters@gmail.com>  Mon, 30 Sep 2013 00:45:29 -0300
