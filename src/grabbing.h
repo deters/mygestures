@@ -46,6 +46,8 @@ typedef struct {
 	int old_x;
 	int old_y;
 
+	int synaptics;
+
 	int rought_old_x;
 	int rought_old_y;
 
@@ -63,6 +65,7 @@ typedef struct {
 
 Grabber * grabber_init(char * device_name, int button, int without_brush, int print_devices, char * brush_color);
 void grabber_event_loop(Grabber * self, Engine * conf);
+void grabber_syn_loop(Grabber * self, Engine * conf);
 void grabber_finalize(Grabber * self);
 
 #endif /* GRABBING_H_ */

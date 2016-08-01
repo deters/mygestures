@@ -334,9 +334,17 @@ void mygestures_run(Mygestures * self) {
 	Grabber * grabber = grabber_init(self->device, self->button, self->without_brush,
 			self->list_devices, self->brush_color);
 
-	grabber_event_loop(grabber, self->gestures_configuration);
 
+
+
+	grabber_syn_loop(grabber, self->gestures_configuration);
+	//shm_process_commands(1, 10);
 	grabber_finalize(grabber);
+
+
+
+
+
 
 }
 
