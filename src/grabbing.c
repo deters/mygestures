@@ -648,13 +648,12 @@ static int get_touch_status(XIDeviceInfo * device) {
 
 Grabber * grabber_init(char * device_name, int button, int without_brush, int print_devices, char * brush_color) {
 
+
 	Grabber * self = malloc(sizeof(Grabber));
 	bzero(self, sizeof(Grabber));
 
-	assert(self);
 
 	grabber_open_display(self);
-
 
 	self->button = button;
 	self->without_brush = without_brush;
@@ -662,6 +661,15 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 	self->devicename = device_name;
 	if (!self->devicename) {
 		self->devicename = "Virtual core pointer";
+	}
+
+
+	if (strcasecmp(self->devicename, "SYNAPTICS") == 0) {
+		self->synaptics = 1;
+		self->delta_min = 200;
+	} else {
+		self->synaptics = 0;
+		self->delta_min = 30;
 	}
 
 	grabbing_set_brush_color(self, brush_color);
@@ -692,7 +700,7 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 				printf("   '%s'\n", device->name);
 			} else {
 
-				if (strcmp(device->name, self->devicename) == 0) {
+				if (strcasecmp(device->name, self->devicename) == 0) {
 					self->deviceid = device->deviceid;
 					self->is_direct_touch = get_touch_status(device);
 				}
@@ -727,10 +735,7 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 		exit(0);
 	}
 
-	if (strcmp(device->name, "SYNAPTICS") == 0) {
-		self->synaptics = 1;
-		self->delta_min = 200;
-	}
+
 
 	self->fine_direction_sequence = (char *) malloc(sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
 	self->fine_direction_sequence[0] = '\0';
@@ -804,7 +809,8 @@ grabber_synaptics_shm_init() {
 void grabber_synaptics_loop(Grabber * self, Engine * conf) {
 
 	printf(
-			"\nMygestures is running on synaptics .\nDraw a gesture by touching touchpad with 3 fingersor run `mygestures -l` to list other devices.\n");
+			"\nMygestures is running on 3 fingers multitouch synaptics driver.\n");
+	printf("Run `mygestures -l` to list other devices.\n");
 	printf("\n");
 
 	SynapticsSHM *synshm = NULL;
@@ -835,11 +841,11 @@ void grabber_synaptics_loop(Grabber * self, Engine * conf) {
 			// release
 			if (cur.numFingers == 0 && max_fingers >= 3) {
 
-				printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
-						get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth,
-						cur.left, cur.right, cur.up, cur.down, cur.middle, cur.multi[0],
-						cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
-						cur.multi[6], cur.multi[7]);
+//				printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
+//						get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth,
+//						cur.left, cur.right, cur.up, cur.down, cur.middle, cur.multi[0],
+//						cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
+//						cur.multi[6], cur.multi[7]);
 
 				printf("stopped\n");
 
@@ -890,22 +896,22 @@ void grabber_synaptics_loop(Grabber * self, Engine * conf) {
 
 			} else if (cur.numFingers >= 3 && max_fingers >= 3) {
 
-				printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
-						get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth,
-						cur.left, cur.right, cur.up, cur.down, cur.middle, cur.multi[0],
-						cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
-						cur.multi[6], cur.multi[7]);
+//				printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
+//						get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth,
+//						cur.left, cur.right, cur.up, cur.down, cur.middle, cur.multi[0],
+//						cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
+//						cur.multi[6], cur.multi[7]);
 
 				grabbing_update_movement(self, cur.x, cur.y);
 
 				//// got > 3 fingers
 			} else if (cur.numFingers >= 3 && max_fingers < 3) {
 
-				printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
-						get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth,
-						cur.left, cur.right, cur.up, cur.down, cur.middle, cur.multi[0],
-						cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
-						cur.multi[6], cur.multi[7]);
+//				printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
+//						get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth,
+//						cur.left, cur.right, cur.up, cur.down, cur.middle, cur.multi[0],
+//						cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
+//						cur.multi[6], cur.multi[7]);
 
 				max_fingers = max_fingers + 1;
 
