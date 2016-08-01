@@ -7,7 +7,7 @@ Pre-Reqs (debian)
 Build & Install from source:
 
  $ cd mygestures/
- $ autogen.sh
+ $ ./autogen.sh
  $ make
  $ sudo make install
 
