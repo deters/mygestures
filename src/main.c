@@ -70,7 +70,7 @@ static void mygestures_usage() {
 	printf(" -d, --device <DEVICENAME>  : Device to grab.\n");
 	printf("                              Default: 'Virtual core pointer'\n");
 	printf(" -l, --device-list          : Print all available devices an exit.\n");
-	printf(" -r, --reconfigure          : Reload mygestures configuration.\n");
+	//printf(" -r, --reconfigure          : Reload mygestures configuration.\n");
 	printf(" -z, --daemonize            : Fork the process and return.\n");
 	printf(" -x, --brush-color          : Brush color.\n");
 	printf("                              Default: blue\n");
@@ -96,7 +96,7 @@ static void send_kill_message() {
 
 	/* if shared message contains a PID, kill that process */
 	if (message->pid > 0) {
-		fprintf(stdout, "Asking mygestures running on pid %d to exit.\n\n", message->pid);
+		fprintf(stdout, "\nAsking mygestures running on pid %d to exit.\n\n", message->pid);
 
 		int running = message->pid;
 
@@ -121,7 +121,7 @@ static void send_reload_message() {
 
 	/* if shared message contains a PID, kill that process */
 	if (message->pid > 0) {
-		fprintf(stdout, "Asking mygestures running on pid %d to reload.\n", message->pid);
+		fprintf(stdout, "\nAsking mygestures running on pid %d to reload.\n", message->pid);
 
 		int running = message->pid;
 
@@ -190,15 +190,15 @@ static void on_kill(int a) {
 static void on_interrupt(int a) {
 
 	if (message->kill) {
-		printf("Mygestures on PID %d asked me to exit.\n", message->pid);
+		printf("\nMygestures on PID %d asked me to exit.\n", message->pid);
 		// shared memory now belongs to the other process. will not be released
 	} else if (message->reload){
-		printf("Mygestures on PID %d asked me to reload.\n", message->pid);
+		printf("\nMygestures on PID %d asked me to reload.\n", message->pid);
 		message->pid = getpid();
 		message->reload = 0;
 		return;
 	} else {
-		printf("Received the interrupt signal.\n");
+		printf("\nReceived the interrupt signal.\n");
 		release_shared_memory();
 
 	}

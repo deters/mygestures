@@ -13,12 +13,18 @@
 
 const char * CONFIG_FILE_NAME = "mygestures.xml";
 
-static Action * xml_parse_action(xmlNode *node, Gesture * gest) {
+void xml_parse_action(xmlNode *node, Gesture * gest) {
+
+	assert(node);
+	assert(gest);
+
+	Action * action = NULL;
 
 	char * action_name = NULL;
 	char * action_value = NULL;
 
 	xmlAttr* attribute = node->properties;
+
 	while (attribute && attribute->name && attribute->children) {
 
 		char * name = (char *) attribute->name;
@@ -36,15 +42,10 @@ static Action * xml_parse_action(xmlNode *node, Gesture * gest) {
 
 	if (!action_name) {
 		free(action_value);
-		fprintf(stderr, "Missing action name\n");
-		return NULL;
+		printf("Missing action name at line %d\n", node->line);
+		return;
 	}
 
-	if (!action_value) {
-		action_value = "";
-	}
-
-	Action * a = NULL;
 
 	int id = ACTION_ERROR;
 
@@ -67,16 +68,24 @@ static Action * xml_parse_action(xmlNode *node, Gesture * gest) {
 	} else if (strcasecmp(action_name, "exec") == 0) {
 		id = ACTION_EXECUTE;
 	} else {
-		fprintf(stderr, "unknown gesture: %s\n", action_name);
+		printf("unknown action '%s' at line %d\n", action_name, node->line);
+		free(action_name);
+		free(action_value);
+		return;
 	}
 
-	a = gesture_create_action(gest, id, action_value);
+	if (!action_value) {
+		action_value = "";
+	}
 
-	return a;
+	gesture_create_action(gest, id, action_value);
 
 }
 
 static Gesture * xml_parse_gesture(xmlNode *node, Context * context) {
+
+	assert(node);
+	assert(context);
 
 	char * gesture_name = NULL;
 	char * gesture_movement = NULL;
@@ -96,6 +105,18 @@ static Gesture * xml_parse_gesture(xmlNode *node, Context * context) {
 		attribute = attribute->next;
 	}
 
+	if (!gesture_name) {
+		printf("missing gesture name at line %d\n", node->line);
+		free(gesture_movement);
+		return NULL;
+	}
+
+	if (!gesture_movement) {
+		printf("missing gesture movement at line %d\n", node->line);
+		free(gesture_name);
+		return NULL;
+	}
+
 	Gesture * gest = context_create_gesture(context, gesture_name, gesture_movement);
 
 	xmlNode *cur_node = NULL;
@@ -107,8 +128,10 @@ static Gesture * xml_parse_gesture(xmlNode *node, Context * context) {
 
 			if (strcasecmp(element, "do") == 0) {
 
-				Action * a = xml_parse_action(cur_node, gest);
+				xml_parse_action(cur_node, gest);
 
+			} else {
+				printf("unknown tag '%s' at line %d\n", element, cur_node->line);
 			}
 
 		}
@@ -143,9 +166,9 @@ static Context * xml_parse_context(xmlNode *node, Engine * eng) {
 	// TODO: criar o context e só depois ir adicionando os elementos.
 
 	if (!context_name) {
+		printf( "Missing context name\n");
 		free(window_title);
 		free(window_class);
-		fprintf(stderr, "Missing context name\n");
 		return NULL;
 	}
 
@@ -172,6 +195,8 @@ static Context * xml_parse_context(xmlNode *node, Engine * eng) {
 
 				Gesture * gest = xml_parse_gesture(cur_node, ctx);
 
+			} else {
+				printf("unknown tag '%s' at line %d\n", element, cur_node->line);
 			}
 		}
 
@@ -181,14 +206,18 @@ static Context * xml_parse_context(xmlNode *node, Engine * eng) {
 
 }
 
-static Movement * xml_parse_movement(xmlNode *node, Engine * eng) {
+void xml_parse_movement(xmlNode *node, Engine * eng) {
 
-	xmlNode *cur_node = NULL;
+
+	assert(node);
+	assert(eng);
+
+	//xmlNode *cur_node = NULL;
 
 	char * movement_name = NULL;
 	char * movement_strokes = NULL;
 
-	Movement * ans = NULL;
+	Movement * movement = NULL;
 
 	xmlAttr* attribute = node->properties;
 	while (attribute && attribute->name && attribute->children) {
@@ -205,16 +234,27 @@ static Movement * xml_parse_movement(xmlNode *node, Engine * eng) {
 		attribute = attribute->next;
 	}
 
-	if (movement_name && movement_strokes) {
-
-		ans = engine_create_movement(eng, movement_name, movement_strokes);
+	if (!movement_name) {
+		printf("missing movement name at line %d\n", node->line);
+		free(movement_strokes);
+		return ;
 	}
 
-	return ans;
+	if (!movement_strokes){
+		printf("missing movement value at line %d\n", node->line);
+		free(movement_name);
+		return ;
+	}
+
+	engine_create_movement(eng, movement_name, movement_strokes);
+
 
 }
 
-static int xml_parse_root(xmlNode *node, Engine * eng) {
+void xml_parse_root(xmlNode *node, Engine * eng) {
+
+	assert(node);
+	assert(eng);
 
 	xmlNode *cur_node = NULL;
 
@@ -237,15 +277,13 @@ static int xml_parse_root(xmlNode *node, Engine * eng) {
 				contexts_count += 1;
 
 			} else {
-				fprintf(stderr, "Expecting only 'movement' or 'context' at root. Ignoring\n");
+				printf("unknown tag '%s' at line %d\n", element, cur_node->line);
 			}
 
 		}
 
 	}
 
-	//fprintf(stdout, "Loaded %i gestures in %i contexts.\n", gestures_count, contexts_count);
-	return 0;
 
 }
 
@@ -263,7 +301,7 @@ static int xml_parse_file(Engine * conf, char * filename) {
 	}
 
 	root_element = xmlDocGetRootElement(doc);
-	result = xml_parse_root(root_element, conf);
+	xml_parse_root(root_element, conf);
 
 	xmlFreeDoc(doc);
 	xmlCleanupParser();

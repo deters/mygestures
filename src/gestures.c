@@ -129,6 +129,11 @@ Gesture * context_create_gesture(Context * self, char * gesture_name, char * ges
 
 	ans->name = gesture_name;
 	ans->movement = engine_find_movement_by_name(self->engine, gesture_movement);
+
+	if (!ans->movement) {
+		printf("Movement '%s' referenced by gesture '%s' is unknown. The gesture will be inaccessible.\n", gesture_movement, gesture_name);
+	}
+
 	ans->context = self;
 	ans->actions_count = 0;
 	ans->actions = malloc(sizeof(Action) * 20);

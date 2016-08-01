@@ -721,11 +721,11 @@ void grabber_event_loop(Grabber * self, Engine * conf) {
 	printf("\n");
 	if (self->is_direct_touch) {
 		printf(
-				"Mygestures is running on device '%s'.\nDraw a gesture by touching it or run `mygestures -l` to list other devices.\n\n",
+				"\nMygestures is running on device '%s'.\nDraw a gesture by touching it or run `mygestures -l` to list other devices.\n",
 				self->devicename);
 	} else {
 		printf(
-				"Mygestures is running on device '%s'.\nUse button %d on this device to draw a gesture or run `mygestures -l` to list other devices.\n\n",
+				"\nMygestures is running on device '%s'.\nUse button %d on this device to draw a gesture or run `mygestures -l` to list other devices.\n",
 				self->devicename, self->button);
 	}
 
@@ -759,30 +759,33 @@ void grabber_event_loop(Grabber * self, Engine * conf) {
 				if (grab) {
 
 					printf("\n");
-					printf("Active window:\n");
-					printf("     Title: \"%s\"\n", grab->focused_window->title);
-					printf("     Class: \"%s\"\n", grab->focused_window->class);
+					printf("     Window title: \"%s\"\n", grab->focused_window->title);
+					printf("     Window class: \"%s\"\n", grab->focused_window->class);
 
 					Gesture * gest = engine_process_gesture(conf, grab);
 
 					if (gest){
-						printf("Found gesture:\n");
-						printf("     Movement '%s' matched gesture '%s'\n",
-							gest->movement->name, gest->name);
-					}
-
-
-					if (gest) {
+						printf("     Movement '%s' matched gesture '%s' on context '%s'\n",
+							gest->movement->name, gest->name, gest->context->name);
 
 						int j = 0;
 
 						for (j = 0; j < gest->actions_count; ++j) {
 							Action * a = gest->actions[j];
-							printf("      Executing action: %s %s\n", get_action_name(a->type), a->original_str);
+							printf("     Executing action: %s %s\n", get_action_name(a->type), a->original_str);
 							execute_action(self->dpy, a, get_focused_window(self->dpy));
 						}
 
+					} else {
+
+						for (int i = 0; i < grab->sequences_count; ++i) {
+							char * movement = grab->sequences[i];
+							printf("     Sequence '%s' does not match any known movement.\n",movement);
+						}
+
 					}
+
+					printf("\n");
 
 					free_grabbed(grab);
 
