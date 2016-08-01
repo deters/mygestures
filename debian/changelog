@@ -1,3 +1,11 @@
+mygestures (2.0) stable; urgency=low
+  * Huge refactoring
+  * Many bugs fixed
+  * xinput support
+  * synaptics multitouch support (experimental)
+
+ -- Lucas Augusto Deters <lucasdeters@gmail.com>  Mon, 01 Aug 2016 02:51:00 -0300
+
 mygestures (1.2) stable; urgency=low
 
   * Fixed unused dependencies
