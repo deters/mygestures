@@ -75,7 +75,7 @@
 
     <context name="Terminal windows" windowclass=".*(Term|term).*" windowtitle=".*">
 
-        <gesture name="Open new tab (Ctrl+Shift+T)" movement="Down">
+        <gesture name="Open new tab (Ctrl+Shift+T)" movement="T">
             <do action="keypress" value="Control_L+Shift_L+T" />
         </gesture>
 
@@ -155,8 +155,8 @@
             <do action="keypress" value="Control_L+S" />
         </gesture>
 
-        <gesture name="New tab (Ctrl+T)" movement="Down">
-            <do action="keypress" value="Control_L+T" />
+        <gesture name="Escape" movement="Up">
+            <do action="keypress" value="Escape" />
         </gesture>
 
         <gesture name="New tab (Ctrl+T)" movement="T">

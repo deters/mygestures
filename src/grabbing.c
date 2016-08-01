@@ -847,7 +847,7 @@ void grabber_synaptics_loop(Grabber * self, Engine * conf) {
 //						cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
 //						cur.multi[6], cur.multi[7]);
 
-				printf("stopped\n");
+//				printf("stopped\n");
 
 				// reset max fingers
 				max_fingers = 0;
@@ -917,7 +917,7 @@ void grabber_synaptics_loop(Grabber * self, Engine * conf) {
 
 				if (max_fingers >= 3) {
 
-					printf("started\n");
+//					printf("started\n");
 
 					grabbing_start_movement(self, cur.x, cur.y);
 
