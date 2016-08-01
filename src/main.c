@@ -44,6 +44,8 @@ typedef struct mygestures_ {
 	int run_as_daemon;
 	int list_devices;
 	int reconfigure;
+	int verbose;
+	int debug;
 	char * custom_config_file;
 	char * device;
 	char * brush_color;
@@ -72,10 +74,11 @@ static void mygestures_usage() {
 	printf(" -l, --device-list          : Print all available devices an exit.\n");
 	//printf(" -r, --reconfigure          : Reload mygestures configuration.\n");
 	printf(" -z, --daemonize            : Fork the process and return.\n");
-	printf(" -x, --brush-color          : Brush color.\n");
+	printf(" -c, --brush-color          : Brush color.\n");
 	printf("                              Default: blue\n");
 	printf("                              Options: yellow, white, red, green, purple, blue\n");
 	printf(" -w, --without-brush        : Don't paint the gesture on screen.\n");
+	printf(" -v, --verbose              : Increase the verbosity\n");
 	printf(" -h, --help                 : Help\n");
 }
 
@@ -232,16 +235,15 @@ void mygestures_load_configuration(Mygestures * self) {
 void mygestures_parse_arguments(Mygestures * self, int argc, char * const *argv) {
 
 	char opt;
-	static struct option opts[] = { { "help", no_argument, 0, 'h' }, { "without-brush", no_argument,
-			0, 'w' }, { "daemonize", no_argument, 0, 'z' }, { "reconfigure", no_argument, 0, 'r' },
-			{ "button", required_argument, 0, 'b' }, { "config",
-			required_argument, 0, 'c' }, { "brush-color", required_argument, 0, 'l' }, { "device",
+	static struct option opts[] = { { "verbose", no_argument, 0, 'v' }, { "help", no_argument, 0, 'h' }, { "without-brush", no_argument,
+			0, 'w' }, { "daemonize", no_argument, 0, 'z' }, /*{ "reconfigure", no_argument, 0, 'r' },*/
+			{ "button", required_argument, 0, 'b' }, { "brush-color", required_argument, 0, 'b' }, { "device",
 			required_argument, 0, 'd' }, { 0, 0, 0, 0 } };
 
 	/* read params */
 
 	while (1) {
-		opt = getopt_long(argc, argv, "b:c:d:hlwx:zr", opts, NULL);
+		opt = getopt_long(argc, argv, "b:c:d:vhlwx:zr", opts, NULL);
 		if (opt == -1)
 			break;
 
@@ -256,14 +258,6 @@ void mygestures_parse_arguments(Mygestures * self, int argc, char * const *argv)
 			break;
 
 		case 'c':
-			self->custom_config_file = optarg;
-			break;
-
-		case 'r':
-			self->reconfigure = 1;
-			break;
-
-		case 'x':
 			self->brush_color = optarg;
 			break;
 
@@ -277,6 +271,10 @@ void mygestures_parse_arguments(Mygestures * self, int argc, char * const *argv)
 
 		case 'z':
 			self->run_as_daemon = 1;
+			break;
+
+		case 'v':
+			self->verbose = 1;
 			break;
 
 		case 'h':
@@ -325,7 +323,7 @@ void mygestures_parse_arguments(Mygestures * self, int argc, char * const *argv)
 void mygestures_run(Mygestures * self) {
 
 	Grabber * grabber = grabber_init(self->device, self->button, self->without_brush,
-			self->list_devices, self->brush_color);
+			self->list_devices, self->brush_color, self->verbose);
 	grabber_loop(grabber, self->gestures_configuration);
 	grabber_finalize(grabber);
 

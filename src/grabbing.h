@@ -36,6 +36,7 @@ typedef struct {
 
 	int started;
 	int without_brush;
+	int verbose;
 
 	int opcode;
 	int event;
@@ -63,7 +64,7 @@ typedef struct {
 
 } Grabber;
 
-Grabber * grabber_init(char * device_name, int button, int without_brush, int print_devices, char * brush_color);
+Grabber * grabber_init(char * device_name, int button, int without_brush, int print_devices, char * brush_color, int verbose);
 void grabber_loop(Grabber * self, Engine * conf);
 void grabber_finalize(Grabber * self);
 
