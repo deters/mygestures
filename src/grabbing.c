@@ -28,13 +28,14 @@
 #include <X11/extensions/XInput2.h>
 
 #include <sys/shm.h>
+#include <sys/time.h>
+
 
 #include "drawing/drawing-brush-image.h"
 
 #include "grabbing.h"
 #include "actions.h"
 
-int DELTA_MIN = 30; /*TODO*/
 #define MAX_STROKE_SEQUENCE 63 /*TODO*/
 
 /* valid strokes */
@@ -176,14 +177,49 @@ static Window get_parent_window(Display *dpy, Window w) {
 	return parent_return;
 }
 
-void grabbing_grab(Grabber * self) {
 
-	if (self->synaptics) {
-		printf("will not grab events.\n");
-		return;
-	} else {
-		printf("grabbing events.\n");
-	}
+
+
+static double get_time(void) {
+	struct timeval tv;
+
+	gettimeofday(&tv, NULL);
+	return tv.tv_sec + tv.tv_usec / 1000000.0;
+}
+
+#define SHM_SYNAPTICS 23947
+typedef struct _SynapticsSHM {
+	int version; /* Driver version */
+
+	/* Current device state */
+	int x, y; /* actual x, y coordinates */
+	int z; /* pressure value */
+	int numFingers; /* number of fingers */
+	int fingerWidth; /* finger width value */
+	int left, right, up, down; /* left/right/up/down buttons */
+	Bool multi[8];
+	Bool middle;
+} SynapticsSHM;
+
+static int synaptics_shm_is_equal(SynapticsSHM * s1, SynapticsSHM * s2) {
+	int i;
+
+	if ((s1->x != s2->x) || (s1->y != s2->y) || (s1->z != s2->z)
+			|| (s1->numFingers != s2->numFingers) || (s1->fingerWidth != s2->fingerWidth)
+			|| (s1->left != s2->left) || (s1->right != s2->right) || (s1->up != s2->up)
+			|| (s1->down != s2->down) || (s1->middle != s2->middle))
+		return 0;
+
+	for (i = 0; i < 8; i++)
+		if (s1->multi[i] != s2->multi[i])
+			return 0;
+
+	return 1;
+}
+
+
+
+void grabbing_xinput_grab(Grabber * self) {
 
 	int count = XScreenCount(self->dpy);
 
@@ -242,11 +278,7 @@ void grabbing_grab(Grabber * self) {
 
 }
 
-void grabbing_ungrab(Grabber * self) {
-
-	if (self->synaptics) {
-		return;
-	}
+void grabbing_xinput_ungrab(Grabber * self) {
 
 	int count = XScreenCount(self->dpy);
 
@@ -412,13 +444,13 @@ Grabbed * grabbing_end_movement(Grabber * self, int new_x, int new_y) {
 			printf("Emulating click\n");
 
 			// temporary ungrab button
-			grabbing_ungrab(self);
+			grabbing_xinput_ungrab(self);
 
 			// emulate the click
 			mouse_click(self->dpy, self->button, new_x, new_y);
 
 			// restart grabbing
-			grabbing_grab(self);
+			grabbing_xinput_grab(self);
 
 		}
 
@@ -531,7 +563,7 @@ static void movement_add_direction(char* stroke_sequence, char direction) {
 	}
 }
 
-static void update_movement(Grabber * self, int new_x, int new_y) {
+static void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
 
 	if (!self->started) {
 		return;
@@ -551,7 +583,7 @@ static void update_movement(Grabber * self, int new_x, int new_y) {
 	int x_delta = (new_x - self->old_x);
 	int y_delta = (new_y - self->old_y);
 
-	if ((abs(x_delta) > DELTA_MIN) || (abs(y_delta) > DELTA_MIN)) {
+	if ((abs(x_delta) > self->delta_min) || (abs(y_delta) > self->delta_min)) {
 
 		char stroke = get_fine_direction_from_deltas(x_delta, y_delta);
 
@@ -570,7 +602,7 @@ static void update_movement(Grabber * self, int new_x, int new_y) {
 
 	int square_distance_2 = rought_delta_x * rought_delta_x + rought_delta_y * rought_delta_y;
 
-	if (DELTA_MIN * DELTA_MIN < square_distance_2) {
+	if (self->delta_min * self->delta_min < square_distance_2) {
 		// grab stroke
 
 		movement_add_direction(self->rought_direction_sequence, rought_direction);
@@ -623,6 +655,7 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 
 	grabber_open_display(self);
 
+
 	self->button = button;
 	self->without_brush = without_brush;
 
@@ -643,7 +676,7 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 	devices = XIQueryDevice(self->dpy, XIAllDevices, &ndevices);
 
 	if (print_devices) {
-		printf("\nDevices:\n");
+		printf("\nXInput Devices:\n");
 	}
 
 	for (i = 0; i < ndevices; i++) {
@@ -678,14 +711,25 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 
 	}
 
+
 	if (print_devices) {
-		printf("\nRun  mygestures -d 'DEVICE'  to use a device.\n");
+
+		printf("\nExperimental multitouch driver:\n");
+
+		printf("   'SYNAPTICS'\n");
+		printf("\nRun  mygestures -d 'DEVICE_NAME' to choose a device.\n");
+
 	}
 
 	XIFreeDeviceInfo(devices);
 
 	if (print_devices) {
 		exit(0);
+	}
+
+	if (strcmp(device->name, "SYNAPTICS") == 0) {
+		self->synaptics = 1;
+		self->delta_min = 200;
 	}
 
 	self->fine_direction_sequence = (char *) malloc(sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
@@ -731,58 +775,16 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 	return self;
 }
 
-#include <sys/time.h>
-
-static double get_time(void) {
-	struct timeval tv;
-
-	gettimeofday(&tv, NULL);
-	return tv.tv_sec + tv.tv_usec / 1000000.0;
-}
-
-#define SHM_SYNAPTICS 23947
-typedef struct _SynapticsSHM {
-	int version; /* Driver version */
-
-	/* Current device state */
-	int x, y; /* actual x, y coordinates */
-	int z; /* pressure value */
-	int numFingers; /* number of fingers */
-	int fingerWidth; /* finger width value */
-	int left, right, up, down; /* left/right/up/down buttons */
-	Bool multi[8];
-	Bool middle;
-} SynapticsSHM;
-
-static int is_equal(SynapticsSHM * s1, SynapticsSHM * s2) {
-	int i;
-
-	if ((s1->x != s2->x) || (s1->y != s2->y) || (s1->z != s2->z)
-			|| (s1->numFingers != s2->numFingers) || (s1->fingerWidth != s2->fingerWidth)
-			|| (s1->left != s2->left) || (s1->right != s2->right) || (s1->up != s2->up)
-			|| (s1->down != s2->down) || (s1->middle != s2->middle))
-		return 0;
-
-	for (i = 0; i < 8; i++)
-		if (s1->multi[i] != s2->multi[i])
-			return 0;
-
-	return 1;
-}
-
-static void shm_monitor(SynapticsSHM * synshm, int delay) {
-
-}
 
 /*
  * Minimum and maximum values for scroll_button_repeat
  */
-#define SBR_MIN 10
-#define SBR_MAX 1000
+//#define SBR_MIN 10
+//#define SBR_MAX 1000
 
 /** Init and return SHM area or NULL on error */
 static SynapticsSHM *
-shm_init() {
+grabber_synaptics_shm_init() {
 	SynapticsSHM *synshm = NULL;
 	int shmid = 0;
 
@@ -797,23 +799,22 @@ shm_init() {
 	return synshm;
 }
 
-void grabber_syn_loop(Grabber * self, Engine * conf) {
+
+
+void grabber_synaptics_loop(Grabber * self, Engine * conf) {
 
 	printf(
 			"\nMygestures is running on synaptics .\nDraw a gesture by touching touchpad with 3 fingersor run `mygestures -l` to list other devices.\n");
 	printf("\n");
 
-	DELTA_MIN = 200;
-
-	self->synaptics = 1;
-
-	grabbing_grab(self);
-
 	SynapticsSHM *synshm = NULL;
 
-	synshm = shm_init();
-	if (!synshm)
+	synshm = grabber_synaptics_shm_init();
+	if (!synshm) {
+		printf(" You will need a patched synaptics driver with SHM enabled.\n");
+		printf(" Take a look at https://github.com/Chosko/xserver-xorg-input-synaptics\n");
 		return;
+	}
 
 	int delay = 10;
 
@@ -829,7 +830,7 @@ void grabber_syn_loop(Grabber * self, Engine * conf) {
 
 		SynapticsSHM cur = *synshm;
 
-		if (!is_equal(&old, &cur)) {
+		if (!synaptics_shm_is_equal(&old, &cur)) {
 
 			// release
 			if (cur.numFingers == 0 && max_fingers >= 3) {
@@ -895,7 +896,7 @@ void grabber_syn_loop(Grabber * self, Engine * conf) {
 						cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
 						cur.multi[6], cur.multi[7]);
 
-				update_movement(self, cur.x, cur.y);
+				grabbing_update_movement(self, cur.x, cur.y);
 
 				//// got > 3 fingers
 			} else if (cur.numFingers >= 3 && max_fingers < 3) {
@@ -923,15 +924,14 @@ void grabber_syn_loop(Grabber * self, Engine * conf) {
 		usleep(delay * 1000);
 	}
 
-	grabbing_ungrab(self);
 
 }
 
-void grabber_event_loop(Grabber * self, Engine * conf) {
+void grabber_xinput_loop(Grabber * self, Engine * conf) {
 
 	XEvent ev;
 
-	grabbing_grab(self);
+	grabbing_xinput_grab(self);
 
 	printf("\n");
 	if (self->is_direct_touch) {
@@ -959,7 +959,7 @@ void grabber_event_loop(Grabber * self, Engine * conf) {
 
 			case XI_Motion:
 				data = (XIDeviceEvent*) ev.xcookie.data;
-				update_movement(self, data->root_x, data->root_y);
+				grabbing_update_movement(self, data->root_x, data->root_y);
 				break;
 
 			case XI_ButtonPress:
@@ -1016,9 +1016,17 @@ void grabber_event_loop(Grabber * self, Engine * conf) {
 
 	}
 
-	grabbing_ungrab(self);
-
+	grabbing_xinput_ungrab(self);
 }
+
+void grabber_loop(Grabber * self, Engine * conf){
+	if (self->synaptics){
+		grabber_synaptics_loop(self, conf);
+	} else {
+		grabber_xinput_loop(self, conf);
+	}
+}
+
 
 char * grabber_get_device_name(Grabber * self) {
 	return self->devicename;
