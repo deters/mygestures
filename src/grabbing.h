@@ -11,7 +11,7 @@
 #include <X11/Xlib.h>
 #include "drawing/drawing-backing.h"
 #include "drawing/drawing-brush.h"
-#include "gestures.h"
+#include "configuration.h"
 
 /* modifier keys */
 enum {
@@ -65,7 +65,7 @@ typedef struct {
 } Grabber;
 
 Grabber * grabber_init(char * device_name, int button, int without_brush, int print_devices, char * brush_color, int verbose);
-void grabber_loop(Grabber * self, Engine * conf);
+void grabber_loop(Grabber * self, Configuration * conf);
 void grabber_finalize(Grabber * self);
 
 #endif /* GRABBING_H_ */

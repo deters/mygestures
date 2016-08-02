@@ -418,9 +418,9 @@ static void execute_action(Display *dpy, Action *action, Window focused_window) 
 /**
  * Obtém o resultado dos dois algoritmos de captura de movimentos, e envia para serem processadas.
  */
-Grabbed * grabbing_end_movement(Grabber * self, int new_x, int new_y) {
+Capture * grabbing_end_movement(Grabber * self, int new_x, int new_y) {
 
-	Grabbed * result = NULL;
+	Capture * result = NULL;
 
 	self->started = 0;
 
@@ -458,11 +458,11 @@ Grabbed * grabbing_end_movement(Grabber * self, int new_x, int new_y) {
 
 		Window_info * focused_window = get_window_info(self->dpy, get_focused_window(self->dpy));
 
-		result = malloc(sizeof(Grabbed));
+		result = malloc(sizeof(Capture));
 
-		result->sequences_count = sequences_count;
-		result->sequences = sequences;
-		result->focused_window = focused_window;
+		result->expression_count = sequences_count;
+		result->expression_list = sequences;
+		result->active_window_info = focused_window;
 
 	}
 
@@ -609,9 +609,9 @@ static void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
 	return;
 }
 
-static void free_grabbed(Grabbed * free_me) {
+static void free_grabbed(Capture * free_me) {
 	assert(free_me);
-	free(free_me->focused_window);
+	free(free_me->active_window_info);
 	free(free_me);
 }
 
@@ -791,7 +791,7 @@ grabber_synaptics_shm_init() {
 	return synshm;
 }
 
-void grabber_synaptics_loop(Grabber * self, Engine * conf) {
+void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 
 	printf("\nMygestures is running on 3 fingers multitouch synaptics driver.\n");
 	printf("Run `mygestures -l` to list other devices.\n");
@@ -822,8 +822,13 @@ void grabber_synaptics_loop(Grabber * self, Engine * conf) {
 
 		if (!synaptics_shm_is_equal(&old, &cur)) {
 
+			int delay = 10;
+
 			// release
 			if (cur.numFingers == 0 && max_fingers >= 3) {
+
+				/// energy economy
+				int delay = 50;
 
 				if (self->verbose) {
 					printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
@@ -837,15 +842,15 @@ void grabber_synaptics_loop(Grabber * self, Engine * conf) {
 				// reset max fingers
 				max_fingers = 0;
 
-				Grabbed * grab = grabbing_end_movement(self, old.x, old.y);
+				Capture * grab = grabbing_end_movement(self, old.x, old.y);
 
 				if (grab) {
 
 					printf("\n");
-					printf("     Window title: \"%s\"\n", grab->focused_window->title);
-					printf("     Window class: \"%s\"\n", grab->focused_window->class);
+					printf("     Window title: \"%s\"\n", grab->active_window_info->title);
+					printf("     Window class: \"%s\"\n", grab->active_window_info->class);
 
-					Gesture * gest = engine_process_gesture(conf, grab);
+					Gesture * gest = configuration_process_gesture(conf, grab);
 
 					if (gest) {
 						printf("     Movement '%s' matched gesture '%s' on context '%s'\n",
@@ -853,8 +858,8 @@ void grabber_synaptics_loop(Grabber * self, Engine * conf) {
 
 						int j = 0;
 
-						for (j = 0; j < gest->actions_count; ++j) {
-							Action * a = gest->actions[j];
+						for (j = 0; j < gest->action_count; ++j) {
+							Action * a = gest->action_list[j];
 							printf("     Executing action: %s %s\n", get_action_name(a->type),
 									a->original_str);
 							execute_action(self->dpy, a, get_focused_window(self->dpy));
@@ -863,8 +868,8 @@ void grabber_synaptics_loop(Grabber * self, Engine * conf) {
 
 					} else {
 
-						for (int i = 0; i < grab->sequences_count; ++i) {
-							char * movement = grab->sequences[i];
+						for (int i = 0; i < grab->expression_count; ++i) {
+							char * movement = grab->expression_list[i];
 							printf("     Sequence '%s' does not match any known movement.\n",
 									movement);
 						}
@@ -925,7 +930,7 @@ void grabber_synaptics_loop(Grabber * self, Engine * conf) {
 
 }
 
-void grabber_xinput_loop(Grabber * self, Engine * conf) {
+void grabber_xinput_loop(Grabber * self, Configuration * conf) {
 
 	XEvent ev;
 
@@ -966,15 +971,15 @@ void grabber_xinput_loop(Grabber * self, Engine * conf) {
 
 			case XI_ButtonRelease:
 				data = (XIDeviceEvent*) ev.xcookie.data;
-				Grabbed * grab = grabbing_end_movement(self, data->root_x, data->root_y);
+				Capture * grab = grabbing_end_movement(self, data->root_x, data->root_y);
 
 				if (grab) {
 
 					printf("\n");
-					printf("     Window title: \"%s\"\n", grab->focused_window->title);
-					printf("     Window class: \"%s\"\n", grab->focused_window->class);
+					printf("     Window title: \"%s\"\n", grab->active_window_info->title);
+					printf("     Window class: \"%s\"\n", grab->active_window_info->class);
 
-					Gesture * gest = engine_process_gesture(conf, grab);
+					Gesture * gest = configuration_process_gesture(conf, grab);
 
 					if (gest) {
 						printf("     Movement '%s' matched gesture '%s' on context '%s'\n",
@@ -982,8 +987,8 @@ void grabber_xinput_loop(Grabber * self, Engine * conf) {
 
 						int j = 0;
 
-						for (j = 0; j < gest->actions_count; ++j) {
-							Action * a = gest->actions[j];
+						for (j = 0; j < gest->action_count; ++j) {
+							Action * a = gest->action_list[j];
 							printf("     Executing action: %s %s\n", get_action_name(a->type),
 									a->original_str);
 							execute_action(self->dpy, a, get_focused_window(self->dpy));
@@ -991,8 +996,8 @@ void grabber_xinput_loop(Grabber * self, Engine * conf) {
 
 					} else {
 
-						for (int i = 0; i < grab->sequences_count; ++i) {
-							char * movement = grab->sequences[i];
+						for (int i = 0; i < grab->expression_count; ++i) {
+							char * movement = grab->expression_list[i];
 							printf("     Sequence '%s' does not match any known movement.\n",
 									movement);
 						}
@@ -1016,7 +1021,7 @@ void grabber_xinput_loop(Grabber * self, Engine * conf) {
 	grabbing_xinput_ungrab(self);
 }
 
-void grabber_loop(Grabber * self, Engine * conf) {
+void grabber_loop(Grabber * self, Configuration * conf) {
 	if (self->synaptics) {
 		grabber_synaptics_loop(self, conf);
 	} else {

@@ -4,9 +4,9 @@ AM_CFLAGS = -DSYSCONFIR='"$(sysconfdir)"' -O2 $(libXML_CFLAGS)
 bin_PROGRAMS=mygestures
 
 mygestures_SOURCES = \
-	main.c \
-	gestures.c gestures.h \
-        configuration.c configuration.h \
+	mygestures.c \
+	configuration.c configuration.h \
+        configuration_parser.c configuration_parser.h \
 	actions.c actions.h \
 	grabbing.c grabbing.h \
         drawing/drawing-backing.c \

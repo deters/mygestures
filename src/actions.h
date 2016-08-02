@@ -15,7 +15,6 @@
 #define __WM_H__
 #include <X11/Xlib.h>
 
-
 #define ACTION_COUNT 14
 
 /* Actions */
@@ -42,7 +41,7 @@ struct key_press {
 	char *original_str;
 };
 
-const char * get_action_name( int action );
+const char * get_action_name(int action);
 
 void action_iconify(Display *dpy, Window w);
 void action_kill(Display *dpy, Window w);

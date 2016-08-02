@@ -22,8 +22,8 @@
 #include <sys/types.h>
 
 #include "grabbing.h"
-#include "gestures.h"
 #include "configuration.h"
+#include "configuration_parser.h"
 #include "config.h"
 #include "assert.h"
 
@@ -50,7 +50,7 @@ typedef struct mygestures_ {
 	char * device;
 	char * brush_color;
 
-	Engine * gestures_configuration;
+	Configuration * gestures_configuration;
 
 } Mygestures;
 
@@ -235,9 +235,10 @@ void mygestures_load_configuration(Mygestures * self) {
 void mygestures_parse_arguments(Mygestures * self, int argc, char * const *argv) {
 
 	char opt;
-	static struct option opts[] = { { "verbose", no_argument, 0, 'v' }, { "help", no_argument, 0, 'h' }, { "without-brush", no_argument,
-			0, 'w' }, { "daemonize", no_argument, 0, 'z' }, /*{ "reconfigure", no_argument, 0, 'r' },*/
-			{ "button", required_argument, 0, 'b' }, { "brush-color", required_argument, 0, 'b' }, { "device",
+	static struct option opts[] = { { "verbose", no_argument, 0, 'v' }, { "help", no_argument, 0,
+			'h' }, { "without-brush", no_argument, 0, 'w' }, { "daemonize", no_argument, 0, 'z' }, /*{ "reconfigure", no_argument, 0, 'r' },*/
+	{ "button", required_argument, 0, 'b' }, { "brush-color", required_argument, 0, 'b' }, {
+			"device",
 			required_argument, 0, 'd' }, { 0, 0, 0, 0 } };
 
 	/* read params */

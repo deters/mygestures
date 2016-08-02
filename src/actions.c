@@ -1,5 +1,6 @@
 /*
  Copyright 2005 Nir Tzachar
+ Copyright 2016 Lucas Augusto Deters
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -22,37 +23,21 @@
 #include <string.h>
 
 #include "actions.h"
-#include "gestures.h"
-
+#include "configuration.h"
 
 /* Actions */
-const char * action_name [ACTION_COUNT] = {
-	"ERROR",
-	"EXIT_GEST",
-	"EXECUTE",
-	"ICONIFY",
-	"KILL",
-	"RECONF",
-	"RAISE",
-	"LOWER",
-	"MAXIMIZE",
-	"RESTORE",
-	"TOGGLE_MAXIMIZED",
-	"KEYPRESS",
-	"ABORT",
-	"LAST" };
+const char * action_name[ACTION_COUNT] = { "ERROR", "EXIT_GEST", "EXECUTE", "ICONIFY", "KILL",
+		"RECONF", "RAISE", "LOWER", "MAXIMIZE", "RESTORE", "TOGGLE_MAXIMIZED", "KEYPRESS", "ABORT",
+		"LAST" };
 
-
-
-const char * get_action_name( int action ){
+const char * get_action_name(int action) {
 	return action_name[action];
-};
-
+}
+;
 
 enum {
 	_NET_WM_STATE_REMOVE = 0, _NET_WM_STATE_ADD = 1, _NET_WM_STATE_TOGGLE = 2
 };
-
 
 /*
  * Iconify the focused window at given display.
@@ -129,14 +114,9 @@ static int client_msg(Display *disp, Window win, char *msg, unsigned long data0,
 		return EXIT_FAILURE;
 	}
 
-
 	XFlush(disp);
 
-
 }
-
-
-
 
 /**
  * Maximize the focused window at the given Display.
@@ -145,27 +125,22 @@ static int client_msg(Display *disp, Window win, char *msg, unsigned long data0,
  */
 void action_toggle_maximized(Display *dpy, Window w) {
 
-
 	unsigned long action;
-		Atom prop1 = 0;
-		Atom prop2 = 0;
+	Atom prop1 = 0;
+	Atom prop2 = 0;
 
-		action = _NET_WM_STATE_TOGGLE;
+	action = _NET_WM_STATE_TOGGLE;
 
-		char *tmp_prop2, *tmp2;
-		tmp_prop2 = "_NET_WM_STATE_MAXIMIZED_HORZ";
-		prop2 = XInternAtom(dpy, tmp_prop2, False);
-		char * tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
+	char *tmp_prop2, *tmp2;
+	tmp_prop2 = "_NET_WM_STATE_MAXIMIZED_HORZ";
+	prop2 = XInternAtom(dpy, tmp_prop2, False);
+	char * tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
 
-		prop1 = XInternAtom(dpy, tmp_prop1, False);
+	prop1 = XInternAtom(dpy, tmp_prop1, False);
 
-		 client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long) prop1,
-				(unsigned long) prop2, 0, 0);
-
+	client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long) prop1, (unsigned long) prop2, 0, 0);
 
 }
-
-
 
 /**
  * Maximize the focused window at the given Display.
@@ -174,27 +149,22 @@ void action_toggle_maximized(Display *dpy, Window w) {
  */
 void action_restore(Display *dpy, Window w) {
 
-
 	unsigned long action;
-		Atom prop1 = 0;
-		Atom prop2 = 0;
+	Atom prop1 = 0;
+	Atom prop2 = 0;
 
-		action = _NET_WM_STATE_REMOVE;
+	action = _NET_WM_STATE_REMOVE;
 
-		char *tmp_prop2, *tmp2;
-		tmp_prop2 = "_NET_WM_STATE_MAXIMIZED_HORZ";
-		prop2 = XInternAtom(dpy, tmp_prop2, False);
-		char * tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
+	char *tmp_prop2, *tmp2;
+	tmp_prop2 = "_NET_WM_STATE_MAXIMIZED_HORZ";
+	prop2 = XInternAtom(dpy, tmp_prop2, False);
+	char * tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
 
-		prop1 = XInternAtom(dpy, tmp_prop1, False);
+	prop1 = XInternAtom(dpy, tmp_prop1, False);
 
-		 client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long) prop1,
-				(unsigned long) prop2, 0, 0);
+	client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long) prop1, (unsigned long) prop2, 0, 0);
 
 }
-
-
-
 
 /**
  * Maximize the focused window at the given Display.
@@ -203,29 +173,22 @@ void action_restore(Display *dpy, Window w) {
  */
 void action_maximize(Display *dpy, Window w) {
 
-
 	unsigned long action;
-		Atom prop1 = 0;
-		Atom prop2 = 0;
+	Atom prop1 = 0;
+	Atom prop2 = 0;
 
-		action = _NET_WM_STATE_ADD;
+	action = _NET_WM_STATE_ADD;
 
-		char *tmp_prop2, *tmp2;
-		tmp_prop2 = "_NET_WM_STATE_MAXIMIZED_HORZ";
-		prop2 = XInternAtom(dpy, tmp_prop2, False);
-		char * tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
+	char *tmp_prop2, *tmp2;
+	tmp_prop2 = "_NET_WM_STATE_MAXIMIZED_HORZ";
+	prop2 = XInternAtom(dpy, tmp_prop2, False);
+	char * tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
 
-		prop1 = XInternAtom(dpy, tmp_prop1, False);
+	prop1 = XInternAtom(dpy, tmp_prop1, False);
 
-		 client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long) prop1,
-				(unsigned long) prop2, 0, 0);
-
-
+	client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long) prop1, (unsigned long) prop2, 0, 0);
 
 }
-
-
-
 
 /**
  * Fake key event
@@ -308,5 +271,4 @@ void action_keypress(Display *dpy, char *data) {
 
 	return;
 }
-
 
