@@ -1,6 +1,10 @@
 
 MyGestures - mouse gestures for linux
 =====================================
+
+ Mouse gestures - "draw" commands using your mouse/touchscreen/touchpad.
+ Now with multitouch gestures on synaptics touchpads (experimental).
+
   
 Installing from source:
 -----------------------
