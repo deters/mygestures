@@ -8,7 +8,7 @@
 #include <errno.h>
 
 #include "configuration_parser.h"
-#include "configuration.h"
+
 #include "actions.h"
 
 const char * CONFIG_FILE_NAME = "mygestures.xml";
