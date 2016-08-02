@@ -1,7 +1,9 @@
 
 MyGestures - mouse gestures for linux
+=====================================
   
 Installing from source:
+-----------------------
 
   sudo apt install autoconf libtool libx11-dev pkg-config libxrender-dev libxtst-dev libxml2-dev
   cd mygestures/
@@ -10,15 +12,16 @@ Installing from source:
   sudo make install
 
 Common uses:
+------------
 
   mygestures                       # use default button on default device 
-  mygestures -b 2                  # use button 2 on default device
   mygestures -l                    # list device names  
   mygestures -d 'elan touchscreen' # mygestures running against a touchscreen device.
   mygestures -d synaptics  # experimental synaptics multitouch mode (3 finger gestures). Will only run on a patched synaptics driver with SHM option enabled.
 
 
 Configuring gestures:
+----------------------
 
   Gestures configuration is done on "~/.config/mygestures/mygestures.xml".
   
