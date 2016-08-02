@@ -72,8 +72,10 @@ Supported actions:
     
  __KeyPress__
 
+Key names can be found on /usr/include/X11/keysymdef.h
+
     <do action="keypress" value="Alt_L+Left" /> <!-- send key sequence -->
-    <!-- Key names can be found on /usr/include/X11/keysymdef.h -->
+
                
  Gestures are created inside contexts, so you can filter what applications will have any gesture. 
    
