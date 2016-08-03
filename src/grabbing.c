@@ -217,9 +217,6 @@ void grabbing_xinput_grab(Grabber * self) {
 
 	int count = XScreenCount(self->dpy);
 
-	XIEventMask * eventmask = malloc(sizeof(XIEventMask));
-	eventmask->deviceid = self->deviceid;
-
 	int screen;
 	for (screen = 0; screen < count; screen++) {
 
@@ -231,19 +228,16 @@ void grabbing_xinput_grab(Grabber * self) {
 				self->button = 1;
 			}
 
-			unsigned char mask[1] = { 0 }; /* the actual mask */
-
-			eventmask->mask_len = sizeof(mask); /* always in bytes */
-			eventmask->mask = mask;
-
-			XISetMask(mask, XI_ButtonPress);
-			XISetMask(mask, XI_ButtonRelease);
-			XISetMask(mask, XI_Motion);
+			unsigned char mask_data[2] = { 0, };
+			XISetMask(mask_data, XI_ButtonPress);
+			XISetMask(mask_data, XI_Motion);
+			XISetMask(mask_data, XI_ButtonRelease);
+			XIEventMask mask = { XIAllDevices, sizeof(mask_data), mask_data };
 
 			int status = XIGrabDevice(self->dpy, self->deviceid, rootwindow,
 			CurrentTime, None,
 			GrabModeAsync,
-			GrabModeAsync, False, eventmask);
+			GrabModeAsync, False, &mask);
 
 		} else {
 
@@ -251,20 +245,15 @@ void grabbing_xinput_grab(Grabber * self) {
 				self->button = 3;
 			}
 
-			XIGrabModifiers modifiers[4] = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } };
+			unsigned char mask_data[2] = { 0, };
+			XISetMask(mask_data, XI_ButtonPress);
+			XISetMask(mask_data, XI_Motion);
+			XISetMask(mask_data, XI_ButtonRelease);
+			XIEventMask mask = { XIAllDevices, sizeof(mask_data), mask_data };
 
-			static unsigned char mask[2];
-			eventmask->mask = mask;
-
-			eventmask->mask_len = sizeof(mask);
-
-			memset(eventmask->mask, 0, eventmask->mask_len);
-			XISetMask(eventmask->mask, XI_ButtonPress);
-			XISetMask(eventmask->mask, XI_ButtonRelease);
-			XISetMask(eventmask->mask, XI_Motion);
-
-			XIGrabButton(self->dpy, self->deviceid, self->button, rootwindow,
-			None, GrabModeAsync, GrabModeAsync, False, eventmask, 1, modifiers);
+			XIGrabModifiers mods = { XIAnyModifier };
+			int res = XIGrabButton(self->dpy, self->deviceid, self->button, rootwindow, None,
+			GrabModeAsync, GrabModeAsync, False, &mask, 1, &mods);
 
 		}
 
@@ -289,8 +278,8 @@ void grabbing_xinput_ungrab(Grabber * self) {
 
 		} else {
 			XIGrabModifiers modifiers[4] = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } };
-
-			XIUngrabButton(self->dpy, self->deviceid, self->button, rootwindow, 1, modifiers);
+			XIGrabModifiers mods = { XIAnyModifier };
+			XIUngrabButton(self->dpy, self->deviceid, self->button, rootwindow, 1, &mods);
 		}
 
 	}
