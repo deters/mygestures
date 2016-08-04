@@ -32,8 +32,9 @@
 								<option id="gnu.c.compiler.option.include.paths.1410220573" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="/usr/include/libxml2"/>
 								</option>
-								<option id="gnu.c.compiler.option.preprocessor.def.symbols.1832647509" superClass="gnu.c.compiler.option.preprocessor.def.symbols" valueType="definedSymbols">
+								<option id="gnu.c.compiler.option.preprocessor.def.symbols.1832647509" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="SYSCONFIR=$(sysconfdir)"/>
+									<listOptionValue builtIn="false" value="SYSCONFDIR=$(sysconfdir)"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.661433062" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>

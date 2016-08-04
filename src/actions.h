@@ -11,8 +11,9 @@
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.  */
 
-#ifndef __WM_H__
-#define __WM_H__
+#ifndef MYGESTURES_ACTIONS_H_
+#define MYGESTURES_ACTIONS_H_
+
 #include <X11/Xlib.h>
 
 #define ACTION_COUNT 14

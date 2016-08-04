@@ -14,20 +14,17 @@
  *  This class grabs mouse events and try to translate them into stroke sequences.
  */
 
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
+
 #include <unistd.h>
-#include <X11/Xlib.h>
-#include <X11/extensions/XTest.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <X11/extensions/XInput2.h>
 
-#include <sys/shm.h>
+#include <X11/extensions/XTest.h> /* emulating device events */
+#include <X11/extensions/XInput2.h> /* capturing device events */
+#include <sys/shm.h> /* needed for synaptics */
 #include <sys/time.h>
 
 #include "drawing/drawing-brush-image.h"
@@ -35,10 +32,11 @@
 #include "grabbing.h"
 #include "actions.h"
 
-#define MAX_STROKE_SEQUENCE 63 /*TODO*/
+#ifndef MAX_STROKES_PER_CAPTURE
+#define MAX_STROKES_PER_CAPTURE 63 /*TODO*/
+#endif
 
-/* valid strokes */
-const char stroke_names[] = { '_', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
+const char stroke_representations[] = { ' ', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
 
 static void grabber_open_display(Grabber * self) {
 
@@ -50,7 +48,6 @@ static void grabber_open_display(Grabber * self) {
 		exit(-1);
 	}
 
-	/* Which version of XI2? We support 2.0 */
 	int major = 2, minor = 0;
 	if (XIQueryVersion(self->dpy, &major, &minor) == BadRequest) {
 		printf("XI2 not available. Server supports %d.%d\n", major, minor);
@@ -88,8 +85,6 @@ static void grabbing_set_brush_color(Grabber * self, char * color) {
 
 /*
  * Get the title of a given window at out_window_title.
- *
- * PRIVATE
  */
 static Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
 	int status;
@@ -116,18 +111,16 @@ static Status fetch_window_title(Display *dpy, Window w, char **out_window_title
 
 /*
  * Return a window_info struct for the focused window at a given Display.
- *
- * PRIVATE
  */
-static Window_info * get_window_info(Display* dpy, Window win) {
+static ActiveWindowInfo * get_active_window_info(Display* dpy, Window win) {
 
 	int ret, val;
 
 	char *win_title;
 	ret = fetch_window_title(dpy, win, &win_title);
 
-	Window_info *ans = malloc(sizeof(Window_info));
-	bzero(ans, sizeof(Window_info));
+	ActiveWindowInfo *ans = malloc(sizeof(ActiveWindowInfo));
+	bzero(ans, sizeof(ActiveWindowInfo));
 
 	char *win_class = NULL;
 
@@ -164,8 +157,6 @@ static Window_info * get_window_info(Display* dpy, Window win) {
 
 /*
  * Get the parent window.
- *
- * PRIVATE
  */
 static Window get_parent_window(Display *dpy, Window w) {
 	Window root_return, parent_return, *child_return;
@@ -307,11 +298,9 @@ void grabbing_start_movement(Grabber * self, int new_x, int new_y) {
 
 	self->started = 1;
 
-	// clear captured sequences
 	self->fine_direction_sequence[0] = '\0';
 	self->rought_direction_sequence[0] = '\0';
 
-	// guarda a localização do início do movimento
 	self->old_x = new_x;
 	self->old_y = new_y;
 
@@ -323,9 +312,6 @@ void grabbing_start_movement(Grabber * self, int new_x, int new_y) {
 		XFlush(self->dpy);
 		backing_save(&(self->backing), new_x - self->brush.image_width,
 				new_y - self->brush.image_height);
-		//backing_save(&(self->backing), new_x - self->brush.image_width,
-		//		new_y - self->brush.image_height);
-
 		brush_draw(&(self->brush), self->old_x, self->old_y);
 
 	}
@@ -334,8 +320,6 @@ void grabbing_start_movement(Grabber * self, int new_x, int new_y) {
 
 /*
  * Return the focused window at the given display.
- *
- * PRIVATE
  */
 static Window get_focused_window(Display *dpy) {
 
@@ -445,7 +429,7 @@ Capture * grabbing_end_movement(Grabber * self, int new_x, int new_y) {
 		sequences[0] = self->fine_direction_sequence;
 		sequences[1] = self->rought_direction_sequence;
 
-		Window_info * focused_window = get_window_info(self->dpy, get_focused_window(self->dpy));
+		ActiveWindowInfo * focused_window = get_active_window_info(self->dpy, get_focused_window(self->dpy));
 
 		result = malloc(sizeof(Capture));
 
@@ -461,7 +445,7 @@ Capture * grabbing_end_movement(Grabber * self, int new_x, int new_y) {
 static char get_fine_direction_from_deltas(int x_delta, int y_delta) {
 
 	if ((x_delta == 0) && (y_delta == 0)) {
-		return stroke_names[NONE];
+		return stroke_representations[NONE];
 	}
 
 	// check if the movement is near main axes
@@ -472,18 +456,18 @@ static char get_fine_direction_from_deltas(int x_delta, int y_delta) {
 		if (abs(x_delta) > abs(y_delta)) {
 
 			if (x_delta > 0) {
-				return stroke_names[RIGHT];
+				return stroke_representations[RIGHT];
 			} else {
-				return stroke_names[LEFT];
+				return stroke_representations[LEFT];
 			}
 
 			// y axe
 		} else {
 
 			if (y_delta > 0) {
-				return stroke_names[DOWN];
+				return stroke_representations[DOWN];
 			} else {
-				return stroke_names[UP];
+				return stroke_representations[UP];
 			}
 
 		}
@@ -493,21 +477,21 @@ static char get_fine_direction_from_deltas(int x_delta, int y_delta) {
 
 		if (y_delta < 0) {
 			if (x_delta < 0) {
-				return stroke_names[SEVEN];
+				return stroke_representations[SEVEN];
 			} else if (x_delta > 0) { // RIGHT
-				return stroke_names[NINE];
+				return stroke_representations[NINE];
 			}
 		} else if (y_delta > 0) { // DOWN
 			if (x_delta < 0) { // RIGHT
-				return stroke_names[ONE];
+				return stroke_representations[ONE];
 			} else if (x_delta > 0) {
-				return stroke_names[THREE];
+				return stroke_representations[THREE];
 			}
 		}
 
 	}
 
-	return stroke_names[NONE];
+	return stroke_representations[NONE];
 
 }
 
@@ -515,16 +499,16 @@ static char get_direction_from_deltas(int x_delta, int y_delta) {
 
 	if (abs(y_delta) > abs(x_delta)) {
 		if (y_delta > 0) {
-			return stroke_names[DOWN];
+			return stroke_representations[DOWN];
 		} else {
-			return stroke_names[UP];
+			return stroke_representations[UP];
 		}
 
 	} else {
 		if (x_delta > 0) {
-			return stroke_names[RIGHT];
+			return stroke_representations[RIGHT];
 		} else {
-			return stroke_names[LEFT];
+			return stroke_representations[LEFT];
 		}
 
 	}
@@ -536,7 +520,7 @@ static void movement_add_direction(char* stroke_sequence, char direction) {
 	int len = strlen(stroke_sequence);
 	if ((len == 0) || (stroke_sequence[len - 1] != direction)) {
 
-		if (len < MAX_STROKE_SEQUENCE) {
+		if (len < MAX_STROKES_PER_CAPTURE) {
 
 			stroke_sequence[len] = direction;
 			stroke_sequence[len + 1] = '\0';
@@ -618,13 +602,6 @@ static int get_touch_status(XIDeviceInfo * device) {
 		if (t->mode == XIDirectTouch) {
 			return 1;
 		}
-		/*
-		 if (print_devices) {
-		 printf("        %s touch device, supporting %d touches. ",
-		 (t->mode == XIDirectTouch) ? "direct" : "dependent",
-		 t->num_touches);
-		 }
-		 */
 	}
 	return 0;
 }
@@ -636,11 +613,13 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 
 	grabber_open_display(self);
 
+	grabbing_set_brush_color(self, brush_color);
+
 	self->button = button;
 	self->without_brush = without_brush;
 	self->verbose = verbose;
-
 	self->devicename = device_name;
+
 	if (!self->devicename) {
 		self->devicename = "Virtual core pointer";
 	}
@@ -653,10 +632,9 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 		self->delta_min = 30;
 	}
 
-	grabbing_set_brush_color(self, brush_color);
-
 	int ndevices;
 	int i;
+
 	XIDeviceInfo * device;
 	XIDeviceInfo * devices;
 
@@ -715,10 +693,10 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 		exit(0);
 	}
 
-	self->fine_direction_sequence = (char *) malloc(sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
+	self->fine_direction_sequence = (char *) malloc(sizeof(char) * (MAX_STROKES_PER_CAPTURE + 1));
 	self->fine_direction_sequence[0] = '\0';
 
-	self->rought_direction_sequence = (char *) malloc(sizeof(char) * (MAX_STROKE_SEQUENCE + 1));
+	self->rought_direction_sequence = (char *) malloc(sizeof(char) * (MAX_STROKES_PER_CAPTURE + 1));
 	self->rought_direction_sequence[0] = '\0';
 
 	int err = 0;

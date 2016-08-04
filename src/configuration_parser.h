@@ -1,5 +1,6 @@
-#ifndef CONFIGURATION_H_
-#define CONFIGURATION_H_
+
+#ifndef MYGESTURES_CONFIGURATIONPARSER_H_
+#define MYGESTURES_CONFIGURATIONPARSER_H_
 
 #include "configuration.h"
 

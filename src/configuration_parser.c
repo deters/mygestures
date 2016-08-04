@@ -1,15 +1,16 @@
-#include <string.h>
-#include <libxml/parser.h>
-#include <libxml/tree.h>
-#include "assert.h"
 
+
+#include <string.h>
+#include <libxml/tree.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
 
-#include "configuration_parser.h"
+#include "assert.h"
 
+#include "config.h"
 #include "actions.h"
+#include "configuration_parser.h"
 
 const char * CONFIG_FILE_NAME = "mygestures.xml";
 
@@ -326,7 +327,7 @@ char * xml_get_default_filename() {
 
 char * xml_get_template_filename() {
 	char * template_file = malloc(sizeof(char *) * 4096);
-	sprintf(template_file, "%s/mygestures.xml", SYSCONFIR);
+	sprintf(template_file, "%s/mygestures.xml", SYSCONFDIR);
 	return template_file;
 }
 

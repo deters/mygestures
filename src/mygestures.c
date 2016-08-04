@@ -6,38 +6,28 @@
  */
 
 #define _GNU_SOURCE /* needed by asprintf */
-#include <stdio.h>  /* needed by asprintf */
-
-#include <signal.h>
-#include <wait.h>
-#include <unistd.h>
-#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <unistd.h>
+#include <wait.h>
+#include <getopt.h>
 #include <string.h>
+#include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/shm.h>
-#include <fcntl.h>
 #include <sys/types.h>
+
+#include "assert.h"
+#include "config.h"
 
 #include "grabbing.h"
 #include "configuration.h"
 #include "configuration_parser.h"
-#include "config.h"
-#include "assert.h"
-
-struct shm_message {
-	int pid;
-	int kill;
-	int reload;
-};
 
 char * shm_identifier;
 struct shm_message * message;
 
 typedef struct mygestures_ {
-
 	int help;
 	int button;
 	int without_brush;
@@ -53,6 +43,12 @@ typedef struct mygestures_ {
 	Configuration * gestures_configuration;
 
 } Mygestures;
+
+struct shm_message {
+	int pid;
+	int kill;
+	int reload;
+};
 
 static void mygestures_usage() {
 	printf("%s\n\n", PACKAGE_STRING);
@@ -72,7 +68,6 @@ static void mygestures_usage() {
 	printf(" -d, --device <DEVICENAME>  : Device to grab.\n");
 	printf("                              Default: 'Virtual core pointer'\n");
 	printf(" -l, --device-list          : Print all available devices an exit.\n");
-	//printf(" -r, --reconfigure          : Reload mygestures configuration.\n");
 	printf(" -z, --daemonize            : Fork the process and return.\n");
 	printf(" -c, --brush-color          : Brush color.\n");
 	printf("                              Default: blue\n");
@@ -83,9 +78,7 @@ static void mygestures_usage() {
 }
 
 char * char_replace(char *str, char oldChar, char newChar) {
-
 	assert(str);
-
 	char *strPtr = str;
 	while ((strPtr = strchr(strPtr, oldChar)) != NULL)
 		*strPtr++ = newChar;
@@ -339,7 +332,12 @@ int main(int argc, char * const * argv) {
 	signal(SIGINT, on_interrupt);
 	signal(SIGKILL, on_kill);
 
+	printf("%s", SYSCONFDIR);
+
 	mygestures_run(self);
+
+
+
 
 	exit(0);
 

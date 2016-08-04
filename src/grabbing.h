@@ -5,8 +5,8 @@
  *      Author: deters
  */
 
-#ifndef GRABBING_H_
-#define GRABBING_H_
+#ifndef MYGESTURES_GRABBING_H_
+#define MYGESTURES_GRABBING_H_
 
 #include <X11/Xlib.h>
 #include "drawing/drawing-backing.h"
@@ -22,7 +22,7 @@ enum {
 extern const char *modifiers_names[];
 
 /* valid strokes */
-extern const char stroke_names[];
+extern const char stroke_representations[];
 
 typedef struct {
 
@@ -68,5 +68,5 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 void grabber_loop(Grabber * self, Configuration * conf);
 void grabber_finalize(Grabber * self);
 
-#endif /* GRABBING_H_ */
+#endif /* MYGESTURES_GRABBING_H_ */
 

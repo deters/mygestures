@@ -4,7 +4,7 @@
 AC_PREREQ([2.69])
 AC_INIT([MyGestures], [2.0], [lucasdeters@users.sourceforge.net])
 AM_INIT_AUTOMAKE([subdir-objects])
-AC_CONFIG_SRCDIR([src/main.c])
+AC_CONFIG_SRCDIR([src/mygestures.c])
 AC_CONFIG_HEADERS([src/config.h])
 
 # Checks for programs.
@@ -29,11 +29,14 @@ AC_TYPE_MODE_T
 # Checks for library functions.
 AC_FUNC_FORK
 AC_FUNC_MALLOC
-AC_CHECK_FUNCS([bzero memset mkdir regcomp strcasecmp strdup strncasecmp])
+AC_CHECK_FUNCS([bzero memset mkdir regcomp strcasecmp strdup strncasecmp])          
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile])
+                 
+                 
 
+            
 AC_OUTPUT
 
 

@@ -1,5 +1,5 @@
 
-AM_CFLAGS = -DSYSCONFIR='"$(sysconfdir)"' -O2 $(libXML_CFLAGS) 
+AM_CFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' -O2 $(libXML_CFLAGS) 
 
 bin_PROGRAMS=mygestures
 

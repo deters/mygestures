@@ -163,7 +163,7 @@ Action *configuration_create_action(Gesture * self, int action_type, char * acti
 	return ans;
 }
 
-Gesture * engine_match_gesture(Configuration * self, char * captured_sequence, Window_info * window) {
+Gesture * engine_match_gesture(Configuration * self, char * captured_sequence, ActiveWindowInfo * window) {
 
 	assert(self);
 	assert(captured_sequence);

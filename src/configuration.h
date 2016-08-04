@@ -12,8 +12,10 @@
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.  */
 
-#ifndef __GESTURES_h
-#define __GESTURES_h
+
+#ifndef MYGESTURES_CONFIGURATION_H_
+#define MYGESTURES_CONFIGURATION_H_
+
 #include <regex.h>
 
 #define GEST_SEQUENCE_MAX 64
@@ -70,15 +72,15 @@ typedef struct gesture_ {
 	int action_count;
 } Gesture;
 
-typedef struct window_info_ {
+typedef struct active_window_info_ {
 	char *title;
 	char *class;
-} Window_info;
+} ActiveWindowInfo;
 
 typedef struct capture_ {
 	int expression_count;
 	char ** expression_list;
-	Window_info * active_window_info;
+	ActiveWindowInfo * active_window_info;
 } Capture;
 
 Configuration * configuration_new();
