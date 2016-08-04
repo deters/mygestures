@@ -62,7 +62,7 @@ void xml_parse_action(xmlNode *node, Gesture * gest) {
 		return;
 	}
 
-	int id = ACTION_ERROR;
+	int id = ACTION_NULL;
 
 	if (strcasecmp(action_name, "iconify") == 0) {
 		id = ACTION_ICONIFY;
@@ -449,4 +449,3 @@ Configuration * xml_load_engine_from_file(char * filename) {
 	return eng;
 
 }
-

@@ -13,8 +13,7 @@
  GNU General Public License for more details.
 
  one line to give the program's name and an idea of what it does.
-  */
-
+ */
 
 #define _GNU_SOURCE /* needed by asprintf */
 #include <stdio.h>
@@ -346,9 +345,6 @@ int main(int argc, char * const * argv) {
 	printf("%s", SYSCONFDIR);
 
 	mygestures_run(self);
-
-
-
 
 	exit(0);
 
