@@ -1,6 +1,6 @@
 /*
+ Copyright 2013-2016 Lucas Augusto Deters
  Copyright 2005 Nir Tzachar
- Copyright 2013 Lucas Augusto Deters
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -10,7 +10,11 @@
  This program is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.  */
+ GNU General Public License for more details.
+
+ one line to give the program's name and an idea of what it does.
+  */
+
 
 
 #ifndef MYGESTURES_CONFIGURATION_H_

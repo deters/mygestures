@@ -1,4 +1,5 @@
 /*
+ Copyright 2008-2016 Lucas Augusto Deters
  Copyright 2005 Nir Tzachar
 
  This program is free software; you can redistribute it and/or modify
@@ -9,10 +10,11 @@
  This program is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.  */
-/**
- *  This class grabs mouse events and try to translate them into stroke sequences.
- */
+ GNU General Public License for more details.
+
+ one line to give the program's name and an idea of what it does.
+  */
+
 
 
 #include <unistd.h>

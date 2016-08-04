@@ -1,8 +1,6 @@
 /*
-
+ Copyright 2013-2016 Lucas Augusto Deters
  Copyright 2005 Nir Tzachar
- Copyright 2013 Lucas Augusto Deters
-
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -14,7 +12,9 @@
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
 
- */
+ one line to give the program's name and an idea of what it does.
+  */
+
 
 #if HAVE_CONFIG_H          
 #include <config.h>
