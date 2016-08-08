@@ -1,6 +1,7 @@
 /*
  Copyright 2008-2016 Lucas Augusto Deters
  Copyright 2005 Nir Tzachar
+ Copyright 2002-2005,2007 Peter Osterlund
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -263,8 +264,6 @@ void grabbing_xinput_ungrab(Grabber * self) {
 
 		Window rootwindow = RootWindow(self->dpy, screen);
 
-		/* select on the window */
-		//XISelectEvents(display, w, &eventmask, 1);
 		if (self->is_direct_touch) {
 
 			int status = XIUngrabDevice(self->dpy, self->deviceid, CurrentTime);
@@ -286,9 +285,7 @@ void grabbing_xinput_ungrab(Grabber * self) {
  */
 static void mouse_click(Display *display, int button, int x, int y) {
 
-	// fix position
 	XTestFakeMotionEvent(display, DefaultScreen(display), x, y, 0);
-
 	XTestFakeButtonEvent(display, button, True, CurrentTime);
 	XTestFakeButtonEvent(display, button, False, CurrentTime);
 }
@@ -391,7 +388,7 @@ static void execute_action(Display *dpy, Action *action, Window focused_window) 
 }
 
 /**
- * Obtém o resultado dos dois algoritmos de captura de movimentos, e envia para serem processadas.
+ *
  */
 Capture * grabbing_end_movement(Grabber * self, int new_x, int new_y) {
 
@@ -405,6 +402,7 @@ Capture * grabbing_end_movement(Grabber * self, int new_x, int new_y) {
 		XFlush(self->dpy);
 	};
 
+	// if there is no gesture
 	if ((strlen(self->rought_direction_sequence) == 0)
 			&& (strlen(self->fine_direction_sequence) == 0)) {
 
@@ -425,18 +423,18 @@ Capture * grabbing_end_movement(Grabber * self, int new_x, int new_y) {
 
 	} else {
 
-		int sequences_count = 2;
-		char ** sequences = malloc(sizeof(char *) * sequences_count);
+		int expression_count = 2;
+		char ** expression_list = malloc(sizeof(char *) * expression_count);
 
-		sequences[0] = self->fine_direction_sequence;
-		sequences[1] = self->rought_direction_sequence;
+		expression_list[0] = self->fine_direction_sequence;
+		expression_list[1] = self->rought_direction_sequence;
 
 		ActiveWindowInfo * focused_window = get_active_window_info(self->dpy, get_focused_window(self->dpy));
 
 		result = malloc(sizeof(Capture));
 
-		result->expression_count = sequences_count;
-		result->expression_list = sequences;
+		result->expression_count = expression_count;
+		result->expression_list = expression_list;
 		result->active_window_info = focused_window;
 
 	}
@@ -738,11 +736,6 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 	return self;
 }
 
-/*
- * Minimum and maximum values for scroll_button_repeat
- */
-//#define SBR_MIN 10
-//#define SBR_MAX 1000
 /** Init and return SHM area or NULL on error */
 static SynapticsSHM *
 grabber_synaptics_shm_init() {
