@@ -13,7 +13,7 @@
  GNU General Public License for more details.
 
  one line to give the program's name and an idea of what it does.
-  */
+ */
 
 #if HAVE_CONFIG_H
 #include <config.h>
@@ -29,9 +29,9 @@
 #include "configuration.h"
 
 /* Actions */
-const char * action_name[ACTION_COUNT] = { "ERROR", "EXIT_GEST", "EXECUTE", "ICONIFY", "KILL",
-		"RECONF", "RAISE", "LOWER", "MAXIMIZE", "RESTORE", "TOGGLE_MAXIMIZED", "KEYPRESS", "ABORT",
-		"LAST" };
+const char * action_name[ACTION_COUNT] = {
+		"ERROR", "EXIT_GEST", "EXECUTE", "ICONIFY", "KILL", "RECONF", "RAISE", "LOWER", "MAXIMIZE",
+		"RESTORE", "TOGGLE_MAXIMIZED", "KEYPRESS", "ABORT", "LAST" };
 
 const char * get_action_name(int action) {
 	return action_name[action];
@@ -94,7 +94,14 @@ void action_lower(Display *dpy, Window w) {
 /*
  * Taken from wmctrl
  */
-static int client_msg(Display *disp, Window win, char *msg, unsigned long data0, unsigned long data1, unsigned long data2, unsigned long data3, unsigned long data4) {
+static int client_msg(	Display *disp,
+						Window win,
+						char *msg,
+						unsigned long data0,
+						unsigned long data1,
+						unsigned long data2,
+						unsigned long data3,
+						unsigned long data4) {
 	XEvent event;
 	long mask = SubstructureRedirectMask | SubstructureNotifyMask;
 

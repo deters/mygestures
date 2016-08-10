@@ -18,7 +18,7 @@ typedef struct mygestures_ {
 	char * device;
 	char * brush_color;
 
-	Gestures * gestures;
+	struct gestures_ * gestures;
 
 } Mygestures;
 
