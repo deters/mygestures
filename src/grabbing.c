@@ -27,12 +27,13 @@
 
 #include <X11/extensions/XTest.h> /* emulating device events */
 #include <X11/extensions/XInput2.h> /* capturing device events */
-#include <sys/shm.h> /* needed for synaptics */
+
 #include <sys/time.h>
 
 #include "drawing/drawing-brush-image.h"
 
 #include "grabbing.h"
+#include "grabbing-synaptics.h"
 #include "actions.h"
 
 #ifndef MAX_STROKES_PER_CAPTURE
@@ -177,35 +178,7 @@ static double get_time(void) {
 	return tv.tv_sec + tv.tv_usec / 1000000.0;
 }
 
-#define SHM_SYNAPTICS 23947
-typedef struct _SynapticsSHM {
-	int version; /* Driver version */
 
-	/* Current device state */
-	int x, y; /* actual x, y coordinates */
-	int z; /* pressure value */
-	int numFingers; /* number of fingers */
-	int fingerWidth; /* finger width value */
-	int left, right, up, down; /* left/right/up/down buttons */
-	Bool multi[8];
-	Bool middle;
-} SynapticsSHM;
-
-static int synaptics_shm_is_equal(SynapticsSHM * s1, SynapticsSHM * s2) {
-	int i;
-
-	if ((s1->x != s2->x) || (s1->y != s2->y) || (s1->z != s2->z)
-			|| (s1->numFingers != s2->numFingers) || (s1->fingerWidth != s2->fingerWidth)
-			|| (s1->left != s2->left) || (s1->right != s2->right) || (s1->up != s2->up)
-			|| (s1->down != s2->down) || (s1->middle != s2->middle))
-		return 0;
-
-	for (i = 0; i < 8; i++)
-		if (s1->multi[i] != s2->multi[i])
-			return 0;
-
-	return 1;
-}
 
 void grabbing_xinput_grab(Grabber * self) {
 
@@ -387,12 +360,20 @@ static void execute_action(Display *dpy, Action *action, Window focused_window) 
 	return;
 }
 
+
+static void free_grabbed(Capture * free_me) {
+	assert(free_me);
+	free(free_me->active_window_info);
+	free(free_me);
+}
+
+
 /**
  *
  */
-Capture * grabbing_end_movement(Grabber * self, int new_x, int new_y) {
+void grabbing_end_movement(Grabber * self, int new_x, int new_y, Configuration * conf) {
 
-	Capture * result = NULL;
+	Capture * grab = NULL;
 
 	self->started = 0;
 
@@ -431,18 +412,55 @@ Capture * grabbing_end_movement(Grabber * self, int new_x, int new_y) {
 
 		ActiveWindowInfo * focused_window = get_active_window_info(self->dpy, get_focused_window(self->dpy));
 
-		result = malloc(sizeof(Capture));
+		grab = malloc(sizeof(Capture));
 
-		result->expression_count = expression_count;
-		result->expression_list = expression_list;
-		result->active_window_info = focused_window;
+		grab->expression_count = expression_count;
+		grab->expression_list = expression_list;
+		grab->active_window_info = focused_window;
 
 	}
 
-	return result;
+
+	if (grab) {
+
+		printf("\n");
+		printf("     Window title: \"%s\"\n", grab->active_window_info->title);
+		printf("     Window class: \"%s\"\n", grab->active_window_info->class);
+
+		Gesture * gest = configuration_process_gesture(conf, grab);
+
+		if (gest) {
+			printf("     Movement '%s' matched gesture '%s' on context '%s'\n",
+					gest->movement->name, gest->name, gest->context->name);
+
+			int j = 0;
+
+			for (j = 0; j < gest->action_count; ++j) {
+				Action * a = gest->action_list[j];
+				printf("     Executing action: %s %s\n", get_action_name(a->type),
+						a->original_str);
+				execute_action(self->dpy, a, get_focused_window(self->dpy));
+
+			}
+
+		} else {
+
+			for (int i = 0; i < grab->expression_count; ++i) {
+				char * movement = grab->expression_list[i];
+				printf("     Sequence '%s' does not match any known movement.\n",
+						movement);
+			}
+
+		}
+
+		printf("\n");
+
+		free_grabbed(grab);
+
+	}
 }
 
-static char get_fine_direction_from_deltas(int x_delta, int y_delta) {
+char get_fine_direction_from_deltas(int x_delta, int y_delta) {
 
 	if ((x_delta == 0) && (y_delta == 0)) {
 		return stroke_representations[NONE];
@@ -495,7 +513,7 @@ static char get_fine_direction_from_deltas(int x_delta, int y_delta) {
 
 }
 
-static char get_direction_from_deltas(int x_delta, int y_delta) {
+char get_direction_from_deltas(int x_delta, int y_delta) {
 
 	if (abs(y_delta) > abs(x_delta)) {
 		if (y_delta > 0) {
@@ -515,7 +533,7 @@ static char get_direction_from_deltas(int x_delta, int y_delta) {
 
 }
 
-static void movement_add_direction(char* stroke_sequence, char direction) {
+void movement_add_direction(char* stroke_sequence, char direction) {
 	// grab stroke
 	int len = strlen(stroke_sequence);
 	if ((len == 0) || (stroke_sequence[len - 1] != direction)) {
@@ -530,7 +548,7 @@ static void movement_add_direction(char* stroke_sequence, char direction) {
 	}
 }
 
-static void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
+void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
 
 	if (!self->started) {
 		return;
@@ -582,13 +600,8 @@ static void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
 	return;
 }
 
-static void free_grabbed(Capture * free_me) {
-	assert(free_me);
-	free(free_me->active_window_info);
-	free(free_me);
-}
 
-static int get_touch_status(XIDeviceInfo * device) {
+int get_touch_status(XIDeviceInfo * device) {
 
 	int j = 0;
 
@@ -736,161 +749,6 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 	return self;
 }
 
-/** Init and return SHM area or NULL on error */
-static SynapticsSHM *
-grabber_synaptics_shm_init() {
-	SynapticsSHM *synshm = NULL;
-	int shmid = 0;
-
-	if ((shmid = shmget(SHM_SYNAPTICS, sizeof(SynapticsSHM), 0)) == -1) {
-		if ((shmid = shmget(SHM_SYNAPTICS, 0, 0)) == -1)
-			fprintf(stderr, "Can't access shared memory area. SHMConfig disabled?\n");
-		else
-			fprintf(stderr, "Incorrect size of shared memory area. Incompatible driver version?\n");
-	} else if ((synshm = (SynapticsSHM *) shmat(shmid, NULL, SHM_RDONLY)) == NULL)
-		perror("shmat");
-
-	return synshm;
-}
-
-void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
-
-	printf("\nMygestures is running on 3 fingers multitouch synaptics driver.\n");
-	printf("Run `mygestures -l` to list other devices.\n");
-	printf("\n");
-
-	SynapticsSHM *synshm = NULL;
-
-	synshm = grabber_synaptics_shm_init();
-	if (!synshm) {
-		printf(" You will need a patched synaptics driver with SHM enabled.\n");
-		printf(" Take a look at https://github.com/Chosko/xserver-xorg-input-synaptics\n");
-		return;
-	}
-
-	int delay = 10;
-
-	SynapticsSHM old;
-	double t0 = get_time();
-
-	memset(&old, 0, sizeof(SynapticsSHM));
-	old.x = -1; /* Force first equality test to fail */
-
-	int max_fingers = 0;
-
-	while (!self->shut_down) {
-
-		SynapticsSHM cur = *synshm;
-
-		if (!synaptics_shm_is_equal(&old, &cur)) {
-
-			int delay = 10;
-
-			// release
-			if (cur.numFingers == 0 && max_fingers >= 3) {
-
-				/// energy economy
-				int delay = 50;
-
-				if (self->verbose) {
-					printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
-							get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth,
-							cur.left, cur.right, cur.up, cur.down, cur.middle, cur.multi[0],
-							cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
-							cur.multi[6], cur.multi[7]);
-					printf("stopped\n");
-				}
-
-				// reset max fingers
-				max_fingers = 0;
-
-				Capture * grab = grabbing_end_movement(self, old.x, old.y);
-
-				if (grab) {
-
-					printf("\n");
-					printf("     Window title: \"%s\"\n", grab->active_window_info->title);
-					printf("     Window class: \"%s\"\n", grab->active_window_info->class);
-
-					Gesture * gest = configuration_process_gesture(conf, grab);
-
-					if (gest) {
-						printf("     Movement '%s' matched gesture '%s' on context '%s'\n",
-								gest->movement->name, gest->name, gest->context->name);
-
-						int j = 0;
-
-						for (j = 0; j < gest->action_count; ++j) {
-							Action * a = gest->action_list[j];
-							printf("     Executing action: %s %s\n", get_action_name(a->type),
-									a->original_str);
-							execute_action(self->dpy, a, get_focused_window(self->dpy));
-
-						}
-
-					} else {
-
-						for (int i = 0; i < grab->expression_count; ++i) {
-							char * movement = grab->expression_list[i];
-							printf("     Sequence '%s' does not match any known movement.\n",
-									movement);
-						}
-
-					}
-
-					printf("\n");
-
-					free_grabbed(grab);
-
-				}
-
-				//// movement
-
-			} else if (cur.numFingers >= 3 && max_fingers >= 3) {
-
-				if (self->verbose) {
-					printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
-							get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth,
-							cur.left, cur.right, cur.up, cur.down, cur.middle, cur.multi[0],
-							cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
-							cur.multi[6], cur.multi[7]);
-				}
-
-				grabbing_update_movement(self, cur.x, cur.y);
-
-				//// got > 3 fingers
-			} else if (cur.numFingers >= 3 && max_fingers < 3) {
-
-				if (self->verbose) {
-
-					printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
-							get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth,
-							cur.left, cur.right, cur.up, cur.down, cur.middle, cur.multi[0],
-							cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
-							cur.multi[6], cur.multi[7]);
-
-				}
-
-				max_fingers = max_fingers + 1;
-
-				if (max_fingers >= 3) {
-
-					if (self->verbose) {
-						printf("started\n");
-					}
-
-					grabbing_start_movement(self, cur.x, cur.y);
-
-				}
-
-			}
-
-			old = cur;
-		}
-		usleep(delay * 1000);
-	}
-
-}
 
 void grabber_xinput_loop(Grabber * self, Configuration * conf) {
 
@@ -933,45 +791,7 @@ void grabber_xinput_loop(Grabber * self, Configuration * conf) {
 
 			case XI_ButtonRelease:
 				data = (XIDeviceEvent*) ev.xcookie.data;
-				Capture * grab = grabbing_end_movement(self, data->root_x, data->root_y);
-
-				if (grab) {
-
-					printf("\n");
-					printf("     Window title: \"%s\"\n", grab->active_window_info->title);
-					printf("     Window class: \"%s\"\n", grab->active_window_info->class);
-
-					Gesture * gest = configuration_process_gesture(conf, grab);
-
-					if (gest) {
-						printf("     Movement '%s' matched gesture '%s' on context '%s'\n",
-								gest->movement->name, gest->name, gest->context->name);
-
-						int j = 0;
-
-						for (j = 0; j < gest->action_count; ++j) {
-							Action * a = gest->action_list[j];
-							printf("     Executing action: %s %s\n", get_action_name(a->type),
-									a->original_str);
-							execute_action(self->dpy, a, get_focused_window(self->dpy));
-						}
-
-					} else {
-
-						for (int i = 0; i < grab->expression_count; ++i) {
-							char * movement = grab->expression_list[i];
-							printf("     Sequence '%s' does not match any known movement.\n",
-									movement);
-						}
-
-					}
-
-					printf("\n");
-
-					free_grabbed(grab);
-
-				}
-
+				grabbing_end_movement(self, data->root_x, data->root_y, conf);
 				break;
 
 			}

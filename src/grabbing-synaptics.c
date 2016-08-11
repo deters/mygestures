@@ -83,11 +83,10 @@ grabber_synaptics_shm_init() {
 	} else if ((synshm = (SynapticsSHM *) shmat(shmid, NULL, SHM_RDONLY)) == NULL)
 		perror("shmat");
 
-
 	return synshm;
 }
 
-void grabber_synaptics_loop(Grabber * self) {
+void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 
 	printf("\nMygestures is running on 3 fingers multitouch synaptics driver.\n");
 	printf("Run `mygestures -l` to list other devices.\n");
@@ -96,13 +95,11 @@ void grabber_synaptics_loop(Grabber * self) {
 	SynapticsSHM *synshm = NULL;
 
 	synshm = grabber_synaptics_shm_init();
-
 	if (!synshm) {
 		printf(" You will need a patched synaptics driver with SHM enabled.\n");
 		printf(" Take a look at https://github.com/Chosko/xserver-xorg-input-synaptics\n");
 		return;
 	}
-
 
 	int delay = 10;
 
@@ -128,16 +125,19 @@ void grabber_synaptics_loop(Grabber * self) {
 				/// energy economy
 				int delay = 50;
 
-				if (self->configuration->verbose) {
-					printf("%8.3f  %4d %4d %3d %d %2d\n",
-							get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth);
-
+				if (self->verbose) {
+					printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
+							get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth,
+							cur.left, cur.right, cur.up, cur.down, cur.middle, cur.multi[0],
+							cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
+							cur.multi[6], cur.multi[7]);
 					printf("stopped\n");
 				}
 
 				// reset max fingers
 				max_fingers = 0;
-				grabbing_end_movement(self, old.x, old.y);
+
+				grabbing_end_movement(self, old.x, old.y, conf);
 
 
 				}
@@ -146,10 +146,12 @@ void grabber_synaptics_loop(Grabber * self) {
 
 			} else if (cur.numFingers >= 3 && max_fingers >= 3) {
 
-				if (self->configuration->verbose) {
-					printf("%8.3f  %4d %4d %3d %d %2d\n",
-							get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth);
-
+				if (self->verbose) {
+					printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
+							get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth,
+							cur.left, cur.right, cur.up, cur.down, cur.middle, cur.multi[0],
+							cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
+							cur.multi[6], cur.multi[7]);
 				}
 
 				grabbing_update_movement(self, cur.x, cur.y);
@@ -157,10 +159,13 @@ void grabber_synaptics_loop(Grabber * self) {
 				//// got > 3 fingers
 			} else if (cur.numFingers >= 3 && max_fingers < 3) {
 
-				if (self->configuration->verbose) {
+				if (self->verbose) {
 
-					printf("%8.3f  %4d %4d %3d %d %2d\n",
-							get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth);
+					printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
+							get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth,
+							cur.left, cur.right, cur.up, cur.down, cur.middle, cur.multi[0],
+							cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
+							cur.multi[6], cur.multi[7]);
 
 				}
 
@@ -168,7 +173,7 @@ void grabber_synaptics_loop(Grabber * self) {
 
 				if (max_fingers >= 3) {
 
-					if (self->configuration->verbose) {
+					if (self->verbose) {
 						printf("started\n");
 					}
 
