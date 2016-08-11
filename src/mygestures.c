@@ -37,7 +37,7 @@
 char * shm_identifier;
 struct shm_message * message;
 
-typedef struct mygestures_ {
+typedef struct parameters_ {
 	int help;
 	int button;
 	int without_brush;
@@ -52,7 +52,7 @@ typedef struct mygestures_ {
 
 	Configuration * gestures_configuration;
 
-} Mygestures;
+} Parameters;
 
 struct shm_message {
 	int pid;
@@ -219,13 +219,13 @@ static void daemonize() {
 	return;
 }
 
-Mygestures * mygestures_new() {
-	Mygestures *self = malloc(sizeof(Mygestures));
-	bzero(self, sizeof(Mygestures));
+Parameters * mygestures_new() {
+	Parameters *self = malloc(sizeof(Parameters));
+	bzero(self, sizeof(Parameters));
 	return self;
 }
 
-void mygestures_load_configuration(Mygestures * self) {
+void mygestures_load_configuration(Parameters * self) {
 
 	if (self->custom_config_file) {
 		self->gestures_configuration = xml_load_engine_from_file(self->custom_config_file);
@@ -235,14 +235,21 @@ void mygestures_load_configuration(Mygestures * self) {
 
 }
 
-void mygestures_parse_arguments(Mygestures * self, int argc, char * const *argv) {
+void mygestures_parse_arguments(Parameters * self, int argc, char * const *argv) {
 
 	char opt;
-	static struct option opts[] = { { "verbose", no_argument, 0, 'v' }, { "help", no_argument, 0,
-			'h' }, { "without-brush", no_argument, 0, 'w' }, { "daemonize", no_argument, 0, 'z' }, /*{ "reconfigure", no_argument, 0, 'r' },*/
-	{ "button", required_argument, 0, 'b' }, { "brush-color", required_argument, 0, 'b' }, {
-			"device",
-			required_argument, 0, 'd' }, { 0, 0, 0, 0 } };
+	static struct option opts[] = {
+			{
+					"verbose", no_argument, 0, 'v' }, {
+					"help", no_argument, 0, 'h' }, {
+					"without-brush", no_argument, 0, 'w' }, {
+					"daemonize", no_argument, 0, 'z' }, /*{ "reconfigure", no_argument, 0, 'r' },*/
+			{
+					"button", required_argument, 0, 'b' }, {
+					"brush-color", required_argument, 0, 'b' }, {
+					"device",
+					required_argument, 0, 'd' }, {
+					0, 0, 0, 0 } };
 
 	/* read params */
 
@@ -324,25 +331,43 @@ void mygestures_parse_arguments(Mygestures * self, int argc, char * const *argv)
 
 }
 
-void mygestures_run(Mygestures * self) {
+void mygestures_run(Parameters * self) {
 
-	Grabber * grabber = grabber_init(self->device, self->button, self->without_brush,
-			self->list_devices, self->brush_color, self->verbose);
-	grabber_loop(grabber, self->gestures_configuration);
-	grabber_finalize(grabber);
+	if (self->device) {
+
+		Grabber * grabber = grabber_init(self->device, self->button, self->without_brush,
+				self->list_devices, self->brush_color, self->verbose);
+		grabber_loop(grabber, self->gestures_configuration);
+		grabber_finalize(grabber);
+
+	} else {
+
+		int pid = fork();
+
+		if (pid) {
+			Grabber * grabber = grabber_init("Virtual core pointer", self->button,
+					self->without_brush, self->list_devices, self->brush_color, self->verbose);
+			grabber_loop(grabber, self->gestures_configuration);
+			grabber_finalize(grabber);
+		} else {
+			Grabber * grabber = grabber_init("synaptics", self->button, self->without_brush,
+					self->list_devices, self->brush_color, self->verbose);
+			grabber_loop(grabber, self->gestures_configuration);
+			grabber_finalize(grabber);
+		}
+
+	}
 
 }
 
 int main(int argc, char * const * argv) {
 
-	Mygestures *self = mygestures_new();
+	Parameters *self = mygestures_new();
 
 	mygestures_parse_arguments(self, argc, argv);
 
 	signal(SIGINT, on_interrupt);
 	signal(SIGKILL, on_kill);
-
-	printf("%s", SYSCONFDIR);
 
 	mygestures_run(self);
 
