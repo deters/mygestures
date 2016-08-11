@@ -7,8 +7,9 @@ mygestures_SOURCES = \
 	mygestures.c \
 	configuration.c configuration.h \
         configuration_parser.c configuration_parser.h \
-	actions.c actions.h \
-	grabbing.c grabbing.h \
+	    actions.c actions.h \
+	    grabbing.c grabbing.h \
+	    grabbing-synaptics.c grabbing-synaptics.h \
         drawing/drawing-backing.c \
         drawing/drawing-backing.h \
         drawing/drawing-brush.c \
