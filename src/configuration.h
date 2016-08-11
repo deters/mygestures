@@ -13,9 +13,7 @@
  GNU General Public License for more details.
 
  one line to give the program's name and an idea of what it does.
-  */
-
-
+ */
 
 #ifndef MYGESTURES_CONFIGURATION_H_
 #define MYGESTURES_CONFIGURATION_H_
@@ -89,9 +87,14 @@ typedef struct capture_ {
 
 Configuration * configuration_new();
 
-Context * configuration_create_context(Configuration * self, char * context_name, char *window_title, char *window_class);
+Context * configuration_create_context(	Configuration * self,
+										char * context_name,
+										char *window_title,
+										char *window_class);
 Gesture * configuration_create_gesture(Context * self, char * gesture_name, char * gesture_movement);
-Movement * configuration_create_movement(Configuration * self, char *movement_name, char *movement_expression);
+Movement * configuration_create_movement(	Configuration * self,
+											char *movement_name,
+											char *movement_expression);
 Action * configuration_create_action(Gesture * self, int action_type, char * original_str);
 Movement * configuration_find_movement_by_name(Configuration * self, char * movement_name);
 int configuration_get_gestures_count(Configuration * self);

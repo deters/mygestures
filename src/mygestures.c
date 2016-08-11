@@ -243,8 +243,7 @@ void mygestures_parse_arguments(Parameters * self, int argc, char * const *argv)
 					"verbose", no_argument, 0, 'v' }, {
 					"help", no_argument, 0, 'h' }, {
 					"without-brush", no_argument, 0, 'w' }, {
-					"daemonize", no_argument, 0, 'z' }, /*{ "reconfigure", no_argument, 0, 'r' },*/
-			{
+					"daemonize", no_argument, 0, 'z' }, {
 					"button", required_argument, 0, 'b' }, {
 					"brush-color", required_argument, 0, 'b' }, {
 					"device",

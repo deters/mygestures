@@ -13,7 +13,7 @@
  GNU General Public License for more details.
 
  one line to give the program's name and an idea of what it does.
-  */
+ */
 
 #ifndef MYGESTURES_ACTIONS_H_
 #define MYGESTURES_ACTIONS_H_
