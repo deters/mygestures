@@ -1,7 +1,6 @@
 /*
  Copyright 2008-2016 Lucas Augusto Deters
  Copyright 2005 Nir Tzachar
- Copyright 2002-2005,2007 Peter Osterlund
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -14,9 +13,7 @@
  GNU General Public License for more details.
 
  one line to give the program's name and an idea of what it does.
-  */
-
-
+ */
 
 #include <unistd.h>
 #include <stdio.h>
@@ -40,7 +37,8 @@
 #define MAX_STROKES_PER_CAPTURE 63 /*TODO*/
 #endif
 
-const char stroke_representations[] = { ' ', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
+const char stroke_representations[] = {
+		' ', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
 
 static void grabber_open_display(Grabber * self) {
 
@@ -178,8 +176,6 @@ static double get_time(void) {
 	return tv.tv_sec + tv.tv_usec / 1000000.0;
 }
 
-
-
 void grabbing_xinput_grab(Grabber * self) {
 
 	int count = XScreenCount(self->dpy);
@@ -195,11 +191,13 @@ void grabbing_xinput_grab(Grabber * self) {
 				self->button = 1;
 			}
 
-			unsigned char mask_data[2] = { 0, };
+			unsigned char mask_data[2] = {
+					0, };
 			XISetMask(mask_data, XI_ButtonPress);
 			XISetMask(mask_data, XI_Motion);
 			XISetMask(mask_data, XI_ButtonRelease);
-			XIEventMask mask = { XIAllDevices, sizeof(mask_data), mask_data };
+			XIEventMask mask = {
+					XIAllDevices, sizeof(mask_data), mask_data };
 
 			int status = XIGrabDevice(self->dpy, self->deviceid, rootwindow,
 			CurrentTime, None,
@@ -212,13 +210,16 @@ void grabbing_xinput_grab(Grabber * self) {
 				self->button = 3;
 			}
 
-			unsigned char mask_data[2] = { 0, };
+			unsigned char mask_data[2] = {
+					0, };
 			XISetMask(mask_data, XI_ButtonPress);
 			XISetMask(mask_data, XI_Motion);
 			XISetMask(mask_data, XI_ButtonRelease);
-			XIEventMask mask = { XIAllDevices, sizeof(mask_data), mask_data };
+			XIEventMask mask = {
+					XIAllDevices, sizeof(mask_data), mask_data };
 
-			XIGrabModifiers mods = { XIAnyModifier };
+			XIGrabModifiers mods = {
+					XIAnyModifier };
 			int res = XIGrabButton(self->dpy, self->deviceid, self->button, rootwindow, None,
 			GrabModeAsync, GrabModeAsync, False, &mask, 1, &mods);
 
@@ -242,8 +243,14 @@ void grabbing_xinput_ungrab(Grabber * self) {
 			int status = XIUngrabDevice(self->dpy, self->deviceid, CurrentTime);
 
 		} else {
-			XIGrabModifiers modifiers[4] = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } };
-			XIGrabModifiers mods = { XIAnyModifier };
+			XIGrabModifiers modifiers[4] = {
+					{
+							0, 0 }, {
+							0, 0 }, {
+							0, 0 }, {
+							0, 0 } };
+			XIGrabModifiers mods = {
+					XIAnyModifier };
 			XIUngrabButton(self->dpy, self->deviceid, self->button, rootwindow, 1, &mods);
 		}
 
@@ -360,13 +367,11 @@ static void execute_action(Display *dpy, Action *action, Window focused_window) 
 	return;
 }
 
-
 static void free_grabbed(Capture * free_me) {
 	assert(free_me);
 	free(free_me->active_window_info);
 	free(free_me);
 }
-
 
 /**
  *
@@ -410,7 +415,8 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y, Configuration *
 		expression_list[0] = self->fine_direction_sequence;
 		expression_list[1] = self->rought_direction_sequence;
 
-		ActiveWindowInfo * focused_window = get_active_window_info(self->dpy, get_focused_window(self->dpy));
+		ActiveWindowInfo * focused_window = get_active_window_info(self->dpy,
+				get_focused_window(self->dpy));
 
 		grab = malloc(sizeof(Capture));
 
@@ -419,7 +425,6 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y, Configuration *
 		grab->active_window_info = focused_window;
 
 	}
-
 
 	if (grab) {
 
@@ -437,8 +442,7 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y, Configuration *
 
 			for (j = 0; j < gest->action_count; ++j) {
 				Action * a = gest->action_list[j];
-				printf("     Executing action: %s %s\n", get_action_name(a->type),
-						a->original_str);
+				printf("     Executing action: %s %s\n", get_action_name(a->type), a->original_str);
 				execute_action(self->dpy, a, get_focused_window(self->dpy));
 
 			}
@@ -447,8 +451,7 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y, Configuration *
 
 			for (int i = 0; i < grab->expression_count; ++i) {
 				char * movement = grab->expression_list[i];
-				printf("     Sequence '%s' does not match any known movement.\n",
-						movement);
+				printf("     Sequence '%s' does not match any known movement.\n", movement);
 			}
 
 		}
@@ -600,7 +603,6 @@ void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
 	return;
 }
 
-
 int get_touch_status(XIDeviceInfo * device) {
 
 	int j = 0;
@@ -619,19 +621,7 @@ int get_touch_status(XIDeviceInfo * device) {
 	return 0;
 }
 
-Grabber * grabber_init(char * device_name, int button, int without_brush, int print_devices, char * brush_color, int verbose) {
-
-	Grabber * self = malloc(sizeof(Grabber));
-	bzero(self, sizeof(Grabber));
-
-	grabber_open_display(self);
-
-	grabbing_set_brush_color(self, brush_color);
-
-	self->button = button;
-	self->without_brush = without_brush;
-	self->verbose = verbose;
-	self->devicename = device_name;
+void grabber_open_devices(Grabber* self, int print_devices) {
 
 	if (!self->devicename) {
 		self->devicename = "Virtual core pointer";
@@ -647,40 +637,29 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 
 	int ndevices;
 	int i;
-
-	XIDeviceInfo * device;
-	XIDeviceInfo * devices;
-
+	XIDeviceInfo* device;
+	XIDeviceInfo* devices;
 	int deviceid = -1;
-
 	devices = XIQueryDevice(self->dpy, XIAllDevices, &ndevices);
-
 	if (print_devices) {
 		printf("\nXInput Devices:\n");
 	}
-
 	for (i = 0; i < ndevices; i++) {
 		device = &devices[i];
-
 		switch (device->use) {
 		/// ṕointers
 		case XIMasterPointer:
 		case XISlavePointer:
 		case XIFloatingSlave:
-
 			if (print_devices) {
 				printf("   '%s'\n", device->name);
 			} else {
-
 				if (strcasecmp(device->name, self->devicename) == 0) {
 					self->deviceid = device->deviceid;
 					self->is_direct_touch = get_touch_status(device);
 				}
-
 			}
-
 			break;
-
 		case XIMasterKeyboard:
 			//printf("master keyboard\n");
 			break;
@@ -688,67 +667,78 @@ Grabber * grabber_init(char * device_name, int button, int without_brush, int pr
 			//printf("slave keyboard\n");
 			break;
 		}
-
 	}
-
 	if (print_devices) {
-
 		printf("\nExperimental multitouch driver:\n");
-
 		printf("   'SYNAPTICS'\n");
 		printf("\nRun  mygestures -d 'DEVICE_NAME' to choose a device.\n");
-
 	}
-
 	XIFreeDeviceInfo(devices);
-
 	if (print_devices) {
 		exit(0);
 	}
+}
 
-	self->fine_direction_sequence = (char *) malloc(sizeof(char) * (MAX_STROKES_PER_CAPTURE + 1));
+void grabber_reset_movement(Grabber* self) {
+	self->fine_direction_sequence = (char*) malloc(sizeof(char) * (MAX_STROKES_PER_CAPTURE + 1));
 	self->fine_direction_sequence[0] = '\0';
-
-	self->rought_direction_sequence = (char *) malloc(sizeof(char) * (MAX_STROKES_PER_CAPTURE + 1));
+	self->rought_direction_sequence = (char*) malloc(sizeof(char) * (MAX_STROKES_PER_CAPTURE + 1));
 	self->rought_direction_sequence[0] = '\0';
+	self->old_x = -1;
+	self->old_y = -1;
+	self->rought_old_x = -1;
+	self->rought_old_y = -1;
+}
+
+void grabber_init_drawing(Grabber* self, char * brush_color) {
+
+	grabbing_set_brush_color(self, brush_color);
 
 	int err = 0;
 	int scr = DefaultScreen(self->dpy);
-
 	if (!(self->synaptics)) {
 		XAllowEvents(self->dpy, AsyncBoth, CurrentTime);
 	}
-
 	if (!self->without_brush) {
-
 		if (!self->brush_image) {
 			self->brush_image = &brush_image_red;
 		}
-
 		err = backing_init(&(self->backing), self->dpy, DefaultRootWindow(self->dpy),
 				DisplayWidth(self->dpy, scr), DisplayHeight(self->dpy, scr),
 				DefaultDepth(self->dpy, scr));
 		if (err) {
 			fprintf(stderr, "cannot open backing store.... \n");
-			return NULL;
 		}
-
 		err = brush_init(&(self->brush), &(self->backing), self->brush_image);
 		if (err) {
 			fprintf(stderr, "cannot init brush.... \n");
-			return NULL;
 		}
 	}
-
-	self->old_x = -1;
-	self->old_y = -1;
-
-	self->rought_old_x = -1;
-	self->rought_old_y = -1;
-
-	return self;
 }
 
+Grabber * grabber_init(	char * device_name,
+						int button,
+						int without_brush,
+						int print_devices,
+						char * brush_color,
+						int verbose) {
+
+	Grabber * self = malloc(sizeof(Grabber));
+	bzero(self, sizeof(Grabber));
+
+	self->button = button;
+	self->without_brush = without_brush;
+	self->verbose = verbose;
+	self->devicename = device_name;
+
+	grabber_open_display(self);
+	grabber_open_devices(self, print_devices);
+
+	grabber_reset_movement(self);
+
+	grabber_init_drawing(self, brush_color);
+	return self;
+}
 
 void grabber_xinput_loop(Grabber * self, Configuration * conf) {
 
