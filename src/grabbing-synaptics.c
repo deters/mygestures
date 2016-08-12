@@ -23,7 +23,6 @@
 #include <string.h>
 #include <unistd.h>
 
-
 #include <sys/shm.h> /* needed for synaptics */
 #include <X11/Xlib.h>
 #include <sys/time.h>
@@ -66,8 +65,6 @@ static double get_time(void) {
 	gettimeofday(&tv, NULL);
 	return tv.tv_sec + tv.tv_usec / 1000000.0;
 }
-
-
 
 /** Init and return SHM area or NULL on error */
 static SynapticsSHM *
@@ -120,10 +117,20 @@ void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 			int delay = 10;
 
 			// release
-			if (cur.numFingers == 0 && max_fingers >= 3) {
+			if (cur.numFingers >= 3 && max_fingers >= 3) {
 
-				/// energy economy
-				int delay = 50;
+				if (self->verbose) {
+					printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
+							get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth,
+							cur.left, cur.right, cur.up, cur.down, cur.middle, cur.multi[0],
+							cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
+							cur.multi[6], cur.multi[7]);
+				}
+
+				grabbing_update_movement(self, cur.x, cur.y);
+
+				//// got > 3 fingers
+			} else if (cur.numFingers == 0 && max_fingers >= 3) {
 
 				if (self->verbose) {
 					printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
@@ -139,24 +146,9 @@ void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 
 				grabbing_end_movement(self, old.x, old.y, conf);
 
+				/// energy economy
+				int delay = 50;
 
-				}
-
-				//// movement
-
-			} else if (cur.numFingers >= 3 && max_fingers >= 3) {
-
-				if (self->verbose) {
-					printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
-							get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth,
-							cur.left, cur.right, cur.up, cur.down, cur.middle, cur.multi[0],
-							cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
-							cur.multi[6], cur.multi[7]);
-				}
-
-				grabbing_update_movement(self, cur.x, cur.y);
-
-				//// got > 3 fingers
 			} else if (cur.numFingers >= 3 && max_fingers < 3) {
 
 				if (self->verbose) {
@@ -183,9 +175,12 @@ void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 
 			}
 
-			old = cur;
-		}
-		usleep(delay * 1000);
+			//// movement
 
+		}
+
+		old = cur;
+	}
+	usleep(delay * 1000);
 
 }

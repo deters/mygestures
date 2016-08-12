@@ -25,8 +25,6 @@
 #include <X11/extensions/XTest.h> /* emulating device events */
 #include <X11/extensions/XInput2.h> /* capturing device events */
 
-#include <sys/time.h>
-
 #include "drawing/drawing-brush-image.h"
 
 #include "grabbing.h"
@@ -40,7 +38,8 @@
 const char stroke_representations[] = {
 		' ', 'L', 'R', 'U', 'D', '1', '3', '7', '9' };
 
-static void grabber_open_display(Grabber * self) {
+static
+void grabber_open_display(Grabber * self) {
 
 	self->dpy = XOpenDisplay(NULL);
 
@@ -58,7 +57,8 @@ static void grabber_open_display(Grabber * self) {
 
 }
 
-static void grabbing_set_brush_color(Grabber * self, char * color) {
+static
+void grabbing_set_brush_color(Grabber * self, char * color) {
 
 	assert(self);
 
@@ -85,10 +85,8 @@ static void grabbing_set_brush_color(Grabber * self, char * color) {
 	}
 }
 
-/*
- * Get the title of a given window at out_window_title.
- */
-static Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
+static
+Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
 	int status;
 	XTextProperty text_prop;
 	char **list;
@@ -114,7 +112,8 @@ static Status fetch_window_title(Display *dpy, Window w, char **out_window_title
 /*
  * Return a window_info struct for the focused window at a given Display.
  */
-static ActiveWindowInfo * get_active_window_info(Display* dpy, Window win) {
+static
+ActiveWindowInfo * get_active_window_info(Display* dpy, Window win) {
 
 	int ret, val;
 
@@ -157,23 +156,14 @@ static ActiveWindowInfo * get_active_window_info(Display* dpy, Window win) {
 
 }
 
-/*
- * Get the parent window.
- */
-static Window get_parent_window(Display *dpy, Window w) {
+static
+Window get_parent_window(Display *dpy, Window w) {
 	Window root_return, parent_return, *child_return;
 	unsigned int nchildren_return;
 	int ret;
 	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return, &nchildren_return);
 
 	return parent_return;
-}
-
-static double get_time(void) {
-	struct timeval tv;
-
-	gettimeofday(&tv, NULL);
-	return tv.tv_sec + tv.tv_usec / 1000000.0;
 }
 
 void grabbing_xinput_grab(Grabber * self) {
@@ -258,49 +248,16 @@ void grabbing_xinput_ungrab(Grabber * self) {
 
 }
 
-/*
- * Emulate a mouse click at the given display.
- *
- * PRIVATE
- */
-static void mouse_click(Display *display, int button, int x, int y) {
+static
+void mouse_click(Display *display, int button, int x, int y) {
 
 	XTestFakeMotionEvent(display, DefaultScreen(display), x, y, 0);
 	XTestFakeButtonEvent(display, button, True, CurrentTime);
 	XTestFakeButtonEvent(display, button, False, CurrentTime);
 }
 
-/**
- * Clear previous movement data.
- */
-void grabbing_start_movement(Grabber * self, int new_x, int new_y) {
-
-	self->started = 1;
-
-	self->fine_direction_sequence[0] = '\0';
-	self->rought_direction_sequence[0] = '\0';
-
-	self->old_x = new_x;
-	self->old_y = new_y;
-
-	self->rought_old_x = new_x;
-	self->rought_old_y = new_y;
-
-	if (!self->without_brush) {
-
-		XFlush(self->dpy);
-		backing_save(&(self->backing), new_x - self->brush.image_width,
-				new_y - self->brush.image_height);
-		brush_draw(&(self->brush), self->old_x, self->old_y);
-
-	}
-	return;
-}
-
-/*
- * Return the focused window at the given display.
- */
-static Window get_focused_window(Display *dpy) {
+static
+Window get_focused_window(Display *dpy) {
 
 	Window win = 0;
 	int ret, val;
@@ -314,10 +271,8 @@ static Window get_focused_window(Display *dpy) {
 
 }
 
-/**
- * Execute an action
- */
-static void execute_action(Display *dpy, Action *action, Window focused_window) {
+static
+void execute_action(Display *dpy, Action *action, Window focused_window) {
 	int id;
 
 	// if there is an action
@@ -367,11 +322,295 @@ static void execute_action(Display *dpy, Action *action, Window focused_window) 
 	return;
 }
 
-static void free_grabbed(Capture * free_me) {
+static
+void free_grabbed(Capture * free_me) {
 	assert(free_me);
 	free(free_me->active_window_info);
 	free(free_me);
 }
+
+
+static
+char get_fine_direction_from_deltas(int x_delta, int y_delta) {
+
+	if ((x_delta == 0) && (y_delta == 0)) {
+		return stroke_representations[NONE];
+	}
+
+	// check if the movement is near main axes
+	if ((x_delta == 0) || (y_delta == 0) || (fabs((float) x_delta / (float) y_delta) > 3)
+			|| (fabs((float) y_delta / (float) x_delta) > 3)) {
+
+		// x axe
+		if (abs(x_delta) > abs(y_delta)) {
+
+			if (x_delta > 0) {
+				return stroke_representations[RIGHT];
+			} else {
+				return stroke_representations[LEFT];
+			}
+
+			// y axe
+		} else {
+
+			if (y_delta > 0) {
+				return stroke_representations[DOWN];
+			} else {
+				return stroke_representations[UP];
+			}
+
+		}
+
+		// diagonal axes
+	} else {
+
+		if (y_delta < 0) {
+			if (x_delta < 0) {
+				return stroke_representations[SEVEN];
+			} else if (x_delta > 0) { // RIGHT
+				return stroke_representations[NINE];
+			}
+		} else if (y_delta > 0) { // DOWN
+			if (x_delta < 0) { // RIGHT
+				return stroke_representations[ONE];
+			} else if (x_delta > 0) {
+				return stroke_representations[THREE];
+			}
+		}
+
+	}
+
+	return stroke_representations[NONE];
+
+}
+
+static
+char get_direction_from_deltas(int x_delta, int y_delta) {
+
+	if (abs(y_delta) > abs(x_delta)) {
+		if (y_delta > 0) {
+			return stroke_representations[DOWN];
+		} else {
+			return stroke_representations[UP];
+		}
+
+	} else {
+		if (x_delta > 0) {
+			return stroke_representations[RIGHT];
+		} else {
+			return stroke_representations[LEFT];
+		}
+
+	}
+
+}
+
+static
+void movement_add_direction(char* stroke_sequence, char direction) {
+	// grab stroke
+	int len = strlen(stroke_sequence);
+	if ((len == 0) || (stroke_sequence[len - 1] != direction)) {
+
+		if (len < MAX_STROKES_PER_CAPTURE) {
+
+			stroke_sequence[len] = direction;
+			stroke_sequence[len + 1] = '\0';
+
+		}
+
+	}
+}
+
+
+
+static
+int get_touch_status(XIDeviceInfo * device) {
+
+	int j = 0;
+
+	for (j = 0; j < device->num_classes; j++) {
+		XIAnyClassInfo *class = device->classes[j];
+		XITouchClassInfo *t = (XITouchClassInfo*) class;
+
+		if (class->type != XITouchClass)
+			continue;
+
+		if (t->mode == XIDirectTouch) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static
+void grabber_open_devices(Grabber* self, int print_devices) {
+
+	if (!self->devicename) {
+		self->devicename = "Virtual core pointer";
+	}
+
+	if (strcasecmp(self->devicename, "SYNAPTICS") == 0) {
+		self->synaptics = 1;
+		self->delta_min = 200;
+	} else {
+		self->synaptics = 0;
+		self->delta_min = 30;
+	}
+
+	int ndevices;
+	int i;
+	XIDeviceInfo* device;
+	XIDeviceInfo* devices;
+	int deviceid = -1;
+	devices = XIQueryDevice(self->dpy, XIAllDevices, &ndevices);
+	if (print_devices) {
+		printf("\nXInput Devices:\n");
+	}
+	for (i = 0; i < ndevices; i++) {
+		device = &devices[i];
+		switch (device->use) {
+		/// ṕointers
+		case XIMasterPointer:
+		case XISlavePointer:
+		case XIFloatingSlave:
+			if (print_devices) {
+				printf("   '%s'\n", device->name);
+			} else {
+				if (strcasecmp(device->name, self->devicename) == 0) {
+					self->deviceid = device->deviceid;
+					self->is_direct_touch = get_touch_status(device);
+				}
+			}
+			break;
+		case XIMasterKeyboard:
+			//printf("master keyboard\n");
+			break;
+		case XISlaveKeyboard:
+			//printf("slave keyboard\n");
+			break;
+		}
+	}
+	if (print_devices) {
+		printf("\nExperimental multitouch driver:\n");
+		printf("   'SYNAPTICS'\n");
+		printf("\nRun  mygestures -d 'DEVICE_NAME' to choose a device.\n");
+	}
+	XIFreeDeviceInfo(devices);
+	if (print_devices) {
+		exit(0);
+	}
+}
+
+static
+void grabber_init_drawing(Grabber* self, char * brush_color) {
+
+	grabbing_set_brush_color(self, brush_color);
+
+	int err = 0;
+	int scr = DefaultScreen(self->dpy);
+	if (!(self->synaptics)) {
+		XAllowEvents(self->dpy, AsyncBoth, CurrentTime);
+	}
+	if (!self->without_brush) {
+		if (!self->brush_image) {
+			self->brush_image = &brush_image_red;
+		}
+		err = backing_init(&(self->backing), self->dpy, DefaultRootWindow(self->dpy),
+				DisplayWidth(self->dpy, scr), DisplayHeight(self->dpy, scr),
+				DefaultDepth(self->dpy, scr));
+		if (err) {
+			fprintf(stderr, "cannot open backing store.... \n");
+		}
+		err = brush_init(&(self->brush), &(self->backing), self->brush_image);
+		if (err) {
+			fprintf(stderr, "cannot init brush.... \n");
+		}
+	}
+}
+
+
+
+/**
+ * Clear previous movement data.
+ */
+void grabbing_start_movement(Grabber * self, int new_x, int new_y) {
+
+	self->started = 1;
+
+	self->fine_direction_sequence[0] = '\0';
+	self->rought_direction_sequence[0] = '\0';
+
+	self->old_x = new_x;
+	self->old_y = new_y;
+
+	self->rought_old_x = new_x;
+	self->rought_old_y = new_y;
+
+	if (!self->without_brush) {
+
+		XFlush(self->dpy);
+		backing_save(&(self->backing), new_x - self->brush.image_width,
+				new_y - self->brush.image_height);
+		brush_draw(&(self->brush), self->old_x, self->old_y);
+
+	}
+	return;
+}
+
+
+
+void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
+
+	if (!self->started) {
+		return;
+	}
+
+	// se for o caso, desenha o movimento na tela
+	if (!self->without_brush) {
+		backing_save(&(self->backing), new_x - self->brush.image_width,
+				new_y - self->brush.image_height);
+		//backing_save(&(self->backing), new_x - self->brush.image_width,
+		//		new_y - self->brush.image_height);
+
+		brush_line_to(&(self->brush), new_x, new_y);
+		XFlush(self->dpy);
+	}
+
+	int x_delta = (new_x - self->old_x);
+	int y_delta = (new_y - self->old_y);
+
+	if ((abs(x_delta) > self->delta_min) || (abs(y_delta) > self->delta_min)) {
+
+		char stroke = get_fine_direction_from_deltas(x_delta, y_delta);
+
+		movement_add_direction(self->fine_direction_sequence, stroke);
+
+		// reset start position
+		self->old_x = new_x;
+		self->old_y = new_y;
+
+	}
+
+	int rought_delta_x = new_x - self->rought_old_x;
+	int rought_delta_y = new_y - self->rought_old_y;
+
+	char rought_direction = get_direction_from_deltas(rought_delta_x, rought_delta_y);
+
+	int square_distance_2 = rought_delta_x * rought_delta_x + rought_delta_y * rought_delta_y;
+
+	if (self->delta_min * self->delta_min < square_distance_2) {
+		// grab stroke
+
+		movement_add_direction(self->rought_direction_sequence, rought_direction);
+
+		// reset start position
+		self->rought_old_x = new_x;
+		self->rought_old_y = new_y;
+	}
+
+	return;
+}
+
 
 /**
  *
@@ -396,14 +635,9 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y, Configuration *
 
 			printf("Emulating click\n");
 
-			// temporary ungrab button
-			grabbing_xinput_ungrab(self);
-
-			// emulate the click
+			//grabbing_xinput_ungrab(self);
 			mouse_click(self->dpy, self->button, new_x, new_y);
-
-			// restart grabbing
-			grabbing_xinput_grab(self);
+			//grabbing_xinput_grab(self);
 
 		}
 
@@ -463,259 +697,6 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y, Configuration *
 	}
 }
 
-char get_fine_direction_from_deltas(int x_delta, int y_delta) {
-
-	if ((x_delta == 0) && (y_delta == 0)) {
-		return stroke_representations[NONE];
-	}
-
-	// check if the movement is near main axes
-	if ((x_delta == 0) || (y_delta == 0) || (fabs((float) x_delta / (float) y_delta) > 3)
-			|| (fabs((float) y_delta / (float) x_delta) > 3)) {
-
-		// x axe
-		if (abs(x_delta) > abs(y_delta)) {
-
-			if (x_delta > 0) {
-				return stroke_representations[RIGHT];
-			} else {
-				return stroke_representations[LEFT];
-			}
-
-			// y axe
-		} else {
-
-			if (y_delta > 0) {
-				return stroke_representations[DOWN];
-			} else {
-				return stroke_representations[UP];
-			}
-
-		}
-
-		// diagonal axes
-	} else {
-
-		if (y_delta < 0) {
-			if (x_delta < 0) {
-				return stroke_representations[SEVEN];
-			} else if (x_delta > 0) { // RIGHT
-				return stroke_representations[NINE];
-			}
-		} else if (y_delta > 0) { // DOWN
-			if (x_delta < 0) { // RIGHT
-				return stroke_representations[ONE];
-			} else if (x_delta > 0) {
-				return stroke_representations[THREE];
-			}
-		}
-
-	}
-
-	return stroke_representations[NONE];
-
-}
-
-char get_direction_from_deltas(int x_delta, int y_delta) {
-
-	if (abs(y_delta) > abs(x_delta)) {
-		if (y_delta > 0) {
-			return stroke_representations[DOWN];
-		} else {
-			return stroke_representations[UP];
-		}
-
-	} else {
-		if (x_delta > 0) {
-			return stroke_representations[RIGHT];
-		} else {
-			return stroke_representations[LEFT];
-		}
-
-	}
-
-}
-
-void movement_add_direction(char* stroke_sequence, char direction) {
-	// grab stroke
-	int len = strlen(stroke_sequence);
-	if ((len == 0) || (stroke_sequence[len - 1] != direction)) {
-
-		if (len < MAX_STROKES_PER_CAPTURE) {
-
-			stroke_sequence[len] = direction;
-			stroke_sequence[len + 1] = '\0';
-
-		}
-
-	}
-}
-
-void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
-
-	if (!self->started) {
-		return;
-	}
-
-	// se for o caso, desenha o movimento na tela
-	if (!self->without_brush) {
-		backing_save(&(self->backing), new_x - self->brush.image_width,
-				new_y - self->brush.image_height);
-		//backing_save(&(self->backing), new_x - self->brush.image_width,
-		//		new_y - self->brush.image_height);
-
-		brush_line_to(&(self->brush), new_x, new_y);
-		XFlush(self->dpy);
-	}
-
-	int x_delta = (new_x - self->old_x);
-	int y_delta = (new_y - self->old_y);
-
-	if ((abs(x_delta) > self->delta_min) || (abs(y_delta) > self->delta_min)) {
-
-		char stroke = get_fine_direction_from_deltas(x_delta, y_delta);
-
-		movement_add_direction(self->fine_direction_sequence, stroke);
-
-		// reset start position
-		self->old_x = new_x;
-		self->old_y = new_y;
-
-	}
-
-	int rought_delta_x = new_x - self->rought_old_x;
-	int rought_delta_y = new_y - self->rought_old_y;
-
-	char rought_direction = get_direction_from_deltas(rought_delta_x, rought_delta_y);
-
-	int square_distance_2 = rought_delta_x * rought_delta_x + rought_delta_y * rought_delta_y;
-
-	if (self->delta_min * self->delta_min < square_distance_2) {
-		// grab stroke
-
-		movement_add_direction(self->rought_direction_sequence, rought_direction);
-
-		// reset start position
-		self->rought_old_x = new_x;
-		self->rought_old_y = new_y;
-	}
-
-	return;
-}
-
-int get_touch_status(XIDeviceInfo * device) {
-
-	int j = 0;
-
-	for (j = 0; j < device->num_classes; j++) {
-		XIAnyClassInfo *class = device->classes[j];
-		XITouchClassInfo *t = (XITouchClassInfo*) class;
-
-		if (class->type != XITouchClass)
-			continue;
-
-		if (t->mode == XIDirectTouch) {
-			return 1;
-		}
-	}
-	return 0;
-}
-
-void grabber_open_devices(Grabber* self, int print_devices) {
-
-	if (!self->devicename) {
-		self->devicename = "Virtual core pointer";
-	}
-
-	if (strcasecmp(self->devicename, "SYNAPTICS") == 0) {
-		self->synaptics = 1;
-		self->delta_min = 200;
-	} else {
-		self->synaptics = 0;
-		self->delta_min = 30;
-	}
-
-	int ndevices;
-	int i;
-	XIDeviceInfo* device;
-	XIDeviceInfo* devices;
-	int deviceid = -1;
-	devices = XIQueryDevice(self->dpy, XIAllDevices, &ndevices);
-	if (print_devices) {
-		printf("\nXInput Devices:\n");
-	}
-	for (i = 0; i < ndevices; i++) {
-		device = &devices[i];
-		switch (device->use) {
-		/// ṕointers
-		case XIMasterPointer:
-		case XISlavePointer:
-		case XIFloatingSlave:
-			if (print_devices) {
-				printf("   '%s'\n", device->name);
-			} else {
-				if (strcasecmp(device->name, self->devicename) == 0) {
-					self->deviceid = device->deviceid;
-					self->is_direct_touch = get_touch_status(device);
-				}
-			}
-			break;
-		case XIMasterKeyboard:
-			//printf("master keyboard\n");
-			break;
-		case XISlaveKeyboard:
-			//printf("slave keyboard\n");
-			break;
-		}
-	}
-	if (print_devices) {
-		printf("\nExperimental multitouch driver:\n");
-		printf("   'SYNAPTICS'\n");
-		printf("\nRun  mygestures -d 'DEVICE_NAME' to choose a device.\n");
-	}
-	XIFreeDeviceInfo(devices);
-	if (print_devices) {
-		exit(0);
-	}
-}
-
-void grabber_reset_movement(Grabber* self) {
-	self->fine_direction_sequence = (char*) malloc(sizeof(char) * (MAX_STROKES_PER_CAPTURE + 1));
-	self->fine_direction_sequence[0] = '\0';
-	self->rought_direction_sequence = (char*) malloc(sizeof(char) * (MAX_STROKES_PER_CAPTURE + 1));
-	self->rought_direction_sequence[0] = '\0';
-	self->old_x = -1;
-	self->old_y = -1;
-	self->rought_old_x = -1;
-	self->rought_old_y = -1;
-}
-
-void grabber_init_drawing(Grabber* self, char * brush_color) {
-
-	grabbing_set_brush_color(self, brush_color);
-
-	int err = 0;
-	int scr = DefaultScreen(self->dpy);
-	if (!(self->synaptics)) {
-		XAllowEvents(self->dpy, AsyncBoth, CurrentTime);
-	}
-	if (!self->without_brush) {
-		if (!self->brush_image) {
-			self->brush_image = &brush_image_red;
-		}
-		err = backing_init(&(self->backing), self->dpy, DefaultRootWindow(self->dpy),
-				DisplayWidth(self->dpy, scr), DisplayHeight(self->dpy, scr),
-				DefaultDepth(self->dpy, scr));
-		if (err) {
-			fprintf(stderr, "cannot open backing store.... \n");
-		}
-		err = brush_init(&(self->brush), &(self->backing), self->brush_image);
-		if (err) {
-			fprintf(stderr, "cannot init brush.... \n");
-		}
-	}
-}
-
 Grabber * grabber_init(	char * device_name,
 						int button,
 						int without_brush,
@@ -732,11 +713,14 @@ Grabber * grabber_init(	char * device_name,
 	self->devicename = device_name;
 
 	grabber_open_display(self);
-	grabber_open_devices(self, print_devices);
-
-	grabber_reset_movement(self);
 
 	grabber_init_drawing(self, brush_color);
+
+
+
+
+	grabber_open_devices(self, print_devices);
+
 	return self;
 }
 
@@ -781,7 +765,9 @@ void grabber_xinput_loop(Grabber * self, Configuration * conf) {
 
 			case XI_ButtonRelease:
 				data = (XIDeviceEvent*) ev.xcookie.data;
+				grabbing_xinput_ungrab(self);
 				grabbing_end_movement(self, data->root_x, data->root_y, conf);
+				grabbing_xinput_grab(self);
 				break;
 
 			}
@@ -790,7 +776,7 @@ void grabber_xinput_loop(Grabber * self, Configuration * conf) {
 
 	}
 
-	grabbing_xinput_ungrab(self);
+
 }
 
 void grabber_loop(Grabber * self, Configuration * conf) {

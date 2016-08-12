@@ -337,7 +337,7 @@ void mygestures_run(Parameters * self) {
 		Grabber * grabber = grabber_init(self->device, self->button, self->without_brush,
 				self->list_devices, self->brush_color, self->verbose);
 		grabber_loop(grabber, self->gestures_configuration);
-		grabber_finalize(grabber);
+		//grabber_finalize(grabber);
 
 	} else {
 
