@@ -537,6 +537,9 @@ void grabbing_start_movement(Grabber * self, int new_x, int new_y) {
 
 	self->started = 1;
 
+
+
+
 	self->fine_direction_sequence[0] = '\0';
 	self->rought_direction_sequence[0] = '\0';
 
@@ -635,9 +638,9 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y, Configuration *
 
 			printf("Emulating click\n");
 
-			//grabbing_xinput_ungrab(self);
+			grabbing_xinput_ungrab(self);
 			mouse_click(self->dpy, self->button, new_x, new_y);
-			//grabbing_xinput_grab(self);
+			grabbing_xinput_grab(self);
 
 		}
 
@@ -707,6 +710,9 @@ Grabber * grabber_init(	char * device_name,
 	Grabber * self = malloc(sizeof(Grabber));
 	bzero(self, sizeof(Grabber));
 
+	self->fine_direction_sequence = malloc(sizeof(char *) * 30);
+	self->rought_direction_sequence = malloc(sizeof(char *) * 30);
+
 	self->button = button;
 	self->without_brush = without_brush;
 	self->verbose = verbose;
@@ -741,6 +747,7 @@ void grabber_xinput_loop(Grabber * self, Configuration * conf) {
 	}
 
 	printf("\n");
+
 
 	while (!self->shut_down) {
 

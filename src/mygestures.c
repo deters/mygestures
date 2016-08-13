@@ -102,7 +102,8 @@ static void send_kill_message() {
 
 	/* if shared message contains a PID, kill that process */
 	if (message->pid > 0) {
-		fprintf(stdout, "\nAsking mygestures running on pid %d to exit.\n\n", message->pid);
+		fprintf(stdout, "\nAsking mygestures running on pid %d to exit. '%s'.\n\n", message->pid,
+				shm_identifier);
 
 		int running = message->pid;
 
@@ -317,15 +318,6 @@ void mygestures_parse_arguments(Parameters * self, int argc, char * const *argv)
 		exit(0);
 	}
 
-	alloc_shared_memory(self->device);
-
-	if (self->reconfigure) {
-		send_reload_message();
-		exit(0);
-	} else {
-		send_kill_message();
-	}
-
 	mygestures_load_configuration(self);
 
 }
@@ -341,18 +333,33 @@ void mygestures_run(Parameters * self) {
 
 	} else {
 
-		int pid = fork();
+		char * default_devices[2] = {
+				"Virtual Core Pointer", "synaptics" };
 
-		if (pid) {
-			Grabber * grabber = grabber_init("Virtual core pointer", self->button,
-					self->without_brush, self->list_devices, self->brush_color, self->verbose);
-			grabber_loop(grabber, self->gestures_configuration);
-			grabber_finalize(grabber);
-		} else {
-			Grabber * grabber = grabber_init("synaptics", self->button, self->without_brush,
-					self->list_devices, self->brush_color, self->verbose);
-			grabber_loop(grabber, self->gestures_configuration);
-			grabber_finalize(grabber);
+		for (int i = 0; i <= 2; ++i) {
+
+			int in_fork = fork();
+
+			if (in_fork) {
+
+				Grabber * grabber = grabber_init(default_devices[i], self->button,
+						self->without_brush, self->list_devices, self->brush_color, self->verbose);
+				grabber_loop(grabber, self->gestures_configuration);
+				//grabber_finalize(grabber);
+
+				alloc_shared_memory(default_devices[i]);
+
+				if (self->reconfigure) {
+					send_reload_message();
+					exit(0);
+				} else {
+					send_kill_message();
+				}
+
+				printf("Exit 1\n");
+
+			}
+
 		}
 
 	}

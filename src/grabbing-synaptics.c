@@ -177,10 +177,17 @@ void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 
 			//// movement
 
+
+
 		}
 
+		usleep(delay * 1000);
+
 		old = cur;
+
+
+
 	}
-	usleep(delay * 1000);
+
 
 }
