@@ -85,10 +85,6 @@ grabber_synaptics_shm_init() {
 
 void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 
-	printf("\nMygestures is running on 3 fingers multitouch synaptics driver.\n");
-	printf("Run `mygestures -l` to list other devices.\n");
-	printf("\n");
-
 	SynapticsSHM *synshm = NULL;
 
 	synshm = grabber_synaptics_shm_init();
@@ -177,17 +173,12 @@ void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 
 			//// movement
 
-
-
 		}
 
 		usleep(delay * 1000);
 
 		old = cur;
 
-
-
 	}
-
 
 }

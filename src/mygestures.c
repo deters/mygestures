@@ -98,7 +98,7 @@ char * char_replace(char *str, char oldChar, char newChar) {
 /*
  * Ask other instances with same unique_identifier to exit.
  */
-static void send_kill_message() {
+static void send_kill_message(char * device_name) {
 
 	/* if shared message contains a PID, kill that process */
 	if (message->pid > 0) {
@@ -344,6 +344,9 @@ void mygestures_run(Parameters * self) {
 
 				Grabber * grabber = grabber_init(default_devices[i], self->button,
 						self->without_brush, self->list_devices, self->brush_color, self->verbose);
+
+				printf("Grabbing device %s. ", self->device);
+
 				grabber_loop(grabber, self->gestures_configuration);
 				//grabber_finalize(grabber);
 
@@ -353,14 +356,15 @@ void mygestures_run(Parameters * self) {
 					send_reload_message();
 					exit(0);
 				} else {
-					send_kill_message();
+					send_kill_message(default_devices[i]);
 				}
-
-				printf("Exit 1\n");
 
 			}
 
 		}
+
+		printf("Mygestures is running against all devices.\n\n");
+
 
 	}
 

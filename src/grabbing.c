@@ -1,4 +1,5 @@
 /*
+
  Copyright 2008-2016 Lucas Augusto Deters
  Copyright 2005 Nir Tzachar
 
@@ -735,19 +736,6 @@ void grabber_xinput_loop(Grabber * self, Configuration * conf) {
 	XEvent ev;
 
 	grabbing_xinput_grab(self);
-
-	printf("\n");
-	if (self->is_direct_touch) {
-		printf("\nMygestures is running on device '%s' touch.\nDraw a gesture by touching it.\n",
-				self->devicename);
-	} else {
-		printf(
-				"\nMygestures is running on device '%s' button %d.\nDraw a gesture pressing this button.\n",
-				self->devicename, self->button);
-	}
-
-	printf("\n");
-
 
 	while (!self->shut_down) {
 
