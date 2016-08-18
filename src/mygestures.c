@@ -34,7 +34,6 @@
 #include "configuration.h"
 #include "configuration_parser.h"
 
-char * shm_identifier;
 struct shm_message * message;
 
 typedef struct parameters_ {
@@ -95,6 +94,21 @@ char * char_replace(char *str, char oldChar, char newChar) {
 	return str;
 }
 
+char* get_shm_name(char* device_name) {
+
+	// the unique_identifier = mygestures + uid + device being grabbed
+
+	char* shm_identifier;
+	if (device_name) {
+		int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s", getuid(),
+				char_replace(device_name, '/', '%'));
+	} else {
+		int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s", getuid(),
+				"DEFAULT_DEVICE");
+	}
+	return shm_identifier;
+}
+
 /*
  * Ask other instances with same unique_identifier to exit.
  */
@@ -103,7 +117,7 @@ static void send_kill_message(char * device_name) {
 	/* if shared message contains a PID, kill that process */
 	if (message->pid > 0) {
 		fprintf(stdout, "\nAsking mygestures running on pid %d to exit. '%s'.\n\n", message->pid,
-				shm_identifier);
+				get_shm_name(device_name));
 
 		int running = message->pid;
 
@@ -141,18 +155,14 @@ static void send_reload_message() {
 }
 
 static void alloc_shared_memory(char * device_name) {
-	// the unique_identifier = mygestures + uid + device being grabbed
 
-	if (device_name) {
-		int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s", getuid(),
-				char_replace(device_name, '/', '%'));
-	} else {
-		int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s", getuid(),
-				"DEFAULT_DEVICE");
-	}
+	char* shm_identifier = get_shm_name(device_name);
 
 	int shared_seg_size = sizeof(struct shm_message);
 	int shmfd = shm_open(shm_identifier, O_CREAT | O_RDWR, 0600);
+
+	free(shm_identifier);
+
 	if (shmfd < 0) {
 		perror("In shm_open()");
 		exit(shmfd);
@@ -169,24 +179,24 @@ static void alloc_shared_memory(char * device_name) {
 
 }
 
-static void release_shared_memory() {
-
-	/*  If your head comes away from your neck, it's over! */
-
-	if (shm_identifier) {
-
-		if (shm_unlink(shm_identifier) != 0) {
-			perror("In shm_unlink()");
-			exit(1);
-		}
-
-		free(shm_identifier);
-
-	}
-}
+//static void release_shared_memory() {
+//
+//	/*  If your head comes away from your neck, it's over! */
+//
+//	if (shm_identifier) {
+//
+//		if (shm_unlink(shm_identifier) != 0) {
+//			perror("In shm_unlink()");
+//			exit(1);
+//		}
+//
+//		free(shm_identifier);
+//
+//	}
+//}
 
 static void on_kill(int a) {
-	release_shared_memory();
+	//release_shared_memory();
 	exit(0);
 }
 
@@ -202,7 +212,7 @@ static void on_interrupt(int a) {
 		return;
 	} else {
 		printf("\nReceived the interrupt signal.\n");
-		release_shared_memory();
+		//release_shared_memory();
 
 	}
 
@@ -324,47 +334,47 @@ void mygestures_parse_arguments(Parameters * self, int argc, char * const *argv)
 
 void mygestures_run(Parameters * self) {
 
+	int device_count = 2;
+
+	char * default_devices[2] = {
+			"Virtual Core Pointer", "synaptics" };
+
 	if (self->device) {
+		device_count = 1;
+		default_devices[0] = self->device;
+	}
 
-		Grabber * grabber = grabber_init(self->device, self->button, self->without_brush,
-				self->list_devices, self->brush_color, self->verbose);
-		grabber_loop(grabber, self->gestures_configuration);
-		//grabber_finalize(grabber);
+	for (int i = 0; i < device_count; ++i) {
 
-	} else {
+		char * device_name = default_devices[i];
 
-		char * default_devices[2] = {
-				"Virtual Core Pointer", "synaptics" };
+		int in_fork = fork();
 
-		for (int i = 0; i <= 2; ++i) {
+		if (in_fork) {
 
-			int in_fork = fork();
-
-			if (in_fork) {
-
-				Grabber * grabber = grabber_init(default_devices[i], self->button,
-						self->without_brush, self->list_devices, self->brush_color, self->verbose);
-
-				printf("Grabbing device %s. ", self->device);
-
-				grabber_loop(grabber, self->gestures_configuration);
-				//grabber_finalize(grabber);
-
-				alloc_shared_memory(default_devices[i]);
-
-				if (self->reconfigure) {
-					send_reload_message();
-					exit(0);
-				} else {
-					send_kill_message(default_devices[i]);
-				}
-
+			if (self->reconfigure) {
+				send_reload_message();
+				exit(0);
+			} else {
+				send_kill_message(device_name);
 			}
 
+			alloc_shared_memory(device_name);
+
+			signal(SIGINT, on_interrupt);
+			signal(SIGKILL, on_kill);
+
+			Grabber * grabber = grabber_init(device_name, self->button, self->without_brush,
+					self->list_devices, self->brush_color, self->verbose);
+
+			printf("Grabbing device %s.\n", device_name);
+
+			grabber_loop(grabber, self->gestures_configuration);
+			//grabber_finalize(grabber);
+
+		} else {
+
 		}
-
-		printf("Mygestures is running against all devices.\n\n");
-
 
 	}
 
@@ -375,9 +385,6 @@ int main(int argc, char * const * argv) {
 	Parameters *self = mygestures_new();
 
 	mygestures_parse_arguments(self, argc, argv);
-
-	signal(SIGINT, on_interrupt);
-	signal(SIGKILL, on_kill);
 
 	mygestures_run(self);
 
