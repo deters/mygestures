@@ -83,6 +83,13 @@ grabber_synaptics_shm_init() {
 	return synshm;
 }
 
+void syn_print(const SynapticsSHM* cur) {
+	printf("%4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n", cur->x, cur->y, cur->z,
+			cur->numFingers, cur->fingerWidth, cur->left, cur->right, cur->up, cur->down,
+			cur->middle, cur->multi[0], cur->multi[1], cur->multi[2], cur->multi[3], cur->multi[4],
+			cur->multi[5], cur->multi[6], cur->multi[7]);
+}
+
 void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 
 	SynapticsSHM *synshm = NULL;
@@ -97,7 +104,6 @@ void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 	int delay = 10;
 
 	SynapticsSHM old;
-	double t0 = get_time();
 
 	memset(&old, 0, sizeof(SynapticsSHM));
 	old.x = -1; /* Force first equality test to fail */
@@ -116,11 +122,7 @@ void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 			if (cur.numFingers >= 3 && max_fingers >= 3) {
 
 				if (self->verbose) {
-					printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
-							get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth,
-							cur.left, cur.right, cur.up, cur.down, cur.middle, cur.multi[0],
-							cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
-							cur.multi[6], cur.multi[7]);
+					syn_print(&cur);
 				}
 
 				grabbing_update_movement(self, cur.x, cur.y);
@@ -129,12 +131,8 @@ void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 			} else if (cur.numFingers == 0 && max_fingers >= 3) {
 
 				if (self->verbose) {
-					printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
-							get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth,
-							cur.left, cur.right, cur.up, cur.down, cur.middle, cur.multi[0],
-							cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
-							cur.multi[6], cur.multi[7]);
-					printf("stopped\n");
+					syn_print(&cur);
+					printf("stopped	\n");
 				}
 
 				// reset max fingers
@@ -149,11 +147,7 @@ void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 
 				if (self->verbose) {
 
-					printf("%8.3f  %4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n",
-							get_time() - t0, cur.x, cur.y, cur.z, cur.numFingers, cur.fingerWidth,
-							cur.left, cur.right, cur.up, cur.down, cur.middle, cur.multi[0],
-							cur.multi[1], cur.multi[2], cur.multi[3], cur.multi[4], cur.multi[5],
-							cur.multi[6], cur.multi[7]);
+					syn_print(&cur);
 
 				}
 

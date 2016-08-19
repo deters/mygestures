@@ -13,8 +13,7 @@
  GNU General Public License for more details.
 
  one line to give the program's name and an idea of what it does.
-  */
-
+ */
 
 #if HAVE_CONFIG_H          
 #include <config.h>
@@ -29,7 +28,10 @@
 #include "configuration.h"
 
 /* alloc a window struct */
-Context *configuration_create_context(Configuration * self, char * context_name, char *window_title, char *window_class) {
+Context *configuration_create_context(	Configuration * self,
+										char * context_name,
+										char *window_title,
+										char *window_class) {
 
 	assert(self);
 	assert(context_name);
@@ -76,7 +78,9 @@ Context *configuration_create_context(Configuration * self, char * context_name,
 }
 
 /* alloc a movement struct */
-Movement *configuration_create_movement(Configuration * self, char *movement_name, char *movement_expression) {
+Movement *configuration_create_movement(Configuration * self,
+										char *movement_name,
+										char *movement_expression) {
 
 	assert(self);
 	assert(movement_name);
@@ -128,7 +132,8 @@ Gesture * configuration_create_gesture(Context * self, char * gesture_name, char
 	Movement *m = NULL;
 
 	ans->name = gesture_name;
-	ans->movement = configuration_find_movement_by_name(self->parent_user_configuration, gesture_movement);
+	ans->movement = configuration_find_movement_by_name(self->parent_user_configuration,
+			gesture_movement);
 
 	if (!ans->movement) {
 		printf(
@@ -163,7 +168,9 @@ Action *configuration_create_action(Gesture * self, int action_type, char * acti
 	return ans;
 }
 
-Gesture * engine_match_gesture(Configuration * self, char * captured_sequence, ActiveWindowInfo * window) {
+Gesture * engine_match_gesture(	Configuration * self,
+								char * captured_sequence,
+								ActiveWindowInfo * window) {
 
 	assert(self);
 	assert(captured_sequence);
@@ -180,14 +187,14 @@ Gesture * engine_match_gesture(Configuration * self, char * captured_sequence, A
 
 		Context * context = self->context_list[c];
 
-		if ((!context->class)
-				|| (regexec(context->class_compiled, window->class, 0, (regmatch_t *) NULL, 0) != 0)) {
+		assert(context->class);
+		assert(context->title);
+
+		if (regexec(context->class_compiled, window->class, 0, (regmatch_t *) NULL, 0) != 0) {
 			continue;
 		}
 
-		if ((!context->title)
-				|| (regexec(context->title_compiled, window->title, 0, (regmatch_t *) NULL, 0))
-						!= 0) {
+		if (regexec(context->title_compiled, window->title, 0, (regmatch_t *) NULL, 0) != 0) {
 			continue;
 		}
 
@@ -199,17 +206,15 @@ Gesture * engine_match_gesture(Configuration * self, char * captured_sequence, A
 
 				Gesture * gest = context->gesture_list[g];
 
-				if (gest->movement) {
+				assert(gest);
+				assert(gest->movement);
+				assert(gest->movement->expression_compiled);
 
-					assert(gest->movement->expression_compiled);
+				if (regexec(gest->movement->expression_compiled, captured_sequence, 0,
+						(regmatch_t *) NULL, 0) == 0) {
 
-					if (regexec(gest->movement->expression_compiled, captured_sequence, 0, (regmatch_t *) NULL,
-							0) == 0) {
-
-						matched_gesture = gest;
-						break;
-
-					}
+					matched_gesture = gest;
+					break;
 
 				}
 
