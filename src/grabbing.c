@@ -113,8 +113,7 @@ Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
 /*
  * Return a window_info struct for the focused window at a given Display.
  */
-static
-ActiveWindowInfo * get_active_window_info(Display* dpy, Window win) {
+static ActiveWindowInfo * get_active_window_info(Display* dpy, Window win) {
 
 	int ret, val;
 
@@ -157,8 +156,7 @@ ActiveWindowInfo * get_active_window_info(Display* dpy, Window win) {
 
 }
 
-static
-Window get_parent_window(Display *dpy, Window w) {
+static Window get_parent_window(Display *dpy, Window w) {
 	Window root_return, parent_return, *child_return;
 	unsigned int nchildren_return;
 	int ret;
@@ -257,8 +255,7 @@ void mouse_click(Display *display, int button, int x, int y) {
 	XTestFakeButtonEvent(display, button, False, CurrentTime);
 }
 
-static
-Window get_focused_window(Display *dpy) {
+static Window get_focused_window(Display *dpy) {
 
 	Window win = 0;
 	int ret, val;
@@ -329,7 +326,6 @@ void free_grabbed(Capture * free_me) {
 	free(free_me->active_window_info);
 	free(free_me);
 }
-
 
 static
 char get_fine_direction_from_deltas(int x_delta, int y_delta) {
@@ -421,8 +417,6 @@ void movement_add_direction(char* stroke_sequence, char direction) {
 
 	}
 }
-
-
 
 static
 int get_touch_status(XIDeviceInfo * device) {
@@ -529,17 +523,12 @@ void grabber_init_drawing(Grabber* self, char * brush_color) {
 	}
 }
 
-
-
 /**
  * Clear previous movement data.
  */
 void grabbing_start_movement(Grabber * self, int new_x, int new_y) {
 
 	self->started = 1;
-
-
-
 
 	self->fine_direction_sequence[0] = '\0';
 	self->rought_direction_sequence[0] = '\0';
@@ -560,8 +549,6 @@ void grabbing_start_movement(Grabber * self, int new_x, int new_y) {
 	}
 	return;
 }
-
-
 
 void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
 
@@ -614,7 +601,6 @@ void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
 
 	return;
 }
-
 
 /**
  *
@@ -723,9 +709,6 @@ Grabber * grabber_init(	char * device_name,
 
 	grabber_init_drawing(self, brush_color);
 
-
-
-
 	grabber_open_devices(self, print_devices);
 
 	return self;
@@ -770,7 +753,6 @@ void grabber_xinput_loop(Grabber * self, Configuration * conf) {
 		XFreeEventData(self->dpy, &ev.xcookie);
 
 	}
-
 
 }
 

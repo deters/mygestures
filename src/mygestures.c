@@ -248,7 +248,7 @@ void mygestures_load_configuration(Parameters * self) {
 
 }
 
-void mygestures_parse_arguments(Parameters * self, int argc, char * const *argv) {
+void mygestures_init(Parameters * self, int argc, char * const *argv) {
 
 	char opt;
 	static struct option opts[] = {
@@ -334,48 +334,48 @@ void mygestures_parse_arguments(Parameters * self, int argc, char * const *argv)
 
 }
 
+void mygestures_fork_device(Parameters* self, char* device_name) {
+
+	int in_fork = fork();
+
+	if (in_fork) {
+		alloc_shared_memory(device_name);
+		if (self->reconfigure) {
+			send_reload_message();
+			exit(0);
+		} else {
+			send_kill_message(device_name);
+		}
+
+		signal(SIGINT, on_interrupt);
+		signal(SIGKILL, on_kill);
+
+		Grabber* grabber = grabber_init(device_name, self->button, self->without_brush,
+				self->list_devices, self->brush_color, self->verbose);
+		printf("Grabbing device %s.\n", device_name);
+		grabber_loop(grabber, self->gestures_configuration);
+		//grabber_finalize(grabber);
+	}
+
+}
+
 void mygestures_run(Parameters * self) {
 
-	int device_count = 2;
+	int default_device_count = 2;
 
 	char * default_devices[2] = {
 			"Virtual Core Pointer", "synaptics" };
 
 	if (self->device) {
-		device_count = 1;
-		default_devices[0] = self->device;
-	}
 
-	for (int i = 0; i < device_count; ++i) {
+		mygestures_fork_device(self, self->device);
 
-		char * device_name = default_devices[i];
+	} else {
 
-		int in_fork = fork();
+		for (int i = 0; i < default_device_count; ++i) {
+			char * device_name = default_devices[i];
 
-		if (in_fork) {
-
-			alloc_shared_memory(device_name);
-
-			if (self->reconfigure) {
-				send_reload_message();
-				exit(0);
-			} else {
-				send_kill_message(device_name);
-			}
-
-			signal(SIGINT, on_interrupt);
-			signal(SIGKILL, on_kill);
-
-			Grabber * grabber = grabber_init(device_name, self->button, self->without_brush,
-					self->list_devices, self->brush_color, self->verbose);
-
-			printf("Grabbing device %s.\n", device_name);
-
-			grabber_loop(grabber, self->gestures_configuration);
-			//grabber_finalize(grabber);
-
-		} else {
-
+			mygestures_fork_device(self, device_name);
 		}
 
 	}
@@ -386,8 +386,7 @@ int main(int argc, char * const * argv) {
 
 	Parameters *self = mygestures_new();
 
-	mygestures_parse_arguments(self, argc, argv);
-
+	mygestures_init(self, argc, argv);
 	mygestures_run(self);
 
 	exit(0);
