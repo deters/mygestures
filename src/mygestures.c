@@ -114,6 +114,8 @@ char* get_shm_name(char* device_name) {
  */
 static void send_kill_message(char * device_name) {
 
+	assert(message);
+
 	/* if shared message contains a PID, kill that process */
 	if (message->pid > 0) {
 		fprintf(stdout, "\nAsking mygestures running on pid %d to exit. '%s'.\n\n", message->pid,
@@ -352,14 +354,14 @@ void mygestures_run(Parameters * self) {
 
 		if (in_fork) {
 
+			alloc_shared_memory(device_name);
+
 			if (self->reconfigure) {
 				send_reload_message();
 				exit(0);
 			} else {
 				send_kill_message(device_name);
 			}
-
-			alloc_shared_memory(device_name);
 
 			signal(SIGINT, on_interrupt);
 			signal(SIGKILL, on_kill);
