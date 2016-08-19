@@ -35,6 +35,7 @@
 #include "configuration_parser.h"
 
 struct shm_message * message;
+char * shm_identifier;
 
 typedef struct parameters_ {
 	int help;
@@ -94,21 +95,6 @@ char * char_replace(char *str, char oldChar, char newChar) {
 	return str;
 }
 
-char* get_shm_name(char* device_name) {
-
-	// the unique_identifier = mygestures + uid + device being grabbed
-
-	char* shm_identifier;
-	if (device_name) {
-		int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s", getuid(),
-				char_replace(device_name, '/', '%'));
-	} else {
-		int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s", getuid(),
-				"DEFAULT_DEVICE");
-	}
-	return shm_identifier;
-}
-
 /*
  * Ask other instances with same unique_identifier to exit.
  */
@@ -118,8 +104,7 @@ static void send_kill_message(char * device_name) {
 
 	/* if shared message contains a PID, kill that process */
 	if (message->pid > 0) {
-		fprintf(stdout, "\nAsking mygestures running on pid %d to exit. '%s'.\n\n", message->pid,
-				get_shm_name(device_name));
+		fprintf(stdout, "\nAsking mygestures running on pid %d to exit..\n\n", message->pid);
 
 		int running = message->pid;
 
@@ -158,7 +143,16 @@ static void send_reload_message() {
 
 static void alloc_shared_memory(char * device_name) {
 
-	char* shm_identifier = get_shm_name(device_name);
+	char* sanitized_device_name;
+
+	if (device_name) {
+		sanitized_device_name = char_replace(device_name, '/', '%');
+	} else {
+		sanitized_device_name = "";
+	}
+
+	int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s", getuid(),
+			sanitized_device_name);
 
 	int shared_seg_size = sizeof(struct shm_message);
 	int shmfd = shm_open(shm_identifier, O_CREAT | O_RDWR, 0600);
@@ -322,6 +316,8 @@ void mygestures_init(Parameters * self, int argc, char * const *argv) {
 
 	/* apply params */
 
+
+
 	if (self->run_as_daemon)
 		daemonize();
 
@@ -339,7 +335,9 @@ void mygestures_fork_device(Parameters* self, char* device_name) {
 	int in_fork = fork();
 
 	if (in_fork) {
+
 		alloc_shared_memory(device_name);
+
 		if (self->reconfigure) {
 			send_reload_message();
 			exit(0);
