@@ -34,8 +34,7 @@
 #include "configuration.h"
 #include "configuration_parser.h"
 
-struct shm_message * message;
-char * shm_identifier;
+static struct shm_message * message;
 
 typedef struct parameters_ {
 	int help;
@@ -60,7 +59,8 @@ struct shm_message {
 	int reload;
 };
 
-static void mygestures_usage() {
+static
+void mygestures_usage() {
 	printf("%s\n\n", PACKAGE_STRING);
 	printf("Usage: mygestures [OPTIONS] [CONFIG_FILE]\n");
 	printf("\n");
@@ -87,6 +87,7 @@ static void mygestures_usage() {
 	printf(" -h, --help                 : Help\n");
 }
 
+static
 char * char_replace(char *str, char oldChar, char newChar) {
 	assert(str);
 	char *strPtr = str;
@@ -98,7 +99,8 @@ char * char_replace(char *str, char oldChar, char newChar) {
 /*
  * Ask other instances with same unique_identifier to exit.
  */
-static void send_kill_message(char * device_name) {
+static
+void send_kill_message(char * device_name) {
 
 	assert(message);
 
@@ -124,7 +126,8 @@ static void send_kill_message(char * device_name) {
 
 }
 
-static void send_reload_message() {
+static
+void send_reload_message() {
 
 	/* if shared message contains a PID, kill that process */
 	if (message->pid > 0) {
@@ -141,7 +144,8 @@ static void send_reload_message() {
 
 }
 
-static void alloc_shared_memory(char * device_name) {
+static
+void alloc_shared_memory(char * device_name) {
 
 	char* sanitized_device_name;
 
@@ -150,6 +154,8 @@ static void alloc_shared_memory(char * device_name) {
 	} else {
 		sanitized_device_name = "";
 	}
+
+	char * shm_identifier;
 
 	int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s", getuid(),
 			sanitized_device_name);
@@ -191,12 +197,14 @@ static void alloc_shared_memory(char * device_name) {
 //	}
 //}
 
-static void on_kill(int a) {
+static
+void on_kill(int a) {
 	//release_shared_memory();
 	exit(0);
 }
 
-static void on_interrupt(int a) {
+static
+void on_interrupt(int a) {
 
 	if (message->kill) {
 		printf("\nMygestures on PID %d asked me to exit.\n", message->pid);
@@ -215,7 +223,8 @@ static void on_interrupt(int a) {
 	exit(0);
 }
 
-static void daemonize() {
+static
+void daemonize() {
 	int i;
 
 	i = fork();
@@ -226,12 +235,13 @@ static void daemonize() {
 	return;
 }
 
-Parameters * mygestures_new() {
+static Parameters * mygestures_new() {
 	Parameters *self = malloc(sizeof(Parameters));
 	bzero(self, sizeof(Parameters));
 	return self;
 }
 
+static
 void mygestures_load_configuration(Parameters * self) {
 
 	if (self->custom_config_file) {
@@ -242,6 +252,7 @@ void mygestures_load_configuration(Parameters * self) {
 
 }
 
+static
 void mygestures_init(Parameters * self, int argc, char * const *argv) {
 
 	char opt;
@@ -316,8 +327,6 @@ void mygestures_init(Parameters * self, int argc, char * const *argv) {
 
 	/* apply params */
 
-
-
 	if (self->run_as_daemon)
 		daemonize();
 
@@ -330,6 +339,7 @@ void mygestures_init(Parameters * self, int argc, char * const *argv) {
 
 }
 
+static
 void mygestures_fork_device(Parameters* self, char* device_name) {
 
 	int in_fork = fork();
@@ -357,6 +367,7 @@ void mygestures_fork_device(Parameters* self, char* device_name) {
 
 }
 
+static
 void mygestures_run(Parameters * self) {
 
 	int default_device_count = 2;
