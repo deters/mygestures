@@ -81,6 +81,7 @@ void grabbing_start_movement(Grabber * self, int new_x, int new_y);
 void grabbing_update_movement(Grabber * self, int new_x, int new_y);
 void grabbing_end_movement(Grabber * self, int new_x, int new_y, Configuration * conf);
 void grabber_finalize(Grabber * self);
+void grabber_print_devices(Grabber * self);
 
 #endif /* MYGESTURES_GRABBING_H_ */
 

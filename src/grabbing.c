@@ -437,6 +437,41 @@ int get_touch_status(XIDeviceInfo * device) {
 	return 0;
 }
 
+void grabber_print_devices(Grabber * self) {
+
+	int ndevices;
+	int i;
+	XIDeviceInfo* device;
+	XIDeviceInfo* devices;
+	int deviceid = -1;
+	devices = XIQueryDevice(self->dpy, XIAllDevices, &ndevices);
+
+	printf("\nXInput Devices:\n");
+
+	for (i = 0; i < ndevices; i++) {
+		device = &devices[i];
+		switch (device->use) {
+		/// ṕointers
+		case XIMasterPointer:
+		case XISlavePointer:
+		case XIFloatingSlave:
+			printf("   '%s'\n", device->name);
+			break;
+		case XIMasterKeyboard:
+			//printf("master keyboard\n");
+			break;
+		case XISlaveKeyboard:
+			//printf("slave keyboard\n");
+			break;
+		}
+	}
+	printf("\nExperimental multitouch driver:\n");
+	printf("   'SYNAPTICS'\n");
+	printf("\nRun  mygestures -d 'DEVICE_NAME' to choose a device.\n");
+	XIFreeDeviceInfo(devices);
+
+}
+
 static
 void grabber_open_devices(Grabber* self, int print_devices) {
 
