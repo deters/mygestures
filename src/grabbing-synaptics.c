@@ -47,8 +47,9 @@ static int synaptics_shm_is_equal(SynapticsSHM * s1, SynapticsSHM * s2) {
 	int i;
 
 	if ((s1->x != s2->x) || (s1->y != s2->y) || (s1->z != s2->z)
-			|| (s1->numFingers != s2->numFingers) || (s1->fingerWidth != s2->fingerWidth)
-			|| (s1->left != s2->left) || (s1->right != s2->right) || (s1->up != s2->up)
+			|| (s1->numFingers != s2->numFingers)
+			|| (s1->fingerWidth != s2->fingerWidth) || (s1->left != s2->left)
+			|| (s1->right != s2->right) || (s1->up != s2->up)
 			|| (s1->down != s2->down) || (s1->middle != s2->middle))
 		return 0;
 
@@ -59,34 +60,39 @@ static int synaptics_shm_is_equal(SynapticsSHM * s1, SynapticsSHM * s2) {
 	return 1;
 }
 
-static double get_time(void) {
-	struct timeval tv;
-
-	gettimeofday(&tv, NULL);
-	return tv.tv_sec + tv.tv_usec / 1000000.0;
-}
-
 /** Init and return SHM area or NULL on error */
 static SynapticsSHM *
-grabber_synaptics_shm_init() {
+grabber_synaptics_shm_init(int debug) {
 	SynapticsSHM *synshm = NULL;
 	int shmid = 0;
 
 	if ((shmid = shmget(SHM_SYNAPTICS, sizeof(SynapticsSHM), 0)) == -1) {
-		if ((shmid = shmget(SHM_SYNAPTICS, 0, 0)) == -1)
-			fprintf(stderr, "Can't access shared memory area. SHMConfig disabled?\n");
-		else
-			fprintf(stderr, "Incorrect size of shared memory area. Incompatible driver version?\n");
-	} else if ((synshm = (SynapticsSHM *) shmat(shmid, NULL, SHM_RDONLY)) == NULL)
-		perror("shmat");
+		if ((shmid = shmget(SHM_SYNAPTICS, 0, 0)) == -1) {
+			if (debug) {
+				printf(
+						"Can't access shared memory area. SHMConfig disabled?\n");
+			}
+		} else {
+			if (debug) {
+				printf(
+						"Incorrect size of shared memory area. Incompatible driver version?\n");
+			}
+		}
+	} else if ((synshm = (SynapticsSHM *) shmat(shmid, NULL, SHM_RDONLY))
+			== NULL) {
+		if (debug) {
+			perror("shmat");
+		}
+	}
 
 	return synshm;
 }
 
 void syn_print(const SynapticsSHM* cur) {
-	printf("%4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n", cur->x, cur->y, cur->z,
-			cur->numFingers, cur->fingerWidth, cur->left, cur->right, cur->up, cur->down,
-			cur->middle, cur->multi[0], cur->multi[1], cur->multi[2], cur->multi[3], cur->multi[4],
+	printf("%4d %4d %3d %d %2d %2d %d %d %d %d  %d%d%d%d%d%d%d%d\n", cur->x,
+			cur->y, cur->z, cur->numFingers, cur->fingerWidth, cur->left,
+			cur->right, cur->up, cur->down, cur->middle, cur->multi[0],
+			cur->multi[1], cur->multi[2], cur->multi[3], cur->multi[4],
 			cur->multi[5], cur->multi[6], cur->multi[7]);
 }
 
@@ -94,10 +100,12 @@ void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 
 	SynapticsSHM *synshm = NULL;
 
-	synshm = grabber_synaptics_shm_init();
+	synshm = grabber_synaptics_shm_init(0);
+
 	if (!synshm) {
 		printf(" You will need a patched synaptics driver with SHM enabled.\n");
-		printf(" Take a look at https://github.com/Chosko/xserver-xorg-input-synaptics\n");
+		printf(
+		" Take a look at https://github.com/Chosko/xserver-xorg-input-synaptics\n");
 		return;
 	}
 

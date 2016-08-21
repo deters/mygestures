@@ -746,6 +746,7 @@ Grabber * grabber_init(	char * device_name,
 
 	grabber_open_devices(self, print_devices);
 
+
 	return self;
 }
 

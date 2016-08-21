@@ -61,13 +61,13 @@ struct shm_message {
 };
 
 static
-void mygestures_usage() {
+void mygestures_usage(Parameters * self) {
 	printf("%s\n\n", PACKAGE_STRING);
 	printf("Usage: mygestures [OPTIONS] [CONFIG_FILE]\n");
 	printf("\n");
 	printf("CONFIG_FILE:\n");
 
-	char * default_file = xml_get_default_filename();
+	char * default_file = xml_get_default_filename(self);
 	printf(" Default: %s\n", default_file);
 	free(default_file);
 
@@ -335,16 +335,14 @@ void mygestures_init(Parameters * self, int argc, char * const *argv) {
 	if (self->run_as_daemon)
 		daemonize();
 
-	if (self->help) {
-		mygestures_usage();
-		exit(0);
-	}
-
 	if (!self->list_devices){
 		mygestures_load_configuration(self);
 	}
 
-
+	if (self->help) {
+		mygestures_usage(self);
+		exit(0);
+	}
 }
 
 static

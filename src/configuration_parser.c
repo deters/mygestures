@@ -14,12 +14,16 @@
  one line to give the program's name and an idea of what it does.
   */
 
+#define _GNU_SOURCE /* needed by asprintf */
+
 
 #include <string.h>
 #include <libxml/tree.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+
 
 #include "assert.h"
 
@@ -322,22 +326,19 @@ static int xml_parse_file(Configuration * conf, char * filename) {
 
 }
 
-char * xml_get_default_filename() {
 
-	char * filename = malloc(sizeof(char) * 4096);
+static char * xml_get_config_dir(){
+	char * dir = NULL;
 
-	char * xdg;
-
-	xdg = getenv("XDG_CONFIG_HOME");
-
-	if (xdg) {
-		sprintf(filename, "%s/mygestures/mygestures.xml", xdg);
-	} else {
+	dir = getenv("XDG_CONFIG_HOME");
+	if (!dir){
 		char * home = getenv("HOME");
-		sprintf(filename, "%s/.config/mygestures/mygestures.xml", home);
+		int bytes = asprintf(&dir, "%s/.config/mygestures", home);
 	}
 
-	return filename;
+	assert(dir);
+
+	return dir;
 }
 
 char * xml_get_template_filename() {
@@ -397,13 +398,34 @@ int file_copy(const char *from, const char *to) {
 	return -1;
 }
 
+void test_create_dir(char* dir) {
+	struct stat st = { 0 };
+	if (stat(dir, &st) == -1) {
+		mkdir(dir, 0700);
+		perror("in createdir");
+	}
+}
+
+char* xml_get_default_filename() {
+	char* dir = xml_get_config_dir();
+
+	char* filename = NULL;
+	int bytes = asprintf(&filename, "%s/mygestures.xml", dir);
+
+	assert(filename);
+	return filename;
+}
+
 Configuration * xmlconfig_load_engine_from_defaults() {
 
 	Configuration * eng = configuration_new();
 
 	int err = 0;
 
-	char * filename = xml_get_default_filename();
+	char* dir = xml_get_config_dir();
+	test_create_dir(dir);
+
+	char* filename = xml_get_default_filename();
 
 	FILE * file = fopen(filename, "r");
 
