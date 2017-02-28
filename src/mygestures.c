@@ -62,7 +62,6 @@ struct shm_message {
 
 static
 void mygestures_usage(Parameters * self) {
-	printf("%s\n\n", PACKAGE_STRING);
 	printf("Usage: mygestures [OPTIONS] [CONFIG_FILE]\n");
 	printf("\n");
 	printf("CONFIG_FILE:\n");
@@ -77,7 +76,7 @@ void mygestures_usage(Parameters * self) {
 	printf("                              Default: '1' on touchscreen devices,\n");
 	printf("                                       '3' on other pointer devices\n");
 	printf(" -d, --device <DEVICENAME>  : Device to grab.\n");
-	printf("                              Default: 'Virtual core pointer'\n");
+	printf("                              By default try to grab both 'Virtual core pointer' and 'synaptics'\n");
 	printf(" -l, --device-list          : Print all available devices an exit.\n");
 	printf(" -z, --daemonize            : Fork the process and return.\n");
 	printf(" -c, --brush-color          : Brush color.\n");
@@ -107,7 +106,7 @@ void send_kill_message(char * device_name) {
 
 	/* if shared message contains a PID, kill that process */
 	if (message->pid > 0) {
-		fprintf(stdout, "\nAsking mygestures running on pid %d to exit..\n\n", message->pid);
+		fprintf(stdout, "Asking mygestures running on pid %d to exit..\n", message->pid);
 
 		int running = message->pid;
 
@@ -132,7 +131,7 @@ void send_reload_message() {
 
 	/* if shared message contains a PID, kill that process */
 	if (message->pid > 0) {
-		fprintf(stdout, "\nAsking mygestures running on pid %d to reload.\n", message->pid);
+		fprintf(stdout, "Asking mygestures running on pid %d to reload.\n", message->pid);
 
 		int running = message->pid;
 
@@ -330,19 +329,6 @@ void mygestures_init(Parameters * self, int argc, char * const *argv) {
 
 	}
 
-	/* apply params */
-
-	if (self->run_as_daemon)
-		daemonize();
-
-	if (!self->list_devices){
-		mygestures_load_configuration(self);
-	}
-
-	if (self->help) {
-		mygestures_usage(self);
-		exit(0);
-	}
 }
 
 static
@@ -389,22 +375,40 @@ void mygestures_fork_device(Parameters* self, char* device_name) {
 static
 void mygestures_run(Parameters * self) {
 
-	int default_device_count = 2;
 
-	char * default_devices[2] = {
-			"Virtual Core Pointer", "synaptics" };
+	printf("%s\n\n", PACKAGE_STRING);
+
+	/* apply params */
+
+
+	if (self->help) {
+		mygestures_usage(self);
+		exit(0);
+	}
+
+	if (!self->list_devices){
+		mygestures_load_configuration(self);
+	}
+
+
+	if (self->run_as_daemon)
+		daemonize();
+
+
 
 	if (self->device) {
 
+		/* Will start a new thread for every device. */
 		mygestures_fork_device(self, self->device);
 
 	} else {
 
-		for (int i = 0; i < default_device_count; ++i) {
-			char * device_name = default_devices[i];
+		int DEFAULT_DEVICE_COUNT = 2;
 
-			mygestures_fork_device(self, device_name);
-		}
+		mygestures_fork_device(self, "Virtual Core Pointer");
+		mygestures_fork_device(self, "synaptics");
+
+
 
 	}
 

@@ -444,10 +444,10 @@ Configuration * xmlconfig_load_engine_from_defaults() {
 	err = xml_parse_file(eng, filename);
 
 	if (err) {
-		fprintf(stderr, "Error loading configuration from \n'%s'\n\n", filename);
+		fprintf(stderr, "Error loading configuration from file \n'%s'\n\n", filename);
 	}
 
-	printf("Loaded %i gestures from \n'%s'.\n\n", configuration_get_gestures_count(eng), filename);
+
 
 	return eng;
 
@@ -466,7 +466,7 @@ Configuration * xml_load_engine_from_file(char * filename) {
 		return NULL;
 	}
 
-	printf("Loaded %i gestures from \n'%s'.\n\n", configuration_get_gestures_count(eng), filename);
+	printf("Loaded %i gestures from \n'%s'.\n", configuration_get_gestures_count(eng), filename);
 
 	return eng;
 
