@@ -5,7 +5,7 @@
 #include "configuration.h"
 
 
-typedef struct parameters_ {
+typedef struct mygestures_ {
 	int help;
 	int button;
 	int without_brush;
@@ -20,7 +20,7 @@ typedef struct parameters_ {
 
 	struct gestures_ * gestures;
 
-} Parameters;
+} Mygestures;
 
 
 #endif

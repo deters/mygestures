@@ -447,7 +447,7 @@ Configuration * xmlconfig_load_engine_from_defaults() {
 		fprintf(stderr, "Error loading configuration from file \n'%s'\n\n", filename);
 	}
 
-
+	printf("Loaded configuration from file '%s'.\n", filename);
 
 	return eng;
 

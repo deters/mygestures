@@ -37,31 +37,31 @@
 static struct shm_message * message;
 char * shm_identifier;
 
-typedef struct parameters_ {
+typedef struct mygestures_ {
 	int help;
 	int button;
 	int without_brush;
 	int run_as_daemon;
 	int list_devices;
-	int reconfigure;
 	int verbose;
-	int debug;
 	char * custom_config_file;
-	char * device;
+	int device_count;
+	char ** device_list;
 	char * brush_color;
 
 	Configuration * gestures_configuration;
 
-} Parameters;
+} Mygestures;
 
 struct shm_message {
 	int pid;
 	int kill;
-	int reload;
 };
 
+uint MAX_GRABBED_DEVICES = 10;
+
 static
-void mygestures_usage(Parameters * self) {
+void mygestures_usage(Mygestures * self) {
 	printf("Usage: mygestures [OPTIONS] [CONFIG_FILE]\n");
 	printf("\n");
 	printf("CONFIG_FILE:\n");
@@ -73,16 +73,22 @@ void mygestures_usage(Parameters * self) {
 	printf("\n");
 	printf("OPTIONS:\n");
 	printf(" -b, --button <BUTTON>      : Button used to draw the gesture\n");
-	printf("                              Default: '1' on touchscreen devices,\n");
-	printf("                                       '3' on other pointer devices\n");
+	printf(
+			"                              Default: '1' on touchscreen devices,\n");
+	printf(
+			"                                       '3' on other pointer devices\n");
 	printf(" -d, --device <DEVICENAME>  : Device to grab.\n");
-	printf("                              By default try to grab both 'Virtual core pointer' and 'synaptics'\n");
-	printf(" -l, --device-list          : Print all available devices an exit.\n");
+	printf(
+			"                              By default try to grab both 'Virtual core pointer' and 'synaptics'\n");
+	printf(
+			" -l, --device-list          : Print all available devices an exit.\n");
 	printf(" -z, --daemonize            : Fork the process and return.\n");
 	printf(" -c, --brush-color          : Brush color.\n");
 	printf("                              Default: blue\n");
-	printf("                              Options: yellow, white, red, green, purple, blue\n");
-	printf(" -w, --without-brush        : Don't paint the gesture on screen.\n");
+	printf(
+			"                              Options: yellow, white, red, green, purple, blue\n");
+	printf(
+			" -w, --without-brush        : Don't paint the gesture on screen.\n");
 	printf(" -v, --verbose              : Increase the verbosity\n");
 	printf(" -h, --help                 : Help\n");
 }
@@ -106,7 +112,8 @@ void send_kill_message(char * device_name) {
 
 	/* if shared message contains a PID, kill that process */
 	if (message->pid > 0) {
-		fprintf(stdout, "Asking mygestures running on pid %d to exit..\n", message->pid);
+		fprintf(stdout, "Asking mygestures running on pid %d to exit..\n",
+				message->pid);
 
 		int running = message->pid;
 
@@ -127,24 +134,6 @@ void send_kill_message(char * device_name) {
 }
 
 static
-void send_reload_message() {
-
-	/* if shared message contains a PID, kill that process */
-	if (message->pid > 0) {
-		fprintf(stdout, "Asking mygestures running on pid %d to reload.\n", message->pid);
-
-		int running = message->pid;
-
-		message->pid = getpid();
-		message->reload = 1;
-
-		int err = kill(running, SIGINT);
-
-	}
-
-}
-
-static
 void alloc_shared_memory(char * device_name) {
 
 	char* sanitized_device_name;
@@ -154,8 +143,6 @@ void alloc_shared_memory(char * device_name) {
 	} else {
 		sanitized_device_name = "";
 	}
-
-
 
 	int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s", getuid(),
 			sanitized_device_name);
@@ -172,8 +159,9 @@ void alloc_shared_memory(char * device_name) {
 	int err = ftruncate(shmfd, shared_seg_size);
 
 	message = (struct shm_message *) mmap(NULL, shared_seg_size,
+			PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);
 
-	PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);
+
 	if (message == NULL) {
 		perror("In mmap()");
 		exit(1);
@@ -203,11 +191,6 @@ void on_interrupt(int a) {
 	if (message->kill) {
 		printf("\nMygestures on PID %d asked me to exit.\n", message->pid);
 		// shared memory now belongs to the other process. will not be released
-	} else if (message->reload) {
-		printf("\nMygestures on PID %d asked me to reload.\n", message->pid);
-		message->pid = getpid();
-		message->reload = 0;
-		return;
 	} else {
 		printf("\nReceived the interrupt signal.\n");
 		release_shared_memory();
@@ -217,14 +200,12 @@ void on_interrupt(int a) {
 	exit(0);
 }
 
-
 static
 void on_kill(int a) {
 	//release_shared_memory();
 
 	exit(0);
 }
-
 
 static
 void daemonize() {
@@ -234,22 +215,38 @@ void daemonize() {
 	if (i != 0)
 		exit(0);
 
-	i = chdir("/");
 	return;
 }
 
-static
-Parameters * mygestures_new() {
-	Parameters *self = malloc(sizeof(Parameters));
-	bzero(self, sizeof(Parameters));
+static Mygestures * mygestures_new() {
+
+
+	Mygestures *self = malloc(sizeof(Mygestures));
+	bzero(self, sizeof(Mygestures));
+
+	self->brush_color = NULL;
+	self->button = 0;
+	self->custom_config_file = NULL;
+	self->device_count = 0;
+	self->device_list = malloc(sizeof(uint) * MAX_GRABBED_DEVICES);
+	self->gestures_configuration = NULL;
+	self->help = 0;
+	self->list_devices = 0;
+	self->run_as_daemon = 0;
+	self->verbose = 0;
+	self->without_brush = 0;
+
+
+
 	return self;
 }
 
 static
-void mygestures_load_configuration(Parameters * self) {
+void mygestures_load_configuration(Mygestures * self) {
 
 	if (self->custom_config_file) {
-		self->gestures_configuration = xml_load_engine_from_file(self->custom_config_file);
+		self->gestures_configuration = xml_load_engine_from_file(
+				self->custom_config_file);
 	} else {
 		self->gestures_configuration = xmlconfig_load_engine_from_defaults();
 	}
@@ -257,20 +254,14 @@ void mygestures_load_configuration(Parameters * self) {
 }
 
 static
-void mygestures_init(Parameters * self, int argc, char * const *argv) {
+void mygestures_read_parameters(Mygestures * self, int argc, char * const *argv) {
 
 	char opt;
-	static struct option opts[] = {
-			{
-					"verbose", no_argument, 0, 'v' }, {
-					"help", no_argument, 0, 'h' }, {
-					"without-brush", no_argument, 0, 'w' }, {
-					"daemonize", no_argument, 0, 'z' }, {
-					"button", required_argument, 0, 'b' }, {
-					"brush-color", required_argument, 0, 'b' }, {
-					"device",
-					required_argument, 0, 'd' }, {
-					0, 0, 0, 0 } };
+	static struct option opts[] = { { "verbose", no_argument, 0, 'v' }, {
+			"help", no_argument, 0, 'h' }, { "without-brush", no_argument, 0,
+			'w' }, { "daemonize", no_argument, 0, 'z' }, { "button",
+	required_argument, 0, 'b' }, { "brush-color", required_argument, 0, 'b' }, {
+			"device", required_argument, 0, 'd' }, { 0, 0, 0, 0 } };
 
 	/* read params */
 
@@ -282,7 +273,7 @@ void mygestures_init(Parameters * self, int argc, char * const *argv) {
 		switch (opt) {
 
 		case 'd':
-			self->device = optarg;
+			self->device_list[self->device_count++] = optarg;
 			break;
 
 		case 'b':
@@ -332,40 +323,40 @@ void mygestures_init(Parameters * self, int argc, char * const *argv) {
 }
 
 static
-void mygestures_fork_device(Parameters* self, char* device_name) {
+void mygestures_grab_device(Mygestures* self, char* device_name) {
 
-	int in_fork = fork();
+	int newpid = fork();
 
-	if (in_fork) {
+	if (newpid) {
+
+		/* Print the new pid in the main thread. */
+		printf("%i: Grabbing device '%s'\n", newpid, device_name);
+
+	} else {
+
+		/* Allow */
 
 		alloc_shared_memory(device_name);
 
+		Grabber* grabber = grabber_init(device_name, self->button,
+				self->without_brush, self->list_devices, self->brush_color,
+				self->verbose);
 
-		Grabber* grabber = grabber_init(device_name, self->button, self->without_brush,
-				self->list_devices, self->brush_color, self->verbose);
-
-		if (self->list_devices){
+		if (self->list_devices) {
 			grabber_print_devices(grabber);
 			exit(0);
 		}
 
-		if (self->reconfigure) {
-			send_reload_message();
-			exit(0);
-		} else {
-			send_kill_message(device_name);
-		}
+		send_kill_message(device_name);
 
 		signal(SIGINT, on_interrupt);
 		signal(SIGKILL, on_kill);
-
 
 //
 //		if (self->brush_color){
 //			grabber_set_brush_color(grabber, self->brush_color);
 //		}
 
-		printf("Grabbing device %s.\n", device_name);
 		grabber_loop(grabber, self->gestures_configuration);
 		//grabber_finalize(grabber);
 	}
@@ -373,52 +364,42 @@ void mygestures_fork_device(Parameters* self, char* device_name) {
 }
 
 static
-void mygestures_run(Parameters * self) {
-
+void mygestures_run(Mygestures * self) {
 
 	printf("%s\n\n", PACKAGE_STRING);
 
 	/* apply params */
-
 
 	if (self->help) {
 		mygestures_usage(self);
 		exit(0);
 	}
 
-	if (!self->list_devices){
+	if (!self->list_devices) {
 		mygestures_load_configuration(self);
 	}
-
 
 	if (self->run_as_daemon)
 		daemonize();
 
-
-
-	if (self->device) {
-
+	for (int i = 0; i < self->device_count; ++i) {
 		/* Will start a new thread for every device. */
-		mygestures_fork_device(self, self->device);
+		mygestures_grab_device(self, self->device_list[i]);
+	}
 
-	} else {
-
-		int DEFAULT_DEVICE_COUNT = 2;
-
-		mygestures_fork_device(self, "Virtual Core Pointer");
-		mygestures_fork_device(self, "synaptics");
-
-
-
+	/* Load default devices if needed */
+	if (self->device_count == 0) {
+		mygestures_grab_device(self, "Virtual Core Pointer");
+		mygestures_grab_device(self, "synaptics");
 	}
 
 }
 
 int main(int argc, char * const * argv) {
 
-	Parameters *self = mygestures_new();
+	Mygestures *self = mygestures_new();
 
-	mygestures_init(self, argc, argv);
+	mygestures_read_parameters(self, argc, argv);
 	mygestures_run(self);
 
 	exit(0);
