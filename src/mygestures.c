@@ -83,7 +83,7 @@ void mygestures_usage(Mygestures * self) {
 
 
 
-static Mygestures * mygestures_new() {
+Mygestures * mygestures_new() {
 
 
 	Mygestures *self = malloc(sizeof(Mygestures));
@@ -160,7 +160,6 @@ void mygestures_grab_device(Mygestures* self, char* device_name) {
 
 }
 
-static
 void mygestures_run(Mygestures * self) {
 
 	printf("%s\n\n", PACKAGE_STRING);
@@ -190,13 +189,3 @@ void mygestures_run(Mygestures * self) {
 
 }
 
-int main(int argc, char * const * argv) {
-
-	Mygestures *self = mygestures_new();
-
-	mygestures_read_parameters(self, argc, argv);
-	mygestures_run(self);
-
-	exit(0);
-
-}

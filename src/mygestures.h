@@ -23,5 +23,8 @@ typedef struct mygestures_ {
 } Mygestures;
 
 
+Mygestures * mygestures_new();
+void mygestures_run(Mygestures * self);
+
 
 #endif
