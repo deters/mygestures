@@ -5,22 +5,23 @@
 #include "configuration.h"
 
 
+
 typedef struct mygestures_ {
 	int help;
 	int button;
 	int without_brush;
 	int run_as_daemon;
 	int list_devices;
-	int reconfigure;
 	int verbose;
-	int debug;
 	char * custom_config_file;
-	char * device;
+	int device_count;
+	char ** device_list;
 	char * brush_color;
 
-	struct gestures_ * gestures;
+	Configuration * gestures_configuration;
 
 } Mygestures;
+
 
 
 #endif
