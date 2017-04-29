@@ -7,13 +7,15 @@
 
 
 typedef struct mygestures_ {
-	int help;
-	int button;
-	int without_brush;
-	int run_as_daemon;
-	int list_devices;
-	int verbose;
+	int help_flag;
+	int button_option;
+	int without_brush_option;
+	int damonize_option;
+	int list_devices_flag;
+	int verbose_option;
+
 	char * custom_config_file;
+
 	int device_count;
 	char ** device_list;
 	char * brush_color;

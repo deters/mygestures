@@ -32,17 +32,9 @@
 #include "mygestures.h"
 #include "main.h"
 
-
 #include "grabbing.h"
 #include "configuration.h"
 #include "configuration_parser.h"
-
-
-
-
-
-
-
 
 uint MAX_GRABBED_DEVICES = 10;
 
@@ -52,7 +44,7 @@ void mygestures_usage(Mygestures * self) {
 	printf("\n");
 	printf("CONFIG_FILE:\n");
 
-	char * default_file = xml_get_default_filename(self);
+	char * default_file = configuration_get_default_filename(self);
 	printf(" Default: %s\n", default_file);
 	free(default_file);
 
@@ -79,29 +71,22 @@ void mygestures_usage(Mygestures * self) {
 	printf(" -h, --help                 : Help\n");
 }
 
-
-
-
-
 Mygestures * mygestures_new() {
-
 
 	Mygestures *self = malloc(sizeof(Mygestures));
 	bzero(self, sizeof(Mygestures));
 
 	self->brush_color = NULL;
-	self->button = 0;
+	self->button_option = 0;
 	self->custom_config_file = NULL;
 	self->device_count = 0;
 	self->device_list = malloc(sizeof(uint) * MAX_GRABBED_DEVICES);
 	self->gestures_configuration = NULL;
-	self->help = 0;
-	self->list_devices = 0;
-	self->run_as_daemon = 0;
-	self->verbose = 0;
-	self->without_brush = 0;
-
-
+	self->help_flag = 0;
+	self->list_devices_flag = 0;
+	self->damonize_option = 0;
+	self->verbose_option = 0;
+	self->without_brush_option = 0;
 
 	return self;
 }
@@ -110,14 +95,16 @@ static
 void mygestures_load_configuration(Mygestures * self) {
 
 	if (self->custom_config_file) {
-		self->gestures_configuration = xml_load_engine_from_file(
-				self->custom_config_file);
+
+		self->gestures_configuration = configuration_new();
+		configuration_load_from_file(self->gestures_configuration, self->custom_config_file);
+
 	} else {
-		self->gestures_configuration = xmlconfig_load_engine_from_defaults();
+		self->gestures_configuration = configuration_new();
+		configuration_load_from_defaults(self->gestures_configuration);
 	}
 
 }
-
 
 static
 void mygestures_grab_device(Mygestures* self, char* device_name) {
@@ -126,20 +113,20 @@ void mygestures_grab_device(Mygestures* self, char* device_name) {
 
 	if (newpid) {
 
-		/* Print the new pid in the main thread. */
+		/* If there is a PID, then we are in the main thread. Print it. */
 		printf("%i: Grabbing device '%s'\n", newpid, device_name);
 
 	} else {
 
-		/* Allow */
+		/* If newpid is 0 then we are in the new PID. Simply */
 
 		alloc_shared_memory(device_name);
 
-		Grabber* grabber = grabber_init(device_name, self->button,
-				self->without_brush, self->list_devices, self->brush_color,
-				self->verbose);
+		Grabber* grabber = grabber_init(device_name, self->button_option,
+				self->without_brush_option, self->list_devices_flag,
+				self->brush_color, self->verbose_option);
 
-		if (self->list_devices) {
+		if (self->list_devices_flag) {
 			grabber_print_devices(grabber);
 			exit(0);
 		}
@@ -149,13 +136,7 @@ void mygestures_grab_device(Mygestures* self, char* device_name) {
 		signal(SIGINT, on_interrupt);
 		signal(SIGKILL, on_kill);
 
-//
-//		if (self->brush_color){
-//			grabber_set_brush_color(grabber, self->brush_color);
-//		}
-
 		grabber_loop(grabber, self->gestures_configuration);
-		//grabber_finalize(grabber);
 	}
 
 }
@@ -164,24 +145,29 @@ void mygestures_run(Mygestures * self) {
 
 	printf("%s\n\n", PACKAGE_STRING);
 
-	/* apply params */
-
-	if (self->help) {
+	if (self->help_flag) {
 		mygestures_usage(self);
 		exit(0);
 	}
 
-	if (!self->list_devices) {
+	/*
+	 * Only load configurations if the device list is empty
+	 */
+	if (!self->list_devices_flag) {
 		mygestures_load_configuration(self);
 	}
 
-
+	/*
+	 * Start grabbing any device passed via argument flags.
+	 */
 	for (int i = 0; i < self->device_count; ++i) {
-		/* Will start a new thread for every device. */
 		mygestures_grab_device(self, self->device_list[i]);
 	}
 
-	/* Load default devices if needed */
+	/*
+	 * If there where no devices in the argument flags, then grab the default devices.
+	 */
+
 	if (self->device_count == 0) {
 		mygestures_grab_device(self, "Virtual Core Pointer");
 		mygestures_grab_device(self, "synaptics");

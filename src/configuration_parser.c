@@ -12,10 +12,9 @@
  GNU General Public License for more details.
 
  one line to give the program's name and an idea of what it does.
-  */
+ */
 
 #define _GNU_SOURCE /* needed by asprintf */
-
 
 #include <string.h>
 #include <libxml/tree.h>
@@ -23,7 +22,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
-
 
 #include "assert.h"
 
@@ -48,7 +46,8 @@ void xml_parse_action(xmlNode *node, Gesture * gest) {
 	while (attribute && attribute->name && attribute->children) {
 
 		char * name = (char *) attribute->name;
-		char * value = (char *) xmlNodeListGetString(node->doc, attribute->children, 1);
+		char * value = (char *) xmlNodeListGetString(node->doc,
+				attribute->children, 1);
 
 		if (strcasecmp(name, "action") == 0) {
 			action_name = strdup(value);
@@ -113,7 +112,8 @@ static Gesture * xml_parse_gesture(xmlNode *node, Context * context) {
 	while (attribute && attribute->name && attribute->children) {
 
 		char * name = (char *) attribute->name;
-		char * value = (char *) xmlNodeListGetString(node->doc, attribute->children, 1);
+		char * value = (char *) xmlNodeListGetString(node->doc,
+				attribute->children, 1);
 
 		if (strcasecmp(name, "name") == 0) {
 			gesture_name = strdup(value);
@@ -136,7 +136,8 @@ static Gesture * xml_parse_gesture(xmlNode *node, Context * context) {
 		return NULL;
 	}
 
-	Gesture * gest = configuration_create_gesture(context, gesture_name, gesture_movement);
+	Gesture * gest = configuration_create_gesture(context, gesture_name,
+			gesture_movement);
 
 	xmlNode *cur_node = NULL;
 
@@ -150,7 +151,8 @@ static Gesture * xml_parse_gesture(xmlNode *node, Context * context) {
 				xml_parse_action(cur_node, gest);
 
 			} else {
-				printf("unknown tag '%s' at line %d\n", element, cur_node->line);
+				printf("unknown tag '%s' at line %d\n", element,
+						cur_node->line);
 			}
 
 		}
@@ -169,7 +171,8 @@ static Context * xml_parse_context(xmlNode *node, Configuration * eng) {
 	xmlAttr* attribute = node->properties;
 	while (attribute && attribute->name && attribute->children) {
 		char * name = (char *) attribute->name;
-		char * value = (char *) xmlNodeListGetString(node->doc, attribute->children, 1);
+		char * value = (char *) xmlNodeListGetString(node->doc,
+				attribute->children, 1);
 
 		if (strcasecmp(name, "name") == 0) {
 			context_name = strdup(value);
@@ -199,7 +202,8 @@ static Context * xml_parse_context(xmlNode *node, Configuration * eng) {
 		window_title = "";
 	}
 
-	Context * ctx = configuration_create_context(eng, context_name, window_title, window_class);
+	Context * ctx = configuration_create_context(eng, context_name,
+			window_title, window_class);
 
 	/* now process the gestures */
 
@@ -215,7 +219,8 @@ static Context * xml_parse_context(xmlNode *node, Configuration * eng) {
 				Gesture * gest = xml_parse_gesture(cur_node, ctx);
 
 			} else {
-				printf("unknown tag '%s' at line %d\n", element, cur_node->line);
+				printf("unknown tag '%s' at line %d\n", element,
+						cur_node->line);
 			}
 		}
 
@@ -241,7 +246,8 @@ void xml_parse_movement(xmlNode *node, Configuration * eng) {
 	while (attribute && attribute->name && attribute->children) {
 
 		char * name = (char *) attribute->name;
-		char * value = (char *) xmlNodeListGetString(node->doc, attribute->children, 1);
+		char * value = (char *) xmlNodeListGetString(node->doc,
+				attribute->children, 1);
 
 		if (strcasecmp(name, "name") == 0) {
 			movement_name = strdup(value);
@@ -294,7 +300,8 @@ void xml_parse_root(xmlNode *node, Configuration * eng) {
 				contexts_count += 1;
 
 			} else {
-				printf("unknown tag '%s' at line %d\n", element, cur_node->line);
+				printf("unknown tag '%s' at line %d\n", element,
+						cur_node->line);
 			}
 
 		}
@@ -303,7 +310,7 @@ void xml_parse_root(xmlNode *node, Configuration * eng) {
 
 }
 
-static int xml_parse_file(Configuration * conf, char * filename) {
+static int configuration_parse_file(Configuration * conf, char * filename) {
 	int result = 0;
 
 	xmlDocPtr doc = NULL;
@@ -326,12 +333,11 @@ static int xml_parse_file(Configuration * conf, char * filename) {
 
 }
 
-
-static char * xml_get_config_dir(){
+static char * get_config_dir() {
 	char * dir = NULL;
 
 	dir = getenv("XDG_CONFIG_HOME");
-	if (!dir){
+	if (!dir) {
 		char * home = getenv("HOME");
 		int bytes = asprintf(&dir, "%s/.config/mygestures", home);
 	}
@@ -406,8 +412,8 @@ void test_create_dir(char* dir) {
 	}
 }
 
-char* xml_get_default_filename() {
-	char* dir = xml_get_config_dir();
+char* configuration_get_default_filename() {
+	char* dir = get_config_dir();
 
 	char* filename = NULL;
 	int bytes = asprintf(&filename, "%s/mygestures.xml", dir);
@@ -416,58 +422,57 @@ char* xml_get_default_filename() {
 	return filename;
 }
 
-Configuration * xmlconfig_load_engine_from_defaults() {
+Configuration * configuration_load_from_defaults() {
 
-	Configuration * eng = configuration_new();
+	Configuration * configuration = configuration_new();
 
 	int err = 0;
 
-	char* dir = xml_get_config_dir();
+	char* dir = get_config_dir();
 	test_create_dir(dir);
 
-	char* filename = xml_get_default_filename();
+	char* config_file = configuration_get_default_filename();
 
-	FILE * file = fopen(filename, "r");
+	FILE * f = fopen(config_file, "r");
 
-	if (!file) {
+	if (!f) {
 		char * template = xml_get_template_filename();
-		err = file_copy(template, filename);
+		err = file_copy(template, config_file);
 		if (err) {
-			fprintf(stderr, "Error creating default configuration on '%s' from '%s'\n", filename,
-					template);
+			fprintf(stderr,
+					"Error creating default configuration on '%s' from '%s'\n",
+					config_file, template);
 			return NULL;
 		}
 	} else {
-		fclose(file);
+		fclose(f);
 	}
 
-	err = xml_parse_file(eng, filename);
+	err = configuration_parse_file(configuration, config_file);
 
 	if (err) {
-		fprintf(stderr, "Error loading configuration from file \n'%s'\n\n", filename);
+		fprintf(stderr, "Error loading configuration from file \n'%s'\n\n",
+				config_file);
 	}
 
-	printf("Loaded configuration from file '%s'.\n", filename);
+	printf("Loaded configuration from file '%s'.\n", config_file);
 
-	return eng;
+	return configuration;
 
 }
 
-Configuration * xml_load_engine_from_file(char * filename) {
-
-	Configuration * eng = configuration_new();
+void configuration_load_from_file(Configuration * configuration, char * filename) {
 
 	int err = 0;
 
-	err = xml_parse_file(eng, filename);
+	err = configuration_parse_file(configuration, filename);
 
 	if (err) {
 		printf("Error loading custom configuration from '%s'\n", filename);
-		return NULL;
+		return;
 	}
 
-	printf("Loaded %i gestures from \n'%s'.\n", configuration_get_gestures_count(eng), filename);
-
-	return eng;
+	printf("Loaded %i gestures from \n'%s'.\n",
+			configuration_get_gestures_count(configuration), filename);
 
 }
