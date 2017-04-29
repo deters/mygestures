@@ -422,9 +422,7 @@ char* configuration_get_default_filename() {
 	return filename;
 }
 
-Configuration * configuration_load_from_defaults() {
-
-	Configuration * configuration = configuration_new();
+void configuration_load_from_defaults(Configuration * configuration) {
 
 	int err = 0;
 
@@ -442,7 +440,7 @@ Configuration * configuration_load_from_defaults() {
 			fprintf(stderr,
 					"Error creating default configuration on '%s' from '%s'\n",
 					config_file, template);
-			return NULL;
+			return;
 		}
 	} else {
 		fclose(f);
@@ -456,8 +454,6 @@ Configuration * configuration_load_from_defaults() {
 	}
 
 	printf("Loaded configuration from file '%s'.\n", config_file);
-
-	return configuration;
 
 }
 

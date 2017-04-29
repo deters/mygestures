@@ -27,100 +27,103 @@
 
 #include "configuration.h"
 
+void context_set_title(Context* context, char* window_title) {
+
+	context->title = window_title;
+
+	regex_t* title_compiled = NULL;
+	if (context->title) {
+		title_compiled = malloc(sizeof(regex_t));
+		if (regcomp(title_compiled, window_title, REG_EXTENDED | REG_NOSUB)) {
+			fprintf(stderr, "Error compiling regexp: %s\n", window_title);
+			free(title_compiled);
+			title_compiled = NULL;
+		}
+	}
+	context->title_compiled = title_compiled;
+}
+
+void context_set_class(Context* context, char* window_class) {
+	context->class = window_class;
+	regex_t* class_compiled = NULL;
+	if (context->class) {
+		class_compiled = malloc(sizeof(regex_t));
+		if (regcomp(class_compiled, window_class, REG_EXTENDED | REG_NOSUB)) {
+			fprintf(stderr, "Error compiling regexp: %s\n", window_class);
+			class_compiled = NULL;
+		}
+	}
+	context->class_compiled = class_compiled;
+}
+
 /* alloc a window struct */
-Context *configuration_create_context(	Configuration * self,
-										char * context_name,
-										char *window_title,
-										char *window_class) {
+Context *configuration_create_context(Configuration * self, char * context_name,
+		char *window_title, char *window_class) {
 
 	assert(self);
 	assert(context_name);
 	assert(window_title);
 	assert(window_class);
 
-	Context *ans = malloc(sizeof(Context));
-	bzero(ans, sizeof(Context));
+	Context *context = malloc(sizeof(Context));
+	bzero(context, sizeof(Context));
 
-	ans->name = context_name;
-	ans->title = window_title;
-	ans->class = window_class;
-	ans->parent_user_configuration = self;
+	context->name = context_name;
+	context->parent_user_configuration = self;
 
-	regex_t * title_compiled = NULL;
-	if (ans->title) {
+	context_set_title(context, window_title);
+	context_set_class(context, window_class);
 
-		title_compiled = malloc(sizeof(regex_t));
-		if (regcomp(title_compiled, window_title,
-		REG_EXTENDED | REG_NOSUB)) {
-			fprintf(stderr, "Error compiling regexp: %s\n", window_title);
-			free(title_compiled);
-			title_compiled = NULL;
-		}
+	context->gesture_list = malloc(sizeof(Gesture) * 255);
+	context->gesture_count = 0;
+
+	self->context_list[self->context_count++] = context;
+
+	return context;
+}
+
+void movement_set_expression(Movement* movement, char* movement_expression) {
+	movement->expression = movement_expression;
+	char* regex_str = malloc(sizeof(char) * (strlen(movement_expression) + 5));
+	strcpy(regex_str, "");
+	strcat(regex_str, "^(");
+	strcat(regex_str, movement_expression);
+	strcat(regex_str, ")$");
+	regex_t* movement_compiled = NULL;
+	movement_compiled = malloc(sizeof(regex_t));
+	if (regcomp(movement_compiled, regex_str, REG_EXTENDED | REG_NOSUB) != 0) {
+		fprintf(stderr, "Warning: Invalid movement sequence: %s\n", regex_str);
+		free(movement_compiled);
+		movement_compiled = NULL;
+	} else {
+		regcomp(movement_compiled, regex_str, REG_EXTENDED | REG_NOSUB);
 	}
-	ans->title_compiled = title_compiled;
-
-	regex_t * class_compiled = NULL;
-	if (ans->class) {
-		class_compiled = malloc(sizeof(regex_t));
-		if (regcomp(class_compiled, window_class,
-		REG_EXTENDED | REG_NOSUB)) {
-			fprintf(stderr, "Error compiling regexp: %s\n", window_class);
-			class_compiled = NULL;
-		}
-	}
-	ans->class_compiled = class_compiled;
-
-	ans->gesture_list = malloc(sizeof(Gesture) * 255);
-
-	self->context_list[self->context_count++] = ans;
-
-	return ans;
+	free(regex_str);
+	movement->expression_compiled = movement_compiled;
 }
 
 /* alloc a movement struct */
 Movement *configuration_create_movement(Configuration * self,
-										char *movement_name,
-										char *movement_expression) {
+		char *movement_name, char *movement_expression) {
 
 	assert(self);
 	assert(movement_name);
 	assert(movement_expression);
 
-	Movement * ans = malloc(sizeof(Movement));
-	bzero(ans, sizeof(Movement));
+	Movement * movement = malloc(sizeof(Movement));
+	bzero(movement, sizeof(Movement));
 
-	ans->name = movement_name;
-	ans->expression = movement_expression;
+	movement->name = movement_name;
+	movement_set_expression(movement, movement_expression);
 
-	char * regex_str = malloc(sizeof(char) * (strlen(movement_expression) + 5));
-
-	strcpy(regex_str, "");
-	strcat(regex_str, "^(");
-	strcat(regex_str, movement_expression);
-	strcat(regex_str, ")$");
-
-	regex_t * movement_compiled = NULL;
-	movement_compiled = malloc(sizeof(regex_t));
-	if (regcomp(movement_compiled, regex_str,
-	REG_EXTENDED | REG_NOSUB) != 0) {
-		fprintf(stderr, "Warning: Invalid movement sequence: %s\n", regex_str);
-		free(movement_compiled);
-		movement_compiled = NULL;
-	} else {
-		regcomp(movement_compiled, regex_str,
-		REG_EXTENDED | REG_NOSUB);
-	}
-	free(regex_str);
-
-	ans->expression_compiled = movement_compiled;
-
-	self->movement_list[self->movement_count] = ans;
+	self->movement_list[self->movement_count] = movement;
 	self->movement_count++;
 
-	return ans;
+	return movement;
 }
 
-Gesture * configuration_create_gesture(Context * self, char * gesture_name, char * gesture_movement) {
+Gesture * configuration_create_gesture(Context * self, char * gesture_name,
+		char * gesture_movement) {
 
 	assert(self);
 	assert(gesture_name);
@@ -132,8 +135,8 @@ Gesture * configuration_create_gesture(Context * self, char * gesture_name, char
 	Movement *m = NULL;
 
 	ans->name = gesture_name;
-	ans->movement = configuration_find_movement_by_name(self->parent_user_configuration,
-			gesture_movement);
+	ans->movement = configuration_find_movement_by_name(
+			self->parent_user_configuration, gesture_movement);
 
 	if (!ans->movement) {
 		printf(
@@ -151,7 +154,8 @@ Gesture * configuration_create_gesture(Context * self, char * gesture_name, char
 }
 
 /* alloc an action struct */
-Action *configuration_create_action(Gesture * self, int action_type, char * action_data) {
+Action *configuration_create_action(Gesture * self, int action_type,
+		char * action_data) {
 
 	assert(self);
 	assert(action_type);
@@ -168,9 +172,8 @@ Action *configuration_create_action(Gesture * self, int action_type, char * acti
 	return ans;
 }
 
-Gesture * engine_match_gesture(	Configuration * self,
-								char * captured_sequence,
-								ActiveWindowInfo * window) {
+Gesture * engine_match_gesture(Configuration * self, char * captured_sequence,
+		ActiveWindowInfo * window) {
 
 	assert(self);
 	assert(captured_sequence);
@@ -190,11 +193,13 @@ Gesture * engine_match_gesture(	Configuration * self,
 		assert(context->class);
 		assert(context->title);
 
-		if (regexec(context->class_compiled, window->class, 0, (regmatch_t *) NULL, 0) != 0) {
+		if (regexec(context->class_compiled, window->class, 0,
+				(regmatch_t *) NULL, 0) != 0) {
 			continue;
 		}
 
-		if (regexec(context->title_compiled, window->title, 0, (regmatch_t *) NULL, 0) != 0) {
+		if (regexec(context->title_compiled, window->title, 0,
+				(regmatch_t *) NULL, 0) != 0) {
 			continue;
 		}
 
@@ -210,8 +215,8 @@ Gesture * engine_match_gesture(	Configuration * self,
 				assert(gest->movement);
 				assert(gest->movement->expression_compiled);
 
-				if (regexec(gest->movement->expression_compiled, captured_sequence, 0,
-						(regmatch_t *) NULL, 0) == 0) {
+				if (regexec(gest->movement->expression_compiled,
+						captured_sequence, 0, (regmatch_t *) NULL, 0) == 0) {
 
 					matched_gesture = gest;
 					break;
@@ -251,7 +256,8 @@ Gesture * configuration_process_gesture(Configuration * self, Capture * grab) {
 
 }
 
-Movement * configuration_find_movement_by_name(Configuration * self, char * movement_name) {
+Movement * configuration_find_movement_by_name(Configuration * self,
+		char * movement_name) {
 
 	assert(self);
 	assert(movement_name);
@@ -267,7 +273,8 @@ Movement * configuration_find_movement_by_name(Configuration * self, char * move
 	for (i = 0; i < self->movement_count; ++i) {
 		Movement * m = self->movement_list[i];
 
-		if ((m->name) && (movement_name) && (strcasecmp(movement_name, m->name) == 0)) {
+		if ((m->name) && (movement_name)
+				&& (strcasecmp(movement_name, m->name) == 0)) {
 			return m;
 		}
 	}
