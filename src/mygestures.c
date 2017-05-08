@@ -87,6 +87,7 @@ Mygestures * mygestures_new() {
 	self->damonize_option = 0;
 	self->verbose_option = 0;
 	self->without_brush_option = 0;
+	self->gestures_configuration = configuration_new();
 
 	return self;
 }
@@ -95,12 +96,8 @@ static
 void mygestures_load_configuration(Mygestures * self) {
 
 	if (self->custom_config_file) {
-
-		self->gestures_configuration = configuration_new();
 		configuration_load_from_file(self->gestures_configuration, self->custom_config_file);
-
 	} else {
-		self->gestures_configuration = configuration_new();
 		configuration_load_from_defaults(self->gestures_configuration);
 	}
 

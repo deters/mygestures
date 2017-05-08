@@ -29,7 +29,6 @@
 
 void context_set_title(Context* context, char* window_title) {
 
-
 	assert(context);
 	assert(window_title);
 
@@ -193,8 +192,8 @@ Gesture * engine_match_gesture(Configuration * self, char * captured_sequence,
 
 	for (c = 0; c < self->context_count; ++c) {
 
-		if (matched_gesture)
-			break;
+//		if (matched_gesture)
+//			break;
 
 		Context * context = self->context_list[c];
 
@@ -211,29 +210,31 @@ Gesture * engine_match_gesture(Configuration * self, char * captured_sequence,
 			continue;
 		}
 
-		if (context->gesture_count) {
+		assert(context->gesture_count);
 
-			int g = 0;
+//		if (context->gesture_count) {
 
-			for (g = 0; g < context->gesture_count; ++g) {
+		int g = 0;
 
-				Gesture * gest = context->gesture_list[g];
+		for (g = 0; g < context->gesture_count; ++g) {
 
-				assert(gest);
-				assert(gest->movement);
-				assert(gest->movement->expression_compiled);
+			Gesture * gest = context->gesture_list[g];
 
-				if (regexec(gest->movement->expression_compiled,
-						captured_sequence, 0, (regmatch_t *) NULL, 0) == 0) {
+			assert(gest);
+			assert(gest->movement);
+			assert(gest->movement->expression_compiled);
 
-					matched_gesture = gest;
-					break;
+			if (regexec(gest->movement->expression_compiled, captured_sequence,
+					0, (regmatch_t *) NULL, 0) == 0) {
 
-				}
+				matched_gesture = gest;
+				break;
 
 			}
 
 		}
+
+//		}
 
 	}
 
