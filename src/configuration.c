@@ -29,6 +29,10 @@
 
 void context_set_title(Context* context, char* window_title) {
 
+
+	assert(context);
+	assert(window_title);
+
 	context->title = window_title;
 
 	regex_t* title_compiled = NULL;
@@ -44,6 +48,10 @@ void context_set_title(Context* context, char* window_title) {
 }
 
 void context_set_class(Context* context, char* window_class) {
+
+	assert(context);
+	assert(window_class);
+
 	context->class = window_class;
 	regex_t* class_compiled = NULL;
 	if (context->class) {
