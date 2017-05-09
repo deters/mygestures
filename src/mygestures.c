@@ -51,18 +51,16 @@ void mygestures_usage(Mygestures * self) {
 	printf("\n");
 	printf("OPTIONS:\n");
 	printf(" -b, --button <BUTTON>      : Button used to draw the gesture\n");
-	printf(
-			"                              Default: '1' on touchscreen devices,\n");
-	printf(
-			"                                       '3' on other pointer devices\n");
+	printf("                              Default: '1' on touchscreens,\n");
+	printf("                                       '3' on other pointer dev\n");
 	printf(" -d, --device <DEVICENAME>  : Device to grab.\n");
 	printf(
-			"                              By default try to grab both 'Virtual core pointer' and 'synaptics'\n");
+			"                              Defaults: 'Virtual core pointer' & 'synaptics'\n");
 	printf(
 			" -l, --device-list          : Print all available devices an exit.\n");
-	printf(" -z, --daemonize            : Fork the process and return.\n");
-	printf(" -c, --brush-color          : Brush color.\n");
-	printf("                              Default: blue\n");
+	printf(" -z,  --daemonize            : Fork the process and return.\n");
+	printf(" -c,  --color                : Brush color.\n");
+	printf("                               Default: blue\n");
 	printf(
 			"                              Options: yellow, white, red, green, purple, blue\n");
 	printf(
@@ -96,7 +94,8 @@ static
 void mygestures_load_configuration(Mygestures * self) {
 
 	if (self->custom_config_file) {
-		configuration_load_from_file(self->gestures_configuration, self->custom_config_file);
+		configuration_load_from_file(self->gestures_configuration,
+				self->custom_config_file);
 	} else {
 		configuration_load_from_defaults(self->gestures_configuration);
 	}

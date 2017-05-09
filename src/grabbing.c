@@ -452,7 +452,12 @@ void grabber_print_devices(Grabber * self) {
 		case XIMasterPointer:
 		case XISlavePointer:
 		case XIFloatingSlave:
-			printf("   '%s'\n", device->name);
+
+			if (strcmp(self->devicename, device->name) == 0){
+				printf("   [x] '%s'\n", device->name);
+			} else {
+				printf("   [ ] '%s'\n", device->name);
+			}
 			break;
 		case XIMasterKeyboard:
 			//printf("master keyboard\n");
