@@ -453,7 +453,7 @@ void grabber_print_devices(Grabber * self) {
 		case XISlavePointer:
 		case XIFloatingSlave:
 
-			if (strcmp(self->devicename, device->name) == 0){
+			if (strcmp(self->devicename, device->name) == 0) {
 				printf("   [x] '%s'\n", device->name);
 			} else {
 				printf("   [ ] '%s'\n", device->name);
@@ -475,19 +475,7 @@ void grabber_print_devices(Grabber * self) {
 }
 
 static
-void grabber_open_devices(Grabber* self, int print_devices) {
-
-	if (!self->devicename) {
-		self->devicename = "Virtual core pointer";
-	}
-
-	if (strcasecmp(self->devicename, "SYNAPTICS") == 0) {
-		self->synaptics = 1;
-		self->delta_min = 200;
-	} else {
-		self->synaptics = 0;
-		self->delta_min = 30;
-	}
+void grabber_open_devices(Grabber* self) {
 
 	int ndevices;
 	int i;
@@ -495,9 +483,7 @@ void grabber_open_devices(Grabber* self, int print_devices) {
 	XIDeviceInfo* devices;
 	int deviceid = -1;
 	devices = XIQueryDevice(self->dpy, XIAllDevices, &ndevices);
-	if (print_devices) {
-		printf("\nXInput Devices:\n");
-	}
+	printf("\nXInput Devices:\n");
 	for (i = 0; i < ndevices; i++) {
 		device = &devices[i];
 		switch (device->use) {
@@ -505,13 +491,12 @@ void grabber_open_devices(Grabber* self, int print_devices) {
 		case XIMasterPointer:
 		case XISlavePointer:
 		case XIFloatingSlave:
-			if (print_devices) {
-				printf("   '%s'\n", device->name);
+			if (strcasecmp(device->name, self->devicename) == 0) {
+				printf("   [x] '%s'\n", device->name);
+				self->deviceid = device->deviceid;
+				self->is_direct_touch = get_touch_status(device);
 			} else {
-				if (strcasecmp(device->name, self->devicename) == 0) {
-					self->deviceid = device->deviceid;
-					self->is_direct_touch = get_touch_status(device);
-				}
+				printf("   [ ] '%s'\n", device->name);
 			}
 			break;
 		case XIMasterKeyboard:
@@ -522,40 +507,13 @@ void grabber_open_devices(Grabber* self, int print_devices) {
 			break;
 		}
 	}
-	if (print_devices) {
-		printf("\nExperimental multitouch driver:\n");
-		printf("   'SYNAPTICS'\n");
-		printf("\nRun  mygestures -d 'DEVICE_NAME' to choose a device.\n");
-	}
+
+	printf("\nExperimental multitouch driver:\n");
+	printf("   'SYNAPTICS'\n");
+	printf("\nRun  mygestures -d 'DEVICE_NAME' to choose a device.\n");
+
 	XIFreeDeviceInfo(devices);
-	if (print_devices) {
-		exit(0);
-	}
-}
 
-static
-void grabber_init_drawing(Grabber* self, char * brush_color) {
-
-	grabbing_set_brush_color(self, brush_color);
-
-	int err = 0;
-	int scr = DefaultScreen(self->dpy);
-
-	if (!self->without_brush) {
-		if (!self->brush_image) {
-			self->brush_image = &brush_image_red;
-		}
-		err = backing_init(&(self->backing), self->dpy,
-				DefaultRootWindow(self->dpy), DisplayWidth(self->dpy, scr),
-				DisplayHeight(self->dpy, scr), DefaultDepth(self->dpy, scr));
-		if (err) {
-			fprintf(stderr, "cannot open backing store.... \n");
-		}
-		err = brush_init(&(self->brush), &(self->backing), self->brush_image);
-		if (err) {
-			fprintf(stderr, "cannot init brush.... \n");
-		}
-	}
 }
 
 /**
@@ -724,6 +682,31 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y,
 	}
 }
 
+static
+void grabber_init_drawing(Grabber* self, char * brush_color) {
+
+	grabbing_set_brush_color(self, brush_color);
+
+	int err = 0;
+	int scr = DefaultScreen(self->dpy);
+
+	if (!self->without_brush) {
+		if (!self->brush_image) {
+			self->brush_image = &brush_image_red;
+		}
+		err = backing_init(&(self->backing), self->dpy,
+				DefaultRootWindow(self->dpy), DisplayWidth(self->dpy, scr),
+				DisplayHeight(self->dpy, scr), DefaultDepth(self->dpy, scr));
+		if (err) {
+			fprintf(stderr, "cannot open backing store.... \n");
+		}
+		err = brush_init(&(self->brush), &(self->backing), self->brush_image);
+		if (err) {
+			fprintf(stderr, "cannot init brush.... \n");
+		}
+	}
+}
+
 Grabber * grabber_init(char * device_name, int button, int without_brush,
 		int print_devices, char * brush_color, int verbose) {
 
@@ -738,16 +721,26 @@ Grabber * grabber_init(char * device_name, int button, int without_brush,
 	self->verbose = verbose;
 	self->devicename = device_name;
 
-	grabber_open_display(self);
+	if (!self->devicename) {
+		self->devicename = "Virtual core pointer";
+	}
+
+	if (strcasecmp(self->devicename, "SYNAPTICS") == 0) {
+		self->synaptics = 1;
+		self->delta_min = 200;
+	} else {
+		self->synaptics = 0;
+		self->delta_min = 30;
+	}
 
 	grabber_init_drawing(self, brush_color);
-
-	grabber_open_devices(self, print_devices);
 
 	return self;
 }
 
 void grabber_xinput_loop(Grabber * self, Configuration * conf) {
+
+	grabber_open_devices(self);
 
 	XEvent ev;
 
@@ -791,6 +784,9 @@ void grabber_xinput_loop(Grabber * self, Configuration * conf) {
 }
 
 void grabber_loop(Grabber * self, Configuration * conf) {
+
+	grabber_open_display(self);
+
 	if (self->synaptics) {
 		grabber_synaptics_loop(self, conf);
 	} else {

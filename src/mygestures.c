@@ -122,10 +122,10 @@ void mygestures_grab_device(Mygestures* self, char* device_name) {
 				self->without_brush_option, self->list_devices_flag,
 				self->brush_color, self->verbose_option);
 
-		if (self->list_devices_flag) {
-			grabber_print_devices(grabber);
-			exit(0);
-		}
+//		if (self->list_devices_flag) {
+//			grabber_print_devices(grabber);
+//			exit(0);
+//		}
 
 		send_kill_message(device_name);
 
