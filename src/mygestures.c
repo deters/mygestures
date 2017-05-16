@@ -74,7 +74,7 @@ Mygestures * mygestures_new() {
 	Mygestures *self = malloc(sizeof(Mygestures));
 	bzero(self, sizeof(Mygestures));
 
-	self->brush_color = NULL;
+	self->brush_color = "blue";
 	self->button_option = 0;
 	self->custom_config_file = NULL;
 	self->device_count = 0;
@@ -118,14 +118,10 @@ void mygestures_grab_device(Mygestures* self, char* device_name) {
 
 		alloc_shared_memory(device_name);
 
-		Grabber* grabber = grabber_init(device_name, self->button_option,
-				self->without_brush_option, self->list_devices_flag,
-				self->brush_color, self->verbose_option);
 
-//		if (self->list_devices_flag) {
-//			grabber_print_devices(grabber);
-//			exit(0);
-//		}
+		Grabber* grabber = grabber_init(device_name, self->button_option,
+				self->without_brush_option,
+				self->brush_color, self->verbose_option);
 
 		send_kill_message(device_name);
 

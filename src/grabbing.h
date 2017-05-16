@@ -75,11 +75,11 @@ typedef struct {
 
 } Grabber;
 
-Grabber * grabber_init(char * device_name, int button, int without_brush, int print_devices, char * brush_color, int verbose);
+Grabber * grabber_init(char * device_name, int button, int without_brush, char * brush_color, int verbose);
 void grabber_loop(Grabber * self, Configuration * conf);
 void grabbing_start_movement(Grabber * self, int new_x, int new_y);
 void grabbing_update_movement(Grabber * self, int new_x, int new_y);
-void grabbing_end_movement(Grabber * self, int new_x, int new_y, Configuration * conf);
+void grabbing_end_movement(Grabber * self, int new_x, int new_y, char * device_name, Configuration * conf);
 void grabber_finalize(Grabber * self);
 void grabber_print_devices(Grabber * self);
 

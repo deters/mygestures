@@ -62,26 +62,26 @@ static
 void grabbing_set_brush_color(Grabber * self, char * color) {
 
 	assert(self);
+	assert(color);
+
+	self->brush_image = &brush_image_blue;
 
 	if (color) {
 
-		if (strcmp(color, "") == 0)
-			self->brush_image = &brush_image_blue;
-		else if (strcmp(color, "green") == 0)
+		if (strcasecmp(color, "red") == 0)
 			self->brush_image = &brush_image_red;
-		else if (strcmp(color, "green") == 0)
+		else if (strcasecmp(color, "green") == 0)
 			self->brush_image = &brush_image_green;
-		else if (strcmp(color, "yellow") == 0)
+		else if (strcasecmp(color, "yellow") == 0)
 			self->brush_image = &brush_image_yellow;
-		else if (strcmp(color, "white") == 0)
+		else if (strcasecmp(color, "white") == 0)
 			self->brush_image = &brush_image_white;
-		else if (strcmp(color, "purple") == 0)
+		else if (strcasecmp(color, "purple") == 0)
 			self->brush_image = &brush_image_purple;
-		else if (strcmp(color, "blue") == 0)
+		else if (strcasecmp(color, "blue") == 0)
 			self->brush_image = &brush_image_blue;
-
 		else
-			printf("no such color, %s. using \"blue\"\n", color);
+			printf("no such color, '%s'. using 'blue'\n", color);
 
 	}
 }
@@ -598,7 +598,7 @@ void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
  *
  */
 void grabbing_end_movement(Grabber * self, int new_x, int new_y,
-		Configuration * conf) {
+		char * device_name, Configuration * conf) {
 
 	Capture * grab = NULL;
 
@@ -647,6 +647,7 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y,
 		printf("\n");
 		printf("     Window title: \"%s\"\n", grab->active_window_info->title);
 		printf("     Window class: \"%s\"\n", grab->active_window_info->class);
+		printf("     Device      : \"%s\"\n", device_name);
 
 		Gesture * gest = configuration_process_gesture(conf, grab);
 
@@ -708,7 +709,7 @@ void grabber_init_drawing(Grabber* self, char * brush_color) {
 }
 
 Grabber * grabber_init(char * device_name, int button, int without_brush,
-		int print_devices, char * brush_color, int verbose) {
+		char * brush_color, int verbose) {
 
 	Grabber * self = malloc(sizeof(Grabber));
 	bzero(self, sizeof(Grabber));
@@ -770,8 +771,25 @@ void grabber_xinput_loop(Grabber * self, Configuration * conf) {
 
 			case XI_ButtonRelease:
 				data = (XIDeviceEvent*) ev.xcookie.data;
+
+				char * device_name = "";
+
+				int ndevices;
+				XIDeviceInfo* device;
+				XIDeviceInfo* devices;
+				devices = XIQueryDevice(self->dpy, data->deviceid, &ndevices);
+
+				printf("\nXInput Devices:\n");
+
+				if (ndevices == 1) {
+					device = &devices[0];
+					device_name = strdup(device->name);
+
+				}
+
 				grabbing_xinput_ungrab(self);
-				grabbing_end_movement(self, data->root_x, data->root_y, conf);
+				grabbing_end_movement(self, data->root_x, data->root_y,
+						device_name, conf);
 				grabbing_xinput_grab(self);
 				break;
 
