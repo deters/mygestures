@@ -102,10 +102,14 @@ void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 
 	synshm = grabber_synaptics_shm_init(0);
 
+	printf("\nSynaptics driver (multitouch SHM-enabled driver):\n");
+	printf("   [x] 'synaptics'\n");
+
 	if (!synshm) {
-		printf(" You will need a patched synaptics driver with SHM enabled.\n");
 		printf(
-		" Take a look at https://github.com/Chosko/xserver-xorg-input-synaptics\n");
+				"SYNAPTICS SHM DRIVER NOT AVAILABLE\nIf you want multitouch synaptics gestures, then you will need a patched synaptics driver with SHM enabled.\n");
+		printf(
+				" Take a look at https://github.com/Chosko/xserver-xorg-input-synaptics\n");
 		return;
 	}
 

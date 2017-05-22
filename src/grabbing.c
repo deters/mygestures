@@ -166,7 +166,7 @@ static Window get_parent_window(Display *dpy, Window w) {
 	return parent_return;
 }
 
-void grabbing_xinput_grab(Grabber * self) {
+void grabbing_xinput_grab_start(Grabber * self) {
 
 	int count = XScreenCount(self->dpy);
 
@@ -218,7 +218,7 @@ void grabbing_xinput_grab(Grabber * self) {
 
 }
 
-void grabbing_xinput_ungrab(Grabber * self) {
+void grabbing_xinput_grab_stop(Grabber * self) {
 
 	int count = XScreenCount(self->dpy);
 
@@ -434,48 +434,8 @@ int get_touch_status(XIDeviceInfo * device) {
 	return 0;
 }
 
-void grabber_print_devices(Grabber * self) {
-
-	int ndevices;
-	int i;
-	XIDeviceInfo* device;
-	XIDeviceInfo* devices;
-	int deviceid = -1;
-	devices = XIQueryDevice(self->dpy, XIAllDevices, &ndevices);
-
-	printf("\nXInput Devices:\n");
-
-	for (i = 0; i < ndevices; i++) {
-		device = &devices[i];
-		switch (device->use) {
-		/// ṕointers
-		case XIMasterPointer:
-		case XISlavePointer:
-		case XIFloatingSlave:
-
-			if (strcmp(self->devicename, device->name) == 0) {
-				printf("   [x] '%s'\n", device->name);
-			} else {
-				printf("   [ ] '%s'\n", device->name);
-			}
-			break;
-		case XIMasterKeyboard:
-			//printf("master keyboard\n");
-			break;
-		case XISlaveKeyboard:
-			//printf("slave keyboard\n");
-			break;
-		}
-	}
-	printf("\nExperimental multitouch driver:\n");
-	printf("   'SYNAPTICS'\n");
-	printf("\nRun  mygestures -d 'DEVICE_NAME' to choose a device.\n");
-	XIFreeDeviceInfo(devices);
-
-}
-
 static
-void grabber_open_devices(Grabber* self) {
+void grabber_xinput_open_devices(Grabber* self) {
 
 	int ndevices;
 	int i;
@@ -507,10 +467,6 @@ void grabber_open_devices(Grabber* self) {
 			break;
 		}
 	}
-
-	printf("\nExperimental multitouch driver:\n");
-	printf("   'SYNAPTICS'\n");
-	printf("\nRun  mygestures -d 'DEVICE_NAME' to choose a device.\n");
 
 	XIFreeDeviceInfo(devices);
 
@@ -615,11 +571,11 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y,
 
 		if (!(self->synaptics)) {
 
-			printf("Emulating click\n");
+			printf("\nEmulating click\n");
 
-			grabbing_xinput_ungrab(self);
+			grabbing_xinput_grab_stop(self);
 			mouse_click(self->dpy, self->button, new_x, new_y);
-			grabbing_xinput_grab(self);
+			grabbing_xinput_grab_start(self);
 
 		}
 
@@ -686,6 +642,9 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y,
 static
 void grabber_init_drawing(Grabber* self, char * brush_color) {
 
+	assert(self->dpy);
+
+
 	grabbing_set_brush_color(self, brush_color);
 
 	int err = 0;
@@ -721,6 +680,8 @@ Grabber * grabber_init(char * device_name, int button, int without_brush,
 	self->without_brush = without_brush;
 	self->verbose = verbose;
 	self->devicename = device_name;
+	self->shut_down = 0;
+	self->dpy = XOpenDisplay(NULL);
 
 	if (!self->devicename) {
 		self->devicename = "Virtual core pointer";
@@ -741,11 +702,10 @@ Grabber * grabber_init(char * device_name, int button, int without_brush,
 
 void grabber_xinput_loop(Grabber * self, Configuration * conf) {
 
-	grabber_open_devices(self);
-
 	XEvent ev;
 
-	grabbing_xinput_grab(self);
+	grabber_xinput_open_devices(self);
+	grabbing_xinput_grab_start(self);
 
 	while (!self->shut_down) {
 
@@ -779,18 +739,16 @@ void grabber_xinput_loop(Grabber * self, Configuration * conf) {
 				XIDeviceInfo* devices;
 				devices = XIQueryDevice(self->dpy, data->deviceid, &ndevices);
 
-				printf("\nXInput Devices:\n");
 
 				if (ndevices == 1) {
 					device = &devices[0];
 					device_name = strdup(device->name);
-
 				}
 
-				grabbing_xinput_ungrab(self);
+				grabbing_xinput_grab_stop(self);
 				grabbing_end_movement(self, data->root_x, data->root_y,
 						device_name, conf);
-				grabbing_xinput_grab(self);
+				grabbing_xinput_grab_start(self);
 				break;
 
 			}
@@ -810,6 +768,9 @@ void grabber_loop(Grabber * self, Configuration * conf) {
 	} else {
 		grabber_xinput_loop(self, conf);
 	}
+
+	printf("Grabbing loop finished for device '%s'.\n",self->devicename);
+
 }
 
 char * grabber_get_device_name(Grabber * self) {
