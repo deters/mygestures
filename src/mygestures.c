@@ -75,16 +75,12 @@ Mygestures * mygestures_new() {
 	bzero(self, sizeof(Mygestures));
 
 	self->brush_color = "blue";
-	self->trigger_button = 0;
-	self->custom_config_file = NULL;
-	self->device_count = 0;
 	self->device_list = malloc(sizeof(uint) * MAX_GRABBED_DEVICES);
 	self->gestures_configuration = NULL;
 	self->help_flag = 0;
 	self->list_devices_flag = 0;
 	self->damonize_option = 0;
 	self->verbose_option = 0;
-	self->without_brush_option = 0;
 	self->gestures_configuration = configuration_new();
 
 	return self;
@@ -109,18 +105,14 @@ void mygestures_grab_device(Mygestures* self, char* device_name) {
 
 	if (p == 0) {
 
-		/* we are in the forked thread. start grabbing a device */
+		/* We are in the forked thread. Start grabbing a device */
 
 		printf("Listening device %s\n", device_name);
 
 		alloc_shared_memory(device_name);
 
-
-
-
-		Grabber* grabber = grabber_init(device_name, self->trigger_button,
-				self->without_brush_option,
-				self->brush_color, self->verbose_option);
+		Grabber* grabber = grabber_new(device_name, self->trigger_button,
+				self->brush_color);
 
 		send_kill_message(device_name);
 

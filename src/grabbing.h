@@ -46,7 +46,6 @@ typedef struct {
 	int button;
 
 	int started;
-	int without_brush;
 	int verbose;
 
 	int opcode;
@@ -75,7 +74,7 @@ typedef struct {
 
 } Grabber;
 
-Grabber * grabber_init(char * device_name, int button, int without_brush, char * brush_color, int verbose);
+Grabber * grabber_new(char * device_name, int button, char * brush_color);
 void grabber_loop(Grabber * self, Configuration * conf);
 void grabbing_start_movement(Grabber * self, int new_x, int new_y);
 void grabbing_update_movement(Grabber * self, int new_x, int new_y);

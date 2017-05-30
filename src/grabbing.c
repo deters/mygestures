@@ -59,30 +59,48 @@ void grabber_open_display(Grabber * self) {
 }
 
 static
-void grabbing_set_brush_color(Grabber * self, char * color) {
+void grabber_set_brush_color(Grabber * self, char * color) {
 
 	assert(self);
-	assert(color);
 
-	self->brush_image = &brush_image_blue;
+	if (strcasecmp(color, "red") == 0)
+		self->brush_image = &brush_image_red;
+	else if (strcasecmp(color, "green") == 0)
+		self->brush_image = &brush_image_green;
+	else if (strcasecmp(color, "yellow") == 0)
+		self->brush_image = &brush_image_yellow;
+	else if (strcasecmp(color, "white") == 0)
+		self->brush_image = &brush_image_white;
+	else if (strcasecmp(color, "purple") == 0)
+		self->brush_image = &brush_image_purple;
+	else if (strcasecmp(color, "blue") == 0)
+		self->brush_image = &brush_image_blue;
+	else
+		self->brush_image = NULL;
 
-	if (color) {
+}
 
-		if (strcasecmp(color, "red") == 0)
-			self->brush_image = &brush_image_red;
-		else if (strcasecmp(color, "green") == 0)
-			self->brush_image = &brush_image_green;
-		else if (strcasecmp(color, "yellow") == 0)
-			self->brush_image = &brush_image_yellow;
-		else if (strcasecmp(color, "white") == 0)
-			self->brush_image = &brush_image_white;
-		else if (strcasecmp(color, "purple") == 0)
-			self->brush_image = &brush_image_purple;
-		else if (strcasecmp(color, "blue") == 0)
-			self->brush_image = &brush_image_blue;
-		else
-			printf("no such color, '%s'. using 'blue'\n", color);
+static
+void grabber_init_drawing(Grabber* self, char * brush_color) {
 
+	assert(self->dpy);
+
+	grabber_set_brush_color(self, brush_color);
+
+	int err = 0;
+	int scr = DefaultScreen(self->dpy);
+
+	if (!self->brush_image) {
+		err = backing_init(&(self->backing), self->dpy,
+				DefaultRootWindow(self->dpy), DisplayWidth(self->dpy, scr),
+				DisplayHeight(self->dpy, scr), DefaultDepth(self->dpy, scr));
+		if (err) {
+			fprintf(stderr, "cannot open backing store.... \n");
+		}
+		err = brush_init(&(self->brush), &(self->backing), self->brush_image);
+		if (err) {
+			fprintf(stderr, "cannot init brush.... \n");
+		}
 	}
 }
 
@@ -488,7 +506,7 @@ void grabbing_start_movement(Grabber * self, int new_x, int new_y) {
 	self->rought_old_x = new_x;
 	self->rought_old_y = new_y;
 
-	if (!self->without_brush) {
+	if (!self->brush_image) {
 
 		backing_save(&(self->backing), new_x - self->brush.image_width,
 				new_y - self->brush.image_height);
@@ -505,7 +523,7 @@ void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
 	}
 
 	// se for o caso, desenha o movimento na tela
-	if (!self->without_brush) {
+	if (!self->brush_image) {
 		backing_save(&(self->backing), new_x - self->brush.image_width,
 				new_y - self->brush.image_height);
 
@@ -561,7 +579,7 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y,
 	self->started = 0;
 
 	// if is drawing
-	if (!self->without_brush) {
+	if (!self->brush_image) {
 		backing_restore(&(self->backing));
 	};
 
@@ -639,53 +657,12 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y,
 	}
 }
 
-static
-void grabber_init_drawing(Grabber* self, char * brush_color) {
-
-	assert(self->dpy);
-
-
-	grabbing_set_brush_color(self, brush_color);
-
-	int err = 0;
-	int scr = DefaultScreen(self->dpy);
-
-	if (!self->without_brush) {
-		if (!self->brush_image) {
-			self->brush_image = &brush_image_red;
-		}
-		err = backing_init(&(self->backing), self->dpy,
-				DefaultRootWindow(self->dpy), DisplayWidth(self->dpy, scr),
-				DisplayHeight(self->dpy, scr), DefaultDepth(self->dpy, scr));
-		if (err) {
-			fprintf(stderr, "cannot open backing store.... \n");
-		}
-		err = brush_init(&(self->brush), &(self->backing), self->brush_image);
-		if (err) {
-			fprintf(stderr, "cannot init brush.... \n");
-		}
-	}
+void grabber_set_button(Grabber* self, int button) {
+	self->button = button;
 }
 
-Grabber * grabber_init(char * device_name, int button, int without_brush,
-		char * brush_color, int verbose) {
-
-	Grabber * self = malloc(sizeof(Grabber));
-	bzero(self, sizeof(Grabber));
-
-	self->fine_direction_sequence = malloc(sizeof(char *) * 30);
-	self->rought_direction_sequence = malloc(sizeof(char *) * 30);
-
-	self->button = button;
-	self->without_brush = without_brush;
-	self->verbose = verbose;
+void grabber_set_device(Grabber* self, char* device_name) {
 	self->devicename = device_name;
-	self->shut_down = 0;
-	self->dpy = XOpenDisplay(NULL);
-
-	if (!self->devicename) {
-		self->devicename = "Virtual core pointer";
-	}
 
 	if (strcasecmp(self->devicename, "SYNAPTICS") == 0) {
 		self->synaptics = 1;
@@ -695,7 +672,21 @@ Grabber * grabber_init(char * device_name, int button, int without_brush,
 		self->delta_min = 30;
 	}
 
-	grabber_init_drawing(self, brush_color);
+}
+
+Grabber * grabber_new(char * device_name, int button, char * brush_color) {
+
+	Grabber * self = malloc(sizeof(Grabber));
+	bzero(self, sizeof(Grabber));
+
+	self->fine_direction_sequence = malloc(sizeof(char *) * 30);
+	self->rought_direction_sequence = malloc(sizeof(char *) * 30);
+
+	self->dpy = XOpenDisplay(NULL);
+
+	grabber_set_device(self, device_name);
+	grabber_set_button(self, button);
+	grabber_set_brush_color(self, brush_color);
 
 	return self;
 }
@@ -739,7 +730,6 @@ void grabber_xinput_loop(Grabber * self, Configuration * conf) {
 				XIDeviceInfo* devices;
 				devices = XIQueryDevice(self->dpy, data->deviceid, &ndevices);
 
-
 				if (ndevices == 1) {
 					device = &devices[0];
 					device_name = strdup(device->name);
@@ -769,7 +759,7 @@ void grabber_loop(Grabber * self, Configuration * conf) {
 		grabber_xinput_loop(self, conf);
 	}
 
-	printf("Grabbing loop finished for device '%s'.\n",self->devicename);
+	printf("Grabbing loop finished for device '%s'.\n", self->devicename);
 
 }
 
@@ -778,7 +768,7 @@ char * grabber_get_device_name(Grabber * self) {
 }
 
 void grabber_finalize(Grabber * self) {
-	if (!(self->without_brush)) {
+	if (!(self->brush_image)) {
 		brush_deinit(&(self->brush));
 		backing_deinit(&(self->backing));
 	}

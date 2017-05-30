@@ -16,7 +16,6 @@
 #include <sys/mman.h>
 #include <sys/shm.h>
 
-
 struct shm_message {
 	int pid;
 	int kill;
@@ -25,15 +24,14 @@ struct shm_message {
 static struct shm_message * message;
 static char * shm_identifier;
 
-
 static void process_arguments(Mygestures * self, int argc, char * const *argv) {
 
 	char opt;
 	static struct option opts[] = { { "verbose", no_argument, 0, 'v' }, {
-			"help", no_argument, 0, 'h' }, { "without-brush", no_argument, 0,
-			'w' }, { "daemonize", no_argument, 0, 'z' }, { "button",
-	required_argument, 0, 'b' }, { "color", required_argument, 0, 'c' }, {
-			"device", required_argument, 0, 'd' }, { 0, 0, 0, 0 } };
+			"help", no_argument, 0, 'h' }, { "daemonize", no_argument, 0, 'z' },
+			{ "button",
+			required_argument, 0, 'b' }, { "color", required_argument, 0, 'c' },
+			{ "device", required_argument, 0, 'd' }, { 0, 0, 0, 0 } };
 
 	/* read params */
 
@@ -49,15 +47,11 @@ static void process_arguments(Mygestures * self, int argc, char * const *argv) {
 			break;
 
 		case 'b':
-			self->button_option = atoi(optarg);
+			self->trigger_button = atoi(optarg);
 			break;
 
 		case 'c':
 			self->brush_color = strdup(optarg);
-			break;
-
-		case 'w':
-			self->without_brush_option = 1;
 			break;
 
 		case 'l':
