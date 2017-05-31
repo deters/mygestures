@@ -25,11 +25,78 @@
 
 #include <sys/shm.h> /* needed for synaptics */
 #include <X11/Xlib.h>
+#include <X11/extensions/XI.h>
+#include <X11/extensions/XInput.h>
+
+#include <math.h>
+
 #include <sys/time.h>
 
 #include "grabbing-synaptics.h"
 
 #define SHM_SYNAPTICS 23947
+
+#define SYNAPTICS_PROP_TAP_ACTION "Synaptics Tap Action"
+
+static XDevice *
+dp_get_device(Display *dpy) {
+	XDevice* dev = NULL;
+	XDeviceInfo *info = NULL;
+	int ndevices = 0;
+	Atom touchpad_type = 0;
+	Atom synaptics_property = 0;
+	Atom *properties = NULL;
+	int nprops = 0;
+	int error = 0;
+
+	touchpad_type = XInternAtom(dpy, XI_TOUCHPAD, True);
+	synaptics_property = XInternAtom(dpy, SYNAPTICS_PROP_TAP_ACTION, True);
+	info = XListInputDevices(dpy, &ndevices);
+
+	while (ndevices--) {
+		if (info[ndevices].type == touchpad_type) {
+			dev = XOpenDevice(dpy, info[ndevices].id);
+			if (!dev) {
+				fprintf(stderr, "Failed to open device '%s'.\n",
+						info[ndevices].name);
+				error = 1;
+				goto unwind;
+			}
+
+			properties = XListDeviceProperties(dpy, dev, &nprops);
+			if (!properties || !nprops) {
+				fprintf(stderr, "No properties on device '%s'.\n",
+						info[ndevices].name);
+				error = 1;
+				goto unwind;
+			}
+
+			while (nprops--) {
+				if (properties[nprops] == synaptics_property)
+					break;
+			}
+			if (!nprops) {
+				fprintf(stderr, "No synaptics properties on device '%s'.\n",
+						info[ndevices].name);
+				error = 1;
+				goto unwind;
+			}
+
+			break; /* Yay, device is suitable */
+		}
+	}
+
+	unwind: XFree(properties);
+	XFreeDeviceList(info);
+	if (!dev)
+		fprintf(stderr, "Unable to find a synaptics device.\n");
+	else if (error && dev) {
+		XCloseDevice(dpy, dev);
+		dev = NULL;
+	}
+	return dev;
+}
+
 typedef struct _SynapticsSHM {
 	int version; /* Driver version */
 
@@ -96,20 +163,50 @@ void syn_print(const SynapticsSHM* cur) {
 			cur->multi[5], cur->multi[6], cur->multi[7]);
 }
 
+void synaptics_disable_3fingers_tap(Grabber* self, XDevice* dev) {
+	Atom prop, type;
+	double val;
+	int format;
+	unsigned long nitems, bytes_after;
+	unsigned char* data = NULL;
+	prop = XInternAtom(self->dpy, SYNAPTICS_PROP_TAP_ACTION, True);
+	XGetDeviceProperty(self->dpy, dev, prop, 0, 1000, False, AnyPropertyType,
+			&type, &format, &nitems, &bytes_after, &data);
+	char* b = NULL;
+	int offset = 6;
+	b = (char*) data;
+	//b[offset] = rint(val);
+
+	if (b[offset] != 0) {
+		b[offset] = rint(val);
+
+		XChangeDeviceProperty(self->dpy, dev, prop, type, format,
+		PropModeReplace, data, nitems);
+		XFlush(self->dpy);
+	}
+}
+
 void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 
-	SynapticsSHM *synshm = NULL;
+	XDevice* dev = NULL;
+	dev = dp_get_device(self->dpy);
+	if (!dev) {
+		printf("No synaptics touchpad detected.\n");
+		return;
+	}
 
+	synaptics_disable_3fingers_tap(self, dev);
+
+	SynapticsSHM *synshm = NULL;
 	synshm = grabber_synaptics_shm_init(0);
 
-	printf("\nSynaptics driver (multitouch SHM-enabled driver):\n");
+	printf("\nSynaptics Driver (with Shared Memory enabled):\n");
 	printf("   [x] 'synaptics'\n");
 
 	if (!synshm) {
 		printf(
-				"SYNAPTICS SHM DRIVER NOT AVAILABLE\nIf you want multitouch synaptics gestures, then you will need a patched synaptics driver with SHM enabled.\n");
-		printf(
-				" Take a look at https://github.com/Chosko/xserver-xorg-input-synaptics\n");
+				"Your Synaptics driver does not have shared memory access, so multitouch gestures will not work on your touchpad.\n"
+						"Take a look at https://github.com/Chosko/xserver-xorg-input-synaptics if you want to enable SynapticsSHM.\n");
 		return;
 	}
 
@@ -186,3 +283,4 @@ void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 	}
 
 }
+
