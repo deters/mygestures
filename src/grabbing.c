@@ -58,39 +58,39 @@ void grabber_open_display(Grabber * self) {
 
 }
 
-static
-void grabber_set_brush_color(Grabber * self, char * color) {
+static struct brush_image_t * grabber_get_brush(char * color) {
 
-	assert(self);
+	struct brush_image_t *brush_image = NULL;
 
 	if (strcasecmp(color, "red") == 0)
-		self->brush_image = &brush_image_red;
+		brush_image = &brush_image_red;
 	else if (strcasecmp(color, "green") == 0)
-		self->brush_image = &brush_image_green;
+		brush_image = &brush_image_green;
 	else if (strcasecmp(color, "yellow") == 0)
-		self->brush_image = &brush_image_yellow;
+		brush_image = &brush_image_yellow;
 	else if (strcasecmp(color, "white") == 0)
-		self->brush_image = &brush_image_white;
+		brush_image = &brush_image_white;
 	else if (strcasecmp(color, "purple") == 0)
-		self->brush_image = &brush_image_purple;
+		brush_image = &brush_image_purple;
 	else if (strcasecmp(color, "blue") == 0)
-		self->brush_image = &brush_image_blue;
+		brush_image = &brush_image_blue;
 	else
-		self->brush_image = NULL;
+		brush_image = NULL;
+
+	return brush_image;
 
 }
 
 static
-void grabber_init_drawing(Grabber* self, char * brush_color) {
+void grabber_init_drawing(Grabber* self) {
 
 	assert(self->dpy);
-
-	grabber_set_brush_color(self, brush_color);
 
 	int err = 0;
 	int scr = DefaultScreen(self->dpy);
 
-	if (!self->brush_image) {
+	if (self->brush_image) {
+
 		err = backing_init(&(self->backing), self->dpy,
 				DefaultRootWindow(self->dpy), DisplayWidth(self->dpy, scr),
 				DisplayHeight(self->dpy, scr), DefaultDepth(self->dpy, scr));
@@ -506,7 +506,7 @@ void grabbing_start_movement(Grabber * self, int new_x, int new_y) {
 	self->rought_old_x = new_x;
 	self->rought_old_y = new_y;
 
-	if (!self->brush_image) {
+	if (self->brush_image) {
 
 		backing_save(&(self->backing), new_x - self->brush.image_width,
 				new_y - self->brush.image_height);
@@ -523,7 +523,7 @@ void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
 	}
 
 	// se for o caso, desenha o movimento na tela
-	if (!self->brush_image) {
+	if (self->brush_image) {
 		backing_save(&(self->backing), new_x - self->brush.image_width,
 				new_y - self->brush.image_height);
 
@@ -579,7 +579,7 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y,
 	self->started = 0;
 
 	// if is drawing
-	if (!self->brush_image) {
+	if (self->brush_image) {
 		backing_restore(&(self->backing));
 	};
 
@@ -682,11 +682,9 @@ Grabber * grabber_new(char * device_name, int button, char * brush_color) {
 	self->fine_direction_sequence = malloc(sizeof(char *) * 30);
 	self->rought_direction_sequence = malloc(sizeof(char *) * 30);
 
-	self->dpy = XOpenDisplay(NULL);
-
 	grabber_set_device(self, device_name);
 	grabber_set_button(self, button);
-	grabber_set_brush_color(self, brush_color);
+	self->brush_image = grabber_get_brush(brush_color);
 
 	return self;
 }
@@ -753,6 +751,8 @@ void grabber_loop(Grabber * self, Configuration * conf) {
 
 	grabber_open_display(self);
 
+	grabber_init_drawing(self);
+
 	if (self->synaptics) {
 		grabber_synaptics_loop(self, conf);
 	} else {
@@ -768,7 +768,7 @@ char * grabber_get_device_name(Grabber * self) {
 }
 
 void grabber_finalize(Grabber * self) {
-	if (!(self->brush_image)) {
+	if (self->brush_image) {
 		brush_deinit(&(self->brush));
 		backing_deinit(&(self->backing));
 	}

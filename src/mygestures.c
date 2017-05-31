@@ -103,7 +103,7 @@ void mygestures_grab_device(Mygestures* self, char* device_name) {
 
 	int p = fork();
 
-	if (p == 0) {
+	if (p != 0) {
 
 		/* We are in the forked thread. Start grabbing a device */
 
@@ -134,7 +134,7 @@ void mygestures_run(Mygestures * self) {
 	}
 
 	/*
-	 * Only load configurations if the device list is empty
+	 * Will not load configuration if it is only listing the devices.
 	 */
 	if (!self->list_devices_flag) {
 		mygestures_load_configuration(self);
