@@ -80,7 +80,6 @@ Mygestures * mygestures_new() {
 	self->help_flag = 0;
 	self->list_devices_flag = 0;
 	self->damonize_option = 0;
-	self->verbose_option = 0;
 	self->gestures_configuration = configuration_new();
 
 	return self;
@@ -111,8 +110,9 @@ void mygestures_grab_device(Mygestures* self, char* device_name) {
 
 		alloc_shared_memory(device_name);
 
-		Grabber* grabber = grabber_new(device_name, self->trigger_button,
-				self->brush_color);
+		Grabber* grabber = grabber_new(device_name, self->trigger_button);
+
+		grabber_set_brush_color(grabber, self->brush_color);
 
 		send_kill_message(device_name);
 

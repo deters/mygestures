@@ -58,7 +58,7 @@ void grabber_open_display(Grabber * self) {
 
 }
 
-static struct brush_image_t * grabber_get_brush(char * color) {
+static struct brush_image_t * get_brush_image(char * color) {
 
 	struct brush_image_t *brush_image = NULL;
 
@@ -678,7 +678,11 @@ void grabber_set_device(Grabber* self, char* device_name) {
 
 }
 
-Grabber * grabber_new(char * device_name, int button, char * brush_color) {
+void grabber_set_brush_color(Grabber* self, char * brush_color){
+	self->brush_image = get_brush_image(brush_color);
+}
+
+Grabber * grabber_new(char * device_name, int button) {
 
 	Grabber * self = malloc(sizeof(Grabber));
 	bzero(self, sizeof(Grabber));
@@ -688,7 +692,7 @@ Grabber * grabber_new(char * device_name, int button, char * brush_color) {
 
 	grabber_set_device(self, device_name);
 	grabber_set_button(self, button);
-	self->brush_image = grabber_get_brush(brush_color);
+
 
 	return self;
 }

@@ -11,7 +11,6 @@ typedef struct mygestures_ {
 	int trigger_button;
 	int damonize_option;
 	int list_devices_flag;
-	int verbose_option;
 
 	char * custom_config_file;
 

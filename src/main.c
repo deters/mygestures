@@ -27,16 +27,15 @@ static char * shm_identifier;
 static void process_arguments(Mygestures * self, int argc, char * const *argv) {
 
 	char opt;
-	static struct option opts[] = { { "verbose", no_argument, 0, 'v' }, {
-			"help", no_argument, 0, 'h' }, { "daemonize", no_argument, 0, 'z' },
-			{ "button",
-			required_argument, 0, 'b' }, { "color", required_argument, 0, 'c' },
-			{ "device", required_argument, 0, 'd' }, { 0, 0, 0, 0 } };
+	static struct option opts[] = { { "help", no_argument, 0, 'h' }, {
+			"daemonize", no_argument, 0, 'z' }, { "button",
+	required_argument, 0, 'b' }, { "color", required_argument, 0, 'c' }, {
+			"device", required_argument, 0, 'd' }, { 0, 0, 0, 0 } };
 
 	/* read params */
 
 	while (1) {
-		opt = getopt_long(argc, argv, "b:c:d:vhlwx:zr", opts, NULL);
+		opt = getopt_long(argc, argv, "b:c:d:vhlz", opts, NULL);
 		if (opt == -1)
 			break;
 
@@ -60,10 +59,6 @@ static void process_arguments(Mygestures * self, int argc, char * const *argv) {
 
 		case 'z':
 			self->damonize_option = 1;
-			break;
-
-		case 'v':
-			self->verbose_option = 1;
 			break;
 
 		case 'h':

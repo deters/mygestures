@@ -133,10 +133,6 @@ void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 			// release
 			if (cur.numFingers >= 3 && max_fingers >= 3) {
 
-				//if (self->verbose) {
-				//	syn_print(&cur);
-				//}
-
 				grabbing_update_movement(self, cur.x, cur.y);
 
 				//// got > 3 fingers
