@@ -288,49 +288,53 @@ static
 void execute_action(Display *dpy, Action *action, Window focused_window) {
 	int id;
 
-	// if there is an action
-	if (action != NULL) {
+	assert(dpy);
+	assert(action);
+	assert(focused_window);
 
-		switch (action->type) {
-		case ACTION_EXECUTE:
-			id = fork();
-			if (id == 0) {
-				int i = system(action->original_str);
-				exit(i);
-			}
-			if (id < 0) {
-				fprintf(stderr, "Error forking.\n");
-			}
-
-			break;
-		case ACTION_ICONIFY:
-			action_iconify(dpy, focused_window);
-			break;
-		case ACTION_KILL:
-			action_kill(dpy, focused_window);
-			break;
-		case ACTION_RAISE:
-			action_raise(dpy, focused_window);
-			break;
-		case ACTION_LOWER:
-			action_lower(dpy, focused_window);
-			break;
-		case ACTION_MAXIMIZE:
-			action_maximize(dpy, focused_window);
-			break;
-		case ACTION_RESTORE:
-			action_restore(dpy, focused_window);
-			break;
-		case ACTION_TOGGLE_MAXIMIZED:
-			action_toggle_maximized(dpy, focused_window);
-			break;
-		case ACTION_KEYPRESS:
-			action_keypress(dpy, action->original_str);
-			break;
-		default:
-			fprintf(stderr, "found an unknown gesture \n");
+	switch (action->type) {
+	case ACTION_EXECUTE:
+		id = fork();
+		if (id == 0) {
+			int i = system(action->original_str);
+			exit(i);
 		}
+		if (id < 0) {
+			fprintf(stderr, "Error forking.\n");
+		}
+
+		break;
+	case ACTION_ICONIFY:
+		action_iconify(dpy, focused_window);
+		break;
+	case ACTION_KILL:
+		action_kill(dpy, focused_window);
+		break;
+	case ACTION_RAISE:
+		action_raise(dpy, focused_window);
+		break;
+	case ACTION_LOWER:
+		action_lower(dpy, focused_window);
+		break;
+	case ACTION_MAXIMIZE:
+		action_maximize(dpy, focused_window);
+		break;
+	case ACTION_RESTORE:
+		action_restore(dpy, focused_window);
+		break;
+	case ACTION_TOGGLE_MAXIMIZED:
+		action_toggle_maximized(dpy, focused_window);
+		break;
+	case ACTION_KEYPRESS:
+		action_keypress(dpy, action->original_str);
+		break;
+	default:
+		fprintf(stderr, "found an unknown gesture \n");
+
 	}
+
+	XAllowEvents(dpy, 0, CurrentTime);
+
 	return;
 }
 
@@ -591,9 +595,9 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y,
 
 			printf("\nEmulating click\n");
 
-			grabbing_xinput_grab_stop(self);
+			//grabbing_xinput_grab_stop(self);
 			mouse_click(self->dpy, self->button, new_x, new_y);
-			grabbing_xinput_grab_start(self);
+			//grabbing_xinput_grab_start(self);
 
 		}
 
@@ -689,6 +693,21 @@ Grabber * grabber_new(char * device_name, int button, char * brush_color) {
 	return self;
 }
 
+char* get_device_name_from_event(Grabber* self, XIDeviceEvent* data) {
+	int ndevices;
+	char * device_name = NULL;
+	XIDeviceInfo* device;
+	XIDeviceInfo* devices;
+	devices = XIQueryDevice(self->dpy, data->deviceid, &ndevices);
+	if (ndevices == 1) {
+		device = &devices[0];
+		device_name = strdup(device->name);
+	}
+
+	return device_name;
+
+}
+
 void grabber_xinput_loop(Grabber * self, Configuration * conf) {
 
 	XEvent ev;
@@ -721,17 +740,7 @@ void grabber_xinput_loop(Grabber * self, Configuration * conf) {
 			case XI_ButtonRelease:
 				data = (XIDeviceEvent*) ev.xcookie.data;
 
-				char * device_name = "";
-
-				int ndevices;
-				XIDeviceInfo* device;
-				XIDeviceInfo* devices;
-				devices = XIQueryDevice(self->dpy, data->deviceid, &ndevices);
-
-				if (ndevices == 1) {
-					device = &devices[0];
-					device_name = strdup(device->name);
-				}
+				char * device_name = get_device_name_from_event(self, data);
 
 				grabbing_xinput_grab_stop(self);
 				grabbing_end_movement(self, data->root_x, data->root_y,

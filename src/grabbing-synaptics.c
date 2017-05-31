@@ -150,7 +150,9 @@ void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 				// reset max fingers
 				max_fingers = 0;
 
+				grabbing_xinput_grab_stop(self);
 				grabbing_end_movement(self, old.x, old.y, "Synaptics", conf);
+				grabbing_xinput_grab_start(self);
 
 				/// energy economy
 				int delay = 50;
