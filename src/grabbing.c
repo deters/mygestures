@@ -578,6 +578,8 @@ void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
 void grabbing_end_movement(Grabber * self, int new_x, int new_y,
 		char * device_name, Configuration * conf) {
 
+	grabbing_xinput_grab_stop(self);
+
 	Capture * grab = NULL;
 
 	self->started = 0;
@@ -659,6 +661,9 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y,
 		free_grabbed(grab);
 
 	}
+
+	grabbing_xinput_grab_start(self);
+
 }
 
 void grabber_set_button(Grabber* self, int button) {
@@ -678,7 +683,7 @@ void grabber_set_device(Grabber* self, char* device_name) {
 
 }
 
-void grabber_set_brush_color(Grabber* self, char * brush_color){
+void grabber_set_brush_color(Grabber* self, char * brush_color) {
 	self->brush_image = get_brush_image(brush_color);
 }
 
@@ -692,7 +697,6 @@ Grabber * grabber_new(char * device_name, int button) {
 
 	grabber_set_device(self, device_name);
 	grabber_set_button(self, button);
-
 
 	return self;
 }

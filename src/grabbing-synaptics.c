@@ -170,12 +170,16 @@ void synaptics_disable_3fingers_tap(Grabber* self, XDevice* dev) {
 	unsigned long nitems, bytes_after;
 	unsigned char* data = NULL;
 	prop = XInternAtom(self->dpy, SYNAPTICS_PROP_TAP_ACTION, True);
+
+	/* get current configuration */
+
 	XGetDeviceProperty(self->dpy, dev, prop, 0, 1000, False, AnyPropertyType,
 			&type, &format, &nitems, &bytes_after, &data);
 	char* b = NULL;
-	int offset = 6;
+	int offset = 6; // the position of 3TAP_FINGER inside config
 	b = (char*) data;
-	//b[offset] = rint(val);
+
+	/* change configuration if needed */
 
 	if (b[offset] != 0) {
 		b[offset] = rint(val);
@@ -190,6 +194,7 @@ void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 
 	XDevice* dev = NULL;
 	dev = dp_get_device(self->dpy);
+
 	if (!dev) {
 		printf("No synaptics touchpad detected.\n");
 		return;
@@ -243,9 +248,7 @@ void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 				// reset max fingers
 				max_fingers = 0;
 
-				grabbing_xinput_grab_stop(self);
 				grabbing_end_movement(self, old.x, old.y, "Synaptics", conf);
-				grabbing_xinput_grab_start(self);
 
 				/// energy economy
 				int delay = 50;
