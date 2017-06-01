@@ -9,7 +9,8 @@ MyGestures - mouse gestures for linux
 Installing from source:
 -----------------------
 
-    sudo apt install pkg-config autoconf libtool libx11-dev libxrender-dev libxtst-dev libxml2-dev
+    sudo apt install pkg-config autoconf libtool libx11-dev libxrender-dev libxtst-dev libxml2-dev git
+    git clone https://github.com/deters/mygestures.git
     cd mygestures/
     sh autogen.sh
     make
