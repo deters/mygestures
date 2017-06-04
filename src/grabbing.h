@@ -32,7 +32,7 @@ enum {
 extern const char *modifiers_names[];
 
 /* valid strokes */
-extern const char stroke_representations[];
+extern const char _STROKE_CHARS[];
 
 typedef struct {
 

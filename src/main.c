@@ -195,6 +195,7 @@ int main(int argc, char * const * argv) {
 	Mygestures *self = mygestures_new();
 
 	process_arguments(self, argc, argv);
+
 	mygestures_run(self);
 
 	exit(0);

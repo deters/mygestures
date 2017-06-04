@@ -179,7 +179,7 @@ Action *configuration_create_action(Gesture * self, int action_type,
 	return ans;
 }
 
-Gesture * engine_match_gesture(Configuration * self, char * captured_sequence,
+Gesture * match_gesture(Configuration * self, char * captured_sequence,
 		ActiveWindowInfo * window) {
 
 	assert(self);
@@ -191,9 +191,6 @@ Gesture * engine_match_gesture(Configuration * self, char * captured_sequence,
 	int c = 0;
 
 	for (c = 0; c < self->context_count; ++c) {
-
-//		if (matched_gesture)
-//			break;
 
 		Context * context = self->context_list[c];
 
@@ -211,8 +208,6 @@ Gesture * engine_match_gesture(Configuration * self, char * captured_sequence,
 		}
 
 		assert(context->gesture_count);
-
-//		if (context->gesture_count) {
 
 		int g = 0;
 
@@ -234,8 +229,6 @@ Gesture * engine_match_gesture(Configuration * self, char * captured_sequence,
 
 		}
 
-//		}
-
 	}
 
 	return matched_gesture;
@@ -253,7 +246,7 @@ Gesture * configuration_process_gesture(Configuration * self, Capture * grab) {
 	for (i = 0; i < grab->expression_count; ++i) {
 
 		char * sequence = grab->expression_list[i];
-		gest = engine_match_gesture(self, sequence, grab->active_window_info);
+		gest = match_gesture(self, sequence, grab->active_window_info);
 
 		if (gest) {
 			return gest;

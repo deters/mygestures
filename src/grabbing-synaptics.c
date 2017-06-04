@@ -175,18 +175,17 @@ void synaptics_disable_3fingers_tap(Grabber* self, XDevice* dev) {
 
 	XGetDeviceProperty(self->dpy, dev, prop, 0, 1000, False, AnyPropertyType,
 			&type, &format, &nitems, &bytes_after, &data);
-	char* b = NULL;
+	char* b = (char*) data;
 	int offset = 6; // the position of 3TAP_FINGER inside config
-	b = (char*) data;
 
 	/* change configuration if needed */
 
 	if (b[offset] != 0) {
-		b[offset] = rint(val);
+		b[offset] = 0;//rint(val);
 
 		XChangeDeviceProperty(self->dpy, dev, prop, type, format,
-		PropModeReplace, data, nitems);
-		XFlush(self->dpy);
+						PropModeReplace, data, nitems);
+			XFlush(self->dpy);
 	}
 }
 
@@ -286,4 +285,3 @@ void grabber_synaptics_loop(Grabber * self, Configuration * conf) {
 	}
 
 }
-
