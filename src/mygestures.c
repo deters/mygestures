@@ -140,20 +140,19 @@ void mygestures_run(Mygestures * self) {
 		mygestures_load_configuration(self);
 	}
 
-	/*
-	 * Start grabbing any device passed via argument flags.
-	 */
-	for (int i = 0; i < self->device_count; ++i) {
-		mygestures_grab_device(self, self->device_list[i]);
-	}
-
-	/*
-	 * If there where no devices in the argument flags, then grab the default devices.
-	 */
-
-	if (self->device_count == 0) {
+	if (self->device_count) {
+		/*
+		 * Start grabbing any device passed via argument flags.
+		 */
+		for (int i = 0; i < self->device_count; ++i) {
+			mygestures_grab_device(self, self->device_list[i]);
+		}
+	} else {
 		mygestures_grab_device(self, "Virtual Core Pointer");
 		mygestures_grab_device(self, "synaptics");
+		/*
+		 * If there where no devices in the argument flags, then grab the default devices.
+		 */
 	}
 
 }
