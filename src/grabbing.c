@@ -62,7 +62,9 @@ static struct brush_image_t * get_brush_image(char * color) {
 
 	struct brush_image_t *brush_image = NULL;
 
-	if (strcasecmp(color, "red") == 0)
+	if (!color)
+		brush_image = NULL;
+	else if (strcasecmp(color, "red") == 0)
 		brush_image = &brush_image_red;
 	else if (strcasecmp(color, "green") == 0)
 		brush_image = &brush_image_green;
