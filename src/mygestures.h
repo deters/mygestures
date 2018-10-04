@@ -9,6 +9,7 @@
 typedef struct mygestures_ {
 	int help_flag;
 	int trigger_button;
+	int allow_modifiers;
 	int damonize_option;
 	int list_devices_flag;
 
