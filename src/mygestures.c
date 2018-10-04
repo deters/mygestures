@@ -53,6 +53,7 @@ void mygestures_usage(Mygestures * self) {
 	printf(" -b, --button <BUTTON>      : Button used to draw the gesture\n");
 	printf("                              Default: '1' on touchscreens,\n");
 	printf("                                       '3' on other pointer dev\n");
+	printf(" -m, --allow-modifiers      : Allow holding modifier keys when drawing the gesture.\n");
 	printf(" -d, --device <DEVICENAME>  : Device to grab.\n");
 	printf(
 			"                              Defaults: 'Virtual core pointer' & 'synaptics'\n");
@@ -74,6 +75,7 @@ Mygestures * mygestures_new() {
 	Mygestures *self = malloc(sizeof(Mygestures));
 	bzero(self, sizeof(Mygestures));
 
+	self->allow_modifiers = 0;
 	self->brush_color = "blue";
 	self->device_list = malloc(sizeof(uint) * MAX_GRABBED_DEVICES);
 	self->gestures_configuration = NULL;
@@ -113,6 +115,7 @@ void mygestures_grab_device(Mygestures* self, char* device_name) {
 		Grabber* grabber = grabber_new(device_name, self->trigger_button);
 
 		grabber_set_brush_color(grabber, self->brush_color);
+		grabber_allow_modifiers(grabber, self->allow_modifiers);
 
 		send_kill_message(device_name);
 

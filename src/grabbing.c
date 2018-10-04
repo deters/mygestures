@@ -226,11 +226,22 @@ void grabbing_xinput_grab_start(Grabber * self) {
 			XIEventMask mask = {
 			XIAllDevices, sizeof(mask_data), mask_data };
 
-			XIGrabModifiers mods = {
-			XIAnyModifier };
+			int nmods = 4;
+			XIGrabModifiers mods[4] = {
+				{ 0, 0 }, // no modifiers
+				{ LockMask, 0 }, // Caps lock
+				{ Mod2Mask, 0 }, // Num lock
+				{ LockMask | Mod2Mask, 0 } // Caps & Num lock
+			};
+
+			if (self->allow_modifiers) {
+				nmods = 1;
+				mods[0].modifiers = XIAnyModifier;
+			}
+
 			int res = XIGrabButton(self->dpy, self->deviceid, self->button,
 					rootwindow, None,
-					GrabModeAsync, GrabModeAsync, False, &mask, 1, &mods);
+					GrabModeAsync, GrabModeAsync, False, &mask, nmods, mods);
 
 		}
 
@@ -694,6 +705,7 @@ Grabber * grabber_new(char * device_name, int button) {
 	Grabber * self = malloc(sizeof(Grabber));
 	bzero(self, sizeof(Grabber));
 
+	self->allow_modifiers = 0;
 	self->fine_direction_sequence = malloc(sizeof(char *) * 30);
 	self->rought_direction_sequence = malloc(sizeof(char *) * 30);
 
@@ -701,6 +713,11 @@ Grabber * grabber_new(char * device_name, int button) {
 	grabber_set_button(self, button);
 
 	return self;
+}
+
+void grabber_allow_modifiers(Grabber* self, int enable)
+{
+	self->allow_modifiers = enable;
 }
 
 char* get_device_name_from_event(Grabber* self, XIDeviceEvent* data) {
