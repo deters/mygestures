@@ -44,6 +44,7 @@ typedef struct {
 
 	int button;
 	int allow_modifiers;
+	int follow_pointer;
 
 	int started;
 	int verbose;
@@ -85,6 +86,7 @@ void grabber_finalize(Grabber * self);
 void grabber_print_devices(Grabber * self);
 void grabber_set_brush_color(Grabber* self, char * brush_color);
 void grabber_allow_modifiers(Grabber* self, int enable);
+void grabber_follow_pointer(Grabber* self, int enable);
 
 #endif /* MYGESTURES_GRABBING_H_ */
 
