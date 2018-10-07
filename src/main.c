@@ -30,12 +30,17 @@ static void process_arguments(Mygestures * self, int argc, char * const *argv) {
 	static struct option opts[] = { { "help", no_argument, 0, 'h' }, {
 			"daemonize", no_argument, 0, 'z' }, { "button",
 	required_argument, 0, 'b' }, { "color", required_argument, 0, 'c' }, {
+			"without-brush", no_argument, 0, 'w' }, {
+			"allow-modifiers", no_argument, 0, 'm' }, {
+			"follow-pointer", no_argument, 0, 'f' }, {
 			"device", required_argument, 0, 'd' }, { 0, 0, 0, 0 } };
 
 	/* read params */
 
+	int brush_flag = 0;
+
 	while (1) {
-		opt = getopt_long(argc, argv, "b:c:d:vhlz", opts, NULL);
+		opt = getopt_long(argc, argv, "b:c:d:vhlzwmf", opts, NULL);
 		if (opt == -1)
 			break;
 
@@ -49,8 +54,30 @@ static void process_arguments(Mygestures * self, int argc, char * const *argv) {
 			self->trigger_button = atoi(optarg);
 			break;
 
+		case 'm':
+			self->allow_modifiers = 1;
+			break;
+
+		case 'f':
+			self->follow_pointer = 1;
+			break;
+
 		case 'c':
+			if (brush_flag) {
+				printf("'--color' option conflicts with '--without-brush'\n");
+				exit(1);
+			}
 			self->brush_color = strdup(optarg);
+			brush_flag = 1;
+			break;
+
+		case 'w':
+			if (brush_flag) {
+				printf("'--without-brush' option conflicts with '--color'\n");
+				exit(1);
+			}
+			self->brush_color = NULL;
+			brush_flag = 1;
 			break;
 
 		case 'l':

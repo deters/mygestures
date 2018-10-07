@@ -62,7 +62,9 @@ static struct brush_image_t * get_brush_image(char * color) {
 
 	struct brush_image_t *brush_image = NULL;
 
-	if (strcasecmp(color, "red") == 0)
+	if (!color)
+		brush_image = NULL;
+	else if (strcasecmp(color, "red") == 0)
 		brush_image = &brush_image_red;
 	else if (strcasecmp(color, "green") == 0)
 		brush_image = &brush_image_green;
@@ -224,11 +226,22 @@ void grabbing_xinput_grab_start(Grabber * self) {
 			XIEventMask mask = {
 			XIAllDevices, sizeof(mask_data), mask_data };
 
-			XIGrabModifiers mods = {
-			XIAnyModifier };
+			int nmods = 4;
+			XIGrabModifiers mods[4] = {
+				{ 0, 0 }, // no modifiers
+				{ LockMask, 0 }, // Caps lock
+				{ Mod2Mask, 0 }, // Num lock
+				{ LockMask | Mod2Mask, 0 } // Caps & Num lock
+			};
+
+			if (self->allow_modifiers) {
+				nmods = 1;
+				mods[0].modifiers = XIAnyModifier;
+			}
+
 			int res = XIGrabButton(self->dpy, self->deviceid, self->button,
 					rootwindow, None,
-					GrabModeAsync, GrabModeAsync, False, &mask, 1, &mods);
+					GrabModeAsync, GrabModeAsync, False, &mask, nmods, mods);
 
 		}
 
@@ -268,6 +281,26 @@ void mouse_click(Display *display, int button, int x, int y) {
 	XTestFakeMotionEvent(display, DefaultScreen(display), x, y, 0);
 	XTestFakeButtonEvent(display, button, True, CurrentTime);
 	XTestFakeButtonEvent(display, button, False, CurrentTime);
+}
+
+static Window get_window_under_pointer(Display *dpy) {
+
+	Window root_return, child_return;
+	int root_x_return, root_y_return;
+	int win_x_return, win_y_return;
+	unsigned int mask_return;
+	XQueryPointer(dpy, DefaultRootWindow(dpy), &root_return, &child_return,
+			&root_x_return, &root_y_return, &win_x_return, &win_y_return,
+			&mask_return);
+
+	Window w = child_return;
+	Window parent_return;
+	Window *children_return;
+	unsigned int nchildren_return;
+	XQueryTree(dpy, w, &root_return, &parent_return, &children_return,
+			&nchildren_return);
+
+	return children_return[nchildren_return - 1];
 }
 
 static Window get_focused_window(Display *dpy) {
@@ -580,6 +613,14 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y,
 
 	grabbing_xinput_grab_stop(self);
 
+	Window focused_window = get_focused_window(self->dpy);
+	Window target_window = focused_window;
+
+	if (self->follow_pointer) {
+		target_window = get_window_under_pointer(self->dpy);
+		XSetInputFocus(self->dpy, target_window, RevertToNone, CurrentTime);
+	}
+
 	Capture * grab = NULL;
 
 	self->started = 0;
@@ -611,14 +652,14 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y,
 		expression_list[0] = self->fine_direction_sequence;
 		expression_list[1] = self->rought_direction_sequence;
 
-		ActiveWindowInfo * focused_window = get_active_window_info(self->dpy,
-				get_focused_window(self->dpy));
+		ActiveWindowInfo * window_info = get_active_window_info(self->dpy,
+				target_window);
 
 		grab = malloc(sizeof(Capture));
 
 		grab->expression_count = expression_count;
 		grab->expression_list = expression_list;
-		grab->active_window_info = focused_window;
+		grab->active_window_info = window_info;
 
 	}
 
@@ -641,7 +682,7 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y,
 				Action * a = gest->action_list[j];
 				printf("     Executing action: %s %s\n",
 						get_action_name(a->type), a->original_str);
-				execute_action(self->dpy, a, get_focused_window(self->dpy));
+				execute_action(self->dpy, a, target_window);
 
 			}
 
@@ -660,6 +701,10 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y,
 
 		free_grabbed(grab);
 
+	}
+
+	if (self->follow_pointer) {
+		XSetInputFocus(self->dpy, focused_window, RevertToNone, CurrentTime);
 	}
 
 	grabbing_xinput_grab_start(self);
@@ -692,6 +737,8 @@ Grabber * grabber_new(char * device_name, int button) {
 	Grabber * self = malloc(sizeof(Grabber));
 	bzero(self, sizeof(Grabber));
 
+	self->allow_modifiers = 0;
+	self->follow_pointer = 0;
 	self->fine_direction_sequence = malloc(sizeof(char *) * 30);
 	self->rought_direction_sequence = malloc(sizeof(char *) * 30);
 
@@ -699,6 +746,16 @@ Grabber * grabber_new(char * device_name, int button) {
 	grabber_set_button(self, button);
 
 	return self;
+}
+
+void grabber_allow_modifiers(Grabber* self, int enable)
+{
+	self->allow_modifiers = enable;
+}
+
+void grabber_follow_pointer(Grabber* self, int enable)
+{
+	self->follow_pointer = enable;
 }
 
 char* get_device_name_from_event(Grabber* self, XIDeviceEvent* data) {
