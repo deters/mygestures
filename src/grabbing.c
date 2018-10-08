@@ -703,7 +703,7 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y,
 
 	}
 
-	if (self->follow_pointer) {
+	if (self->follow_pointer && !self->focus) {
 		XSetInputFocus(self->dpy, focused_window, RevertToNone, CurrentTime);
 	}
 
@@ -739,6 +739,7 @@ Grabber * grabber_new(char * device_name, int button) {
 
 	self->allow_modifiers = 0;
 	self->follow_pointer = 0;
+	self->focus = 0;
 	self->fine_direction_sequence = malloc(sizeof(char *) * 30);
 	self->rought_direction_sequence = malloc(sizeof(char *) * 30);
 
@@ -756,6 +757,11 @@ void grabber_allow_modifiers(Grabber* self, int enable)
 void grabber_follow_pointer(Grabber* self, int enable)
 {
 	self->follow_pointer = enable;
+}
+
+void grabber_focus(Grabber* self, int enable)
+{
+	self->focus = enable;
 }
 
 char* get_device_name_from_event(Grabber* self, XIDeviceEvent* data) {

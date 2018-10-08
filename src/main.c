@@ -32,7 +32,8 @@ static void process_arguments(Mygestures * self, int argc, char * const *argv) {
 	required_argument, 0, 'b' }, { "color", required_argument, 0, 'c' }, {
 			"without-brush", no_argument, 0, 'w' }, {
 			"allow-modifiers", no_argument, 0, 'm' }, {
-			"follow-pointer", no_argument, 0, 'f' }, {
+			"follow-pointer", no_argument, 0, 'p' }, {
+			"focus", no_argument, 0, 'f' }, {
 			"device", required_argument, 0, 'd' }, { 0, 0, 0, 0 } };
 
 	/* read params */
@@ -40,7 +41,7 @@ static void process_arguments(Mygestures * self, int argc, char * const *argv) {
 	int brush_flag = 0;
 
 	while (1) {
-		opt = getopt_long(argc, argv, "b:c:d:vhlzwmf", opts, NULL);
+		opt = getopt_long(argc, argv, "b:c:d:vhlzwmpf", opts, NULL);
 		if (opt == -1)
 			break;
 
@@ -58,8 +59,13 @@ static void process_arguments(Mygestures * self, int argc, char * const *argv) {
 			self->allow_modifiers = 1;
 			break;
 
+		case 'p':
+			self->follow_pointer = 1;
+			break;
+
 		case 'f':
 			self->follow_pointer = 1;
+			self->focus = 1;
 			break;
 
 		case 'c':
