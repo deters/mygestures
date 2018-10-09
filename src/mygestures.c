@@ -57,17 +57,13 @@ void mygestures_usage(Mygestures * self) {
 	printf(" -p, --follow-pointer       : Perform the gesture against the window under pointer.\n");
 	printf(" -f, --focus                : Focus window under pointer (enables --follow-pointer).\n");
 	printf(" -d, --device <DEVICENAME>  : Device to grab.\n");
-	printf(
-			"                              Defaults: 'Virtual core pointer' & 'synaptics'\n");
-	printf(
-			" -l, --device-list          : Print all available devices an exit.\n");
-	printf(" -z,  --daemonize            : Fork the process and return.\n");
-	printf(" -c,  --color                : Brush color.\n");
-	printf("                               Default: blue\n");
-	printf(
-			"                              Options: yellow, white, red, green, purple, blue\n");
-	printf(
-			" -w, --without-brush        : Don't paint the gesture on screen.\n");
+	printf("                              Defaults: 'Virtual core pointer' & 'synaptics'\n");
+	printf(" -l, --device-list          : Print all available devices an exit.\n");
+	printf(" -z, --daemonize            : Fork the process and return.\n");
+	printf(" -c, --color                : Brush color.\n");
+	printf("                              Default: blue\n");
+	printf("                              Options: yellow, white, red, green, purple, blue\n");
+	printf(" -w, --without-brush        : Don't paint the gesture on screen.\n");
 	printf(" -v, --verbose              : Increase the verbosity\n");
 	printf(" -h, --help                 : Help\n");
 }
