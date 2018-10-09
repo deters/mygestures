@@ -114,7 +114,7 @@ void mygestures_grab_device(Mygestures* self, char* device_name) {
 
 		printf("Listening device %s\n", device_name);
 
-		alloc_shared_memory(device_name);
+		alloc_shared_memory(device_name, self->trigger_button);
 
 		Grabber* grabber = grabber_new(device_name, self->trigger_button);
 
@@ -165,4 +165,3 @@ void mygestures_run(Mygestures * self) {
 	}
 
 }
-

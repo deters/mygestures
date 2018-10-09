@@ -153,7 +153,7 @@ void char_replace(char *str, char oldChar, char newChar) {
 		*strPtr++ = newChar;
 }
 
-void alloc_shared_memory(char * device_name) {
+void alloc_shared_memory(char * device_name, int button) {
 
 	char* sanitized_device_name = strdup(device_name);
 
@@ -163,8 +163,8 @@ void alloc_shared_memory(char * device_name) {
 		sanitized_device_name = "";
 	}
 
-	int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s", getuid(),
-			sanitized_device_name);
+	int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s_button_%d", getuid(),
+			sanitized_device_name, button);
 
 	int shared_seg_size = sizeof(struct shm_message);
 	int shmfd = shm_open(shm_identifier, O_CREAT | O_RDWR, 0600);
@@ -234,4 +234,3 @@ int main(int argc, char * const * argv) {
 	exit(0);
 
 }
-
