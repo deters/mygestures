@@ -79,7 +79,7 @@ Mygestures * mygestures_new() {
 
 	self->follow_pointer = 0;
 	self->focus = 0;
-	self->allow_modifiers = 0;
+	self->any_modifier = 0;
 	self->brush_color = "blue";
 	self->device_list = malloc(sizeof(uint) * MAX_GRABBED_DEVICES);
 	self->gestures_configuration = NULL;
@@ -119,7 +119,7 @@ void mygestures_grab_device(Mygestures* self, char* device_name) {
 		Grabber* grabber = grabber_new(device_name, self->trigger_button);
 
 		grabber_set_brush_color(grabber, self->brush_color);
-		grabber_allow_modifiers(grabber, self->allow_modifiers);
+		grabber_any_modifier(grabber, self->any_modifier);
 		grabber_follow_pointer(grabber, self->follow_pointer);
 		grabber_focus(grabber, self->focus);
 

@@ -9,7 +9,7 @@
 typedef struct mygestures_ {
 	int help_flag;
 	int trigger_button;
-	int allow_modifiers;
+	int any_modifier;
 	int follow_pointer;
 	int focus;
 	int damonize_option;

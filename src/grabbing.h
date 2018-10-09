@@ -43,7 +43,7 @@ typedef struct {
 	int is_direct_touch;
 
 	int button;
-	int allow_modifiers;
+	int any_modifier;
 	int follow_pointer;
 	int focus;
 
@@ -86,7 +86,7 @@ void grabbing_end_movement(Grabber * self, int new_x, int new_y,
 void grabber_finalize(Grabber * self);
 void grabber_print_devices(Grabber * self);
 void grabber_set_brush_color(Grabber* self, char * brush_color);
-void grabber_allow_modifiers(Grabber* self, int enable);
+void grabber_any_modifier(Grabber* self, int enable);
 void grabber_follow_pointer(Grabber* self, int enable);
 void grabber_focus(Grabber* self, int enable);
 

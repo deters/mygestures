@@ -234,7 +234,7 @@ void grabbing_xinput_grab_start(Grabber * self) {
 				{ LockMask | Mod2Mask, 0 } // Caps & Num lock
 			};
 
-			if (self->allow_modifiers) {
+			if (self->any_modifier) {
 				nmods = 1;
 				mods[0].modifiers = XIAnyModifier;
 			}
@@ -737,7 +737,7 @@ Grabber * grabber_new(char * device_name, int button) {
 	Grabber * self = malloc(sizeof(Grabber));
 	bzero(self, sizeof(Grabber));
 
-	self->allow_modifiers = 0;
+	self->any_modifier = 0;
 	self->follow_pointer = 0;
 	self->focus = 0;
 	self->fine_direction_sequence = malloc(sizeof(char *) * 30);
@@ -749,9 +749,9 @@ Grabber * grabber_new(char * device_name, int button) {
 	return self;
 }
 
-void grabber_allow_modifiers(Grabber* self, int enable)
+void grabber_any_modifier(Grabber* self, int enable)
 {
-	self->allow_modifiers = enable;
+	self->any_modifier = enable;
 }
 
 void grabber_follow_pointer(Grabber* self, int enable)
@@ -856,4 +856,3 @@ void grabber_finalize(Grabber * self) {
 	XCloseDisplay(self->dpy);
 	return;
 }
-
