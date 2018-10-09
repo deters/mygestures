@@ -53,7 +53,7 @@ void mygestures_usage(Mygestures * self) {
 	printf(" -b, --button <BUTTON>      : Button used to draw the gesture\n");
 	printf("                              Default: '1' on touchscreens,\n");
 	printf("                                       '3' on other pointer dev\n");
-	printf(" -m, --allow-modifiers      : Allow holding modifier keys when drawing the gesture.\n");
+	printf(" -a, --any-modifier         : Allow holding modifier keys when drawing the gesture.\n");
 	printf(" -p, --follow-pointer       : Perform the gesture against the window under pointer.\n");
 	printf(" -f, --focus                : Focus window under pointer (enables --follow-pointer).\n");
 	printf(" -d, --device <DEVICENAME>  : Device to grab.\n");

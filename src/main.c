@@ -31,7 +31,7 @@ static void process_arguments(Mygestures * self, int argc, char * const *argv) {
 			"daemonize", no_argument, 0, 'z' }, { "button",
 	required_argument, 0, 'b' }, { "color", required_argument, 0, 'c' }, {
 			"without-brush", no_argument, 0, 'w' }, {
-			"allow-modifiers", no_argument, 0, 'a' }, {
+			"any-modifier", no_argument, 0, 'a' }, {
 			"follow-pointer", no_argument, 0, 'p' }, {
 			"focus", no_argument, 0, 'f' }, {
 			"device", required_argument, 0, 'd' }, { 0, 0, 0, 0 } };
