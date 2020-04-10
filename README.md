@@ -14,10 +14,10 @@ Installing from source:
     cd mygestures/
     sh autogen.sh
     make
-    sudo make install 
+    sudo make install
 
-Generating a .deb package
--------------------------
+Generating a .deb package (optional)
+------------------------------------
   After installing from source:
     sudo apt install debhelper
     dpkg-buildpackage # it'll probably complain about not being able to sign the package. thats fine.
@@ -26,11 +26,11 @@ Generating a .deb package
 Usage:
 ------
 
-    mygestures                       # use default button on default device 
+    mygestures                       # use default button (button 3) on default device (Virtual core pointer)
     mygestures -l                    # list device names  
     mygestures -d 'elan touchscreen' # mygestures running against an specific device
     mygestures -m                    # experimental synaptics multitouch mode  *
-       * see next section
+                                     # * see next section
 
 Optional: If you want multitouch gestures on your synaptics touchpad
 --------------------------------------------------------------------
@@ -69,10 +69,16 @@ Optional: If you want multitouch gestures on your synaptics touchpad
 
     mygestures -m
 
-Configuration:
---------------
+Gestures configuration:
+-----------------------
 
-  Mygestures will transform your gestures into a string, composed of some basic directions:  U - (Up)
+  In the first execution mygestures will create a configuration file for your user:
+
+    ~/.config/mygestures/mygestures.xml
+
+  Mygestures works by capturing your mouse movements and define them in terms of basic directions:
+  
+               U - (Up)
                D - (Down)
                R - (Right)
                L - (Left)
@@ -81,12 +87,12 @@ Configuration:
                1 - (Bottom left corner)
                3 - (Bottom right corner)
 
-  You can name this movements in the configuration file: "~/.config/mygestures/mygestures.xml".
+  A "movement" can be defined by composing this directions under a name.
   
     <movement name="T" value="RLD" />      <!-- T is a sequence of right+left+down -->
     <movement name="V" value="39" />       <!-- V needs more precision to be defined.-->
     <movement name="C" value="U?LDRU?" />  <!-- C (notice the use of regex) -->
-         
+
   Then you should define some contexts (used to filter applications):
     
     <context name="Terminal windows" windowclass=".*(Term|term).*" windowtitle=".*">
