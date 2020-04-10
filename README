@@ -14,8 +14,14 @@ Installing from source:
     cd mygestures/
     sh autogen.sh
     make
-    sudo make install
+    sudo make install 
 
+Generating a .deb package
+-------------------------
+  After installing from source:
+    sudo apt install debhelper
+    dpkg-buildpackage # it'll probably complain about not being able to sign the package. thats fine.
+    ls ../mygestures*.deb
 
 Usage:
 ------

@@ -1,3 +1,9 @@
+mygestures (3.0) stable; urgency=low
+  * Dropped some unused flags.
+  * Introduced the --multitouch option, for explicit multitouch support
+  * New --visual option (explicit option for visual feedback)
+  * README was revised
+
 mygestures (2.0) stable; urgency=low
   * Huge refactoring
   * Many bugs fixed
