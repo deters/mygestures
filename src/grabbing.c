@@ -23,7 +23,7 @@
 #include <math.h>
 #include <assert.h>
 
-#include <X11/extensions/XTest.h> /* emulating device events */
+#include <X11/extensions/XTest.h>	/* emulating device events */
 #include <X11/extensions/XInput2.h> /* capturing device events */
 
 #include "drawing/drawing-brush-image.h"
@@ -36,29 +36,31 @@
 #define MAX_STROKES_PER_CAPTURE 63 /*TODO*/
 #endif
 
-const char stroke_representations[] = { ' ', 'L', 'R', 'U', 'D', '1', '3', '7',
-		'9' };
+const char stroke_representations[] = {' ', 'L', 'R', 'U', 'D', '1', '3', '7',
+									   '9'};
 
-static
-void grabber_open_display(Grabber * self) {
+static void grabber_open_display(Grabber *self)
+{
 
 	self->dpy = XOpenDisplay(NULL);
 
 	if (!XQueryExtension(self->dpy, "XInputExtension", &(self->opcode),
-			&(self->event), &(self->error))) {
+						 &(self->event), &(self->error)))
+	{
 		printf("X Input extension not available.\n");
 		exit(-1);
 	}
 
 	int major = 2, minor = 0;
-	if (XIQueryVersion(self->dpy, &major, &minor) == BadRequest) {
+	if (XIQueryVersion(self->dpy, &major, &minor) == BadRequest)
+	{
 		printf("XI2 not available. Server supports %d.%d\n", major, minor);
 		exit(-1);
 	}
-
 }
 
-static struct brush_image_t * get_brush_image(char * color) {
+static struct brush_image_t *get_brush_image(char *color)
+{
 
 	struct brush_image_t *brush_image = NULL;
 
@@ -80,49 +82,55 @@ static struct brush_image_t * get_brush_image(char * color) {
 		brush_image = NULL;
 
 	return brush_image;
-
 }
 
-static
-void grabber_init_drawing(Grabber* self) {
+static void grabber_init_drawing(Grabber *self)
+{
 
 	assert(self->dpy);
 
 	int err = 0;
 	int scr = DefaultScreen(self->dpy);
 
-	if (self->brush_image) {
+	if (self->brush_image)
+	{
 
 		err = backing_init(&(self->backing), self->dpy,
-				DefaultRootWindow(self->dpy), DisplayWidth(self->dpy, scr),
-				DisplayHeight(self->dpy, scr), DefaultDepth(self->dpy, scr));
-		if (err) {
+						   DefaultRootWindow(self->dpy), DisplayWidth(self->dpy, scr),
+						   DisplayHeight(self->dpy, scr), DefaultDepth(self->dpy, scr));
+		if (err)
+		{
 			fprintf(stderr, "cannot open backing store.... \n");
 		}
 		err = brush_init(&(self->brush), &(self->backing), self->brush_image);
-		if (err) {
+		if (err)
+		{
 			fprintf(stderr, "cannot init brush.... \n");
 		}
 	}
 }
 
-static
-Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
+static Status fetch_window_title(Display *dpy, Window w, char **out_window_title)
+{
 	int status;
 	XTextProperty text_prop;
 	char **list;
 	int num;
 
 	status = XGetWMName(dpy, w, &text_prop);
-	if (!status || !text_prop.value || !text_prop.nitems) {
+	if (!status || !text_prop.value || !text_prop.nitems)
+	{
 		*out_window_title = "";
 	}
 	status = Xutf8TextPropertyToTextList(dpy, &text_prop, &list, &num);
 
-	if (status < Success || !num || !*list) {
+	if (status < Success || !num || !*list)
+	{
 		*out_window_title = "";
-	} else {
-		*out_window_title = (char *) strdup(*list);
+	}
+	else
+	{
+		*out_window_title = (char *)strdup(*list);
 	}
 	XFree(text_prop.value);
 	XFreeStringList(list);
@@ -133,7 +141,8 @@ Status fetch_window_title(Display *dpy, Window w, char **out_window_title) {
 /*
  * Return a window_info struct for the focused window at a given Display.
  */
-static ActiveWindowInfo * get_active_window_info(Display* dpy, Window win) {
+static ActiveWindowInfo *get_active_window_info(Display *dpy, Window win)
+{
 
 	int ret, val;
 
@@ -149,190 +158,208 @@ static ActiveWindowInfo * get_active_window_info(Display* dpy, Window win) {
 
 	int result = XGetClassHint(dpy, win, &class_hints);
 
-	if (result) {
+	if (result)
+	{
 
 		if (class_hints.res_class != NULL)
 			win_class = class_hints.res_class;
 
-		if (win_class == NULL) {
+		if (win_class == NULL)
+		{
 			win_class = "";
-
 		}
 	}
 
-	if (win_class) {
+	if (win_class)
+	{
 		ans->class = win_class;
-	} else {
+	}
+	else
+	{
 		ans->class = "";
 	}
 
-	if (win_title) {
+	if (win_title)
+	{
 		ans->title = win_title;
-	} else {
+	}
+	else
+	{
 		ans->title = "";
 	}
 
 	return ans;
-
 }
 
-static Window get_parent_window(Display *dpy, Window w) {
+static Window get_parent_window(Display *dpy, Window w)
+{
 	Window root_return, parent_return, *child_return;
 	unsigned int nchildren_return;
 	int ret;
 	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return,
-			&nchildren_return);
+					 &nchildren_return);
 
 	return parent_return;
 }
 
-void grabbing_xinput_grab_start(Grabber * self) {
+void grabbing_xinput_grab_start(Grabber *self)
+{
 
 	int count = XScreenCount(self->dpy);
 
 	int screen;
-	for (screen = 0; screen < count; screen++) {
+	for (screen = 0; screen < count; screen++)
+	{
 
 		Window rootwindow = RootWindow(self->dpy, screen);
 
-		if (self->is_direct_touch) {
+		if (self->is_direct_touch)
+		{
 
-			if (!self->button) {
+			if (!self->button)
+			{
 				self->button = 1;
 			}
 
-			unsigned char mask_data[2] = { 0, };
+			unsigned char mask_data[2] = {
+				0,
+			};
 			XISetMask(mask_data, XI_ButtonPress);
 			XISetMask(mask_data, XI_Motion);
 			XISetMask(mask_data, XI_ButtonRelease);
 			XIEventMask mask = {
-			XIAllDevices, sizeof(mask_data), mask_data };
+				XIAllDevices, sizeof(mask_data), mask_data};
 
 			int status = XIGrabDevice(self->dpy, self->deviceid, rootwindow,
-			CurrentTime, None,
-			GrabModeAsync,
-			GrabModeAsync, False, &mask);
+									  CurrentTime, None,
+									  GrabModeAsync,
+									  GrabModeAsync, False, &mask);
+		}
+		else
+		{
 
-		} else {
-
-			if (!self->button) {
+			if (!self->button)
+			{
 				self->button = 3;
 			}
 
-			unsigned char mask_data[2] = { 0, };
+			unsigned char mask_data[2] = {
+				0,
+			};
 			XISetMask(mask_data, XI_ButtonPress);
 			XISetMask(mask_data, XI_Motion);
 			XISetMask(mask_data, XI_ButtonRelease);
 			XIEventMask mask = {
-			XIAllDevices, sizeof(mask_data), mask_data };
+				XIAllDevices, sizeof(mask_data), mask_data};
 
 			int nmods = 4;
 			XIGrabModifiers mods[4] = {
-				{ 0, 0 }, // no modifiers
-				{ LockMask, 0 }, // Caps lock
-				{ Mod2Mask, 0 }, // Num lock
-				{ LockMask | Mod2Mask, 0 } // Caps & Num lock
+				{0, 0},					 // no modifiers
+				{LockMask, 0},			 // Caps lock
+				{Mod2Mask, 0},			 // Num lock
+				{LockMask | Mod2Mask, 0} // Caps & Num lock
 			};
 
-			if (self->any_modifier) {
-				nmods = 1;
-				mods[0].modifiers = XIAnyModifier;
-			}
+			nmods = 1;
+			mods[0].modifiers = XIAnyModifier;
 
 			int res = XIGrabButton(self->dpy, self->deviceid, self->button,
-					rootwindow, None,
-					GrabModeAsync, GrabModeAsync, False, &mask, nmods, mods);
-
+								   rootwindow, None,
+								   GrabModeAsync, GrabModeAsync, False, &mask, nmods, mods);
 		}
-
 	}
-
 }
 
-void grabbing_xinput_grab_stop(Grabber * self) {
+void grabbing_xinput_grab_stop(Grabber *self)
+{
 
 	int count = XScreenCount(self->dpy);
 
 	int screen;
-	for (screen = 0; screen < count; screen++) {
+	for (screen = 0; screen < count; screen++)
+	{
 
 		Window rootwindow = RootWindow(self->dpy, screen);
 
-		if (self->is_direct_touch) {
+		if (self->is_direct_touch)
+		{
 
 			int status = XIUngrabDevice(self->dpy, self->deviceid, CurrentTime);
-
-		} else {
-			XIGrabModifiers modifiers[4] = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0,
-					0 } };
-			XIGrabModifiers mods = {
-			XIAnyModifier };
-			XIUngrabButton(self->dpy, self->deviceid, self->button, rootwindow,
-					1, &mods);
 		}
-
+		else
+		{
+			XIGrabModifiers modifiers[4] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}};
+			XIGrabModifiers mods = {
+				XIAnyModifier};
+			XIUngrabButton(self->dpy, self->deviceid, self->button, rootwindow,
+						   1, &mods);
+		}
 	}
-
 }
 
-static
-void mouse_click(Display *display, int button, int x, int y) {
+static void mouse_click(Display *display, int button, int x, int y)
+{
 
 	XTestFakeMotionEvent(display, DefaultScreen(display), x, y, 0);
 	XTestFakeButtonEvent(display, button, True, CurrentTime);
 	XTestFakeButtonEvent(display, button, False, CurrentTime);
 }
 
-static Window get_window_under_pointer(Display *dpy) {
+static Window get_window_under_pointer(Display *dpy)
+{
 
 	Window root_return, child_return;
 	int root_x_return, root_y_return;
 	int win_x_return, win_y_return;
 	unsigned int mask_return;
 	XQueryPointer(dpy, DefaultRootWindow(dpy), &root_return, &child_return,
-			&root_x_return, &root_y_return, &win_x_return, &win_y_return,
-			&mask_return);
+				  &root_x_return, &root_y_return, &win_x_return, &win_y_return,
+				  &mask_return);
 
 	Window w = child_return;
 	Window parent_return;
 	Window *children_return;
 	unsigned int nchildren_return;
 	XQueryTree(dpy, w, &root_return, &parent_return, &children_return,
-			&nchildren_return);
+			   &nchildren_return);
 
 	return children_return[nchildren_return - 1];
 }
 
-static Window get_focused_window(Display *dpy) {
+static Window get_focused_window(Display *dpy)
+{
 
 	Window win = 0;
 	int ret, val;
 	ret = XGetInputFocus(dpy, &win, &val);
 
-	if (val == RevertToParent) {
+	if (val == RevertToParent)
+	{
 		win = get_parent_window(dpy, win);
 	}
 
 	return win;
-
 }
 
-static
-void execute_action(Display *dpy, Action *action, Window focused_window) {
+static void execute_action(Display *dpy, Action *action, Window focused_window)
+{
 	int id;
 
 	assert(dpy);
 	assert(action);
 	assert(focused_window);
 
-	switch (action->type) {
+	switch (action->type)
+	{
 	case ACTION_EXECUTE:
 		id = fork();
-		if (id == 0) {
+		if (id == 0)
+		{
 			int i = system(action->original_str);
 			exit(i);
 		}
-		if (id < 0) {
+		if (id < 0)
+		{
 			fprintf(stderr, "Error forking.\n");
 		}
 
@@ -363,7 +390,6 @@ void execute_action(Display *dpy, Action *action, Window focused_window) {
 		break;
 	default:
 		fprintf(stderr, "found an unknown gesture \n");
-
 	}
 
 	XAllowEvents(dpy, 0, CurrentTime);
@@ -371,147 +397,186 @@ void execute_action(Display *dpy, Action *action, Window focused_window) {
 	return;
 }
 
-static
-void free_grabbed(Capture * free_me) {
+static void free_grabbed(Capture *free_me)
+{
 	assert(free_me);
 	free(free_me->active_window_info);
 	free(free_me);
 }
 
-static
-char get_fine_direction_from_deltas(int x_delta, int y_delta) {
+static char get_fine_direction_from_deltas(int x_delta, int y_delta)
+{
 
-	if ((x_delta == 0) && (y_delta == 0)) {
+	if ((x_delta == 0) && (y_delta == 0))
+	{
 		return stroke_representations[NONE];
 	}
 
 	// check if the movement is near main axes
-	if ((x_delta == 0) || (y_delta == 0)
-			|| (fabs((float) x_delta / (float) y_delta) > 3)
-			|| (fabs((float) y_delta / (float) x_delta) > 3)) {
+	if ((x_delta == 0) || (y_delta == 0) || (fabs((float)x_delta / (float)y_delta) > 3) || (fabs((float)y_delta / (float)x_delta) > 3))
+	{
 
 		// x axe
-		if (abs(x_delta) > abs(y_delta)) {
+		if (abs(x_delta) > abs(y_delta))
+		{
 
-			if (x_delta > 0) {
+			if (x_delta > 0)
+			{
 				return stroke_representations[RIGHT];
-			} else {
+			}
+			else
+			{
 				return stroke_representations[LEFT];
 			}
 
 			// y axe
-		} else {
+		}
+		else
+		{
 
-			if (y_delta > 0) {
+			if (y_delta > 0)
+			{
 				return stroke_representations[DOWN];
-			} else {
+			}
+			else
+			{
 				return stroke_representations[UP];
 			}
-
 		}
 
 		// diagonal axes
-	} else {
+	}
+	else
+	{
 
-		if (y_delta < 0) {
-			if (x_delta < 0) {
+		if (y_delta < 0)
+		{
+			if (x_delta < 0)
+			{
 				return stroke_representations[SEVEN];
-			} else if (x_delta > 0) { // RIGHT
+			}
+			else if (x_delta > 0)
+			{ // RIGHT
 				return stroke_representations[NINE];
 			}
-		} else if (y_delta > 0) { // DOWN
-			if (x_delta < 0) { // RIGHT
+		}
+		else if (y_delta > 0)
+		{ // DOWN
+			if (x_delta < 0)
+			{ // RIGHT
 				return stroke_representations[ONE];
-			} else if (x_delta > 0) {
+			}
+			else if (x_delta > 0)
+			{
 				return stroke_representations[THREE];
 			}
 		}
-
 	}
 
 	return stroke_representations[NONE];
-
 }
 
-static
-char get_direction_from_deltas(int x_delta, int y_delta) {
+static char get_direction_from_deltas(int x_delta, int y_delta)
+{
 
-	if (abs(y_delta) > abs(x_delta)) {
-		if (y_delta > 0) {
+	if (abs(y_delta) > abs(x_delta))
+	{
+		if (y_delta > 0)
+		{
 			return stroke_representations[DOWN];
-		} else {
+		}
+		else
+		{
 			return stroke_representations[UP];
 		}
-
-	} else {
-		if (x_delta > 0) {
+	}
+	else
+	{
+		if (x_delta > 0)
+		{
 			return stroke_representations[RIGHT];
-		} else {
+		}
+		else
+		{
 			return stroke_representations[LEFT];
 		}
-
 	}
-
 }
 
-static
-void movement_add_direction(char* stroke_sequence, char direction) {
+static void movement_add_direction(char *stroke_sequence, char direction)
+{
 	// grab stroke
 	int len = strlen(stroke_sequence);
-	if ((len == 0) || (stroke_sequence[len - 1] != direction)) {
+	if ((len == 0) || (stroke_sequence[len - 1] != direction))
+	{
 
-		if (len < MAX_STROKES_PER_CAPTURE) {
+		if (len < MAX_STROKES_PER_CAPTURE)
+		{
 
 			stroke_sequence[len] = direction;
 			stroke_sequence[len + 1] = '\0';
-
 		}
-
 	}
 }
 
-static
-int get_touch_status(XIDeviceInfo * device) {
+static int get_touch_status(XIDeviceInfo *device)
+{
 
 	int j = 0;
 
-	for (j = 0; j < device->num_classes; j++) {
+	for (j = 0; j < device->num_classes; j++)
+	{
 		XIAnyClassInfo *class = device->classes[j];
-		XITouchClassInfo *t = (XITouchClassInfo*) class;
+		XITouchClassInfo *t = (XITouchClassInfo *)class;
 
 		if (class->type != XITouchClass)
 			continue;
 
-		if (t->mode == XIDirectTouch) {
+		if (t->mode == XIDirectTouch)
+		{
 			return 1;
 		}
 	}
 	return 0;
 }
 
-static
-void grabber_xinput_open_devices(Grabber* self) {
+static void grabber_xinput_open_devices(Grabber *self, int verbose)
+{
 
 	int ndevices;
 	int i;
-	XIDeviceInfo* device;
-	XIDeviceInfo* devices;
+	XIDeviceInfo *device;
+	XIDeviceInfo *devices;
 	int deviceid = -1;
 	devices = XIQueryDevice(self->dpy, XIAllDevices, &ndevices);
-	printf("\nXInput Devices:\n");
-	for (i = 0; i < ndevices; i++) {
+	if (verbose)
+	{
+		printf("\nXInput Devices:\n");
+	}
+	for (i = 0; i < ndevices; i++)
+	{
 		device = &devices[i];
-		switch (device->use) {
+		switch (device->use)
+		{
 		/// ṕointers
 		case XIMasterPointer:
 		case XISlavePointer:
 		case XIFloatingSlave:
-			if (strcasecmp(device->name, self->devicename) == 0) {
-				printf("   [x] '%s'\n", device->name);
+			if (strcasecmp(device->name, self->devicename) == 0)
+			{
+				if (verbose)
+				{
+					printf("   [x] '%s'\n", device->name);
+				}
 				self->deviceid = device->deviceid;
 				self->is_direct_touch = get_touch_status(device);
-			} else {
-				printf("   [ ] '%s'\n", device->name);
+			}
+			else
+			{
+				if (verbose)
+				{
+					printf("   [ ] '%s'\n", device->name);
+				}
 			}
 			break;
 		case XIMasterKeyboard:
@@ -524,13 +589,13 @@ void grabber_xinput_open_devices(Grabber* self) {
 	}
 
 	XIFreeDeviceInfo(devices);
-
 }
 
 /**
  * Clear previous movement data.
  */
-void grabbing_start_movement(Grabber * self, int new_x, int new_y) {
+void grabbing_start_movement(Grabber *self, int new_x, int new_y)
+{
 
 	self->started = 1;
 
@@ -543,26 +608,29 @@ void grabbing_start_movement(Grabber * self, int new_x, int new_y) {
 	self->rought_old_x = new_x;
 	self->rought_old_y = new_y;
 
-	if (self->brush_image) {
+	if (self->brush_image)
+	{
 
 		backing_save(&(self->backing), new_x - self->brush.image_width,
-				new_y - self->brush.image_height);
+					 new_y - self->brush.image_height);
 		brush_draw(&(self->brush), self->old_x, self->old_y);
-
 	}
 	return;
 }
 
-void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
+void grabbing_update_movement(Grabber *self, int new_x, int new_y)
+{
 
-	if (!self->started) {
+	if (!self->started)
+	{
 		return;
 	}
 
 	// se for o caso, desenha o movimento na tela
-	if (self->brush_image) {
+	if (self->brush_image)
+	{
 		backing_save(&(self->backing), new_x - self->brush.image_width,
-				new_y - self->brush.image_height);
+					 new_y - self->brush.image_height);
 
 		brush_line_to(&(self->brush), new_x, new_y);
 	}
@@ -570,7 +638,8 @@ void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
 	int x_delta = (new_x - self->old_x);
 	int y_delta = (new_y - self->old_y);
 
-	if ((abs(x_delta) > self->delta_min) || (abs(y_delta) > self->delta_min)) {
+	if ((abs(x_delta) > self->delta_min) || (abs(y_delta) > self->delta_min))
+	{
 
 		char stroke = get_fine_direction_from_deltas(x_delta, y_delta);
 
@@ -579,23 +648,22 @@ void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
 		// reset start position
 		self->old_x = new_x;
 		self->old_y = new_y;
-
 	}
 
 	int rought_delta_x = new_x - self->rought_old_x;
 	int rought_delta_y = new_y - self->rought_old_y;
 
 	char rought_direction = get_direction_from_deltas(rought_delta_x,
-			rought_delta_y);
+													  rought_delta_y);
 
-	int square_distance_2 = rought_delta_x * rought_delta_x
-			+ rought_delta_y * rought_delta_y;
+	int square_distance_2 = rought_delta_x * rought_delta_x + rought_delta_y * rought_delta_y;
 
-	if (self->delta_min * self->delta_min < square_distance_2) {
+	if (self->delta_min * self->delta_min < square_distance_2)
+	{
 		// grab stroke
 
 		movement_add_direction(self->rought_direction_sequence,
-				rought_direction);
+							   rought_direction);
 
 		// reset start position
 		self->rought_old_x = new_x;
@@ -608,138 +676,135 @@ void grabbing_update_movement(Grabber * self, int new_x, int new_y) {
 /**
  *
  */
-void grabbing_end_movement(Grabber * self, int new_x, int new_y,
-		char * device_name, Configuration * conf) {
+void grabbing_end_movement(Grabber *self, int new_x, int new_y,
+						   char *device_name, Configuration *conf)
+{
 
 	grabbing_xinput_grab_stop(self);
 
 	Window focused_window = get_focused_window(self->dpy);
 	Window target_window = focused_window;
 
-	if (self->follow_pointer) {
-		target_window = get_window_under_pointer(self->dpy);
-		XSetInputFocus(self->dpy, target_window, RevertToNone, CurrentTime);
-	}
-
-	Capture * grab = NULL;
+	Capture *grab = NULL;
 
 	self->started = 0;
 
 	// if is drawing
-	if (self->brush_image) {
+	if (self->brush_image)
+	{
 		backing_restore(&(self->backing));
 	};
 
 	// if there is no gesture
-	if ((strlen(self->rought_direction_sequence) == 0)
-			&& (strlen(self->fine_direction_sequence) == 0)) {
+	if ((strlen(self->rought_direction_sequence) == 0) && (strlen(self->fine_direction_sequence) == 0))
+	{
 
-		if (!(self->synaptics)) {
+		if (!(self->synaptics))
+		{
 
 			printf("\nEmulating click\n");
 
 			//grabbing_xinput_grab_stop(self);
 			mouse_click(self->dpy, self->button, new_x, new_y);
 			//grabbing_xinput_grab_start(self);
-
 		}
-
-	} else {
+	}
+	else
+	{
 
 		int expression_count = 2;
-		char ** expression_list = malloc(sizeof(char *) * expression_count);
+		char **expression_list = malloc(sizeof(char *) * expression_count);
 
 		expression_list[0] = self->fine_direction_sequence;
 		expression_list[1] = self->rought_direction_sequence;
 
-		ActiveWindowInfo * window_info = get_active_window_info(self->dpy,
-				target_window);
+		ActiveWindowInfo *window_info = get_active_window_info(self->dpy,
+															   target_window);
 
 		grab = malloc(sizeof(Capture));
 
 		grab->expression_count = expression_count;
 		grab->expression_list = expression_list;
 		grab->active_window_info = window_info;
-
 	}
 
-	if (grab) {
+	if (grab)
+	{
 
 		printf("\n");
 		printf("     Window title: \"%s\"\n", grab->active_window_info->title);
 		printf("     Window class: \"%s\"\n", grab->active_window_info->class);
 		printf("     Device      : \"%s\"\n", device_name);
 
-		Gesture * gest = configuration_process_gesture(conf, grab);
+		Gesture *gest = configuration_process_gesture(conf, grab);
 
-		if (gest) {
+		if (gest)
+		{
 			printf("     Movement '%s' matched gesture '%s' on context '%s'\n",
-					gest->movement->name, gest->name, gest->context->name);
+				   gest->movement->name, gest->name, gest->context->name);
 
 			int j = 0;
 
-			for (j = 0; j < gest->action_count; ++j) {
-				Action * a = gest->action_list[j];
+			for (j = 0; j < gest->action_count; ++j)
+			{
+				Action *a = gest->action_list[j];
 				printf("     Executing action: %s %s\n",
-						get_action_name(a->type), a->original_str);
+					   get_action_name(a->type), a->original_str);
 				execute_action(self->dpy, a, target_window);
-
 			}
+		}
+		else
+		{
 
-		} else {
-
-			for (int i = 0; i < grab->expression_count; ++i) {
-				char * movement = grab->expression_list[i];
+			for (int i = 0; i < grab->expression_count; ++i)
+			{
+				char *movement = grab->expression_list[i];
 				printf(
-						"     Sequence '%s' does not match any known movement.\n",
-						movement);
+					"     Sequence '%s' does not match any known movement.\n",
+					movement);
 			}
-
 		}
 
 		printf("\n");
 
 		free_grabbed(grab);
-
-	}
-
-	if (self->follow_pointer && !self->focus) {
-		XSetInputFocus(self->dpy, focused_window, RevertToNone, CurrentTime);
 	}
 
 	grabbing_xinput_grab_start(self);
-
 }
 
-void grabber_set_button(Grabber* self, int button) {
+void grabber_set_button(Grabber *self, int button)
+{
 	self->button = button;
 }
 
-void grabber_set_device(Grabber* self, char* device_name) {
+void grabber_set_device(Grabber *self, char *device_name)
+{
 	self->devicename = device_name;
 
-	if (strcasecmp(self->devicename, "SYNAPTICS") == 0) {
+	if (strcasecmp(self->devicename, "SYNAPTICS") == 0)
+	{
 		self->synaptics = 1;
 		self->delta_min = 200;
-	} else {
+	}
+	else
+	{
 		self->synaptics = 0;
 		self->delta_min = 30;
 	}
-
 }
 
-void grabber_set_brush_color(Grabber* self, char * brush_color) {
+void grabber_set_brush_color(Grabber *self, char *brush_color)
+{
 	self->brush_image = get_brush_image(brush_color);
 }
 
-Grabber * grabber_new(char * device_name, int button) {
+Grabber *grabber_new(char *device_name, int button)
+{
 
-	Grabber * self = malloc(sizeof(Grabber));
+	Grabber *self = malloc(sizeof(Grabber));
 	bzero(self, sizeof(Grabber));
 
-	self->any_modifier = 0;
-	self->follow_pointer = 0;
-	self->focus = 0;
 	self->fine_direction_sequence = malloc(sizeof(char *) * 30);
 	self->rought_direction_sequence = malloc(sizeof(char *) * 30);
 
@@ -749,106 +814,102 @@ Grabber * grabber_new(char * device_name, int button) {
 	return self;
 }
 
-void grabber_any_modifier(Grabber* self, int enable)
+char *get_device_name_from_event(Grabber *self, XIDeviceEvent *data)
 {
-	self->any_modifier = enable;
-}
-
-void grabber_follow_pointer(Grabber* self, int enable)
-{
-	self->follow_pointer = enable;
-}
-
-void grabber_focus(Grabber* self, int enable)
-{
-	self->focus = enable;
-}
-
-char* get_device_name_from_event(Grabber* self, XIDeviceEvent* data) {
 	int ndevices;
-	char * device_name = NULL;
-	XIDeviceInfo* device;
-	XIDeviceInfo* devices;
+	char *device_name = NULL;
+	XIDeviceInfo *device;
+	XIDeviceInfo *devices;
 	devices = XIQueryDevice(self->dpy, data->deviceid, &ndevices);
-	if (ndevices == 1) {
+	if (ndevices == 1)
+	{
 		device = &devices[0];
 		device_name = strdup(device->name);
 	}
 
 	return device_name;
-
 }
 
-void grabber_xinput_loop(Grabber * self, Configuration * conf) {
+void grabber_list_devices(Grabber *self)
+{
+	grabber_xinput_open_devices(self, True);
+};
+
+void grabber_xinput_loop(Grabber *self, Configuration *conf)
+{
 
 	XEvent ev;
 
-	grabber_xinput_open_devices(self);
+	grabber_xinput_open_devices(self, False);
 	grabbing_xinput_grab_start(self);
 
-	while (!self->shut_down) {
+	while (!self->shut_down)
+	{
 
 		XNextEvent(self->dpy, &ev);
 
-		if (ev.xcookie.type == GenericEvent
-				&& ev.xcookie.extension == self->opcode
-				&& XGetEventData(self->dpy, &ev.xcookie)) {
+		if (ev.xcookie.type == GenericEvent && ev.xcookie.extension == self->opcode && XGetEventData(self->dpy, &ev.xcookie))
+		{
 
-			XIDeviceEvent* data = NULL;
+			XIDeviceEvent *data = NULL;
 
-			switch (ev.xcookie.evtype) {
+			switch (ev.xcookie.evtype)
+			{
 
 			case XI_Motion:
-				data = (XIDeviceEvent*) ev.xcookie.data;
+				data = (XIDeviceEvent *)ev.xcookie.data;
 				grabbing_update_movement(self, data->root_x, data->root_y);
 				break;
 
 			case XI_ButtonPress:
-				data = (XIDeviceEvent*) ev.xcookie.data;
+				data = (XIDeviceEvent *)ev.xcookie.data;
 				grabbing_start_movement(self, data->root_x, data->root_y);
 				break;
 
 			case XI_ButtonRelease:
-				data = (XIDeviceEvent*) ev.xcookie.data;
+				data = (XIDeviceEvent *)ev.xcookie.data;
 
-				char * device_name = get_device_name_from_event(self, data);
+				char *device_name = get_device_name_from_event(self, data);
 
 				grabbing_xinput_grab_stop(self);
 				grabbing_end_movement(self, data->root_x, data->root_y,
-						device_name, conf);
+									  device_name, conf);
 				grabbing_xinput_grab_start(self);
 				break;
-
 			}
 		}
 		XFreeEventData(self->dpy, &ev.xcookie);
-
 	}
-
 }
 
-void grabber_loop(Grabber * self, Configuration * conf) {
+void grabber_loop(Grabber *self, Configuration *conf)
+{
 
 	grabber_open_display(self);
 
 	grabber_init_drawing(self);
 
-	if (self->synaptics) {
+	if (self->synaptics)
+	{
 		grabber_synaptics_loop(self, conf);
-	} else {
+	}
+	else
+	{
 		grabber_xinput_loop(self, conf);
 	}
 
 	printf("Grabbing loop finished for device '%s'.\n", self->devicename);
-
 }
 
-char * grabber_get_device_name(Grabber * self) {
+char *grabber_get_device_name(Grabber *self)
+{
 	return self->devicename;
 }
 
-void grabber_finalize(Grabber * self) {
-	if (self->brush_image) {
+void grabber_finalize(Grabber *self)
+{
+	if (self->brush_image)
+	{
 		brush_deinit(&(self->brush));
 		backing_deinit(&(self->backing));
 	}

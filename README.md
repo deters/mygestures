@@ -9,36 +9,79 @@ MyGestures - mouse gestures for linux
 Installing from source:
 -----------------------
 
-    sudo apt install pkg-config autoconf libtool libx11-dev libxrender-dev libxtst-dev libxml2-dev git
+    sudo apt install pkg-config autoconf libtool libx11-dev libxrender-dev libxtst-dev libxml2-dev git make
     git clone https://github.com/deters/mygestures.git
     cd mygestures/
     sh autogen.sh
     make
     sudo make install
 
+
 Usage:
 ------
 
     mygestures                       # use default button on default device 
     mygestures -l                    # list device names  
-    mygestures -d 'elan touchscreen' # mygestures running against a touchscreen device.
-    mygestures -d 'synaptics'        # experimental synaptics multitouch mode (3 finger gestures).
+    mygestures -d 'elan touchscreen' # mygestures running against an specific device
+    mygestures -m                    # experimental synaptics multitouch mode  *
+       * see next section
+
+Optional: If you want multitouch gestures on your synaptics touchpad
+--------------------------------------------------------------------
+
+ Installing the custom synaptics driver:
+
+    sudo apt-get install -y git build-essential libevdev-dev autoconf automake libmtdev-dev xorg-dev xutils-dev libtool
+    sudo apt-get remove -y xserver-xorg-input-synaptics
+    git clone https://github.com/Chosko/xserver-xorg-input-synaptics.git
+    cd xserver-xorg-input-synaptics
+    ./autogen.sh
+    ./configure --exec_prefix=/usr
+    make
+    sudo make install
+
+ Enable the option SHMConfig:
+
+    sudo mkdir -p /etc/X11/xorg.conf.d/
+
+    cat > /etc/X11/xorg.conf.d/50-synaptics.conf < EOL
+    Section "InputClass"
+    Identifier "evdev touchpad catchall"
+    Driver "synaptics"
+    MatchDevicePath "/dev/input/event*"
+    MatchIsTouchpad "on"
+    Option "Protocol" "event"
+    Option "SHMConfig" "on"
+    EndSection
+    EOL
+
+ Reboot the computer and then test the new driver:
+
+    synclient -m 10
+
+ And then in mygestures:
+
+    mygestures -m
 
 Configuration:
 --------------
 
-  Gestures configuration is done on "~/.config/mygestures/mygestures.xml".
+  Mygestures will transform your gestures into a string, composed of some basic directions:  U - (Up)
+               D - (Down)
+               R - (Right)
+               L - (Left)
+               7 - (Top left corner)
+               9 - (Top right corner)
+               1 - (Bottom left corner)
+               3 - (Bottom right corner)
+
+  You can name this movements in the configuration file: "~/.config/mygestures/mygestures.xml".
   
-  This file contains movements, contexts and gestures.
-  
-  __Movement__: a name assigned to a composition of elementar strokes: (U, D, R, L, 1, 3, 7, 9).
-     
-    <movement name="UpRight" value="UR" />
-    <movement name="U" value="DRU" />
-    <movement name="V" value="39" />
-    <movement name="C" value="U?LDRU?" />         
+    <movement name="T" value="RLD" />      <!-- T is a sequence of right+left+down -->
+    <movement name="V" value="39" />       <!-- V needs more precision to be defined.-->
+    <movement name="C" value="U?LDRU?" />  <!-- C (notice the use of regex) -->
          
-  __Context__: used to filter applications
+  Then you should define some contexts (used to filter applications):
     
     <context name="Terminal windows" windowclass=".*(Term|term).*" windowtitle=".*">
        <!-- some gestures here -->
@@ -48,7 +91,7 @@ Configuration:
        <!-- some gestures here -->
     </context>
 
-  __Gesture__: Will use a movement to trigger some actions
+   Inside each context you can define the gestures:
 
     <gesture name="Run gedit" movement="G">
       <do action="exec" value="gedit" />
@@ -58,8 +101,7 @@ Configuration:
       <do action="keypress" value="Control_L+C" />
     </gesture>
         
-Supported actions:
-------------------
+   Example of actions can be:
         
  __Window management__
            
@@ -72,16 +114,11 @@ Supported actions:
             
  __Program operation__
            
-    <do action="kill" /> <!-- kill the program with the active window -->
-    <do action="exec" value="gedit" /> <!-- execute command -->
+    <do action="kill" /> <!-- kill the current application -->
+    <do action="exec" value="gedit" /> <!-- launch some program -->
     
  __KeyPress__
 
-Key names can be found on /usr/include/X11/keysymdef.h
-
     <do action="keypress" value="Alt_L+Left" /> <!-- send key sequence -->
 
-               
- Gestures are created inside contexts, so you can filter what applications will have any gesture. 
-   
-
+   More key names can be found on the file /usr/include/X11/keysymdef.h

@@ -4,30 +4,24 @@
 
 #include "configuration.h"
 
-
-
-typedef struct mygestures_ {
+typedef struct mygestures_
+{
 	int help_flag;
 	int trigger_button;
-	int any_modifier;
-	int follow_pointer;
-	int focus;
-	int damonize_option;
+	int multitouch;
 	int list_devices_flag;
 
-	char * custom_config_file;
+	char *custom_config_file;
 
 	int device_count;
-	char ** device_list;
-	char * brush_color;
+	char **device_list;
+	char *brush_color;
 
-	Configuration * gestures_configuration;
+	Configuration *gestures_configuration;
 
 } Mygestures;
 
-
-Mygestures * mygestures_new();
-void mygestures_run(Mygestures * self);
-
+Mygestures *mygestures_new();
+void mygestures_run(Mygestures *self);
 
 #endif

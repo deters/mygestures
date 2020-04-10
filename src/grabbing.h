@@ -24,8 +24,16 @@
 #include "configuration.h"
 
 /* modifier keys */
-enum {
-	SHIFT = 0, CTRL, ALT, WIN, SCROLL, NUM, CAPS, MOD_END
+enum
+{
+	SHIFT = 0,
+	CTRL,
+	ALT,
+	WIN,
+	SCROLL,
+	NUM,
+	CAPS,
+	MOD_END
 };
 
 /* names of the modifier keys */
@@ -34,11 +42,12 @@ extern const char *modifiers_names[];
 /* valid strokes */
 extern const char _STROKE_CHARS[];
 
-typedef struct {
+typedef struct
+{
 
-	Display * dpy;
+	Display *dpy;
 
-	char * devicename;
+	char *devicename;
 	int deviceid;
 	int is_direct_touch;
 
@@ -64,8 +73,8 @@ typedef struct {
 	int rought_old_x;
 	int rought_old_y;
 
-	char * fine_direction_sequence;
-	char * rought_direction_sequence;
+	char *fine_direction_sequence;
+	char *rought_direction_sequence;
 
 	backing_t backing;
 	brush_t brush;
@@ -76,19 +85,19 @@ typedef struct {
 
 } Grabber;
 
-Grabber * grabber_new(char * device_name, int button);
-void grabber_loop(Grabber * self, Configuration * conf);
-void grabbing_start_movement(Grabber * self, int new_x, int new_y);
-void grabbing_update_movement(Grabber * self, int new_x, int new_y);
-void grabbing_end_movement(Grabber * self, int new_x, int new_y,
-		char * device_name, Configuration * conf);
+Grabber *grabber_new(char *device_name, int button);
+void grabber_loop(Grabber *self, Configuration *conf);
+void grabbing_start_movement(Grabber *self, int new_x, int new_y);
+void grabbing_update_movement(Grabber *self, int new_x, int new_y);
+void grabbing_end_movement(Grabber *self, int new_x, int new_y,
+						   char *device_name, Configuration *conf);
 
-void grabber_finalize(Grabber * self);
-void grabber_print_devices(Grabber * self);
-void grabber_set_brush_color(Grabber* self, char * brush_color);
-void grabber_any_modifier(Grabber* self, int enable);
-void grabber_follow_pointer(Grabber* self, int enable);
-void grabber_focus(Grabber* self, int enable);
+void grabber_finalize(Grabber *self);
+void grabber_print_devices(Grabber *self);
+void grabber_set_brush_color(Grabber *self, char *brush_color);
+void grabber_any_modifier(Grabber *self, int enable);
+void grabber_list_devices(Grabber *self);
+void grabber_follow_pointer(Grabber *self, int enable);
+void grabber_focus(Grabber *self, int enable);
 
 #endif /* MYGESTURES_GRABBING_H_ */
-
