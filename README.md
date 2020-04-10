@@ -18,7 +18,9 @@ Installing from source:
 
 Generating a .deb package (optional)
 ------------------------------------
+
   After installing from source:
+
     sudo apt install debhelper
     dpkg-buildpackage # it'll probably complain about not being able to sign the package. thats fine.
     ls ../mygestures*.deb
