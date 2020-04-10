@@ -5,7 +5,7 @@
 
      You can define new movements by composing this 4 basic strokes in a regular expression:
 
-            U      
+            U
             ↑
        L ←     → R
             ↓
@@ -13,11 +13,11 @@
 
     If you need more precision, you may need to use more complex strokes.
 
-        7   U   9 
-          ↖ ↑ ↗     
+        7   U   9
+          ↖ ↑ ↗
        L ←     → R
-          ↙ ↓ ↘    
-        1   D   3  
+          ↙ ↓ ↘
+        1   D   3
 
     -->
 
@@ -29,7 +29,7 @@
     <movement name="NorthEast" value="(9(U|R)?)+" />
     <movement name="SouthWest" value="(1(D|L)?)+" />
     <movement name="SouthEast" value="(3(D|R)?)+" />
-    <movement name="A" value="(URD|U?9R?3D?)" />
+    <!--movement name="A" value="(URD|U?9R?3D?)" /-->
     <movement name="B" value="(D?U)?((R|3)(D1?L|1))((R|3)(D1?L|1))" />
     <movement name="C" value="U?LDRU?" />
     <movement name="D" value="DRUL" />
@@ -43,7 +43,8 @@
     <movement name="L" value="DR" />
     <movement name="M" value="(D?UR?DUR?D|9393)" />
     <movement name="N" value="(9|U|7)+(R?(D|3)R?)+(9|U|7)+" />
-    <movement name="O" value="LDRUL" />
+    <movement name="O" value="(LDRUL)+"/>
+    <movement name="O_REVERSE" value="(RDLUR)+"/>
     <movement name="P" value="RULD" />
     <movement name="Q" value="1?D3?R9?U7?D1?R3?" />
     <movement name="R" value="((RDL?)|DL?|L)?URDLR?(D|DRD?R?)?" />
@@ -56,6 +57,8 @@
     <movement name="Y" value="(DRUDLUR?|391)" />
     <movement name="Z" value="R(1?D?L?)*R" />
     <movement name="UpRight" value="UR" />
+    <movement name="UpRightDown" value="URD" />
+    <movement name="UpLeftDown" value="ULD" />
     <movement name="UpLeft" value="UL" />
     <movement name="LeftUp" value="LU" />
     <movement name="LeftDown" value="LD" />
@@ -97,9 +100,6 @@
 
     </context>
 
-    <!--
-     Context: All applications. This context need to be the last one in this file.
-    -->
 
     <context name="All applications" windowclass=".*" windowtitle=".*">
 
@@ -109,15 +109,11 @@
             <do action="keypress" value="Alt_L+F4" />
         </gesture>
 
-        <gesture name="Maximize window" movement="NorthEast">
+        <gesture name="Maximize window" movement="Up">
             <do action="toggle-maximized"/> <!-- you can use the "maximize" action too -->
         </gesture>
 
-        <gesture name="Restore window from maximized state" movement="NorthWest">
-            <do action="restore" />
-        </gesture>
-
-        <gesture name="Iconify window" movement="SouthWest">
+        <gesture name="Iconify window" movement="Down">
             <do action="iconify" />
         </gesture>
 
@@ -177,9 +173,44 @@
             <do action="exec" value="gedit" />
         </gesture>
 
-    </context> 
+        <!--gesture name="Zoom in" movement="NorthEast" fingers="4">
+            <do action="keypress" value="Control_L+plus" />
+        </gesture>
 
-    <!-- 
+        <gesture name="Zoom out" movement="SouthWest" fingers="4">
+            <do action="keypress" value="Control_L+minus" />
+        </gesture-->
+
+        <gesture name="Previous Tab" movement="UpLeftDown">
+            <do action="keypress" value="Control_L+Shift_L+Tab" />
+        </gesture>
+
+        <gesture name="Next Tab" movement="UpRightDown">
+            <do action="keypress" value="Control_L+Tab" />
+        </gesture>
+
+
+
+    </context>
+
+
+    <!--
+     Context: All applications. This context need to be the last one in this file.
+    -->
+
+    <context name="Chrome" windowclass="Google-chrome" windowtitle=".*">
+
+      <!-- Window control -->
+
+        <gesture name="Close tab (Ctrl+F4)" movement="RightDown">
+		<do action="keypress" value="Control_L+F4" />
+        </gesture>
+
+    </context>
+
+
+
+    <!--
 
      See http://www.sf.net/p/mygestures for a more complete reference to this file.
 
