@@ -151,7 +151,7 @@
             <do action="keypress" value="Control_L+S" />
         </gesture>
 
-        <gesture name="Escape" movement="Up">
+        <gesture name="Escape" movement="E">
             <do action="keypress" value="Escape" />
         </gesture>
 
