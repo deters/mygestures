@@ -7,9 +7,9 @@
 typedef struct mygestures_
 {
 
-	int help_flag;
 	int trigger_button;
 	int multitouch;
+	int libinput;
 	int list_devices_flag;
 
 	char *custom_config_file;
@@ -24,5 +24,12 @@ typedef struct mygestures_
 
 Mygestures *mygestures_new();
 void mygestures_run(Mygestures *self);
+
+// void on_interrupt(int a);
+// void on_kill(int a);
+
+// void release_shared_memory();
+// void alloc_shared_memory(char *device_name, int button);
+// void send_kill_message(char *device_name);
 
 #endif

@@ -1,7 +1,8 @@
 
-AM_CFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' -O2 $(LIBXML2_CFLAGS) $(LIBEVDEV_CFLAGS) $(LIBUDEV_CFLAGS)  -Wall -Wunreachable-code # -fprofile-arcs -ftest-coverage
+AM_CFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' -O2 $(LIBXML2_CFLAGS) $(LIBEVDEV_CFLAGS) \ 
+  $(LIBUDEV_CFLAGS)  -Wall -Wunreachable-code # -fprofile-arcs -ftest-coverage
 
-bin_PROGRAMS=mygestures myprogram
+bin_PROGRAMS=mygestures igestures
 
 mygestures_SOURCES = \
     main.c main.h \
@@ -23,13 +24,12 @@ mygestures_SOURCES = \
 
 
 
-mygestures_LDADD=$(LIBXML2_LIBS) $(LIBX11_LIBS) $(LIBXRENDER_LIBS) $(LIBXTST_LIBS) $(LIBXML_LIBS) $(LIBXI_LIBS) -lm
+mygestures_LDADD=$(LIBXML2_LIBS) $(LIBX11_LIBS) $(LIBXRENDER_LIBS) $(LIBXTST_LIBS) \
+ $(LIBXML_LIBS) $(LIBXI_LIBS) -lm
 
 
-myprogram_SOURCES = myprogram.c shared.h shared.c
+igestures_SOURCES = grabbing-libinput.c shared.h shared.c
 
-myprogram_LDADD=$(LIBINPUT_LIBS) $(LIBEVDEV_LIBS) $(LIBUDEV_LIBS)
+igestures_LDADD=$(LIBINPUT_LIBS) $(LIBEVDEV_LIBS) $(LIBUDEV_LIBS)
 
 #SUBDIRS=drawing
-
-
