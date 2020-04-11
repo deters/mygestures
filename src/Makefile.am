@@ -1,7 +1,7 @@
 
-AM_CFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' -O2 $(libXML_CFLAGS) 
+AM_CFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' -O2 $(LIBXML2_CFLAGS) 
 
-bin_PROGRAMS=mygestures
+bin_PROGRAMS=mygestures myprogram
 
 mygestures_SOURCES = \
     main.c main.h \
@@ -19,10 +19,17 @@ mygestures_SOURCES = \
         drawing/drawing-brush-shadow.h \
         drawing/drawing-brush-image.c \
         drawing/drawing-bresenham.c \
-        drawing/drawing-bresenham.h myprogram.c
-           
+        drawing/drawing-bresenham.h
 
+
+
+mygestures_LDADD=$(LIBXML2_LIBS) $(LIBX11_LIBS) $(LIBXRENDER_LIBS) $(LIBXTST_LIBS) $(LIBXML_LIBS) $(LIBXI_LIBS) -lm
+
+
+myprogram_SOURCES = myprogram.c
+
+myprogram_LDADD=$(LIBINPUT_LIBS) $(LIBUDEV_LIBS)
 
 #SUBDIRS=drawing
 
-mygestures_LDADD=$(libXML_LIBS) $(X11_LIBS) $(Xrender_LIBS) $(Xtst_LIBS) $(libXML_LIBS) $(Xi_LIBS) -lm
+
