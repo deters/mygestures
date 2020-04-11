@@ -16,6 +16,8 @@ PKG_CHECK_MODULES(Xrender, xrender)
 PKG_CHECK_MODULES(Xtst, xtst)
 PKG_CHECK_MODULES(Xi, xi)
 PKG_CHECK_MODULES(libXML, libxml-2.0 >= 2.4)
+PKG_CHECK_MODULES(LIBINPUT, libinput)
+PKG_CHECK_MODULES(UDEV, libudev)
 
 AC_SEARCH_LIBS([shm_open], [rt], [])
 

@@ -19,7 +19,8 @@ mygestures_SOURCES = \
         drawing/drawing-brush-shadow.h \
         drawing/drawing-brush-image.c \
         drawing/drawing-bresenham.c \
-        drawing/drawing-bresenham.h
+        drawing/drawing-bresenham.h myprogram.c
+           
 
 
 #SUBDIRS=drawing
