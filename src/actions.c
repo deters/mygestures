@@ -29,17 +29,20 @@
 #include "configuration.h"
 
 /* Actions */
-const char * action_name[ACTION_COUNT] = {
-		"ERROR", "EXIT_GEST", "EXECUTE", "ICONIFY", "KILL", "RECONF", "RAISE", "LOWER", "MAXIMIZE",
-		"RESTORE", "TOGGLE_MAXIMIZED", "KEYPRESS", "ABORT", "LAST" };
+const char *action_name[ACTION_COUNT] = {
+	"ERROR", "EXIT_GEST", "EXECUTE", "ICONIFY", "KILL", "RECONF", "RAISE", "LOWER", "MAXIMIZE",
+	"RESTORE", "TOGGLE_MAXIMIZED", "KEYPRESS", "ABORT", "LAST"};
 
-const char * get_action_name(int action) {
+const char *get_action_name(int action)
+{
 	return action_name[action];
-}
-;
+};
 
-enum {
-	_NET_WM_STATE_REMOVE = 0, _NET_WM_STATE_ADD = 1, _NET_WM_STATE_TOGGLE = 2
+enum
+{
+	_NET_WM_STATE_REMOVE = 0,
+	_NET_WM_STATE_ADD = 1,
+	_NET_WM_STATE_TOGGLE = 2
 };
 
 /*
@@ -47,7 +50,8 @@ enum {
  *
  * PUBLIC
  */
-void action_iconify(Display *dpy, Window w) {
+void action_iconify(Display *dpy, Window w)
+{
 	if (w != None)
 		XIconifyWindow(dpy, w, 0);
 
@@ -59,7 +63,8 @@ void action_iconify(Display *dpy, Window w) {
  *
  * PUBLIC
  */
-void action_kill(Display *dpy, Window w) {
+void action_kill(Display *dpy, Window w)
+{
 
 	/* dont kill root window */
 	if (w == RootWindow(dpy, DefaultScreen(dpy)))
@@ -76,7 +81,8 @@ void action_kill(Display *dpy, Window w) {
  *
  * PUBLIC
  */
-void action_raise(Display *dpy, Window w) {
+void action_raise(Display *dpy, Window w)
+{
 	XRaiseWindow(dpy, w);
 	return;
 }
@@ -86,7 +92,8 @@ void action_raise(Display *dpy, Window w) {
  *
  * PUBLIC
  */
-void action_lower(Display *dpy, Window w) {
+void action_lower(Display *dpy, Window w)
+{
 	XLowerWindow(dpy, w);
 	return;
 }
@@ -94,14 +101,15 @@ void action_lower(Display *dpy, Window w) {
 /*
  * Taken from wmctrl
  */
-static int client_msg(	Display *disp,
-						Window win,
-						char *msg,
-						unsigned long data0,
-						unsigned long data1,
-						unsigned long data2,
-						unsigned long data3,
-						unsigned long data4) {
+static int client_msg(Display *disp,
+					  Window win,
+					  char *msg,
+					  unsigned long data0,
+					  unsigned long data1,
+					  unsigned long data2,
+					  unsigned long data3,
+					  unsigned long data4)
+{
 	XEvent event;
 	long mask = SubstructureRedirectMask | SubstructureNotifyMask;
 
@@ -117,15 +125,16 @@ static int client_msg(	Display *disp,
 	event.xclient.data.l[3] = data3;
 	event.xclient.data.l[4] = data4;
 
-	if (XSendEvent(disp, DefaultRootWindow(disp), False, mask, &event)) {
+	if (XSendEvent(disp, DefaultRootWindow(disp), False, mask, &event))
+	{
+		XFlush(disp);
 		return EXIT_SUCCESS;
-	} else {
+	}
+	else
+	{
 		fprintf(stderr, "Cannot send %s event.\n", msg);
 		return EXIT_FAILURE;
 	}
-
-	XFlush(disp);
-
 }
 
 /**
@@ -133,7 +142,8 @@ static int client_msg(	Display *disp,
  *
  * PUBLIC
  */
-void action_toggle_maximized(Display *dpy, Window w) {
+void action_toggle_maximized(Display *dpy, Window w)
+{
 
 	unsigned long action;
 	Atom prop1 = 0;
@@ -141,15 +151,14 @@ void action_toggle_maximized(Display *dpy, Window w) {
 
 	action = _NET_WM_STATE_TOGGLE;
 
-	char *tmp_prop2, *tmp2;
+	char *tmp_prop2;
 	tmp_prop2 = "_NET_WM_STATE_MAXIMIZED_HORZ";
 	prop2 = XInternAtom(dpy, tmp_prop2, False);
-	char * tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
+	char *tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
 
 	prop1 = XInternAtom(dpy, tmp_prop1, False);
 
-	client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long) prop1, (unsigned long) prop2, 0, 0);
-
+	client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long)prop1, (unsigned long)prop2, 0, 0);
 }
 
 /**
@@ -157,7 +166,8 @@ void action_toggle_maximized(Display *dpy, Window w) {
  *
  * PUBLIC
  */
-void action_restore(Display *dpy, Window w) {
+void action_restore(Display *dpy, Window w)
+{
 
 	unsigned long action;
 	Atom prop1 = 0;
@@ -165,15 +175,14 @@ void action_restore(Display *dpy, Window w) {
 
 	action = _NET_WM_STATE_REMOVE;
 
-	char *tmp_prop2, *tmp2;
+	char *tmp_prop2;
 	tmp_prop2 = "_NET_WM_STATE_MAXIMIZED_HORZ";
 	prop2 = XInternAtom(dpy, tmp_prop2, False);
-	char * tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
+	char *tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
 
 	prop1 = XInternAtom(dpy, tmp_prop1, False);
 
-	client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long) prop1, (unsigned long) prop2, 0, 0);
-
+	client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long)prop1, (unsigned long)prop2, 0, 0);
 }
 
 /**
@@ -181,7 +190,8 @@ void action_restore(Display *dpy, Window w) {
  *
  * PUBLIC
  */
-void action_maximize(Display *dpy, Window w) {
+void action_maximize(Display *dpy, Window w)
+{
 
 	unsigned long action;
 	Atom prop1 = 0;
@@ -189,28 +199,29 @@ void action_maximize(Display *dpy, Window w) {
 
 	action = _NET_WM_STATE_ADD;
 
-	char *tmp_prop2, *tmp2;
+	char *tmp_prop2;
 	tmp_prop2 = "_NET_WM_STATE_MAXIMIZED_HORZ";
 	prop2 = XInternAtom(dpy, tmp_prop2, False);
-	char * tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
+	char *tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
 
 	prop1 = XInternAtom(dpy, tmp_prop1, False);
 
-	client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long) prop1, (unsigned long) prop2, 0, 0);
-
+	client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long)prop1, (unsigned long)prop2, 0, 0);
 }
 
 /**
  * Fake key event
  */
-void press_key(Display *dpy, KeySym key, Bool is_press) {
+void press_key(Display *dpy, KeySym key, Bool is_press)
+{
 
 	XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, key), is_press, CurrentTime);
 	return;
 }
 
 /* alloc a key_press struct ???? */
-struct key_press * alloc_key_press(void) {
+struct key_press *alloc_key_press(void)
+{
 	struct key_press *ans = malloc(sizeof(struct key_press));
 	bzero(ans, sizeof(struct key_press));
 	return ans;
@@ -221,26 +232,28 @@ struct key_press * alloc_key_press(void) {
  *
  * PRIVATE
  */
-struct key_press * string_to_keypress(char *str_ptr) {
+struct key_press *string_to_keypress(char *str_ptr)
+{
 
-	char * copy = strdup(str_ptr);
+	char *copy = strdup(str_ptr);
 
 	struct key_press base;
 	struct key_press *key;
 	KeySym k;
 	char *str = copy;
 	char *token = str;
-	char *str_dup;
 
 	if (str == NULL)
 		return NULL;
 
 	key = &base;
 	token = strsep(&copy, "+\n ");
-	while (token != NULL) {
+	while (token != NULL)
+	{
 		/* printf("found : %s\n", token); */
 		k = XStringToKeysym(token);
-		if (k == NoSymbol) {
+		if (k == NoSymbol)
+		{
 			fprintf(stderr, "error converting %s to keysym\n", token);
 			exit(-1);
 		}
@@ -257,28 +270,31 @@ struct key_press * string_to_keypress(char *str_ptr) {
 /**
  * Fake sequence key events
  */
-void action_keypress(Display *dpy, char *data) {
+void action_keypress(Display *dpy, char *data)
+{
 
-	struct key_press * keys = string_to_keypress(data);
+	struct key_press *keys = string_to_keypress(data);
 
 	struct key_press *first_key;
 	struct key_press *tmp;
 
-	first_key = (struct key_press *) keys;
+	first_key = (struct key_press *)keys;
 
-	if (first_key == NULL) {
+	if (first_key == NULL)
+	{
 		fprintf(stderr, " internal error in %s, key is null\n", __func__);
 		return;
 	}
 
-	for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
+	for (tmp = first_key; tmp != NULL; tmp = tmp->next)
+	{
 		press_key(dpy, tmp->key, True);
 	}
 
-	for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
+	for (tmp = first_key; tmp != NULL; tmp = tmp->next)
+	{
 		press_key(dpy, tmp->key, False);
 	}
 
 	return;
 }
-

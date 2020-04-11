@@ -116,6 +116,11 @@ void send_kill_message(char *device_name)
 
 		int err = kill(running, SIGINT);
 
+		if (err)
+		{
+			printf("Error sending kill message.\n");
+		}
+
 		/* give some time. ignore failing */
 		usleep(100 * 1000); // 100ms
 	}
@@ -147,8 +152,8 @@ void alloc_shared_memory(char *device_name, int button)
 		sanitized_device_name = "";
 	}
 
-	int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s_button_%d", getuid(),
-						 sanitized_device_name, button);
+	asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s_button_%d", getuid(),
+			 sanitized_device_name, button);
 
 	int shared_seg_size = sizeof(struct shm_message);
 	int shmfd = shm_open(shm_identifier, O_CREAT | O_RDWR, 0600);
@@ -161,6 +166,11 @@ void alloc_shared_memory(char *device_name, int button)
 		exit(shmfd);
 	}
 	int err = ftruncate(shmfd, shared_seg_size);
+
+	if (err)
+	{
+		printf("Error truncating SHM variable\n");
+	}
 
 	message = (struct shm_message *)mmap(NULL, shared_seg_size,
 										 PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);

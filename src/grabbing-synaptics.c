@@ -183,7 +183,6 @@ void syn_print(const SynapticsSHM *cur)
 void synaptics_disable_3fingers_tap(Grabber *self, XDevice *dev)
 {
 	Atom prop, type;
-	double val;
 	int format;
 	unsigned long nitems, bytes_after;
 	unsigned char *data = NULL;
@@ -263,7 +262,7 @@ void grabber_synaptics_loop(Grabber *self, Configuration *conf)
 		if (!synaptics_shm_is_equal(&old, &cur))
 		{
 
-			int delay = 10;
+			delay = 10;
 
 			// release
 			if (cur.numFingers >= 3 && max_fingers >= 3)
@@ -288,7 +287,7 @@ void grabber_synaptics_loop(Grabber *self, Configuration *conf)
 				grabbing_end_movement(self, old.x, old.y, "Synaptics", conf);
 
 				/// energy economy
-				int delay = 50;
+				delay = 50;
 			}
 			else if (cur.numFingers >= 3 && max_fingers < 3)
 			{

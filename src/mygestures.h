@@ -6,6 +6,7 @@
 
 typedef struct mygestures_
 {
+
 	int help_flag;
 	int trigger_button;
 	int multitouch;

@@ -144,7 +144,7 @@ static Status fetch_window_title(Display *dpy, Window w, char **out_window_title
 static ActiveWindowInfo *get_active_window_info(Display *dpy, Window win)
 {
 
-	int ret, val;
+	int ret;
 
 	char *win_title;
 	ret = fetch_window_title(dpy, win, &win_title);
@@ -230,10 +230,38 @@ void grabbing_xinput_grab_start(Grabber *self)
 			XIEventMask mask = {
 				XIAllDevices, sizeof(mask_data), mask_data};
 
-			int status = XIGrabDevice(self->dpy, self->deviceid, rootwindow,
-									  CurrentTime, None,
-									  GrabModeAsync,
-									  GrabModeAsync, False, &mask);
+			int err = XIGrabDevice(self->dpy, self->deviceid, rootwindow,
+								   CurrentTime, None,
+								   GrabModeAsync,
+								   GrabModeAsync, False, &mask);
+
+			if (err)
+			{
+
+				char *s;
+
+				switch (err)
+				{
+				case GrabNotViewable:
+					s = "not viewable";
+					break;
+				case AlreadyGrabbed:
+					s = "already grabbed";
+					break;
+				case GrabFrozen:
+					s = "grab frozen";
+					break;
+				case GrabInvalidTime:
+					s = "invalid time";
+					break;
+				case GrabSuccess:
+					return;
+				default:
+					printf("%s: grab error: %d\n", self->devicename, err);
+					return;
+				}
+				printf("%s: grab error: %s\n", self->devicename, s);
+			}
 		}
 		else
 		{
@@ -263,9 +291,37 @@ void grabbing_xinput_grab_start(Grabber *self)
 			nmods = 1;
 			mods[0].modifiers = XIAnyModifier;
 
-			int res = XIGrabButton(self->dpy, self->deviceid, self->button,
+			int err = XIGrabButton(self->dpy, self->deviceid, self->button,
 								   rootwindow, None,
 								   GrabModeAsync, GrabModeAsync, False, &mask, nmods, mods);
+
+			if (err)
+			{
+
+				char *s;
+
+				switch (err)
+				{
+				case GrabNotViewable:
+					s = "not viewable";
+					break;
+				case AlreadyGrabbed:
+					s = "already grabbed";
+					break;
+				case GrabFrozen:
+					s = "grab frozen";
+					break;
+				case GrabInvalidTime:
+					s = "invalid time";
+					break;
+				case GrabSuccess:
+					return;
+				default:
+					printf("%s: grab error: %d\n", self->devicename, err);
+					return;
+				}
+				printf("%s: grab error: %s\n", self->devicename, s);
+			}
 		}
 	}
 }
@@ -284,11 +340,10 @@ void grabbing_xinput_grab_stop(Grabber *self)
 		if (self->is_direct_touch)
 		{
 
-			int status = XIUngrabDevice(self->dpy, self->deviceid, CurrentTime);
+			XIUngrabDevice(self->dpy, self->deviceid, CurrentTime);
 		}
 		else
 		{
-			XIGrabModifiers modifiers[4] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}};
 			XIGrabModifiers mods = {
 				XIAnyModifier};
 			XIUngrabButton(self->dpy, self->deviceid, self->button, rootwindow,
@@ -305,26 +360,26 @@ static void mouse_click(Display *display, int button, int x, int y)
 	XTestFakeButtonEvent(display, button, False, CurrentTime);
 }
 
-static Window get_window_under_pointer(Display *dpy)
-{
+// static Window get_window_under_pointer(Display *dpy)
+// {
 
-	Window root_return, child_return;
-	int root_x_return, root_y_return;
-	int win_x_return, win_y_return;
-	unsigned int mask_return;
-	XQueryPointer(dpy, DefaultRootWindow(dpy), &root_return, &child_return,
-				  &root_x_return, &root_y_return, &win_x_return, &win_y_return,
-				  &mask_return);
+// 	Window root_return, child_return;
+// 	int root_x_return, root_y_return;
+// 	int win_x_return, win_y_return;
+// 	unsigned int mask_return;
+// 	XQueryPointer(dpy, DefaultRootWindow(dpy), &root_return, &child_return,
+// 				  &root_x_return, &root_y_return, &win_x_return, &win_y_return,
+// 				  &mask_return);
 
-	Window w = child_return;
-	Window parent_return;
-	Window *children_return;
-	unsigned int nchildren_return;
-	XQueryTree(dpy, w, &root_return, &parent_return, &children_return,
-			   &nchildren_return);
+// 	Window w = child_return;
+// 	Window parent_return;
+// 	Window *children_return;
+// 	unsigned int nchildren_return;
+// 	XQueryTree(dpy, w, &root_return, &parent_return, &children_return,
+// 			   &nchildren_return);
 
-	return children_return[nchildren_return - 1];
-}
+// 	return children_return[nchildren_return - 1];
+// }
 
 static Window get_focused_window(Display *dpy)
 {
@@ -547,7 +602,6 @@ static void grabber_xinput_open_devices(Grabber *self, int verbose)
 	int i;
 	XIDeviceInfo *device;
 	XIDeviceInfo *devices;
-	int deviceid = -1;
 	devices = XIQueryDevice(self->dpy, XIAllDevices, &ndevices);
 	if (verbose)
 	{
