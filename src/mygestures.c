@@ -32,7 +32,7 @@
 #include "mygestures.h"
 #include "main.h"
 
-#include "grabbing.h"
+#include "grabbing-xinput.h"
 #include "configuration.h"
 #include "configuration_parser.h"
 

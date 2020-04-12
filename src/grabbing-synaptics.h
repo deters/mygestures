@@ -1,5 +1,5 @@
-#include "grabbing.h"
+#include "grabbing-xinput.h"
 
-Grabber * grabber_synaptics_init(Grabber * self);
-void grabber_synaptics_loop(Grabber * self, Configuration * conf);
-void grabber_synaptics_finalize(Grabber * self);
+Grabber *grabber_synaptics_init(Grabber *self);
+void grabber_synaptics_loop(Grabber *self, Configuration *conf);
+void grabber_synaptics_finalize(Grabber *self);

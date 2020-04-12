@@ -28,7 +28,7 @@
 
 #include "drawing/drawing-brush-image.h"
 
-#include "grabbing.h"
+#include "grabbing-xinput.h"
 #include "grabbing-synaptics.h"
 #include "actions.h"
 
