@@ -5,13 +5,13 @@ AM_CFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' -O2 $(LIBXML2_CFLAGS) $(LIBEVDEV_CFLA
 bin_PROGRAMS=mygestures igestures
 
 mygestures_SOURCES = \
-    main.c main.h \
-	mygestures.c mygestures.h \
-	configuration.c configuration.h \
+        main.c main.h \
+	      mygestures.c mygestures.h \
+	      configuration.c configuration.h \
         configuration_parser.c configuration_parser.h \
-	    actions.c actions.h \
-	    grabbing-xinput.c grabbing-xinput.h \
-	    grabbing-synaptics.c grabbing-synaptics.h \
+	      actions.c actions.h \
+	      grabbing-xinput.c grabbing-xinput.h \
+	      grabbing-synaptics.c grabbing-synaptics.h \
         drawing/drawing-backing.c \
         drawing/drawing-backing.h \
         drawing/drawing-brush.c \
