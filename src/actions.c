@@ -232,39 +232,65 @@ struct key_press *alloc_key_press(void)
  *
  * PRIVATE
  */
-struct key_press *string_to_keypress(char *str_ptr)
+struct key_press *create_key_chain(char *original_string)
 {
 
-	char *copy = strdup(str_ptr);
-
-	struct key_press base;
-	struct key_press *key;
-	KeySym k;
-	char *str = copy;
-	char *token = str;
-
-	if (str == NULL)
+	if (original_string == NULL)
 		return NULL;
 
-	key = &base;
-	token = strsep(&copy, "+\n ");
-	while (token != NULL)
+	char *end, *r, *tok;
+
+	struct key_press *head = NULL;
+	struct key_press *tail = NULL;
+
+	KeySym k;
+
+	r = end = strdup(original_string);
+
+	while ((tok = strsep(&end, "+ \n")) != NULL)
 	{
+
 		/* printf("found : %s\n", token); */
-		k = XStringToKeysym(token);
+		k = XStringToKeysym(tok);
 		if (k == NoSymbol)
 		{
-			fprintf(stderr, "error converting %s to keysym\n", token);
+			fprintf(stderr, "error converting %s to keysym\n", tok);
 			exit(-1);
 		}
-		key->next = alloc_key_press();
-		key = key->next;
-		key->key = k;
-		token = strsep(&copy, "+\n ");
+
+		struct key_press *current = alloc_key_press();
+		current->key = k;
+		current->original_str = original_string;
+
+		if (!tail)
+		{
+			head = current;
+			tail = current;
+		}
+		else
+		{
+			tail->next = current;
+			tail = current;
+		}
 	}
 
-	base.next->original_str = str_ptr;
-	return base.next;
+	free(r);
+	return head;
+}
+
+void free_key_chain(struct key_press *keys)
+{
+
+	struct key_press *k = keys;
+
+	while (k != NULL)
+	{
+		struct key_press *next = k->next;
+		free(k);
+		k = next;
+	}
+
+	return;
 }
 
 /**
@@ -273,28 +299,23 @@ struct key_press *string_to_keypress(char *str_ptr)
 void action_keypress(Display *dpy, char *data)
 {
 
-	struct key_press *keys = string_to_keypress(data);
+	struct key_press *keys = create_key_chain(data);
 
-	struct key_press *first_key;
-	struct key_press *tmp;
+	struct key_press *k = keys;
 
-	first_key = (struct key_press *)keys;
-
-	if (first_key == NULL)
+	while (k != NULL)
 	{
-		fprintf(stderr, " internal error in %s, key is null\n", __func__);
-		return;
+		press_key(dpy, k->key, True);
+		k = k->next;
 	}
 
-	for (tmp = first_key; tmp != NULL; tmp = tmp->next)
+	k = keys;
+
+	while (k != NULL)
 	{
-		press_key(dpy, tmp->key, True);
+		press_key(dpy, k->key, False);
+		k = k->next;
 	}
 
-	for (tmp = first_key; tmp != NULL; tmp = tmp->next)
-	{
-		press_key(dpy, tmp->key, False);
-	}
-
-	return;
+	free_key_chain(keys);
 }

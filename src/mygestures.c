@@ -187,7 +187,7 @@ Mygestures *mygestures_new()
 	Mygestures *self = malloc(sizeof(Mygestures));
 	bzero(self, sizeof(Mygestures));
 
-	self->device_list = malloc(sizeof(uint) * MAX_GRABBED_DEVICES);
+	self->device_list = malloc(sizeof(char *) * MAX_GRABBED_DEVICES);
 	self->gestures_configuration = configuration_new();
 
 	return self;

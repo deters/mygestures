@@ -139,11 +139,14 @@ static SynapticsSHM *
 grabber_synaptics_shm_init(int debug)
 {
 	SynapticsSHM *synshm = NULL;
-	int shmid = 0;
+	int shmid = shmget(SHM_SYNAPTICS, sizeof(SynapticsSHM), 0);
 
-	if ((shmid = shmget(SHM_SYNAPTICS, sizeof(SynapticsSHM), 0)) == -1)
+	if (shmid == -1)
 	{
-		if ((shmid = shmget(SHM_SYNAPTICS, 0, 0)) == -1)
+
+		shmid = shmget(SHM_SYNAPTICS, 0, 0);
+
+		if (shmid == -1)
 		{
 			if (debug)
 			{

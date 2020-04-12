@@ -18,7 +18,7 @@ static void mygestures_usage()
 	printf("\n");
 	//printf("CONFIG_FILE:\n");
 
-	//char *default_file = self. configuration_get_default_filename(self);
+	//char *default_file = mygestures. configuration_get_default_filename(mygestures);
 	//printf(" Default: %s\n", default_file);
 	//free(default_file);
 
@@ -39,7 +39,7 @@ static void mygestures_usage()
 	printf("                               https://github.com/Chosko/xserver-xorg-input-synaptics\n");
 }
 
-static void process_arguments(Mygestures *self, int argc, char *const *argv)
+static void process_arguments(Mygestures *mygestures, int argc, char *const *argv)
 {
 
 	char opt;
@@ -64,30 +64,30 @@ static void process_arguments(Mygestures *self, int argc, char *const *argv)
 		{
 
 		case 'b':
-			self->trigger_button = atoi(optarg);
+			mygestures->trigger_button = atoi(optarg);
 			break;
 
 		case 'd':
-			self->device_list[self->device_count++] = strdup(optarg);
+			mygestures->device_list[mygestures->device_count++] = strdup(optarg);
 			break;
 
 		case 'm':
-			self->multitouch = 1;
+			mygestures->multitouch = 1;
 			break;
 
 		case 'v':
-			if (!(self->brush_color))
+			if (!(mygestures->brush_color))
 			{
-				self->brush_color = "blue";
+				mygestures->brush_color = "blue";
 			}
 			break;
 
 		case 'c':
-			self->brush_color = strdup(optarg);
+			mygestures->brush_color = strdup(optarg);
 			break;
 
 		case 'l':
-			self->list_devices_flag = 1;
+			mygestures->list_devices_flag = 1;
 			break;
 
 		case 'h':
@@ -99,7 +99,7 @@ static void process_arguments(Mygestures *self, int argc, char *const *argv)
 
 	if (optind < argc)
 	{
-		self->custom_config_file = argv[optind++];
+		mygestures->custom_config_file = argv[optind++];
 	}
 
 	if (optind < argc)
@@ -109,16 +109,15 @@ static void process_arguments(Mygestures *self, int argc, char *const *argv)
 			printf("%s ", argv[optind++]);
 		putchar('\n');
 	}
+
+	mygestures_run(mygestures);
 }
 
 int main(int argc, char *const *argv)
 {
 
-	Mygestures *self = mygestures_new();
+	Mygestures *mygestures = mygestures_new();
+	process_arguments(mygestures, argc, argv);
 
-	process_arguments(self, argc, argv);
-
-	mygestures_run(self);
-
-	exit(0);
+		exit(0);
 }

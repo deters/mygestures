@@ -82,13 +82,13 @@ Context *configuration_create_context(Configuration *self, char *context_name,
 	Context *context = malloc(sizeof(Context));
 	bzero(context, sizeof(Context));
 
-	context->name = context_name;
+	context->name = strdup(context_name);
 	context->parent_user_configuration = self;
 
-	context_set_title(context, window_title);
-	context_set_class(context, window_class);
+	context_set_title(context, strdup(window_title));
+	context_set_class(context, strdup(window_class));
 
-	context->gesture_list = malloc(sizeof(Gesture) * 255);
+	context->gesture_list = malloc(sizeof(Gesture *) * 255);
 	context->gesture_count = 0;
 
 	self->context_list[self->context_count++] = context;
@@ -132,8 +132,8 @@ Movement *configuration_create_movement(Configuration *self,
 	Movement *movement = malloc(sizeof(Movement));
 	bzero(movement, sizeof(Movement));
 
-	movement->name = movement_name;
-	movement_set_expression(movement, movement_expression);
+	movement->name = strdup(movement_name);
+	movement_set_expression(movement, strdup(movement_expression));
 
 	self->movement_list[self->movement_count] = movement;
 	self->movement_count++;
@@ -152,7 +152,7 @@ Gesture *configuration_create_gesture(Context *self, char *gesture_name,
 	Gesture *ans = malloc(sizeof(Gesture));
 	bzero(ans, sizeof(Gesture));
 
-	ans->name = gesture_name;
+	ans->name = strdup(gesture_name);
 	ans->movement = configuration_find_movement_by_name(
 		self->parent_user_configuration, gesture_movement);
 

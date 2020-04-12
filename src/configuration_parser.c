@@ -148,7 +148,6 @@ static void xml_parse_gesture(xmlNode *node, Context *context)
 		{
 			gesture_movement = strdup(value);
 		}
-		xmlFree(value);
 		attribute = attribute->next;
 	}
 
@@ -210,17 +209,17 @@ static Context *xml_parse_context(xmlNode *node, Configuration *eng)
 
 		if (strcasecmp(name, "name") == 0)
 		{
-			context_name = strdup(value);
+			context_name = value;
 		}
 		else if (strcasecmp(name, "windowtitle") == 0)
 		{
-			window_title = strdup(value);
+			window_title = value;
 		}
 		else if (strcasecmp(name, "windowclass") == 0)
 		{
-			window_class = strdup(value);
+			window_class = value;
 		}
-		xmlFree(value);
+		//xmlFree(value);
 		attribute = attribute->next;
 	}
 
@@ -229,8 +228,6 @@ static Context *xml_parse_context(xmlNode *node, Configuration *eng)
 	if (!context_name)
 	{
 		printf("Missing context name\n");
-		free(window_title);
-		free(window_class);
 		return NULL;
 	}
 
@@ -295,27 +292,25 @@ void xml_parse_movement(xmlNode *node, Configuration *eng)
 
 		if (strcasecmp(name, "name") == 0)
 		{
-			movement_name = strdup(value);
+			movement_name = value;
 		}
 		else if (strcasecmp(name, "value") == 0)
 		{
-			movement_strokes = strdup(value);
+			movement_strokes = value;
 		}
-		xmlFree(value);
+		//xmlFree(value);
 		attribute = attribute->next;
 	}
 
 	if (!movement_name)
 	{
 		printf("missing movement name at line %d\n", node->line);
-		free(movement_strokes);
 		return;
 	}
 
 	if (!movement_strokes)
 	{
 		printf("missing movement value at line %d\n", node->line);
-		free(movement_name);
 		return;
 	}
 
@@ -401,8 +396,8 @@ static char *get_config_dir()
 
 char *xml_get_template_filename()
 {
-	char *template_file = malloc(sizeof(char *) * 4096);
-	sprintf(template_file, "%s/mygestures.xml", SYSCONFDIR);
+	char *template_file; // = malloc(sizeof(char) * 4096);
+	asprintf(&template_file, "%s/mygestures.xml", SYSCONFDIR);
 	return template_file;
 }
 

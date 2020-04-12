@@ -110,12 +110,14 @@ static void grabber_init_drawing(Grabber *self)
 	}
 }
 
-static Status fetch_window_title(Display *dpy, Window w, char **out_window_title)
+static void fetch_window_title(Display *dpy, Window w, char **out_window_title)
 {
-	int status;
+
 	XTextProperty text_prop;
 	char **list;
 	int num;
+
+	int status;
 
 	status = XGetWMName(dpy, w, &text_prop);
 	if (!status || !text_prop.value || !text_prop.nitems)
@@ -134,8 +136,6 @@ static Status fetch_window_title(Display *dpy, Window w, char **out_window_title
 	}
 	XFree(text_prop.value);
 	XFreeStringList(list);
-
-	return 1;
 }
 
 /*
@@ -144,10 +144,8 @@ static Status fetch_window_title(Display *dpy, Window w, char **out_window_title
 static ActiveWindowInfo *get_active_window_info(Display *dpy, Window win)
 {
 
-	int ret;
-
 	char *win_title;
-	ret = fetch_window_title(dpy, win, &win_title);
+	fetch_window_title(dpy, win, &win_title);
 
 	ActiveWindowInfo *ans = malloc(sizeof(ActiveWindowInfo));
 	bzero(ans, sizeof(ActiveWindowInfo));
@@ -199,6 +197,11 @@ static Window get_parent_window(Display *dpy, Window w)
 	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return,
 					 &nchildren_return);
 
+	if (!ret)
+	{
+		printf("NULL value from xquerytree on get_parent_window.");
+		exit(1);
+	}
 	return parent_return;
 }
 
@@ -385,8 +388,8 @@ static Window get_focused_window(Display *dpy)
 {
 
 	Window win = 0;
-	int ret, val;
-	ret = XGetInputFocus(dpy, &win, &val);
+	int val;
+	XGetInputFocus(dpy, &win, &val);
 
 	if (val == RevertToParent)
 	{
@@ -859,8 +862,8 @@ Grabber *grabber_new(char *device_name, int button)
 	Grabber *self = malloc(sizeof(Grabber));
 	bzero(self, sizeof(Grabber));
 
-	self->fine_direction_sequence = malloc(sizeof(char *) * 30);
-	self->rought_direction_sequence = malloc(sizeof(char *) * 30);
+	self->fine_direction_sequence = malloc(sizeof(char) * 30);
+	self->rought_direction_sequence = malloc(sizeof(char) * 30);
 
 	grabber_set_device(self, device_name);
 	grabber_set_button(self, button);
@@ -878,7 +881,7 @@ char *get_device_name_from_event(Grabber *self, XIDeviceEvent *data)
 	if (ndevices == 1)
 	{
 		device = &devices[0];
-		device_name = strdup(device->name);
+		device_name = device->name;
 	}
 
 	return device_name;
