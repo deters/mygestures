@@ -33,7 +33,7 @@ void context_set_title(Context *context, char *window_title)
 	assert(context);
 	assert(window_title);
 
-	context->title = window_title;
+	context->title = strdup(window_title);
 
 	regex_t *title_compiled = NULL;
 	if (context->title)
@@ -55,7 +55,7 @@ void context_set_class(Context *context, char *window_class)
 	assert(context);
 	assert(window_class);
 
-	context->class = window_class;
+	context->class = strdup(window_class);
 	regex_t *class_compiled = NULL;
 	if (context->class)
 	{
@@ -63,6 +63,7 @@ void context_set_class(Context *context, char *window_class)
 		if (regcomp(class_compiled, window_class, REG_EXTENDED | REG_NOSUB))
 		{
 			fprintf(stderr, "Error compiling regexp: %s\n", window_class);
+			free(class_compiled);
 			class_compiled = NULL;
 		}
 	}
@@ -85,8 +86,8 @@ Context *configuration_create_context(Configuration *self, char *context_name,
 	context->name = strdup(context_name);
 	context->parent_user_configuration = self;
 
-	context_set_title(context, strdup(window_title));
-	context_set_class(context, strdup(window_class));
+	context_set_title(context, window_title);
+	context_set_class(context, window_class);
 
 	context->gesture_list = malloc(sizeof(Gesture *) * 255);
 	context->gesture_count = 0;
@@ -165,7 +166,7 @@ Gesture *configuration_create_gesture(Context *self, char *gesture_name,
 
 	ans->context = self;
 	ans->action_count = 0;
-	ans->action_list = malloc(sizeof(Action) * 20);
+	ans->action_list = malloc(sizeof(Action *) * 20);
 
 	self->gesture_list[self->gesture_count++] = ans;
 
@@ -185,7 +186,7 @@ Action *configuration_create_action(Gesture *self, int action_type,
 	bzero(ans, sizeof(Action));
 
 	ans->type = action_type;
-	ans->original_str = action_data;
+	ans->original_str = strdup(action_data);
 
 	self->action_list[self->action_count++] = ans;
 

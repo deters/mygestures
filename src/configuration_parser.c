@@ -51,20 +51,18 @@ void xml_parse_action(xmlNode *node, Gesture *gest)
 
 		if (strcasecmp(name, "action") == 0)
 		{
-			action_name = strdup(value);
+			action_name = value;
 		}
 		else if (strcasecmp(name, "value") == 0)
 		{
-			action_value = strdup(value);
+			action_value = value;
 		}
 
-		xmlFree(value);
 		attribute = attribute->next;
 	}
 
 	if (!action_name)
 	{
-		free(action_value);
 		printf("Missing action name at line %d\n", node->line);
 		return;
 	}
@@ -110,8 +108,6 @@ void xml_parse_action(xmlNode *node, Gesture *gest)
 	else
 	{
 		printf("unknown action '%s' at line %d\n", action_name, node->line);
-		free(action_name);
-		free(action_value);
 		return;
 	}
 
@@ -142,11 +138,11 @@ static void xml_parse_gesture(xmlNode *node, Context *context)
 
 		if (strcasecmp(name, "name") == 0)
 		{
-			gesture_name = strdup(value);
+			gesture_name = value;
 		}
 		else if (strcasecmp(name, "movement") == 0)
 		{
-			gesture_movement = strdup(value);
+			gesture_movement = value;
 		}
 		attribute = attribute->next;
 	}
@@ -154,14 +150,12 @@ static void xml_parse_gesture(xmlNode *node, Context *context)
 	if (!gesture_name)
 	{
 		printf("missing gesture name at line %d\n", node->line);
-		free(gesture_movement);
 		return;
 	}
 
 	if (!gesture_movement)
 	{
 		printf("missing gesture movement at line %d\n", node->line);
-		free(gesture_name);
 		return;
 	}
 
@@ -386,7 +380,12 @@ static char *get_config_dir()
 	if (!dir)
 	{
 		char *home = getenv("HOME");
-		asprintf(&dir, "%s/.config/mygestures", home);
+		int size = asprintf(&dir, "%s/.config/mygestures", home);
+		if (size < 0)
+		{
+			printf("Error in asprintf at get_config_dir\n");
+			exit(1);
+		}
 	}
 
 	assert(dir);
@@ -397,7 +396,14 @@ static char *get_config_dir()
 char *xml_get_template_filename()
 {
 	char *template_file; // = malloc(sizeof(char) * 4096);
-	asprintf(&template_file, "%s/mygestures.xml", SYSCONFDIR);
+	int size = asprintf(&template_file, "%s/mygestures.xml", SYSCONFDIR);
+
+	if (size < 0)
+	{
+		printf("Error in asprintf at xml_get_template_filename\n");
+		exit(1);
+	}
+
 	return template_file;
 }
 
@@ -476,7 +482,13 @@ char *configuration_get_default_filename()
 	char *dir = get_config_dir();
 
 	char *filename = NULL;
-	asprintf(&filename, "%s/mygestures.xml", dir);
+	int size = asprintf(&filename, "%s/mygestures.xml", dir);
+
+	if (size < 0)
+	{
+		printf("Error in asprintf at configuration_get_default_filename\n");
+		exit(1);
+	}
 
 	assert(filename);
 	return filename;

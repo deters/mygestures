@@ -98,7 +98,7 @@ static void char_replace(char *str, char oldChar, char newChar)
 void alloc_shared_memory(char *device_name, int button)
 {
 
-	char *sanitized_device_name = strdup(device_name);
+	char *sanitized_device_name = device_name;
 
 	if (sanitized_device_name)
 	{
@@ -109,8 +109,14 @@ void alloc_shared_memory(char *device_name, int button)
 		sanitized_device_name = "";
 	}
 
-	asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s_button_%d", getuid(),
-			 sanitized_device_name, button);
+	int size = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s_button_%d", getuid(),
+						sanitized_device_name, button);
+
+	if (size < 0)
+	{
+		printf("Error in asprintf at alloc_shared_memory\n");
+		exit(1);
+	}
 
 	int shared_seg_size = sizeof(struct shm_message);
 	int shmfd = shm_open(shm_identifier, O_CREAT | O_RDWR, 0600);
