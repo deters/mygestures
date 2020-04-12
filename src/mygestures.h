@@ -9,7 +9,7 @@
 
 typedef struct mygestures_
 {
-
+	Display *dpy;
 	int trigger_button;
 	int multitouch;
 	int libinput;
@@ -17,41 +17,15 @@ typedef struct mygestures_
 
 	char *custom_config_file;
 
-	int device_count;
-	char **device_list;
+	char *device_name;
 	char *brush_color;
 
-	Configuration *gestures_configuration;
-
-} Mygestures;
-
-typedef struct
-{
-
-	Display *dpy;
-
-	char *devicename;
-	int deviceid;
-	int is_direct_touch;
-
-	int button;
-	int any_modifier;
-	int follow_pointer;
-	int focus;
-
-	int started;
-	int verbose;
-
-	int opcode;
-	int event;
-	int error;
+	backing_t backing;
+	brush_t brush;
+	struct brush_image_t *brush_image;
 
 	int old_x;
 	int old_y;
-
-	int delta_min;
-
-	int synaptics;
 
 	int rought_old_x;
 	int rought_old_y;
@@ -59,23 +33,21 @@ typedef struct
 	char *fine_direction_sequence;
 	char *rought_direction_sequence;
 
-	backing_t backing;
-	brush_t brush;
+	int started;
 
-	int shut_down;
+	Configuration *gestures_configuration;
 
-	struct brush_image_t *brush_image;
-
-} Grabber;
+} Mygestures;
 
 Mygestures *mygestures_new();
-void mygestures_run(Mygestures *self);
 
-void grabber_loop(Grabber *self, Configuration *conf);
-void grabbing_start_movement(Grabber *self, int new_x, int new_y);
-void grabbing_update_movement(Grabber *self, int new_x, int new_y);
-void grabbing_end_movement(Grabber *self, int new_x, int new_y,
-						   char *device_name, Configuration *conf);
+void mygestures_set_brush_color(Mygestures *self, char *brush_color);
+void mygestures_start_movement(Mygestures *self, int new_x, int new_y, int delta_min);
+void mygestures_update_movement(Mygestures *self, int new_x, int new_y, int delta_min);
+int grabbing_end_movement(Mygestures *self, int new_x, int new_y,
+						  char *device_name, Mygestures *mygestures);
+
+void mygestures_load_configuration(Mygestures *self);
 
 // void on_interrupt(int a);
 // void on_kill(int a);

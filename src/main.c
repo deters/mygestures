@@ -10,7 +10,23 @@
 
 #include "assert.h"
 
-#include "mygestures.h"
+#include "grabbing-xinput.h"
+
+enum
+{
+	IT_DEFAULT,
+	IT_XINPUT,
+	IT_SYNAPTICS_SHM,
+	IT_LIBINPUT
+} INPUT_TYPE;
+
+int input_type = 1;
+int trigger_button = 3;
+char *device_name = "";
+
+char *brush_color;
+int list_devices_flag;
+char *custom_config_file;
 
 static void mygestures_usage()
 {
@@ -34,12 +50,12 @@ static void mygestures_usage()
 	printf("                              Default: blue\n");
 	printf("                              Options: yellow, white, red, green, purple, blue\n");
 	printf(" -h, --help                 : Help\n");
-	printf(" -m, --multitouch           : Multitouch mode on some synaptic touchpads.\n");
+	printf(" -i, --inputmode           :  x = xinput, i = liblinput, s=synaptics_shm \n");
 	printf("                              It depends on this patched synaptics driver to work:\n");
 	printf("                               https://github.com/Chosko/xserver-xorg-input-synaptics\n");
 }
 
-static void process_arguments(Mygestures *mygestures, int argc, char *const *argv)
+static void process_arguments(int argc, char *const *argv)
 {
 
 	char opt;
@@ -49,14 +65,14 @@ static void process_arguments(Mygestures *mygestures, int argc, char *const *arg
 		{"color", required_argument, 0, 'c'},
 		{"help", no_argument, 0, 'h'},
 		{"visual", no_argument, 0, 'v'},
-		{"multitouch", no_argument, 0, 'm'},
+		{"inputmode", required_argument, 0, 'i'},
 		{0, 0, 0, 0}};
 
 	/* read params */
 
 	while (1)
 	{
-		opt = getopt_long(argc, argv, "b:c:d:vhlm", opts, NULL);
+		opt = getopt_long(argc, argv, "b:c:d:vhli:", opts, NULL);
 		if (opt == -1)
 			break;
 
@@ -64,30 +80,42 @@ static void process_arguments(Mygestures *mygestures, int argc, char *const *arg
 		{
 
 		case 'b':
-			mygestures->trigger_button = atoi(optarg);
+			trigger_button = atoi(optarg);
 			break;
 
 		case 'd':
-			mygestures->device_list[mygestures->device_count++] = strdup(optarg);
+			device_name = strdup(optarg);
 			break;
 
-		case 'm':
-			mygestures->multitouch = 1;
+		case 'i':
+
+			input_type = IT_XINPUT;
+
+			if (strcmp(optarg, "i") == 0)
+			{
+				input_type = IT_LIBINPUT;
+			}
+
+			if (strcmp(optarg, "s") == 0)
+			{
+				input_type = IT_SYNAPTICS_SHM;
+			}
+
 			break;
 
 		case 'v':
-			if (!(mygestures->brush_color))
+			if (!(brush_color))
 			{
-				mygestures->brush_color = "blue";
+				brush_color = "blue";
 			}
 			break;
 
 		case 'c':
-			mygestures->brush_color = strdup(optarg);
+			brush_color = strdup(optarg);
 			break;
 
 		case 'l':
-			mygestures->list_devices_flag = 1;
+			list_devices_flag = 1;
 			break;
 
 		case 'h':
@@ -99,7 +127,7 @@ static void process_arguments(Mygestures *mygestures, int argc, char *const *arg
 
 	if (optind < argc)
 	{
-		mygestures->custom_config_file = argv[optind++];
+		custom_config_file = argv[optind++];
 	}
 
 	if (optind < argc)
@@ -109,15 +137,51 @@ static void process_arguments(Mygestures *mygestures, int argc, char *const *arg
 			printf("%s ", argv[optind++]);
 		putchar('\n');
 	}
-
-	mygestures_run(mygestures);
 }
 
 int main(int argc, char *const *argv)
 {
 
+	process_arguments(argc, argv);
+
 	Mygestures *mygestures = mygestures_new();
-	process_arguments(mygestures, argc, argv);
+
+	if (brush_color)
+	{
+		mygestures_set_brush_color(mygestures, brush_color);
+	}
+
+	XInputGrabber *grabber;
+
+	switch (input_type)
+	{
+	case IT_XINPUT:
+
+		grabber = grabber_xinput_new(device_name, trigger_button);
+
+		if (list_devices_flag)
+		{
+			grabber_list_devices(grabber);
+			exit(0);
+		}
+
+		mygestures_load_configuration(mygestures);
+
+		grabber_xinput_loop(grabber, mygestures);
+		printf("Grabbing loop finished for device '%s'.\n", device_name);
+		break;
+
+	case IT_LIBINPUT:
+
+		break;
+
+	case IT_SYNAPTICS_SHM:
+
+		break;
+
+	default:
+		break;
+	}
 
 	exit(0);
 }

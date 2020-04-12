@@ -24,59 +24,22 @@
 #include <assert.h>
 
 #include <X11/extensions/XInput2.h> /* capturing device events */
+#include <X11/extensions/XTest.h>	/* emulating device events */
 
 #include "mygestures.h"
 
 #include "grabbing-xinput.h"
 #include "grabbing-synaptics.h"
 
-static void grabber_open_display(Grabber *self)
+static void mouse_click(Display *display, int button, int x, int y)
 {
 
-	self->dpy = XOpenDisplay(NULL);
-
-	if (!XQueryExtension(self->dpy, "XInputExtension", &(self->opcode),
-						 &(self->event), &(self->error)))
-	{
-		printf("X Input extension not available.\n");
-		exit(-1);
-	}
-
-	int major = 2, minor = 0;
-	if (XIQueryVersion(self->dpy, &major, &minor) == BadRequest)
-	{
-		printf("XI2 not available. Server supports %d.%d\n", major, minor);
-		exit(-1);
-	}
+	XTestFakeMotionEvent(display, DefaultScreen(display), x, y, 0);
+	XTestFakeButtonEvent(display, button, True, CurrentTime);
+	XTestFakeButtonEvent(display, button, False, CurrentTime);
 }
 
-static void grabber_init_drawing(Grabber *self)
-{
-
-	assert(self->dpy);
-
-	int err = 0;
-	int scr = DefaultScreen(self->dpy);
-
-	if (self->brush_image)
-	{
-
-		err = backing_init(&(self->backing), self->dpy,
-						   DefaultRootWindow(self->dpy), DisplayWidth(self->dpy, scr),
-						   DisplayHeight(self->dpy, scr), DefaultDepth(self->dpy, scr));
-		if (err)
-		{
-			fprintf(stderr, "cannot open backing store.... \n");
-		}
-		err = brush_init(&(self->brush), &(self->backing), self->brush_image);
-		if (err)
-		{
-			fprintf(stderr, "cannot init brush.... \n");
-		}
-	}
-}
-
-void grabbing_xinput_grab_start(Grabber *self)
+void grabbing_xinput_grab_start(XInputGrabber *self)
 {
 
 	int count = XScreenCount(self->dpy);
@@ -200,7 +163,7 @@ void grabbing_xinput_grab_start(Grabber *self)
 	}
 }
 
-void grabbing_xinput_grab_stop(Grabber *self)
+void grabbing_xinput_grab_stop(XInputGrabber *self)
 {
 
 	int count = XScreenCount(self->dpy);
@@ -247,7 +210,7 @@ static int get_touch_status(XIDeviceInfo *device)
 	return 0;
 }
 
-static void grabber_xinput_open_devices(Grabber *self, int verbose)
+static void grabber_xinput_open_devices(XInputGrabber *self, int verbose)
 {
 
 	int ndevices;
@@ -266,24 +229,35 @@ static void grabber_xinput_open_devices(Grabber *self, int verbose)
 		{
 		/// ṕointers
 		case XIMasterPointer:
-		case XISlavePointer:
-		case XIFloatingSlave:
-			if (strcasecmp(device->name, self->devicename) == 0)
+			if (strcmp(self->devicename, "") == 0)
 			{
 				if (verbose)
 				{
 					printf("   [x] '%s'\n", device->name);
 				}
+
 				self->deviceid = device->deviceid;
-				self->is_direct_touch = get_touch_status(device);
+				self->devicename = device->name;
 			}
-			else
+			break;
+		case XISlavePointer:
+		case XIFloatingSlave:
+
+			if (verbose)
 			{
-				if (verbose)
+
+				if (strcasecmp(device->name, self->devicename) == 0)
+				{
+					self->deviceid = device->deviceid;
+					self->is_direct_touch = get_touch_status(device);
+					printf("   [x] '%s'\n", device->name);
+				}
+				else
 				{
 					printf("   [ ] '%s'\n", device->name);
 				}
 			}
+
 			break;
 		case XIMasterKeyboard:
 			//printf("master keyboard\n");
@@ -297,12 +271,12 @@ static void grabber_xinput_open_devices(Grabber *self, int verbose)
 	XIFreeDeviceInfo(devices);
 }
 
-void grabber_set_button(Grabber *self, int button)
+void grabber_set_button(XInputGrabber *self, int button)
 {
 	self->button = button;
 }
 
-void grabber_set_device(Grabber *self, char *device_name)
+void grabber_set_device(XInputGrabber *self, char *device_name)
 {
 	self->devicename = device_name;
 
@@ -318,22 +292,42 @@ void grabber_set_device(Grabber *self, char *device_name)
 	}
 }
 
-Grabber *grabber_new(char *device_name, int button)
+static void grabber_open_display(XInputGrabber *self)
 {
 
-	Grabber *self = malloc(sizeof(Grabber));
-	bzero(self, sizeof(Grabber));
+	self->dpy = XOpenDisplay(NULL);
 
-	self->fine_direction_sequence = malloc(sizeof(char) * 30);
-	self->rought_direction_sequence = malloc(sizeof(char) * 30);
+	if (!XQueryExtension(self->dpy, "XInputExtension", &(self->opcode),
+						 &(self->event), &(self->error)))
+	{
+		printf("X Input extension not available.\n");
+		exit(-1);
+	}
 
-	grabber_set_device(self, device_name);
+	int major = 2, minor = 0;
+	if (XIQueryVersion(self->dpy, &major, &minor) == BadRequest)
+	{
+		printf("XI2 not available. Server supports %d.%d\n", major, minor);
+		exit(-1);
+	}
+}
+
+XInputGrabber *grabber_xinput_new(char *device_name, int button)
+{
+
+	XInputGrabber *self = malloc(sizeof(XInputGrabber));
+	bzero(self, sizeof(XInputGrabber));
+
+	assert(device_name);
+	assert(button);
+
+	grabber_set_device(self, strdup(device_name));
 	grabber_set_button(self, button);
 
 	return self;
 }
 
-char *get_device_name_from_event(Grabber *self, XIDeviceEvent *data)
+char *get_device_name_from_event(XInputGrabber *self, XIDeviceEvent *data)
 {
 	int ndevices;
 	char *device_name = NULL;
@@ -349,17 +343,23 @@ char *get_device_name_from_event(Grabber *self, XIDeviceEvent *data)
 	return device_name;
 }
 
-void grabber_list_devices(Grabber *self)
+void grabber_list_devices(XInputGrabber *self)
 {
 	grabber_xinput_open_devices(self, True);
 };
 
-void grabber_xinput_loop(Grabber *self, Configuration *conf)
+void grabber_xinput_loop(XInputGrabber *self, Mygestures *mygestures)
 {
 
 	XEvent ev;
 
-	grabber_xinput_open_devices(self, False);
+	assert(self);
+	assert(mygestures);
+
+	grabber_open_display(self);
+
+	grabber_xinput_open_devices(self, True);
+
 	grabbing_xinput_grab_start(self);
 
 	while (!self->shut_down)
@@ -377,12 +377,12 @@ void grabber_xinput_loop(Grabber *self, Configuration *conf)
 
 			case XI_Motion:
 				data = (XIDeviceEvent *)ev.xcookie.data;
-				grabbing_update_movement(self, data->root_x, data->root_y);
+				mygestures_update_movement(mygestures, data->root_x, data->root_y, self->delta_min);
 				break;
 
 			case XI_ButtonPress:
 				data = (XIDeviceEvent *)ev.xcookie.data;
-				grabbing_start_movement(self, data->root_x, data->root_y);
+				mygestures_start_movement(mygestures, data->root_x, data->root_y, self->delta_min);
 				break;
 
 			case XI_ButtonRelease:
@@ -391,8 +391,18 @@ void grabber_xinput_loop(Grabber *self, Configuration *conf)
 				char *device_name = get_device_name_from_event(self, data);
 
 				grabbing_xinput_grab_stop(self);
-				grabbing_end_movement(self, data->root_x, data->root_y,
-									  device_name, conf);
+				int status = grabbing_end_movement(mygestures, data->root_x, data->root_y,
+												   device_name, mygestures);
+
+				if (!status)
+				{
+					printf("\nEmulating click\n");
+
+					//grabbing_xinput_grab_stop(self);
+					mouse_click(self->dpy, self->button, data->root_x, data->root_y);
+					//grabbing_xinput_grab_start(self);
+				}
+
 				grabbing_xinput_grab_start(self);
 				break;
 			}
@@ -401,38 +411,19 @@ void grabber_xinput_loop(Grabber *self, Configuration *conf)
 	}
 }
 
-void grabber_loop(Grabber *self, Configuration *conf)
-{
-
-	grabber_open_display(self);
-
-	grabber_init_drawing(self);
-
-	if (self->synaptics)
-	{
-		grabber_synaptics_loop(self, conf);
-	}
-	else
-	{
-		grabber_xinput_loop(self, conf);
-	}
-
-	printf("Grabbing loop finished for device '%s'.\n", self->devicename);
-}
-
-char *grabber_get_device_name(Grabber *self)
+char *grabber_get_device_name(XInputGrabber *self)
 {
 	return self->devicename;
 }
 
-void grabber_finalize(Grabber *self)
-{
-	if (self->brush_image)
-	{
-		brush_deinit(&(self->brush));
-		backing_deinit(&(self->backing));
-	}
+// void grabber_finalize(Grabber *self)
+// {
+// 	if (self->brush_image)
+// 	{
+// 		brush_deinit(&(self->brush));
+// 		backing_deinit(&(self->backing));
+// 	}
 
-	XCloseDisplay(self->dpy);
-	return;
-}
+// 	XCloseDisplay(self->dpy);
+// 	return;
+// }

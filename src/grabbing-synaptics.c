@@ -38,49 +38,6 @@
 
 #define SYNAPTICS_PROP_TAP_ACTION "Synaptics Tap Action"
 
-typedef struct
-{
-
-	Display *dpy;
-
-	char *devicename;
-	int deviceid;
-	int is_direct_touch;
-
-	int button;
-	int any_modifier;
-	int follow_pointer;
-	int focus;
-
-	int started;
-	int verbose;
-
-	int opcode;
-	int event;
-	int error;
-
-	int old_x;
-	int old_y;
-
-	int delta_min;
-
-	int synaptics;
-
-	int rought_old_x;
-	int rought_old_y;
-
-	char *fine_direction_sequence;
-	char *rought_direction_sequence;
-
-	backing_t backing;
-	brush_t brush;
-
-	int shut_down;
-
-	struct brush_image_t *brush_image;
-
-} SynapticsGrabber;
-
 static XDevice *
 dp_get_device(Display *dpy)
 {
@@ -226,7 +183,7 @@ void syn_print(const SynapticsSHM *cur)
 		   cur->multi[5], cur->multi[6], cur->multi[7]);
 }
 
-void synaptics_disable_3fingers_tap(Grabber *self, XDevice *dev)
+void synaptics_disable_3fingers_tap(SynapticsGrabber *self, XDevice *dev)
 {
 	Atom prop, type;
 	int format;
@@ -253,7 +210,7 @@ void synaptics_disable_3fingers_tap(Grabber *self, XDevice *dev)
 	}
 }
 
-void grabber_synaptics_loop(Grabber *self, Configuration *conf)
+void grabber_synaptics_loop(SynapticsGrabber *self, Mygestures *mygestures)
 {
 
 	XDevice *dev = NULL;
@@ -314,7 +271,7 @@ void grabber_synaptics_loop(Grabber *self, Configuration *conf)
 			if (cur.numFingers >= 3 && max_fingers >= 3)
 			{
 
-				grabbing_update_movement(self, cur.x, cur.y);
+				mygestures_update_movement(mygestures, cur.x, cur.y, self->delta_min);
 
 				//// got > 3 fingers
 			}
@@ -330,7 +287,7 @@ void grabber_synaptics_loop(Grabber *self, Configuration *conf)
 				// reset max fingers
 				max_fingers = 0;
 
-				grabbing_end_movement(self, old.x, old.y, "Synaptics", conf);
+				grabbing_end_movement(mygestures, old.x, old.y, "Synaptics", mygestures);
 
 				/// energy economy
 				delay = 50;
@@ -354,7 +311,7 @@ void grabber_synaptics_loop(Grabber *self, Configuration *conf)
 						printf("started\n");
 					}
 
-					grabbing_start_movement(self, cur.x, cur.y);
+					mygestures_start_movement(mygestures, cur.x, cur.y, self->delta_min);
 				}
 			}
 

@@ -34,19 +34,48 @@ enum
 	MOD_END
 };
 
+typedef struct
+{
+
+	Mygestures *mygestures;
+	Display *dpy;
+
+	char *devicename;
+	int deviceid;
+	int is_direct_touch;
+
+	int button;
+	int any_modifier;
+	int follow_pointer;
+	int focus;
+
+	int verbose;
+
+	int opcode;
+	int event;
+	int error;
+
+	int delta_min;
+
+	int synaptics;
+
+	int shut_down;
+
+} XInputGrabber;
+
 /* names of the modifier keys */
 extern const char *modifiers_names[];
 
 /* valid strokes */
 extern const char _STROKE_CHARS[];
 
-Grabber *grabber_new(char *device_name, int button);
-
-void grabber_finalize(Grabber *self);
-void grabber_print_devices(Grabber *self);
-void grabber_any_modifier(Grabber *self, int enable);
-void grabber_list_devices(Grabber *self);
-void grabber_follow_pointer(Grabber *self, int enable);
-void grabber_focus(Grabber *self, int enable);
+XInputGrabber *grabber_xinput_new(char *device_name, int button);
+void grabber_xinput_loop(XInputGrabber *self, Mygestures *mygestures);
+// void grabber_finalize(XInputGrabber *self);
+// void grabber_print_devices(XInputGrabber *self);
+// void grabber_any_modifier(XInputGrabber *self, int enable);
+void grabber_list_devices(XInputGrabber *self);
+// void grabber_follow_pointer(XInputGrabber *self, int enable);
+// void grabber_focus(Grabber *XInputGrabber, int enable);
 
 #endif /* MYGESTURES_GRABBING_H_ */

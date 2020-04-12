@@ -21,158 +21,37 @@
 
 #include <wait.h>
 #include <unistd.h>
-#include <signal.h>
 
 #include <sys/types.h>
+
+#include <fcntl.h>
+
+#include <math.h>
+#include <X11/extensions/XTest.h> /* emulating device events */
+#include <sys/mman.h>
 
 #include "assert.h"
 #include "string.h"
 #include "config.h"
 
 #include "mygestures.h"
+#include "singleton.h"
 #include "main.h"
 
-#include "grabbing-xinput.h"
 #include "configuration.h"
 #include "configuration_parser.h"
 #include "drawing/drawing-brush-image.h"
 #include "actions.h"
 
-#include <fcntl.h>
-#include <signal.h>
-#include <math.h>
-#include <X11/extensions/XTest.h> /* emulating device events */
-
-#include <sys/mman.h>
-#include <sys/shm.h>
-
-uint MAX_GRABBED_DEVICES = 10;
+#include "grabbing-xinput.h"
+#include "grabbing-synaptics.h"
 
 #ifndef MAX_STROKES_PER_CAPTURE
 #define MAX_STROKES_PER_CAPTURE 63 /*TODO*/
 #endif
 
-struct shm_message
-{
-	int pid;
-	int kill;
-};
-
-static struct shm_message *message;
-static char *shm_identifier;
-
 const char stroke_representations[] = {' ', 'L', 'R', 'U', 'D', '1', '3', '7',
 									   '9'};
-
-/*
- * Ask other instances with same unique_identifier to exit.
- */
-void send_kill_message(char *device_name)
-{
-
-	assert(message);
-
-	/* if shared message contains a PID, kill that process */
-	if (message->pid > 0)
-	{
-		printf("Asking mygestures running on pid %d to exit..\n", message->pid);
-
-		int running = message->pid;
-
-		message->pid = getpid();
-		message->kill = 1;
-
-		int err = kill(running, SIGINT);
-
-		if (err)
-		{
-			printf("Error sending kill message.\n");
-		}
-
-		/* give some time. ignore failing */
-		usleep(100 * 1000); // 100ms
-	}
-
-	/* write own PID in shared memory */
-	message->pid = getpid();
-	message->kill = 0;
-}
-
-static void char_replace(char *str, char oldChar, char newChar)
-{
-	assert(str);
-	char *strPtr = str;
-	while ((strPtr = strchr(strPtr, oldChar)) != NULL)
-		*strPtr++ = newChar;
-}
-
-void alloc_shared_memory(char *device_name, int button)
-{
-
-	char *sanitized_device_name = device_name;
-
-	if (sanitized_device_name)
-	{
-		char_replace(sanitized_device_name, '/', '%');
-	}
-	else
-	{
-		sanitized_device_name = "";
-	}
-
-	int size = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s_button_%d", getuid(),
-						sanitized_device_name, button);
-
-	if (size < 0)
-	{
-		printf("Error in asprintf at alloc_shared_memory\n");
-		exit(1);
-	}
-
-	int shared_seg_size = sizeof(struct shm_message);
-	int shmfd = shm_open(shm_identifier, O_CREAT | O_RDWR, 0600);
-
-	//free(shm_identifier);
-
-	if (shmfd < 0)
-	{
-		perror("In shm_open()");
-		exit(shmfd);
-	}
-	int err = ftruncate(shmfd, shared_seg_size);
-
-	if (err)
-	{
-		printf("Error truncating SHM variable\n");
-	}
-
-	message = (struct shm_message *)mmap(NULL, shared_seg_size,
-										 PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);
-
-	if (message == NULL)
-	{
-		perror("In mmap()");
-		exit(1);
-	}
-}
-
-static void release_shared_memory()
-{
-
-	/*  If your head comes away from your neck, it's over! */
-
-	if (shm_identifier)
-	{
-
-		if (shm_unlink(shm_identifier) != 0)
-		{
-			perror("In shm_unlink()");
-			exit(1);
-		}
-
-		free(shm_identifier);
-	}
-}
 
 static char get_direction_from_deltas(int x_delta, int y_delta)
 {
@@ -203,6 +82,7 @@ static char get_direction_from_deltas(int x_delta, int y_delta)
 
 static void movement_add_direction(char *stroke_sequence, char direction)
 {
+
 	// grab stroke
 	int len = strlen(stroke_sequence);
 	if ((len == 0) || (stroke_sequence[len - 1] != direction))
@@ -217,43 +97,24 @@ static void movement_add_direction(char *stroke_sequence, char direction)
 	}
 }
 
-void on_interrupt(int a)
-{
-
-	if (message->kill)
-	{
-		printf("\nMygestures on PID %d asked me to exit.\n", message->pid);
-		// shared memory now belongs to the other process. will not be released
-	}
-	else
-	{
-		printf("\nReceived the interrupt signal.\n");
-		release_shared_memory();
-	}
-
-	exit(0);
-}
-
-void on_kill(int a)
-{
-	//release_shared_memory();
-
-	exit(0);
-}
-
 Mygestures *mygestures_new()
 {
 
 	Mygestures *self = malloc(sizeof(Mygestures));
 	bzero(self, sizeof(Mygestures));
 
-	self->device_list = malloc(sizeof(char *) * MAX_GRABBED_DEVICES);
+	self->device_name = "";
 	self->gestures_configuration = configuration_new();
+
+	self->fine_direction_sequence = malloc(sizeof(char) * MAX_STROKES_PER_CAPTURE);
+	self->rought_direction_sequence = malloc(sizeof(char) * MAX_STROKES_PER_CAPTURE);
+
+	self->dpy = XOpenDisplay(NULL);
 
 	return self;
 }
 
-static void mygestures_load_configuration(Mygestures *self)
+void mygestures_load_configuration(Mygestures *self)
 {
 
 	if (self->custom_config_file)
@@ -292,41 +153,33 @@ static struct brush_image_t *get_brush_image(char *color)
 	return brush_image;
 }
 
-static void grabber_set_brush_color(Grabber *self, char *brush_color)
+void mygestures_set_brush_color(Mygestures *self, char *brush_color)
 {
 	self->brush_image = get_brush_image(brush_color);
 }
 
-static void mygestures_grab_device(Mygestures *self, char *device_name)
+static void grabber_init_drawing(Mygestures *self)
 {
 
-	int p = fork();
+	assert(self->dpy);
 
-	if (p != 0)
+	int err = 0;
+	int scr = DefaultScreen(self->dpy);
+
+	if (self->brush_image)
 	{
 
-		/* We are in the forked thread. Start grabbing a device */
-
-		printf("Listening to device '%s'\n\n", device_name);
-
-		alloc_shared_memory(device_name, self->trigger_button);
-
-		Grabber *grabber = grabber_new(device_name, self->trigger_button);
-
-		grabber_set_brush_color(grabber, self->brush_color);
-
-		send_kill_message(device_name);
-
-		signal(SIGINT, on_interrupt);
-		signal(SIGKILL, on_kill);
-
-		if (self->list_devices_flag)
+		err = backing_init(&(self->backing), self->dpy,
+						   DefaultRootWindow(self->dpy), DisplayWidth(self->dpy, scr),
+						   DisplayHeight(self->dpy, scr), DefaultDepth(self->dpy, scr));
+		if (err)
 		{
-			grabber_list_devices(grabber);
+			fprintf(stderr, "cannot open backing store.... \n");
 		}
-		else
+		err = brush_init(&(self->brush), &(self->backing), self->brush_image);
+		if (err)
 		{
-			grabber_loop(grabber, self->gestures_configuration);
+			fprintf(stderr, "cannot init brush.... \n");
 		}
 	}
 }
@@ -406,10 +259,12 @@ static char get_fine_direction_from_deltas(int x_delta, int y_delta)
 /**
  * Clear previous movement data.
  */
-void grabbing_start_movement(Grabber *self, int new_x, int new_y)
+void mygestures_start_movement(Mygestures *self, int new_x, int new_y, int delta_min)
 {
 
 	self->started = 1;
+
+	grabber_init_drawing(self);
 
 	self->fine_direction_sequence[0] = '\0';
 	self->rought_direction_sequence[0] = '\0';
@@ -430,7 +285,7 @@ void grabbing_start_movement(Grabber *self, int new_x, int new_y)
 	return;
 }
 
-void grabbing_update_movement(Grabber *self, int new_x, int new_y)
+void mygestures_update_movement(Mygestures *self, int new_x, int new_y, int delta_min)
 {
 
 	if (!self->started)
@@ -450,7 +305,7 @@ void grabbing_update_movement(Grabber *self, int new_x, int new_y)
 	int x_delta = (new_x - self->old_x);
 	int y_delta = (new_y - self->old_y);
 
-	if ((abs(x_delta) > self->delta_min) || (abs(y_delta) > self->delta_min))
+	if ((abs(x_delta) > delta_min) || (abs(y_delta) > delta_min))
 	{
 
 		char stroke = get_fine_direction_from_deltas(x_delta, y_delta);
@@ -470,7 +325,7 @@ void grabbing_update_movement(Grabber *self, int new_x, int new_y)
 
 	int square_distance_2 = rought_delta_x * rought_delta_x + rought_delta_y * rought_delta_y;
 
-	if (self->delta_min * self->delta_min < square_distance_2)
+	if (delta_min * delta_min < square_distance_2)
 	{
 		// grab stroke
 
@@ -672,14 +527,6 @@ static ActiveWindowInfo *get_active_window_info(Display *dpy, Window win)
 	return ans;
 }
 
-static void mouse_click(Display *display, int button, int x, int y)
-{
-
-	XTestFakeMotionEvent(display, DefaultScreen(display), x, y, 0);
-	XTestFakeButtonEvent(display, button, True, CurrentTime);
-	XTestFakeButtonEvent(display, button, False, CurrentTime);
-}
-
 static void free_grabbed(Capture *free_me)
 {
 	assert(free_me);
@@ -690,8 +537,8 @@ static void free_grabbed(Capture *free_me)
 /**
  *
  */
-void grabbing_end_movement(Grabber *self, int new_x, int new_y,
-						   char *device_name, Configuration *conf)
+int grabbing_end_movement(Mygestures *self, int new_x, int new_y,
+						  char *device_name, Mygestures *mygestures)
 {
 
 	Window focused_window = get_focused_window(self->dpy);
@@ -699,27 +546,18 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 
 	Capture *grab = NULL;
 
-	self->started = 0;
+	mygestures->started = 0;
 
 	// if is drawing
-	if (self->brush_image)
+	if (mygestures->brush_image)
 	{
-		backing_restore(&(self->backing));
+		backing_restore(&(mygestures->backing));
 	};
 
 	// if there is no gesture
-	if ((strlen(self->rought_direction_sequence) == 0) && (strlen(self->fine_direction_sequence) == 0))
+	if ((strlen(mygestures->rought_direction_sequence) == 0) && (strlen(mygestures->fine_direction_sequence) == 0))
 	{
-
-		if (!(self->synaptics))
-		{
-
-			printf("\nEmulating click\n");
-
-			//grabbing_xinput_grab_stop(self);
-			mouse_click(self->dpy, self->button, new_x, new_y);
-			//grabbing_xinput_grab_start(self);
-		}
+		return 0; // TODO: turn into enum.
 	}
 	else
 	{
@@ -748,7 +586,9 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 		printf("     Window class: \"%s\"\n", grab->active_window_info->class);
 		printf("     Device      : \"%s\"\n", device_name);
 
-		Gesture *gest = configuration_process_gesture(conf, grab);
+		assert(self->gestures_configuration);
+
+		Gesture *gest = configuration_process_gesture(self->gestures_configuration, grab);
 
 		if (gest)
 		{
@@ -781,53 +621,5 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 
 		free_grabbed(grab);
 	}
-}
-
-void mygestures_run(Mygestures *self)
-{
-
-	printf("%s\n\n", PACKAGE_STRING);
-	/*
-	 * Will not load configuration if it is only listing the devices.
-	 */
-	if (!self->list_devices_flag)
-	{
-		mygestures_load_configuration(self);
-	}
-
-	if (self->libinput)
-	{
-	}
-	else
-	{
-
-		if (self->multitouch)
-		{
-			printf("Starting in multitouch mode.\n");
-			mygestures_grab_device(self, "synaptics");
-		}
-		else
-		{
-
-			if (self->device_count)
-			{
-				/*
-		 * Start grabbing any device passed via argument flags.
-		 */
-				for (int i = 0; i < self->device_count; ++i)
-				{
-					mygestures_grab_device(self, self->device_list[i]);
-				}
-			}
-			else
-			{
-
-				printf("Selecting default xinput device.\n");
-				mygestures_grab_device(self, "Virtual Core Pointer");
-				/*
-		 * If there where no devices in the argument flags, then grab the default devices.
-		 */
-			}
-		}
-	}
+	return 1;
 }

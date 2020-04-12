@@ -4,9 +4,6 @@ AM_CFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' -O2 $(LIBXML2_CFLAGS) $(LIBEVDEV_CFLA
 
 bin_PROGRAMS=mygestures igestures
 
-MAKEFLAGS = --silent
-
-
 mygestures_SOURCES = \
         main.c main.h \
 	      mygestures.c mygestures.h \
