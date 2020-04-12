@@ -35,14 +35,22 @@
 #include "grabbing-xinput.h"
 #include "configuration.h"
 #include "configuration_parser.h"
+#include "drawing/drawing-brush-image.h"
+#include "actions.h"
 
 #include <fcntl.h>
 #include <signal.h>
-
-uint MAX_GRABBED_DEVICES = 10;
+#include <math.h>
+#include <X11/extensions/XTest.h> /* emulating device events */
 
 #include <sys/mman.h>
 #include <sys/shm.h>
+
+uint MAX_GRABBED_DEVICES = 10;
+
+#ifndef MAX_STROKES_PER_CAPTURE
+#define MAX_STROKES_PER_CAPTURE 63 /*TODO*/
+#endif
 
 struct shm_message
 {
@@ -52,6 +60,9 @@ struct shm_message
 
 static struct shm_message *message;
 static char *shm_identifier;
+
+const char stroke_representations[] = {' ', 'L', 'R', 'U', 'D', '1', '3', '7',
+									   '9'};
 
 /*
  * Ask other instances with same unique_identifier to exit.
@@ -163,6 +174,49 @@ static void release_shared_memory()
 	}
 }
 
+static char get_direction_from_deltas(int x_delta, int y_delta)
+{
+
+	if (abs(y_delta) > abs(x_delta))
+	{
+		if (y_delta > 0)
+		{
+			return stroke_representations[DOWN];
+		}
+		else
+		{
+			return stroke_representations[UP];
+		}
+	}
+	else
+	{
+		if (x_delta > 0)
+		{
+			return stroke_representations[RIGHT];
+		}
+		else
+		{
+			return stroke_representations[LEFT];
+		}
+	}
+}
+
+static void movement_add_direction(char *stroke_sequence, char direction)
+{
+	// grab stroke
+	int len = strlen(stroke_sequence);
+	if ((len == 0) || (stroke_sequence[len - 1] != direction))
+	{
+
+		if (len < MAX_STROKES_PER_CAPTURE)
+		{
+
+			stroke_sequence[len] = direction;
+			stroke_sequence[len + 1] = '\0';
+		}
+	}
+}
+
 void on_interrupt(int a)
 {
 
@@ -245,6 +299,441 @@ static void mygestures_grab_device(Mygestures *self, char *device_name)
 			grabber_loop(grabber, self->gestures_configuration);
 		}
 	}
+}
+
+static char get_fine_direction_from_deltas(int x_delta, int y_delta)
+{
+
+	if ((x_delta == 0) && (y_delta == 0))
+	{
+		return stroke_representations[NONE];
+	}
+
+	// check if the movement is near main axes
+	if ((x_delta == 0) || (y_delta == 0) || (fabs((float)x_delta / (float)y_delta) > 3) || (fabs((float)y_delta / (float)x_delta) > 3))
+	{
+
+		// x axe
+		if (abs(x_delta) > abs(y_delta))
+		{
+
+			if (x_delta > 0)
+			{
+				return stroke_representations[RIGHT];
+			}
+			else
+			{
+				return stroke_representations[LEFT];
+			}
+
+			// y axe
+		}
+		else
+		{
+
+			if (y_delta > 0)
+			{
+				return stroke_representations[DOWN];
+			}
+			else
+			{
+				return stroke_representations[UP];
+			}
+		}
+
+		// diagonal axes
+	}
+	else
+	{
+
+		if (y_delta < 0)
+		{
+			if (x_delta < 0)
+			{
+				return stroke_representations[SEVEN];
+			}
+			else if (x_delta > 0)
+			{ // RIGHT
+				return stroke_representations[NINE];
+			}
+		}
+		else if (y_delta > 0)
+		{ // DOWN
+			if (x_delta < 0)
+			{ // RIGHT
+				return stroke_representations[ONE];
+			}
+			else if (x_delta > 0)
+			{
+				return stroke_representations[THREE];
+			}
+		}
+	}
+
+	return stroke_representations[NONE];
+}
+
+/**
+ * Clear previous movement data.
+ */
+void grabbing_start_movement(Grabber *self, int new_x, int new_y)
+{
+
+	self->started = 1;
+
+	self->fine_direction_sequence[0] = '\0';
+	self->rought_direction_sequence[0] = '\0';
+
+	self->old_x = new_x;
+	self->old_y = new_y;
+
+	self->rought_old_x = new_x;
+	self->rought_old_y = new_y;
+
+	if (self->brush_image)
+	{
+
+		backing_save(&(self->backing), new_x - self->brush.image_width,
+					 new_y - self->brush.image_height);
+		brush_draw(&(self->brush), self->old_x, self->old_y);
+	}
+	return;
+}
+
+void grabbing_update_movement(Grabber *self, int new_x, int new_y)
+{
+
+	if (!self->started)
+	{
+		return;
+	}
+
+	// se for o caso, desenha o movimento na tela
+	if (self->brush_image)
+	{
+		backing_save(&(self->backing), new_x - self->brush.image_width,
+					 new_y - self->brush.image_height);
+
+		brush_line_to(&(self->brush), new_x, new_y);
+	}
+
+	int x_delta = (new_x - self->old_x);
+	int y_delta = (new_y - self->old_y);
+
+	if ((abs(x_delta) > self->delta_min) || (abs(y_delta) > self->delta_min))
+	{
+
+		char stroke = get_fine_direction_from_deltas(x_delta, y_delta);
+
+		movement_add_direction(self->fine_direction_sequence, stroke);
+
+		// reset start position
+		self->old_x = new_x;
+		self->old_y = new_y;
+	}
+
+	int rought_delta_x = new_x - self->rought_old_x;
+	int rought_delta_y = new_y - self->rought_old_y;
+
+	char rought_direction = get_direction_from_deltas(rought_delta_x,
+													  rought_delta_y);
+
+	int square_distance_2 = rought_delta_x * rought_delta_x + rought_delta_y * rought_delta_y;
+
+	if (self->delta_min * self->delta_min < square_distance_2)
+	{
+		// grab stroke
+
+		movement_add_direction(self->rought_direction_sequence,
+							   rought_direction);
+
+		// reset start position
+		self->rought_old_x = new_x;
+		self->rought_old_y = new_y;
+	}
+
+	return;
+}
+
+static Window get_parent_window(Display *dpy, Window w)
+{
+	Window root_return, parent_return, *child_return;
+	unsigned int nchildren_return;
+	int ret;
+	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return,
+					 &nchildren_return);
+
+	if (!ret)
+	{
+		printf("NULL value from xquerytree on get_parent_window.");
+		exit(1);
+	}
+	return parent_return;
+}
+
+static Window get_focused_window(Display *dpy)
+{
+
+	Window win = 0;
+	int val;
+	XGetInputFocus(dpy, &win, &val);
+
+	if (val == RevertToParent)
+	{
+		win = get_parent_window(dpy, win);
+	}
+
+	return win;
+}
+
+static void execute_action(Display *dpy, Action *action, Window focused_window)
+{
+	int id;
+
+	assert(dpy);
+	assert(action);
+	assert(focused_window);
+
+	switch (action->type)
+	{
+	case ACTION_EXECUTE:
+		id = fork();
+		if (id == 0)
+		{
+			int i = system(action->original_str);
+			exit(i);
+		}
+		if (id < 0)
+		{
+			fprintf(stderr, "Error forking.\n");
+		}
+
+		break;
+	case ACTION_ICONIFY:
+		action_iconify(dpy, focused_window);
+		break;
+	case ACTION_KILL:
+		action_kill(dpy, focused_window);
+		break;
+	case ACTION_RAISE:
+		action_raise(dpy, focused_window);
+		break;
+	case ACTION_LOWER:
+		action_lower(dpy, focused_window);
+		break;
+	case ACTION_MAXIMIZE:
+		action_maximize(dpy, focused_window);
+		break;
+	case ACTION_RESTORE:
+		action_restore(dpy, focused_window);
+		break;
+	case ACTION_TOGGLE_MAXIMIZED:
+		action_toggle_maximized(dpy, focused_window);
+		break;
+	case ACTION_KEYPRESS:
+		action_keypress(dpy, action->original_str);
+		break;
+	default:
+		fprintf(stderr, "found an unknown gesture \n");
+	}
+
+	XAllowEvents(dpy, 0, CurrentTime);
+
+	return;
+}
+
+static void fetch_window_title(Display *dpy, Window w, char **out_window_title)
+{
+
+	XTextProperty text_prop;
+	char **list;
+	int num;
+
+	int status;
+
+	status = XGetWMName(dpy, w, &text_prop);
+	if (!status || !text_prop.value || !text_prop.nitems)
+	{
+		*out_window_title = "";
+	}
+	status = Xutf8TextPropertyToTextList(dpy, &text_prop, &list, &num);
+
+	if (status < Success || !num || !*list)
+	{
+		*out_window_title = "";
+	}
+	else
+	{
+		*out_window_title = (char *)strdup(*list);
+	}
+	XFree(text_prop.value);
+	XFreeStringList(list);
+}
+
+/*
+ * Return a window_info struct for the focused window at a given Display.
+ */
+static ActiveWindowInfo *get_active_window_info(Display *dpy, Window win)
+{
+
+	char *win_title;
+	fetch_window_title(dpy, win, &win_title);
+
+	ActiveWindowInfo *ans = malloc(sizeof(ActiveWindowInfo));
+	bzero(ans, sizeof(ActiveWindowInfo));
+
+	char *win_class = NULL;
+
+	XClassHint class_hints;
+
+	int result = XGetClassHint(dpy, win, &class_hints);
+
+	if (result)
+	{
+
+		if (class_hints.res_class != NULL)
+			win_class = class_hints.res_class;
+
+		if (win_class == NULL)
+		{
+			win_class = "";
+		}
+	}
+
+	if (win_class)
+	{
+		ans->class = win_class;
+	}
+	else
+	{
+		ans->class = "";
+	}
+
+	if (win_title)
+	{
+		ans->title = win_title;
+	}
+	else
+	{
+		ans->title = "";
+	}
+
+	return ans;
+}
+
+static void mouse_click(Display *display, int button, int x, int y)
+{
+
+	XTestFakeMotionEvent(display, DefaultScreen(display), x, y, 0);
+	XTestFakeButtonEvent(display, button, True, CurrentTime);
+	XTestFakeButtonEvent(display, button, False, CurrentTime);
+}
+
+static void free_grabbed(Capture *free_me)
+{
+	assert(free_me);
+	free(free_me->active_window_info);
+	free(free_me);
+}
+
+/**
+ *
+ */
+void grabbing_end_movement(Grabber *self, int new_x, int new_y,
+						   char *device_name, Configuration *conf)
+{
+
+	grabbing_xinput_grab_stop(self);
+
+	Window focused_window = get_focused_window(self->dpy);
+	Window target_window = focused_window;
+
+	Capture *grab = NULL;
+
+	self->started = 0;
+
+	// if is drawing
+	if (self->brush_image)
+	{
+		backing_restore(&(self->backing));
+	};
+
+	// if there is no gesture
+	if ((strlen(self->rought_direction_sequence) == 0) && (strlen(self->fine_direction_sequence) == 0))
+	{
+
+		if (!(self->synaptics))
+		{
+
+			printf("\nEmulating click\n");
+
+			//grabbing_xinput_grab_stop(self);
+			mouse_click(self->dpy, self->button, new_x, new_y);
+			//grabbing_xinput_grab_start(self);
+		}
+	}
+	else
+	{
+
+		int expression_count = 2;
+		char **expression_list = malloc(sizeof(char *) * expression_count);
+
+		expression_list[0] = self->fine_direction_sequence;
+		expression_list[1] = self->rought_direction_sequence;
+
+		ActiveWindowInfo *window_info = get_active_window_info(self->dpy,
+															   target_window);
+
+		grab = malloc(sizeof(Capture));
+
+		grab->expression_count = expression_count;
+		grab->expression_list = expression_list;
+		grab->active_window_info = window_info;
+	}
+
+	if (grab)
+	{
+
+		printf("\n");
+		printf("     Window title: \"%s\"\n", grab->active_window_info->title);
+		printf("     Window class: \"%s\"\n", grab->active_window_info->class);
+		printf("     Device      : \"%s\"\n", device_name);
+
+		Gesture *gest = configuration_process_gesture(conf, grab);
+
+		if (gest)
+		{
+			printf("     Movement '%s' matched gesture '%s' on context '%s'\n",
+				   gest->movement->name, gest->name, gest->context->name);
+
+			int j = 0;
+
+			for (j = 0; j < gest->action_count; ++j)
+			{
+				Action *a = gest->action_list[j];
+				printf("     Executing action: %s %s\n",
+					   get_action_name(a->type), a->original_str);
+				execute_action(self->dpy, a, target_window);
+			}
+		}
+		else
+		{
+
+			for (int i = 0; i < grab->expression_count; ++i)
+			{
+				char *movement = grab->expression_list[i];
+				printf(
+					"     Sequence '%s' does not match any known movement.\n",
+					movement);
+			}
+		}
+
+		printf("\n");
+
+		free_grabbed(grab);
+	}
+
+	grabbing_xinput_grab_start(self);
 }
 
 void mygestures_run(Mygestures *self)

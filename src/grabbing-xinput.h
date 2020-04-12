@@ -18,10 +18,8 @@
 #ifndef MYGESTURES_GRABBING_H_
 #define MYGESTURES_GRABBING_H_
 
-#include <X11/Xlib.h>
-#include "drawing/drawing-backing.h"
-#include "drawing/drawing-brush.h"
 #include "configuration.h"
+#include "mygestures.h"
 
 /* modifier keys */
 enum
@@ -42,55 +40,7 @@ extern const char *modifiers_names[];
 /* valid strokes */
 extern const char _STROKE_CHARS[];
 
-typedef struct
-{
-
-	Display *dpy;
-
-	char *devicename;
-	int deviceid;
-	int is_direct_touch;
-
-	int button;
-	int any_modifier;
-	int follow_pointer;
-	int focus;
-
-	int started;
-	int verbose;
-
-	int opcode;
-	int event;
-	int error;
-
-	int old_x;
-	int old_y;
-
-	int delta_min;
-
-	int synaptics;
-
-	int rought_old_x;
-	int rought_old_y;
-
-	char *fine_direction_sequence;
-	char *rought_direction_sequence;
-
-	backing_t backing;
-	brush_t brush;
-
-	int shut_down;
-
-	struct brush_image_t *brush_image;
-
-} Grabber;
-
 Grabber *grabber_new(char *device_name, int button);
-void grabber_loop(Grabber *self, Configuration *conf);
-void grabbing_start_movement(Grabber *self, int new_x, int new_y);
-void grabbing_update_movement(Grabber *self, int new_x, int new_y);
-void grabbing_end_movement(Grabber *self, int new_x, int new_y,
-						   char *device_name, Configuration *conf);
 
 void grabber_finalize(Grabber *self);
 void grabber_print_devices(Grabber *self);

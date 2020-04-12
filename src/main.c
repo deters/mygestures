@@ -119,5 +119,5 @@ int main(int argc, char *const *argv)
 	Mygestures *mygestures = mygestures_new();
 	process_arguments(mygestures, argc, argv);
 
-		exit(0);
+	exit(0);
 }

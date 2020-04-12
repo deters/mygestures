@@ -38,6 +38,49 @@
 
 #define SYNAPTICS_PROP_TAP_ACTION "Synaptics Tap Action"
 
+typedef struct
+{
+
+	Display *dpy;
+
+	char *devicename;
+	int deviceid;
+	int is_direct_touch;
+
+	int button;
+	int any_modifier;
+	int follow_pointer;
+	int focus;
+
+	int started;
+	int verbose;
+
+	int opcode;
+	int event;
+	int error;
+
+	int old_x;
+	int old_y;
+
+	int delta_min;
+
+	int synaptics;
+
+	int rought_old_x;
+	int rought_old_y;
+
+	char *fine_direction_sequence;
+	char *rought_direction_sequence;
+
+	backing_t backing;
+	brush_t brush;
+
+	int shut_down;
+
+	struct brush_image_t *brush_image;
+
+} SynapticsGrabber;
+
 static XDevice *
 dp_get_device(Display *dpy)
 {
