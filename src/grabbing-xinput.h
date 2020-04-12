@@ -44,7 +44,6 @@ Grabber *grabber_new(char *device_name, int button);
 
 void grabber_finalize(Grabber *self);
 void grabber_print_devices(Grabber *self);
-void grabber_set_brush_color(Grabber *self, char *brush_color);
 void grabber_any_modifier(Grabber *self, int enable);
 void grabber_list_devices(Grabber *self);
 void grabber_follow_pointer(Grabber *self, int enable);

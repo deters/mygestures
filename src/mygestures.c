@@ -267,6 +267,36 @@ static void mygestures_load_configuration(Mygestures *self)
 	}
 }
 
+static struct brush_image_t *get_brush_image(char *color)
+{
+
+	struct brush_image_t *brush_image = NULL;
+
+	if (!color)
+		brush_image = NULL;
+	else if (strcasecmp(color, "red") == 0)
+		brush_image = &brush_image_red;
+	else if (strcasecmp(color, "green") == 0)
+		brush_image = &brush_image_green;
+	else if (strcasecmp(color, "yellow") == 0)
+		brush_image = &brush_image_yellow;
+	else if (strcasecmp(color, "white") == 0)
+		brush_image = &brush_image_white;
+	else if (strcasecmp(color, "purple") == 0)
+		brush_image = &brush_image_purple;
+	else if (strcasecmp(color, "blue") == 0)
+		brush_image = &brush_image_blue;
+	else
+		brush_image = NULL;
+
+	return brush_image;
+}
+
+static void grabber_set_brush_color(Grabber *self, char *brush_color)
+{
+	self->brush_image = get_brush_image(brush_color);
+}
+
 static void mygestures_grab_device(Mygestures *self, char *device_name)
 {
 

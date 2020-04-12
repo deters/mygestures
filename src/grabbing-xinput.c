@@ -50,31 +50,6 @@ static void grabber_open_display(Grabber *self)
 	}
 }
 
-static struct brush_image_t *get_brush_image(char *color)
-{
-
-	struct brush_image_t *brush_image = NULL;
-
-	if (!color)
-		brush_image = NULL;
-	else if (strcasecmp(color, "red") == 0)
-		brush_image = &brush_image_red;
-	else if (strcasecmp(color, "green") == 0)
-		brush_image = &brush_image_green;
-	else if (strcasecmp(color, "yellow") == 0)
-		brush_image = &brush_image_yellow;
-	else if (strcasecmp(color, "white") == 0)
-		brush_image = &brush_image_white;
-	else if (strcasecmp(color, "purple") == 0)
-		brush_image = &brush_image_purple;
-	else if (strcasecmp(color, "blue") == 0)
-		brush_image = &brush_image_blue;
-	else
-		brush_image = NULL;
-
-	return brush_image;
-}
-
 static void grabber_init_drawing(Grabber *self)
 {
 
@@ -362,11 +337,6 @@ void grabber_set_device(Grabber *self, char *device_name)
 		self->synaptics = 0;
 		self->delta_min = 30;
 	}
-}
-
-void grabber_set_brush_color(Grabber *self, char *brush_color)
-{
-	self->brush_image = get_brush_image(brush_color);
 }
 
 Grabber *grabber_new(char *device_name, int button)
