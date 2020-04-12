@@ -485,6 +485,27 @@ void grabbing_update_movement(Grabber *self, int new_x, int new_y)
 	return;
 }
 
+// static Window get_window_under_pointer(Display *dpy)
+// {
+
+// 	Window root_return, child_return;
+// 	int root_x_return, root_y_return;
+// 	int win_x_return, win_y_return;
+// 	unsigned int mask_return;
+// 	XQueryPointer(dpy, DefaultRootWindow(dpy), &root_return, &child_return,
+// 				  &root_x_return, &root_y_return, &win_x_return, &win_y_return,
+// 				  &mask_return);
+
+// 	Window w = child_return;
+// 	Window parent_return;
+// 	Window *children_return;
+// 	unsigned int nchildren_return;
+// 	XQueryTree(dpy, w, &root_return, &parent_return, &children_return,
+// 			   &nchildren_return);
+
+// 	return children_return[nchildren_return - 1];
+// }
+
 static Window get_parent_window(Display *dpy, Window w)
 {
 	Window root_return, parent_return, *child_return;
@@ -673,8 +694,6 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 						   char *device_name, Configuration *conf)
 {
 
-	grabbing_xinput_grab_stop(self);
-
 	Window focused_window = get_focused_window(self->dpy);
 	Window target_window = focused_window;
 
@@ -762,8 +781,6 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 
 		free_grabbed(grab);
 	}
-
-	grabbing_xinput_grab_start(self);
 }
 
 void mygestures_run(Mygestures *self)
