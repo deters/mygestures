@@ -343,7 +343,7 @@ char *get_device_name_from_event(XInputGrabber *self, XIDeviceEvent *data)
 	return device_name;
 }
 
-void grabber_list_devices(XInputGrabber *self)
+void grabber_xinput_list_devices(XInputGrabber *self)
 {
 	grabber_xinput_open_devices(self, True);
 };

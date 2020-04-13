@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 
 #include <sys/shm.h> /* needed for synaptics */
 #include <X11/Xlib.h>
@@ -38,9 +39,26 @@
 
 #define SYNAPTICS_PROP_TAP_ACTION "Synaptics Tap Action"
 
+SynapticsGrabber *grabber_synaptics_new()
+{
+
+	SynapticsGrabber *self = malloc(sizeof(SynapticsGrabber));
+	bzero(self, sizeof(SynapticsGrabber));
+
+	//assert(button);
+
+	self->devicename = "synaptics";
+	//grabber_set_button(self, button);
+
+	return self;
+}
+
 static XDevice *
 dp_get_device(Display *dpy)
 {
+
+	assert(dpy);
+
 	XDevice *dev = NULL;
 	XDeviceInfo *info = NULL;
 	int ndevices = 0;
@@ -185,6 +203,10 @@ void syn_print(const SynapticsSHM *cur)
 
 void synaptics_disable_3fingers_tap(SynapticsGrabber *self, XDevice *dev)
 {
+
+	assert(self->dpy);
+	assert(dev);
+
 	Atom prop, type;
 	int format;
 	unsigned long nitems, bytes_after;
@@ -213,9 +235,14 @@ void synaptics_disable_3fingers_tap(SynapticsGrabber *self, XDevice *dev)
 void grabber_synaptics_loop(SynapticsGrabber *self, Mygestures *mygestures)
 {
 
+	self->dpy = mygestures->dpy;
+
 	XDevice *dev = NULL;
 
 	Atom synaptics_property = 0;
+
+	assert(self->dpy);
+	assert(mygestures);
 
 	synaptics_property = XInternAtom(self->dpy, SYNAPTICS_PROP_TAP_ACTION, True);
 	if (!synaptics_property)

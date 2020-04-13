@@ -7,7 +7,7 @@ typedef struct
     Display *dpy;
 
     char *devicename;
-    int deviceid;
+
     int is_direct_touch;
 
     int verbose;
@@ -22,6 +22,6 @@ typedef struct
 
 } SynapticsGrabber;
 
-SynapticsGrabber *grabber_synaptics_init(SynapticsGrabber *self);
+SynapticsGrabber *grabber_synaptics_new();
 void grabber_synaptics_loop(SynapticsGrabber *self, Mygestures *mygestures);
 void grabber_synaptics_finalize(SynapticsGrabber *self);

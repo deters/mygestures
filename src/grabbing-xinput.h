@@ -74,7 +74,7 @@ void grabber_xinput_loop(XInputGrabber *self, Mygestures *mygestures);
 // void grabber_finalize(XInputGrabber *self);
 // void grabber_print_devices(XInputGrabber *self);
 // void grabber_any_modifier(XInputGrabber *self, int enable);
-void grabber_list_devices(XInputGrabber *self);
+void grabber_xinput_list_devices(XInputGrabber *self);
 // void grabber_follow_pointer(XInputGrabber *self, int enable);
 // void grabber_focus(Grabber *XInputGrabber, int enable);
 
