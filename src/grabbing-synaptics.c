@@ -45,6 +45,8 @@ SynapticsGrabber *grabber_synaptics_new()
 	SynapticsGrabber *self = malloc(sizeof(SynapticsGrabber));
 	bzero(self, sizeof(SynapticsGrabber));
 
+	self->delta_min = 100;
+
 	//assert(button);
 
 	self->devicename = "synaptics";

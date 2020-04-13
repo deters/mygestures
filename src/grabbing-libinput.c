@@ -922,7 +922,7 @@ handle_and_print_events(struct libinput *li, Mygestures *mygestures, LibinputGra
 
                         if (self->event_count > 1)
                         { /// ignora o primeiro movimento, pois está calculando errado.
-                                mygestures_update_movement(mygestures, libinput_event_gesture_get_dx(libinput_event_get_gesture_event(ev)), libinput_event_gesture_get_dy(libinput_event_get_gesture_event(ev)), self->delta_min);
+                                mygestures_update_movement(mygestures, libinput_event_gesture_get_dx_unaccelerated(libinput_event_get_gesture_event(ev)), libinput_event_gesture_get_dy_unaccelerated(libinput_event_get_gesture_event(ev)), self->delta_min);
                         }
 
                         break;
@@ -1209,7 +1209,7 @@ LibinputGrabber *grabber_libinput_new(char *device_name, int button)
         //assert(button);
 
         self->devicename = device_name;
-        self->delta_min = 20;
+        self->delta_min = 50;
         self->button = button;
         return self;
 }

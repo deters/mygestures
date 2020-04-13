@@ -321,13 +321,31 @@ void mygestures_update_movement(Mygestures *self, int new_x, int new_y, int delt
 
 		movement_add_direction(self->fine_direction_sequence, stroke);
 
-		// reset start position
-		self->old_x = new_x;
-		self->old_y = new_y;
+		if (self->delta_updates)
+		{
+
+			// reset start position
+			self->old_x = self->old_x + x_delta;
+			self->old_y = self->old_y + y_delta;
+		}
+		else
+		{
+
+			// reset start position
+			self->old_x = new_x;
+			self->old_y = new_y;
+		}
 	}
 
 	int rought_delta_x = new_x - self->rought_old_x;
 	int rought_delta_y = new_y - self->rought_old_y;
+
+	if (self->delta_updates)
+	{
+
+		rought_delta_x = (self->rought_old_x + new_x) - self->rought_old_x;
+		rought_delta_y = (self->rought_old_y + new_y) - self->rought_old_y;
+	}
 
 	char rought_direction = get_direction_from_deltas(rought_delta_x,
 													  rought_delta_y);
@@ -341,9 +359,20 @@ void mygestures_update_movement(Mygestures *self, int new_x, int new_y, int delt
 		movement_add_direction(self->rought_direction_sequence,
 							   rought_direction);
 
-		// reset start position
-		self->rought_old_x = new_x;
-		self->rought_old_y = new_y;
+		if (self->delta_updates)
+		{
+
+			// reset start position
+			self->rought_old_x = self->rought_old_x + new_x;
+			self->rought_old_y = self->rought_old_y + new_y;
+		}
+		else
+		{
+
+			// reset start position
+			self->rought_old_x = new_x;
+			self->rought_old_y = new_y;
+		}
 	}
 
 	return;
