@@ -55,6 +55,7 @@ void action_iconify(Display *dpy, Window w)
 	if (w != None)
 		XIconifyWindow(dpy, w, 0);
 
+	
 	return;
 }
 

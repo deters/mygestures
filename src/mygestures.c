@@ -161,13 +161,13 @@ void mygestures_set_brush_color(Mygestures *self, char *brush_color)
 static void grabber_init_drawing(Mygestures *self)
 {
 
-	assert(self->dpy);
-
-	int err = 0;
-	int scr = DefaultScreen(self->dpy);
-
 	if (self->brush_image)
 	{
+
+		assert(self->dpy);
+
+		int err = 0;
+		int scr = DefaultScreen(self->dpy);
 
 		err = backing_init(&(self->backing), self->dpy,
 						   DefaultRootWindow(self->dpy), DisplayWidth(self->dpy, scr),
@@ -443,7 +443,7 @@ static void execute_action(Display *dpy, Action *action, Window focused_window)
 		fprintf(stderr, "found an unknown gesture \n");
 	}
 
-	XAllowEvents(dpy, 0, CurrentTime);
+	XFlush(dpy);
 
 	return;
 }
@@ -541,9 +541,6 @@ int grabbing_end_movement(Mygestures *self, int new_x, int new_y,
 						  char *device_name, Mygestures *mygestures)
 {
 
-	Window focused_window = get_focused_window(self->dpy);
-	Window target_window = focused_window;
-
 	Capture *grab = NULL;
 
 	mygestures->started = 0;
@@ -568,6 +565,9 @@ int grabbing_end_movement(Mygestures *self, int new_x, int new_y,
 		expression_list[0] = self->fine_direction_sequence;
 		expression_list[1] = self->rought_direction_sequence;
 
+		Window focused_window = get_focused_window(self->dpy);
+		Window target_window = focused_window;
+
 		ActiveWindowInfo *window_info = get_active_window_info(self->dpy,
 															   target_window);
 
@@ -576,10 +576,6 @@ int grabbing_end_movement(Mygestures *self, int new_x, int new_y,
 		grab->expression_count = expression_count;
 		grab->expression_list = expression_list;
 		grab->active_window_info = window_info;
-	}
-
-	if (grab)
-	{
 
 		printf("\n");
 		printf("     Window title: \"%s\"\n", grab->active_window_info->title);
