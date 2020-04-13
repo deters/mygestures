@@ -29,7 +29,6 @@
 #include "mygestures.h"
 
 #include "grabbing-xinput.h"
-#include "grabbing-synaptics.h"
 
 static void mouse_click(Display *display, int button, int x, int y)
 {
@@ -271,27 +270,6 @@ static void grabber_xinput_open_devices(XInputGrabber *self, int verbose)
 	XIFreeDeviceInfo(devices);
 }
 
-void grabber_set_button(XInputGrabber *self, int button)
-{
-	self->button = button;
-}
-
-void grabber_set_device(XInputGrabber *self, char *device_name)
-{
-	self->devicename = device_name;
-
-	if (strcasecmp(self->devicename, "SYNAPTICS") == 0)
-	{
-		self->synaptics = 1;
-		self->delta_min = 200;
-	}
-	else
-	{
-		self->synaptics = 0;
-		self->delta_min = 30;
-	}
-}
-
 static void grabber_open_display(XInputGrabber *self)
 {
 
@@ -321,8 +299,10 @@ XInputGrabber *grabber_xinput_new(char *device_name, int button)
 	assert(device_name);
 	assert(button);
 
-	grabber_set_device(self, strdup(device_name));
-	grabber_set_button(self, button);
+	self->devicename = device_name;
+	self->synaptics = 0;
+	self->delta_min = 30;
+	self->button = button;
 
 	return self;
 }

@@ -15,10 +15,9 @@
  one line to give the program's name and an idea of what it does.
  */
 
-#ifndef MYGESTURES_GRABBING_H_
-#define MYGESTURES_GRABBING_H_
+#ifndef XINPUT_GRABBING_H_
+#define XINPUT_GRABBING_H_
 
-#include "configuration.h"
 #include "mygestures.h"
 
 /* modifier keys */

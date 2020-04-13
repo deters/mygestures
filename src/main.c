@@ -12,6 +12,7 @@
 
 #include "grabbing-xinput.h"
 #include "grabbing-synaptics.h"
+#include "grabbing-libinput.h"
 
 enum
 {
@@ -21,7 +22,7 @@ enum
 	IT_LIBINPUT
 } INPUT_TYPE;
 
-int input_type = 2;
+int input_type = 3;
 int trigger_button = 3;
 char *device_name = "";
 
@@ -156,6 +157,7 @@ int main(int argc, char *const *argv)
 
 	XInputGrabber *xinput;
 	SynapticsGrabber *synaptics;
+	LibinputGrabber *libinput;
 
 	switch (input_type)
 	{
@@ -175,6 +177,18 @@ int main(int argc, char *const *argv)
 
 	case IT_LIBINPUT:
 
+		libinput = grabber_libinput_new();
+
+		if (list_devices_flag)
+		{
+			printf("unimplemented!\n");
+			//grabber_list_devices(libinput);
+			exit(0);
+		}
+
+		grabber_libinput_loop(libinput, mygestures);
+		printf("Grabbing loop finished for device %s.\n", device_name);
+
 		break;
 
 	case IT_SYNAPTICS_SHM:
@@ -190,7 +204,6 @@ int main(int argc, char *const *argv)
 
 		grabber_synaptics_loop(synaptics, mygestures);
 		printf("Grabbing loop finished for synaptics.\n");
-		break;
 
 		break;
 

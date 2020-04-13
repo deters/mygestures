@@ -264,8 +264,6 @@ void mygestures_start_movement(Mygestures *self, int new_x, int new_y, int delta
 
 	self->started = 1;
 
-	grabber_init_drawing(self);
-
 	self->fine_direction_sequence[0] = '\0';
 	self->rought_direction_sequence[0] = '\0';
 
@@ -277,6 +275,8 @@ void mygestures_start_movement(Mygestures *self, int new_x, int new_y, int delta
 
 	if (self->brush_image)
 	{
+
+		grabber_init_drawing(self);
 
 		backing_save(&(self->backing), new_x - self->brush.image_width,
 					 new_y - self->brush.image_height);
@@ -304,6 +304,15 @@ void mygestures_update_movement(Mygestures *self, int new_x, int new_y, int delt
 
 	int x_delta = (new_x - self->old_x);
 	int y_delta = (new_y - self->old_y);
+
+	/// se os valores já vierem na forma de deltas...
+	if (self->delta_updates)
+	{
+		x_delta = new_x;
+		y_delta = new_y;
+	}
+
+	printf("%d, %d\n", x_delta, y_delta);
 
 	if ((abs(x_delta) > delta_min) || (abs(y_delta) > delta_min))
 	{
@@ -532,6 +541,11 @@ static void free_grabbed(Capture *free_me)
 	assert(free_me);
 	free(free_me->active_window_info);
 	free(free_me);
+}
+
+void mygestures_set_delta_updates(Mygestures *self, int delta_updates)
+{
+	self->delta_updates = 1;
 }
 
 /**

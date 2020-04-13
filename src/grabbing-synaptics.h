@@ -1,4 +1,4 @@
-#include "grabbing-xinput.h"
+#include "mygestures.h"
 
 typedef struct
 {

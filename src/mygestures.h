@@ -14,6 +14,7 @@ typedef struct mygestures_
 	int multitouch;
 	int libinput;
 	int list_devices_flag;
+	int delta_updates;
 
 	char *custom_config_file;
 
@@ -41,6 +42,7 @@ typedef struct mygestures_
 
 Mygestures *mygestures_new();
 
+void mygestures_set_delta_updates(Mygestures *self, int delta_updates);
 void mygestures_set_brush_color(Mygestures *self, char *brush_color);
 void mygestures_start_movement(Mygestures *self, int new_x, int new_y, int delta_min);
 void mygestures_update_movement(Mygestures *self, int new_x, int new_y, int delta_min);
