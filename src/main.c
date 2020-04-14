@@ -16,7 +16,7 @@
 
 enum
 {
-	IT_DEFAULT,
+	IT_DEFAULT = 0,
 	IT_XINPUT,
 	IT_SYNAPTICS_SHM,
 	IT_LIBINPUT
@@ -65,16 +65,16 @@ static void process_arguments(int argc, char *const *argv)
 		{"device", required_argument, 0, 'd'},
 		{"button", required_argument, 0, 'b'},
 		{"color", required_argument, 0, 'c'},
+		{"inputmode", required_argument, 0, 'i'},
 		{"help", no_argument, 0, 'h'},
 		{"visual", no_argument, 0, 'v'},
-		{"inputmode", required_argument, 0, 'i'},
 		{0, 0, 0, 0}};
 
 	/* read params */
 
 	while (1)
 	{
-		opt = getopt_long(argc, argv, "b:c:d:vhli:", opts, NULL);
+		opt = getopt_long(argc, argv, "b:c:i:d:vhl", opts, NULL);
 		if (opt == -1)
 			break;
 
@@ -172,22 +172,22 @@ int main(int argc, char *const *argv)
 		}
 
 		grabber_xinput_loop(xinput, mygestures);
-		printf("Grabbing loop finished for device '%s'.\n", device_name);
+
 		break;
 
 	case IT_LIBINPUT:
 
-		libinput = grabber_libinput_new();
+		libinput = grabber_libinput_new(device_name, trigger_button);
 
 		if (list_devices_flag)
 		{
-			printf("unimplemented!\n");
-			//grabber_list_devices(libinput);
+			//printf("not implemented!\n");
+			grabber_libinput_list_devices();
+			//grabber_libinput_list_devices(libinput);
 			exit(0);
 		}
 
 		grabber_libinput_loop(libinput, mygestures);
-		printf("Grabbing loop finished for device %s.\n", device_name);
 
 		break;
 
@@ -197,13 +197,11 @@ int main(int argc, char *const *argv)
 
 		if (list_devices_flag)
 		{
-			printf("unimplemented!\n");
-			//grabber_list_devices(synaptics);
+			printf("Synaptics input mode is compatible only with synaptics touchpads.\n");
 			exit(0);
 		}
 
 		grabber_synaptics_loop(synaptics, mygestures);
-		printf("Grabbing loop finished for synaptics.\n");
 
 		break;
 

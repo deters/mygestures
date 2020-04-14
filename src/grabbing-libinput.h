@@ -20,19 +20,6 @@
 
 #include "mygestures.h"
 
-/* modifier keys */
-enum
-{
-    SHIFT = 0,
-    CTRL,
-    ALT,
-    WIN,
-    SCROLL,
-    NUM,
-    CAPS,
-    MOD_END
-};
-
 typedef struct
 {
 
@@ -42,6 +29,8 @@ typedef struct
     char *devicename;
     int deviceid;
     int is_direct_touch;
+
+    int event_count;
 
     int button;
     int any_modifier;
@@ -68,12 +57,12 @@ extern const char *modifiers_names[];
 /* valid strokes */
 extern const char _STROKE_CHARS[];
 
-LibinputGrabber *grabber_Libinput_new(char *device_name, int button);
-void grabber_Libinput_loop(LibinputGrabber *self, Mygestures *mygestures);
+LibinputGrabber *grabber_libinput_new(char *device_name, int button);
+void grabber_libinput_loop(LibinputGrabber *self, Mygestures *mygestures);
 // void grabber_finalize(LibinputGrabber *self);
 // void grabber_print_devices(LibinputGrabber *self);
 // void grabber_any_modifier(LibinputGrabber *self, int enable);
-void grabber_Libinput_list_devices(LibinputGrabber *self);
+void grabber_libinput_list_devices();
 // void grabber_follow_pointer(LibinputGrabber *self, int enable);
 // void grabber_focus(Grabber *LibinputGrabber, int enable);
 
