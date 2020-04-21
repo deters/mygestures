@@ -371,7 +371,7 @@ void grabber_xinput_loop(XInputGrabber *self, Mygestures *mygestures)
 				char *device_name = get_device_name_from_event(self, data);
 
 				grabbing_xinput_grab_stop(self);
-				int status = grabbing_end_movement(mygestures, data->root_x, data->root_y,
+				int status = grabbing_end_movement(mygestures, 0,
 												   device_name, mygestures);
 
 				if (!status)

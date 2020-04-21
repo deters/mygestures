@@ -114,13 +114,13 @@ Mygestures *mygestures_new()
 	return self;
 }
 
-void mygestures_load_configuration(Mygestures *self)
+void mygestures_load_configuration(Mygestures *self, char *filename)
 {
 
-	if (self->custom_config_file)
+	if (filename)
 	{
 		configuration_load_from_file(self->gestures_configuration,
-									 self->custom_config_file);
+									 filename);
 	}
 	else
 	{
@@ -580,7 +580,7 @@ void mygestures_set_delta_updates(Mygestures *self, int delta_updates)
 /**
  *
  */
-int grabbing_end_movement(Mygestures *self, int new_x, int new_y,
+int grabbing_end_movement(Mygestures *self, int cancel,
 						  char *device_name, Mygestures *mygestures)
 {
 

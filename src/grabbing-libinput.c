@@ -859,8 +859,8 @@ handle_and_print_events(struct libinput *li, Mygestures *mygestures, LibinputGra
 
                 switch (libinput_event_get_type(ev))
                 {
-                // case LIBINPUT_EVENT_NONE:
-                //         abort();
+                case LIBINPUT_EVENT_NONE:
+                        abort();
                 case LIBINPUT_EVENT_DEVICE_ADDED:
 
                         if (libinput_device_has_capability(libinput_event_get_device(ev), LIBINPUT_DEVICE_CAP_GESTURE))
@@ -888,36 +888,36 @@ handle_and_print_events(struct libinput *li, Mygestures *mygestures, LibinputGra
 
                         break;
 
-                // case LIBINPUT_EVENT_KEYBOARD_KEY:
-                //         print_key_event(li, ev);
-                //         break;
-                // case LIBINPUT_EVENT_POINTER_MOTION:
-                //         print_motion_event(ev);
-                //         break;
-                // case LIBINPUT_EVENT_POINTER_MOTION_ABSOLUTE:
-                //         print_absmotion_event(ev);
-                //         break;
-                // case LIBINPUT_EVENT_POINTER_BUTTON:
-                //         print_pointer_button_event(ev);
-                //         break;
-                // case LIBINPUT_EVENT_POINTER_AXIS:
-                //         print_pointer_axis_event(ev);
-                //         break;
-                // case LIBINPUT_EVENT_TOUCH_DOWN:
-                //         print_touch_event_with_coords(ev);
-                //         break;
-                // case LIBINPUT_EVENT_TOUCH_MOTION:
-                //         print_touch_event_with_coords(ev);
-                //         break;
-                // case LIBINPUT_EVENT_TOUCH_UP:
-                //         print_touch_event_without_coords(ev);
-                //         break;
-                // case LIBINPUT_EVENT_TOUCH_CANCEL:
-                //         print_touch_event_without_coords(ev);
-                //         break;
-                // case LIBINPUT_EVENT_TOUCH_FRAME:
-                //         print_touch_event_without_coords(ev);
-                //         break;
+                case LIBINPUT_EVENT_KEYBOARD_KEY:
+                        print_key_event(li, ev);
+                        break;
+                case LIBINPUT_EVENT_POINTER_MOTION:
+                        print_motion_event(ev);
+                        break;
+                case LIBINPUT_EVENT_POINTER_MOTION_ABSOLUTE:
+                        print_absmotion_event(ev);
+                        break;
+                case LIBINPUT_EVENT_POINTER_BUTTON:
+                        print_pointer_button_event(ev);
+                        break;
+                case LIBINPUT_EVENT_POINTER_AXIS:
+                        print_pointer_axis_event(ev);
+                        break;
+                case LIBINPUT_EVENT_TOUCH_DOWN:
+                        print_touch_event_with_coords(ev);
+                        break;
+                case LIBINPUT_EVENT_TOUCH_MOTION:
+                        print_touch_event_with_coords(ev);
+                        break;
+                case LIBINPUT_EVENT_TOUCH_UP:
+                        print_touch_event_without_coords(ev);
+                        break;
+                case LIBINPUT_EVENT_TOUCH_CANCEL:
+                        print_touch_event_without_coords(ev);
+                        break;
+                case LIBINPUT_EVENT_TOUCH_FRAME:
+                        print_touch_event_without_coords(ev);
+                        break;
                 case LIBINPUT_EVENT_GESTURE_SWIPE_BEGIN:
 
                         if (self->event_count == 0)
@@ -926,13 +926,17 @@ handle_and_print_events(struct libinput *li, Mygestures *mygestures, LibinputGra
 
                                 self->devicename = strdup(libinput_device_get_sysname(libinput_event_get_device(ev)));
 
-                                // já está enviando a diferença (delta).
-                                mygestures_set_delta_updates(mygestures, 1);
-                                mygestures_start_movement(mygestures, 0, 0, self->delta_min);
-
-                                // mygestures_start_movement(mygestures, ev)
-
                                 print_gesture_event_without_coords(ev);
+
+                                if (self->nfingers == libinput_event_gesture_get_finger_count(libinput_event_get_gesture_event(ev)))
+                                {
+
+                                        // já está enviando a diferença (delta).
+                                        mygestures_set_delta_updates(mygestures, 1);
+                                        mygestures_start_movement(mygestures, 0, 0, self->delta_min);
+
+                                        // mygestures_start_movement(mygestures, ev)
+                                }
                         }
 
                         break;
@@ -946,12 +950,18 @@ handle_and_print_events(struct libinput *li, Mygestures *mygestures, LibinputGra
 
                         if (strcmp(self->devicename, libinput_device_get_sysname(libinput_event_get_device(ev))) == 0)
                         {
-                                self->event_count = self->event_count + 1;
-                                print_gesture_event_with_coords(ev);
 
-                                if (self->event_count > 1)
-                                { /// ignora o primeiro movimento, pois está calculando errado.
-                                        mygestures_update_movement(mygestures, libinput_event_gesture_get_dx_unaccelerated(libinput_event_get_gesture_event(ev)), libinput_event_gesture_get_dy_unaccelerated(libinput_event_get_gesture_event(ev)), self->delta_min);
+                                if (self->nfingers == libinput_event_gesture_get_finger_count(libinput_event_get_gesture_event(ev)))
+                                {
+
+                                        print_gesture_event_with_coords(ev);
+
+                                        self->event_count = self->event_count + 1;
+
+                                        if (self->event_count > 1)
+                                        { /// ignora o primeiro movimento, pois está calculando errado.
+                                                mygestures_update_movement(mygestures, libinput_event_gesture_get_dx_unaccelerated(libinput_event_get_gesture_event(ev)), libinput_event_gesture_get_dy_unaccelerated(libinput_event_get_gesture_event(ev)), self->delta_min);
+                                        }
                                 }
                         }
                         break;
@@ -960,11 +970,17 @@ handle_and_print_events(struct libinput *li, Mygestures *mygestures, LibinputGra
 
                         if (strcmp(self->devicename, libinput_device_get_sysname(libinput_event_get_device(ev))) == 0)
                         {
-                                print_gesture_event_without_coords(ev);
-                                grabbing_end_movement(mygestures, 0, 0, "", mygestures);
 
-                                self->devicename = "";
-                                self->event_count = 0;
+                                print_gesture_event_without_coords(ev);
+
+                                if (self->nfingers == libinput_event_gesture_get_finger_count(libinput_event_get_gesture_event(ev)))
+                                {
+
+                                        grabbing_end_movement(mygestures, libinput_event_gesture_get_cancelled(libinput_event_get_gesture_event(ev)), self->devicename, mygestures);
+
+                                        self->devicename = "";
+                                        self->event_count = 0;
+                                }
                         }
 
                         break;
@@ -977,33 +993,33 @@ handle_and_print_events(struct libinput *li, Mygestures *mygestures, LibinputGra
                 case LIBINPUT_EVENT_GESTURE_PINCH_END:
                         print_gesture_event_without_coords(ev);
                         break;
-                        // case LIBINPUT_EVENT_TABLET_TOOL_AXIS:
-                        //         print_tablet_axis_event(ev);
-                        //         break;
-                        // case LIBINPUT_EVENT_TABLET_TOOL_PROXIMITY:
-                        //         print_proximity_event(ev);
-                        //         break;
-                        // case LIBINPUT_EVENT_TABLET_TOOL_TIP:
-                        //         print_tablet_tip_event(ev);
-                        //         break;
-                        // case LIBINPUT_EVENT_TABLET_TOOL_BUTTON:
-                        //         print_tablet_button_event(ev);
-                        //         break;
-                        // case LIBINPUT_EVENT_TABLET_PAD_BUTTON:
-                        //         print_tablet_pad_button_event(ev);
-                        //         break;
-                        // case LIBINPUT_EVENT_TABLET_PAD_RING:
-                        //         print_tablet_pad_ring_event(ev);
-                        //         break;
-                        // case LIBINPUT_EVENT_TABLET_PAD_STRIP:
-                        //         print_tablet_pad_strip_event(ev);
-                        //         break;
-                        // case LIBINPUT_EVENT_TABLET_PAD_KEY:
-                        //         print_tablet_pad_key_event(ev);
-                        //         break;
-                        // case LIBINPUT_EVENT_SWITCH_TOGGLE:
-                        //         print_switch_event(ev);
-                        //         break;
+                case LIBINPUT_EVENT_TABLET_TOOL_AXIS:
+                        print_tablet_axis_event(ev);
+                        break;
+                case LIBINPUT_EVENT_TABLET_TOOL_PROXIMITY:
+                        print_proximity_event(ev);
+                        break;
+                case LIBINPUT_EVENT_TABLET_TOOL_TIP:
+                        print_tablet_tip_event(ev);
+                        break;
+                case LIBINPUT_EVENT_TABLET_TOOL_BUTTON:
+                        print_tablet_button_event(ev);
+                        break;
+                case LIBINPUT_EVENT_TABLET_PAD_BUTTON:
+                        print_tablet_pad_button_event(ev);
+                        break;
+                case LIBINPUT_EVENT_TABLET_PAD_RING:
+                        print_tablet_pad_ring_event(ev);
+                        break;
+                case LIBINPUT_EVENT_TABLET_PAD_STRIP:
+                        print_tablet_pad_strip_event(ev);
+                        break;
+                case LIBINPUT_EVENT_TABLET_PAD_KEY:
+                        print_tablet_pad_key_event(ev);
+                        break;
+                case LIBINPUT_EVENT_SWITCH_TOGGLE:
+                        print_switch_event(ev);
+                        break;
                 }
 
                 libinput_event_destroy(ev);
@@ -1235,7 +1251,7 @@ void grabber_libinput_loop(LibinputGrabber *self, Mygestures *mygestures)
         // }
 }
 
-LibinputGrabber *grabber_libinput_new(char *device_name, int button)
+LibinputGrabber *grabber_libinput_new(char *device_name, int nfingers)
 {
 
         LibinputGrabber *self = malloc(sizeof(LibinputGrabber));
@@ -1246,7 +1262,7 @@ LibinputGrabber *grabber_libinput_new(char *device_name, int button)
 
         self->devicename = strdup(device_name);
 
-        self->button = button;
+        self->nfingers = nfingers;
         return self;
 }
 

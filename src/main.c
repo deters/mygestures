@@ -24,11 +24,13 @@ enum
 
 int input_type = 3;
 int trigger_button = 3;
+int nfingers = 3;
+
 char *device_name = "";
 
 char *brush_color;
 int list_devices_flag;
-char *custom_config_file;
+char *config_file;
 
 static void mygestures_usage()
 {
@@ -48,7 +50,7 @@ static void mygestures_usage()
 	printf("                                       '3' on other pointer dev\n");
 	printf(" -l, --device-list          : Print all available devices an exit.\n");
 	printf(" -v, --visual               : Don't paint the gesture on screen.\n");
-	printf(" -c, --color                : Brush color.\n");
+	printf(" -c, --config               : Config file.\n");
 	printf("                              Default: blue\n");
 	printf("                              Options: yellow, white, red, green, purple, blue\n");
 	printf(" -h, --help                 : Help\n");
@@ -64,7 +66,8 @@ static void process_arguments(int argc, char *const *argv)
 	static struct option opts[] = {
 		{"device", required_argument, 0, 'd'},
 		{"button", required_argument, 0, 'b'},
-		{"color", required_argument, 0, 'c'},
+		{"fingers", required_argument, 0, 'f'},
+		{"config", required_argument, 0, 'c'},
 		{"inputmode", required_argument, 0, 'i'},
 		{"help", no_argument, 0, 'h'},
 		{"visual", no_argument, 0, 'v'},
@@ -74,7 +77,7 @@ static void process_arguments(int argc, char *const *argv)
 
 	while (1)
 	{
-		opt = getopt_long(argc, argv, "b:c:i:d:vhl", opts, NULL);
+		opt = getopt_long(argc, argv, "b:f:c:i:d:vhl", opts, NULL);
 		if (opt == -1)
 			break;
 
@@ -83,6 +86,10 @@ static void process_arguments(int argc, char *const *argv)
 
 		case 'b':
 			trigger_button = atoi(optarg);
+			break;
+
+		case 'f':
+			nfingers = atoi(optarg);
 			break;
 
 		case 'd':
@@ -113,7 +120,7 @@ static void process_arguments(int argc, char *const *argv)
 			break;
 
 		case 'c':
-			brush_color = strdup(optarg);
+			config_file = strdup(optarg);
 			break;
 
 		case 'l':
@@ -129,7 +136,7 @@ static void process_arguments(int argc, char *const *argv)
 
 	if (optind < argc)
 	{
-		custom_config_file = argv[optind++];
+		config_file = argv[optind++];
 	}
 
 	if (optind < argc)
@@ -153,7 +160,7 @@ int main(int argc, char *const *argv)
 		mygestures_set_brush_color(mygestures, brush_color);
 	}
 
-	mygestures_load_configuration(mygestures);
+	mygestures_load_configuration(mygestures, config_file);
 
 	XInputGrabber *xinput;
 	SynapticsGrabber *synaptics;
@@ -177,7 +184,7 @@ int main(int argc, char *const *argv)
 
 	case IT_LIBINPUT:
 
-		libinput = grabber_libinput_new(device_name, trigger_button);
+		libinput = grabber_libinput_new(device_name, nfingers);
 
 		if (list_devices_flag)
 		{

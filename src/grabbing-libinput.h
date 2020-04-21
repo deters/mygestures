@@ -32,7 +32,7 @@ typedef struct
 
     int event_count;
 
-    int button;
+    int nfingers;
     int any_modifier;
     int follow_pointer;
     int focus;
@@ -57,7 +57,7 @@ extern const char *modifiers_names[];
 /* valid strokes */
 extern const char _STROKE_CHARS[];
 
-LibinputGrabber *grabber_libinput_new(char *device_name, int button);
+LibinputGrabber *grabber_libinput_new(char *device_name, int nfingers);
 void grabber_libinput_loop(LibinputGrabber *self, Mygestures *mygestures);
 // void grabber_finalize(LibinputGrabber *self);
 // void grabber_print_devices(LibinputGrabber *self);
