@@ -36,7 +36,6 @@
 
 #include "mygestures.h"
 //#include "singleton.h"
-#include "main.h"
 
 #include "configuration.h"
 #include "configuration_parser.h"

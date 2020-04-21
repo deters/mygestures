@@ -2,11 +2,11 @@
 AM_CFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' -O2 $(LIBXML2_CFLAGS) $(LIBEVDEV_CFLAGS) \ 
   $(LIBUDEV_CFLAGS)  -Wall -Wunreachable-code # -fprofile-arcs -ftest-coverage
 
-bin_PROGRAMS=mygestures
+bin_PROGRAMS=mygestures touchgestures
 #  igestures
 
-mygestures_SOURCES = \
-        main.c main.h \
+
+common_SOURCES = \
 	      mygestures.c mygestures.h \
 	      configuration.c configuration.h \
         configuration_parser.c configuration_parser.h \
@@ -23,11 +23,22 @@ mygestures_SOURCES = \
         drawing/drawing-brush-image.c \
         drawing/drawing-bresenham.c \
         drawing/drawing-bresenham.h shared.c shared.h
+	
 
+mygestures_SOURCES = \
+        main.c \
+	$(common_SOURCES)
 
+touchgestures_SOURCES = \
+	touchgestures.c $(common_SOURCES)
 
-mygestures_LDADD=$(LIBXML2_LIBS) $(LIBX11_LIBS) $(LIBXRENDER_LIBS) $(LIBXTST_LIBS) \
+common_LDADD=$(LIBXML2_LIBS) $(LIBX11_LIBS) $(LIBXRENDER_LIBS) $(LIBXTST_LIBS) \
  $(LIBXML_LIBS) $(LIBXI_LIBS) $(LIBEVDEV_LIBS) $(LIBUDEV_LIBS) $(LIBINPUT_LIBS) -lm
+
+mygestures_LDADD=$(common_LDADD)
+
+touchgestures_LDADD=$(common_LDADD)
+
 
 
 # igestures_SOURCES = grabbing-libinput.c shared.h shared.c
