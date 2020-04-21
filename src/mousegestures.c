@@ -16,7 +16,7 @@ int trigger_button = 3;
 int list_devices_flag;
 int visual = 0;
 char *config_file;
-char *device_name;
+char *device_name = "";
 
 static void mygestures_usage()
 {

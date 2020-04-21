@@ -46,111 +46,111 @@ static bool be_quiet = false;
 
 #define printq(...) ({ if (!be_quiet)  printf(__VA_ARGS__); })
 
-static void
-print_event_header(struct libinput_event *ev)
-{
-        /* use for pointer value only, do not dereference */
-        static void *last_device = NULL;
-        struct libinput_device *dev = libinput_event_get_device(ev);
-        const char *type = NULL;
-        char prefix;
+// static void
+// print_event_header(struct libinput_event *ev)
+// {
+//         /* use for pointer value only, do not dereference */
+//         static void *last_device = NULL;
+//         struct libinput_device *dev = libinput_event_get_device(ev);
+//         const char *type = NULL;
+//         char prefix;
 
-        switch (libinput_event_get_type(ev))
-        {
-        case LIBINPUT_EVENT_NONE:
-                abort();
-        case LIBINPUT_EVENT_DEVICE_ADDED:
-                type = "DEVICE_ADDED";
-                break;
-        case LIBINPUT_EVENT_DEVICE_REMOVED:
-                type = "DEVICE_REMOVED";
-                break;
-        case LIBINPUT_EVENT_KEYBOARD_KEY:
-                type = "KEYBOARD_KEY";
-                break;
-        case LIBINPUT_EVENT_POINTER_MOTION:
-                type = "POINTER_MOTION";
-                break;
-        case LIBINPUT_EVENT_POINTER_MOTION_ABSOLUTE:
-                type = "POINTER_MOTION_ABSOLUTE";
-                break;
-        case LIBINPUT_EVENT_POINTER_BUTTON:
-                type = "POINTER_BUTTON";
-                break;
-        case LIBINPUT_EVENT_POINTER_AXIS:
-                type = "POINTER_AXIS";
-                break;
-        case LIBINPUT_EVENT_TOUCH_DOWN:
-                type = "TOUCH_DOWN";
-                break;
-        case LIBINPUT_EVENT_TOUCH_MOTION:
-                type = "TOUCH_MOTION";
-                break;
-        case LIBINPUT_EVENT_TOUCH_UP:
-                type = "TOUCH_UP";
-                break;
-        case LIBINPUT_EVENT_TOUCH_CANCEL:
-                type = "TOUCH_CANCEL";
-                break;
-        case LIBINPUT_EVENT_TOUCH_FRAME:
-                type = "TOUCH_FRAME";
-                break;
-        case LIBINPUT_EVENT_GESTURE_SWIPE_BEGIN:
-                type = "GESTURE_SWIPE_BEGIN";
-                break;
-        case LIBINPUT_EVENT_GESTURE_SWIPE_UPDATE:
-                type = "GESTURE_SWIPE_UPDATE";
-                break;
-        case LIBINPUT_EVENT_GESTURE_SWIPE_END:
-                type = "GESTURE_SWIPE_END";
-                break;
-        case LIBINPUT_EVENT_GESTURE_PINCH_BEGIN:
-                type = "GESTURE_PINCH_BEGIN";
-                break;
-        case LIBINPUT_EVENT_GESTURE_PINCH_UPDATE:
-                type = "GESTURE_PINCH_UPDATE";
-                break;
-        case LIBINPUT_EVENT_GESTURE_PINCH_END:
-                type = "GESTURE_PINCH_END";
-                break;
-        case LIBINPUT_EVENT_TABLET_TOOL_AXIS:
-                type = "TABLET_TOOL_AXIS";
-                break;
-        case LIBINPUT_EVENT_TABLET_TOOL_PROXIMITY:
-                type = "TABLET_TOOL_PROXIMITY";
-                break;
-        case LIBINPUT_EVENT_TABLET_TOOL_TIP:
-                type = "TABLET_TOOL_TIP";
-                break;
-        case LIBINPUT_EVENT_TABLET_TOOL_BUTTON:
-                type = "TABLET_TOOL_BUTTON";
-                break;
-        case LIBINPUT_EVENT_TABLET_PAD_BUTTON:
-                type = "TABLET_PAD_BUTTON";
-                break;
-        case LIBINPUT_EVENT_TABLET_PAD_RING:
-                type = "TABLET_PAD_RING";
-                break;
-        case LIBINPUT_EVENT_TABLET_PAD_STRIP:
-                type = "TABLET_PAD_STRIP";
-                break;
-        case LIBINPUT_EVENT_TABLET_PAD_KEY:
-                type = "TABLET_PAD_KEY";
-                break;
-        case LIBINPUT_EVENT_SWITCH_TOGGLE:
-                type = "SWITCH_TOGGLE";
-                break;
-        }
+//         switch (libinput_event_get_type(ev))
+//         {
+//         case LIBINPUT_EVENT_NONE:
+//                 abort();
+//         case LIBINPUT_EVENT_DEVICE_ADDED:
+//                 type = "DEVICE_ADDED";
+//                 break;
+//         case LIBINPUT_EVENT_DEVICE_REMOVED:
+//                 type = "DEVICE_REMOVED";
+//                 break;
+//         case LIBINPUT_EVENT_KEYBOARD_KEY:
+//                 type = "KEYBOARD_KEY";
+//                 break;
+//         case LIBINPUT_EVENT_POINTER_MOTION:
+//                 type = "POINTER_MOTION";
+//                 break;
+//         case LIBINPUT_EVENT_POINTER_MOTION_ABSOLUTE:
+//                 type = "POINTER_MOTION_ABSOLUTE";
+//                 break;
+//         case LIBINPUT_EVENT_POINTER_BUTTON:
+//                 type = "POINTER_BUTTON";
+//                 break;
+//         case LIBINPUT_EVENT_POINTER_AXIS:
+//                 type = "POINTER_AXIS";
+//                 break;
+//         case LIBINPUT_EVENT_TOUCH_DOWN:
+//                 type = "TOUCH_DOWN";
+//                 break;
+//         case LIBINPUT_EVENT_TOUCH_MOTION:
+//                 type = "TOUCH_MOTION";
+//                 break;
+//         case LIBINPUT_EVENT_TOUCH_UP:
+//                 type = "TOUCH_UP";
+//                 break;
+//         case LIBINPUT_EVENT_TOUCH_CANCEL:
+//                 type = "TOUCH_CANCEL";
+//                 break;
+//         case LIBINPUT_EVENT_TOUCH_FRAME:
+//                 type = "TOUCH_FRAME";
+//                 break;
+//         case LIBINPUT_EVENT_GESTURE_SWIPE_BEGIN:
+//                 type = "GESTURE_SWIPE_BEGIN";
+//                 break;
+//         case LIBINPUT_EVENT_GESTURE_SWIPE_UPDATE:
+//                 type = "GESTURE_SWIPE_UPDATE";
+//                 break;
+//         case LIBINPUT_EVENT_GESTURE_SWIPE_END:
+//                 type = "GESTURE_SWIPE_END";
+//                 break;
+//         case LIBINPUT_EVENT_GESTURE_PINCH_BEGIN:
+//                 type = "GESTURE_PINCH_BEGIN";
+//                 break;
+//         case LIBINPUT_EVENT_GESTURE_PINCH_UPDATE:
+//                 type = "GESTURE_PINCH_UPDATE";
+//                 break;
+//         case LIBINPUT_EVENT_GESTURE_PINCH_END:
+//                 type = "GESTURE_PINCH_END";
+//                 break;
+//         case LIBINPUT_EVENT_TABLET_TOOL_AXIS:
+//                 type = "TABLET_TOOL_AXIS";
+//                 break;
+//         case LIBINPUT_EVENT_TABLET_TOOL_PROXIMITY:
+//                 type = "TABLET_TOOL_PROXIMITY";
+//                 break;
+//         case LIBINPUT_EVENT_TABLET_TOOL_TIP:
+//                 type = "TABLET_TOOL_TIP";
+//                 break;
+//         case LIBINPUT_EVENT_TABLET_TOOL_BUTTON:
+//                 type = "TABLET_TOOL_BUTTON";
+//                 break;
+//         case LIBINPUT_EVENT_TABLET_PAD_BUTTON:
+//                 type = "TABLET_PAD_BUTTON";
+//                 break;
+//         case LIBINPUT_EVENT_TABLET_PAD_RING:
+//                 type = "TABLET_PAD_RING";
+//                 break;
+//         case LIBINPUT_EVENT_TABLET_PAD_STRIP:
+//                 type = "TABLET_PAD_STRIP";
+//                 break;
+//         case LIBINPUT_EVENT_TABLET_PAD_KEY:
+//                 type = "TABLET_PAD_KEY";
+//                 break;
+//         case LIBINPUT_EVENT_SWITCH_TOGGLE:
+//                 type = "SWITCH_TOGGLE";
+//                 break;
+//         }
 
-        prefix = (last_device != dev) ? '-' : ' ';
+//         prefix = (last_device != dev) ? '-' : ' ';
 
-        printq("%c%-7s  %-16s ",
-               prefix,
-               libinput_device_get_sysname(dev),
-               type);
+//         printq("%c%-7s  %-16s ",
+//                prefix,
+//                libinput_device_get_sysname(dev),
+//                type);
 
-        last_device = dev;
-}
+//         last_device = dev;
+// }
 
 static void
 print_event_time(uint32_t time)
