@@ -355,8 +355,15 @@ static void execute_action(char *action)
 
 	assert(action);
 
-	int i = system(action);
-	exit(i);
+	int result = fork();
+
+	if (result == 0)
+	{
+		// we are in the child process
+
+		int i = system(action);
+		exit(i);
+	}
 }
 
 static void fetch_window_title(Display *dpy, Window w, char **out_window_title)

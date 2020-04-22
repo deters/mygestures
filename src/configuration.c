@@ -174,6 +174,9 @@ Gesture *configuration_create_gesture(Context *self,
 		printf(
 			"Movement '%s' is unknown. The gesture will be inaccessible.\n",
 			gesture_movement);
+
+		free(ans);
+		return NULL;
 	}
 
 	ans->context = self;
@@ -189,8 +192,13 @@ Gesture *match_gesture(Context *self, char *captured_sequence,
 {
 
 	assert(self);
-	assert(captured_sequence);
+
 	assert(window);
+
+	if (!captured_sequence)
+	{
+		return NULL;
+	}
 
 	int c = 0;
 
@@ -223,7 +231,7 @@ Gesture *match_gesture(Context *self, char *captured_sequence,
 		return NULL;
 	}
 
-	assert(self->gesture_count);
+	assert(self->gesture_count > 0);
 
 	int g = 0;
 

@@ -10,7 +10,7 @@
     <movement name="UpRight" value="UR" />
 
     <movement name="DownLeft" value="DL" />
-    <movement name="DownRight" value="DR" /> <!-- conflicts with "L". will never be reached. -->
+    <movement name="DownRight" value="DR" /> 
 
     <movement name="LeftUp" value="LU" />
     <movement name="LeftDown" value="LD" />
@@ -19,7 +19,7 @@
     <movement name="RightUp" value="RU" />
 
 
-    <movement name="A" value="URD" >
+    <movement name="A" value="URD" />
     <movement name="B" value="(U?RDLRDLU)|(URDLRDLU?)" />
     <movement name="C" value="U?LDRU?" />
     <movement name="D" value="DRUL" />
@@ -38,53 +38,53 @@
     <movement name="S" value="U?LDRDLU?" />
     <movement name="T" value="RLD" />
     <movement name="U" value="DRU" />
-    <movement name="W" value="DR?UDR?U" />
+    <movement name="W" value="DR?UL?DR?U" />
     <movement name="X" value="DLURU?" />
     <movement name="Y" value="DRUDLUR?" />
     <movement name="Z" value="U?R(D?LD?)+RU?" />
 
 
     <context windowclass=".*(Term|term).*">
-        <gesture movement="T" command="xdotool key Ctrl+Shift+t"/>
-        <gesture movement="N" command="xdotool key Ctrl+Shift+n"/>
-        <gesture movement="C" command="xdotool key Ctrl+Shift+c">
-        <gesture movement="RightDown" command="xdotool key Ctrl+Shift+w"/>
+        <gesture movement="T" command="xdotool key Ctrl+Shift+t" />
+        <gesture movement="N" command="xdotool key Ctrl+Shift+n" />
+	<gesture movement="C" command="xdotool key Ctrl+Shift+c" />
+        <gesture movement="RightDown" command="xdotool key Ctrl+Shift+w" />
     </context>
 
 
     <context windowclass="Google-chrome">
-        <gesture movement="RightDown" command="Ctrl+F4" />
+        <gesture movement="RightDown" command="xdotool key Ctrl+F4" />
     </context>
 
 
     <!-- Window Ctrl -->
 
-    <gesture movement="Up" command="xdotool -ir :ACTIVE: -b add,maximized_vert,maximized_horz"/>
+    <gesture movement="Up" command="wmctrl -r :ACTIVE: -b toggle,maximized_vert,maximized_horz # toggle maximize window"/>
     <gesture movement="Down" command="xdotool getwindowfocus windowminimize" />
     <gesture movement="DownRight" command="xdotool getwindowfocus windowclose"/>
     
     <!-- Generic actions -->
 
-    <gesture movement="Left" command="xdotool Alt+Left" />
-    <gesture movement="Right" command="xdotool Alt+Right" />
-    <gesture movement="T" command="Ctrl+T" />
-    <gesture movement="RightDown" command="Ctrl+W" />
+    <gesture movement="Left" command="xdotool key Alt+Left" />
+    <gesture movement="Right" command="xdotool key Alt+Right" />
+    <gesture movement="T" command="xdotool key Ctrl+T" />
+    <gesture movement="RightDown" command="xdotool key Ctrl+W" />
 
-    <gesture movement="C" command="xdotool Ctrl+C" />
-    <gesture movement="DRU" command="Ctrl+V" />
-    <gesture movement="N" command="Ctrl+N" />
-    <gesture movement="O" command="Ctrl+O" />
-    <gesture movement="P" command="Ctrl+P" />
-    <gesture movement="S" command="Ctrl+S" />
-    <gesture movement="E" command="Escape" />
+    <gesture movement="C" command="xdotool key Ctrl+C" />
+    <gesture movement="DRU" command="xdotool key Ctrl+V" />
+    <gesture movement="N" command="xdotool key Ctrl+N" />
+    <gesture movement="O" command="xdotool key Ctrl+O" />
+    <gesture movement="P" command="xdotool key Ctrl+P" />
+    <gesture movement="S" command="xdotool key Ctrl+S" />
+    <gesture movement="E" command="xdotool key Escape" />
 
-    <gesture movement="G" command="xdotool type google.com; xdotool key Return" />
+    <gesture movement="H" command="xdotool type google.com; xdotool key Return" />
 
     <!-- Custom actions -->
 
     <gesture movement="W" command="x-www-browser" />
     <gesture movement="G" comman="gedit" />
-    <gesture movement="UpLeftDown" command="Ctrl+Shift_L+Tab" />
-    <gesture movement="UpRightDown" command="Ctrl+Tab" />
+    <gesture movement="UpLeftDown" command="xdotool key Ctrl+Shift_L+Tab" />
+    <gesture movement="UpRightDown" command="xdotool key Ctrl+Tab" />
     
 </context>

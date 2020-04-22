@@ -127,9 +127,9 @@ void xml_parse_movement(xmlNode *node, Context *eng)
 static Context *xml_parse_context(xmlNode *node, Context *eng)
 {
 
-	char *context_name = NULL;
-	char *window_title = NULL;
-	char *window_class = NULL;
+	char *context_name = "";
+	char *window_title = "";
+	char *window_class = "";
 
 	xmlAttr *attribute = node->properties;
 	while (attribute && attribute->name && attribute->children)
@@ -152,24 +152,6 @@ static Context *xml_parse_context(xmlNode *node, Context *eng)
 		}
 		//xmlFree(value);
 		attribute = attribute->next;
-	}
-
-	// TODO: criar o context e só depois ir adicionando os elementos.
-
-	if (!context_name)
-	{
-		printf("Missing context name\n");
-		return NULL;
-	}
-
-	if (!window_class)
-	{
-		window_class = "";
-	}
-
-	if (!window_title)
-	{
-		window_title = "";
 	}
 
 	Context *ctx = configuration_create_context(eng, context_name,
@@ -246,7 +228,7 @@ static Context *xml_parse_context(xmlNode *node, Context *eng)
 // 	}
 // }
 
-static int context_parse_file(Context *conf, char *filename)
+Context *context_parse_file(char *filename)
 {
 	xmlDocPtr doc = NULL;
 	xmlNode *root_element = NULL;
@@ -256,16 +238,16 @@ static int context_parse_file(Context *conf, char *filename)
 	if (!doc)
 	{
 		perror("Empty file.\n");
-		return 1;
+		return NULL;
 	}
 
 	root_element = xmlDocGetRootElement(doc);
-	xml_parse_context(root_element, conf);
+	Context *root = xml_parse_context(root_element, NULL);
 
 	xmlFreeDoc(doc);
 	xmlCleanupParser();
 
-	return 0;
+	return root;
 }
 
 static char *get_config_dir()
@@ -393,8 +375,6 @@ char *context_get_default_filename()
 Context *configuration_load_from_defaults()
 {
 
-	Context *context = configuration_create_context(NULL, "", "", "");
-
 	int err = 0;
 
 	char *dir = get_config_dir();
@@ -421,9 +401,9 @@ Context *configuration_load_from_defaults()
 		fclose(f);
 	}
 
-	err = context_parse_file(context, config_file);
+	Context *root = context_parse_file(config_file);
 
-	if (err)
+	if (root)
 	{
 		fprintf(stderr, "Error loading context from file \n'%s'\n\n",
 				config_file);
@@ -431,7 +411,7 @@ Context *configuration_load_from_defaults()
 
 	printf("Loaded context from file '%s'.\n", config_file);
 
-	return context;
+	return root;
 }
 
 Context *configuration_load_from_file(char *filename)
@@ -439,9 +419,8 @@ Context *configuration_load_from_file(char *filename)
 
 	int err = 0;
 
-	Context *context = configuration_create_context(NULL, "root", "", "");
-
-	err = context_parse_file(context, filename);
+	Context *root = context_parse_file(
+		filename);
 
 	if (err)
 	{
@@ -449,8 +428,8 @@ Context *configuration_load_from_file(char *filename)
 		return NULL;
 	}
 
-	printf("Loaded configuration from \n'%s'.\n",
-		   filename);
+	printf("Loaded configuration from \n'%s\n with %d gestures'.\n",
+		   filename, root->gesture_count);
 
-	return context;
+	return root;
 }
