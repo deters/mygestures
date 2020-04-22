@@ -14,14 +14,14 @@
  one line to give the program's name and an idea of what it does.
   */
 
-#ifndef MYGESTURES_CONFIGURATIONPARSER_H_
-#define MYGESTURES_CONFIGURATIONPARSER_H_
+#ifndef MYGESTURES_configurationPARSER_H_
+#define MYGESTURES_configurationPARSER_H_
 
 #include "configuration.h"
 
-char * configuration_get_default_filename();
+char *configuration_get_default_filename();
 
-void configuration_load_from_file(Configuration * configuration, char * filename);
-void configuration_load_from_defaults(Configuration * configuration);
+Context *configuration_load_from_file(char *filename);
+Context *configuration_load_from_defaults();
 
 #endif

@@ -15,89 +15,79 @@
  one line to give the program's name and an idea of what it does.
  */
 
-#ifndef MYGESTURES_CONFIGURATION_H_
-#define MYGESTURES_CONFIGURATION_H_
+#ifndef MYGESTURES_Context_H_
+#define MYGESTURES_Context_H_
 
 #include <regex.h>
 
-#define GEST_SEQUENCE_MAX 64
-#define GEST_ACTION_NAME_MAX 32
-#define GEST_EXTRA_DATA_MAX 4096
-
 /* the movements */
-enum STROKES {
-	NONE, LEFT, RIGHT, UP, DOWN, ONE, THREE, SEVEN, NINE
+enum STROKES
+{
+	NONE,
+	LEFT,
+	RIGHT,
+	UP,
+	DOWN
 };
 
-typedef struct movement_ {
+typedef struct movement_
+{
 	char *name;
 	void *expression;
-	regex_t * expression_compiled;
+	regex_t *expression_compiled;
 } Movement;
 
-typedef struct context_ {
+typedef struct context_
+{
 	char *name;
 	char *title;
 	char *class;
 
-	struct user_configuration_ * parent_user_configuration;
+	struct context_ *parent;
 
-	struct gesture_ ** gesture_list;
+	struct gesture_ **gesture_list;
 	int gesture_count;
 
-	int abort;
-	regex_t * title_compiled;
-	regex_t * class_compiled;
+	Movement **movement_list;
+	int movement_count;
+
+	struct context_ **context_list;
+	int context_count;
+
+	regex_t *title_compiled;
+	regex_t *class_compiled;
 
 } Context;
 
-typedef struct user_configuration_ {
-
-	Movement** movement_list;
-	int movement_count;
-
-	Context ** context_list;
-	int context_count;
-} Configuration;
-
-typedef struct action_ {
-	int type;
-	//struct key_press *data;
-	char *original_str;
-} Action;
-
-typedef struct gesture_ {
-	char * name;
+typedef struct gesture_
+{
 	Context *context;
 	Movement *movement;
-	Action ** action_list;
-	int action_count;
+	char *action;
 } Gesture;
 
-typedef struct active_window_info_ {
+typedef struct active_window_info_
+{
 	char *title;
 	char *class;
 } ActiveWindowInfo;
 
-typedef struct capture_ {
+typedef struct capture_
+{
 	int expression_count;
-	char ** expression_list;
-	ActiveWindowInfo * active_window_info;
+	char **expression_list;
+	ActiveWindowInfo *active_window_info;
 } Capture;
 
-Configuration * configuration_new();
-
-Context * configuration_create_context(	Configuration * self,
-										char * context_name,
-										char *window_title,
-										char *window_class);
-Gesture * configuration_create_gesture(Context * self, char * gesture_name, char * gesture_movement);
-Movement * configuration_create_movement(	Configuration * self,
-											char *movement_name,
-											char *movement_expression);
-Action * configuration_create_action(Gesture * self, int action_type, char * original_str);
-Movement * configuration_find_movement_by_name(Configuration * self, char * movement_name);
-int configuration_get_gestures_count(Configuration * self);
-Gesture * configuration_process_gesture(Configuration * self, Capture * capture);
+Context *configuration_create_context(Context *self,
+									  char *context_name,
+									  char *window_title,
+									  char *window_class);
+Gesture *configuration_create_gesture(Context *self, char *gesture_name, char *action);
+Movement *configuration_create_movement(Context *self,
+										char *movement_name,
+										char *movement_expression);
+Movement *configuration_find_movement_by_name(Context *self, char *movement_name);
+Gesture *configuration_process_gesture(Context *self, Capture *capture);
 
 #endif

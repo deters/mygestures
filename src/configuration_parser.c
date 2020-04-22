@@ -31,17 +31,16 @@
 
 const char *CONFIG_FILE_NAME = "mygestures.xml";
 
-void xml_parse_action(xmlNode *node, Gesture *gest)
+static void xml_parse_gesture(xmlNode *node, Context *context)
 {
 
 	assert(node);
-	assert(gest);
+	assert(context);
 
-	char *action_name = NULL;
-	char *action_value = NULL;
+	char *gesture_movement = NULL;
+	char *command = NULL;
 
 	xmlAttr *attribute = node->properties;
-
 	while (attribute && attribute->name && attribute->children)
 	{
 
@@ -49,84 +48,46 @@ void xml_parse_action(xmlNode *node, Gesture *gest)
 		char *value = (char *)xmlNodeListGetString(node->doc,
 												   attribute->children, 1);
 
-		if (strcasecmp(name, "action") == 0)
+		if (strcasecmp(name, "movement") == 0)
 		{
-			action_name = value;
+			gesture_movement = value;
 		}
-		else if (strcasecmp(name, "value") == 0)
+
+		if (strcasecmp(name, "command") == 0)
 		{
-			action_value = value;
+			command = value;
 		}
 
 		attribute = attribute->next;
 	}
 
-	if (!action_name)
+	if (!command)
 	{
-		printf("Missing action name at line %d\n", node->line);
+		printf("missing gesture command at line %d\n", node->line);
 		return;
 	}
 
-	int id = ACTION_NULL;
-
-	if (strcasecmp(action_name, "iconify") == 0)
+	if (!gesture_movement)
 	{
-		id = ACTION_ICONIFY;
-	}
-	else if (strcasecmp(action_name, "kill") == 0)
-	{
-		id = ACTION_KILL;
-	}
-	else if (strcasecmp(action_name, "lower") == 0)
-	{
-		id = ACTION_LOWER;
-	}
-	else if (strcasecmp(action_name, "raise") == 0)
-	{
-		id = ACTION_RAISE;
-	}
-	else if (strcasecmp(action_name, "maximize") == 0)
-	{
-		id = ACTION_MAXIMIZE;
-	}
-	else if (strcasecmp(action_name, "restore") == 0)
-	{
-		id = ACTION_RESTORE;
-	}
-	else if (strcasecmp(action_name, "toggle-maximized") == 0)
-	{
-		id = ACTION_TOGGLE_MAXIMIZED;
-	}
-	else if (strcasecmp(action_name, "keypress") == 0)
-	{
-		id = ACTION_KEYPRESS;
-	}
-	else if (strcasecmp(action_name, "exec") == 0)
-	{
-		id = ACTION_EXECUTE;
-	}
-	else
-	{
-		printf("unknown action '%s' at line %d\n", action_name, node->line);
+		printf("missing gesture movement at line %d\n", node->line);
 		return;
 	}
 
-	if (!action_value)
-	{
-		action_value = "";
-	}
-
-	configuration_create_action(gest, id, action_value);
+	configuration_create_gesture(context,
+								 gesture_movement,
+								 command);
 }
 
-static void xml_parse_gesture(xmlNode *node, Context *context)
+void xml_parse_movement(xmlNode *node, Context *eng)
 {
 
 	assert(node);
-	assert(context);
+	assert(eng);
 
-	char *gesture_name = NULL;
-	char *gesture_movement = NULL;
+	//xmlNode *cur_node = NULL;
+
+	char *movement_name = NULL;
+	char *movement_strokes = NULL;
 
 	xmlAttr *attribute = node->properties;
 	while (attribute && attribute->name && attribute->children)
@@ -138,56 +99,32 @@ static void xml_parse_gesture(xmlNode *node, Context *context)
 
 		if (strcasecmp(name, "name") == 0)
 		{
-			gesture_name = value;
+			movement_name = value;
 		}
-		else if (strcasecmp(name, "movement") == 0)
+		else if (strcasecmp(name, "value") == 0)
 		{
-			gesture_movement = value;
+			movement_strokes = value;
 		}
+		//xmlFree(value);
 		attribute = attribute->next;
 	}
 
-	if (!gesture_name)
+	if (!movement_name)
 	{
-		printf("missing gesture name at line %d\n", node->line);
+		printf("missing movement name at line %d\n", node->line);
 		return;
 	}
 
-	if (!gesture_movement)
+	if (!movement_strokes)
 	{
-		printf("missing gesture movement at line %d\n", node->line);
+		printf("missing movement value at line %d\n", node->line);
 		return;
 	}
 
-	Gesture *gest = configuration_create_gesture(context, gesture_name,
-												 gesture_movement);
-
-	xmlNode *cur_node = NULL;
-
-	for (cur_node = node->children; cur_node; cur_node = cur_node->next)
-	{
-		if (cur_node->type == XML_ELEMENT_NODE)
-		{
-
-			char *element = (char *)cur_node->name;
-
-			if (strcasecmp(element, "do") == 0)
-			{
-
-				xml_parse_action(cur_node, gest);
-			}
-			else
-			{
-				printf("unknown tag '%s' at line %d\n", element,
-					   cur_node->line);
-			}
-		}
-	}
-
-	//return gest;
+	configuration_create_movement(eng, movement_name, movement_strokes);
 }
 
-static Context *xml_parse_context(xmlNode *node, Configuration *eng)
+static Context *xml_parse_context(xmlNode *node, Context *eng)
 {
 
 	char *context_name = NULL;
@@ -254,6 +191,11 @@ static Context *xml_parse_context(xmlNode *node, Configuration *eng)
 
 				xml_parse_gesture(cur_node, ctx);
 			}
+			else if (strcasecmp(element, "movement") == 0)
+			{
+				xml_parse_movement(cur_node, ctx);
+			}
+
 			else
 			{
 				printf("unknown tag '%s' at line %d\n", element,
@@ -265,92 +207,46 @@ static Context *xml_parse_context(xmlNode *node, Configuration *eng)
 	return ctx;
 }
 
-void xml_parse_movement(xmlNode *node, Configuration *eng)
-{
+// void xml_parse_root(xmlNode *node, Context *eng)
+// {
 
-	assert(node);
-	assert(eng);
+// 	assert(node);
+// 	assert(eng);
 
-	//xmlNode *cur_node = NULL;
+// 	xmlNode *cur_node = NULL;
 
-	char *movement_name = NULL;
-	char *movement_strokes = NULL;
+// 	int gestures_count = 0;
+// 	int contexts_count = 0;
 
-	xmlAttr *attribute = node->properties;
-	while (attribute && attribute->name && attribute->children)
-	{
+// 	for (cur_node = node->children; cur_node; cur_node = cur_node->next)
+// 	{
+// 		if (cur_node->type == XML_ELEMENT_NODE)
+// 		{
 
-		char *name = (char *)attribute->name;
-		char *value = (char *)xmlNodeListGetString(node->doc,
-												   attribute->children, 1);
+// 			char *element = (char *)cur_node->name;
 
-		if (strcasecmp(name, "name") == 0)
-		{
-			movement_name = value;
-		}
-		else if (strcasecmp(name, "value") == 0)
-		{
-			movement_strokes = value;
-		}
-		//xmlFree(value);
-		attribute = attribute->next;
-	}
+// 			if (strcasecmp(element, "movement") == 0)
+// 			{
 
-	if (!movement_name)
-	{
-		printf("missing movement name at line %d\n", node->line);
-		return;
-	}
+// 				xml_parse_movement(cur_node, eng);
+// 			}
+// 			else if (strcasecmp(element, "context") == 0)
+// 			{
 
-	if (!movement_strokes)
-	{
-		printf("missing movement value at line %d\n", node->line);
-		return;
-	}
+// 				Context *ctx = xml_parse_context(cur_node, eng);
+// 				gestures_count += ctx->gesture_count;
+// 				contexts_count += 1;
+// 			}
+// 			else
+// 			{
+// 				printf("unknown tag '%s' at line %d\n", element,
+// 					   cur_node->line);
+// 			}
+// 		}
+// 	}
+// }
 
-	configuration_create_movement(eng, movement_name, movement_strokes);
-}
-
-void xml_parse_root(xmlNode *node, Configuration *eng)
-{
-
-	assert(node);
-	assert(eng);
-
-	xmlNode *cur_node = NULL;
-
-	int gestures_count = 0;
-	int contexts_count = 0;
-
-	for (cur_node = node->children; cur_node; cur_node = cur_node->next)
-	{
-		if (cur_node->type == XML_ELEMENT_NODE)
-		{
-
-			char *element = (char *)cur_node->name;
-
-			if (strcasecmp(element, "movement") == 0)
-			{
-
-				xml_parse_movement(cur_node, eng);
-			}
-			else if (strcasecmp(element, "context") == 0)
-			{
-
-				Context *ctx = xml_parse_context(cur_node, eng);
-				gestures_count += ctx->gesture_count;
-				contexts_count += 1;
-			}
-			else
-			{
-				printf("unknown tag '%s' at line %d\n", element,
-					   cur_node->line);
-			}
-		}
-	}
-}
-
-static int configuration_parse_file(Configuration *conf, char *filename)
+static int context_parse_file(Context *conf, char *filename)
 {
 	xmlDocPtr doc = NULL;
 	xmlNode *root_element = NULL;
@@ -364,7 +260,7 @@ static int configuration_parse_file(Configuration *conf, char *filename)
 	}
 
 	root_element = xmlDocGetRootElement(doc);
-	xml_parse_root(root_element, conf);
+	xml_parse_context(root_element, conf);
 
 	xmlFreeDoc(doc);
 	xmlCleanupParser();
@@ -477,7 +373,7 @@ void test_create_dir(char *dir)
 	}
 }
 
-char *configuration_get_default_filename()
+char *context_get_default_filename()
 {
 	char *dir = get_config_dir();
 
@@ -486,7 +382,7 @@ char *configuration_get_default_filename()
 
 	if (size < 0)
 	{
-		printf("Error in asprintf at configuration_get_default_filename\n");
+		printf("Error in asprintf at context_get_default_filename\n");
 		exit(1);
 	}
 
@@ -494,15 +390,17 @@ char *configuration_get_default_filename()
 	return filename;
 }
 
-void configuration_load_from_defaults(Configuration *configuration)
+Context *configuration_load_from_defaults()
 {
+
+	Context *context = configuration_create_context(NULL, "", "", "");
 
 	int err = 0;
 
 	char *dir = get_config_dir();
 	test_create_dir(dir);
 
-	char *config_file = configuration_get_default_filename();
+	char *config_file = context_get_default_filename();
 
 	FILE *f = fopen(config_file, "r");
 
@@ -513,9 +411,9 @@ void configuration_load_from_defaults(Configuration *configuration)
 		if (err)
 		{
 			fprintf(stderr,
-					"Error creating default configuration on '%s' from '%s'\n",
+					"Error creating default context on '%s' from '%s'\n",
 					config_file, template);
-			return;
+			return NULL;
 		}
 	}
 	else
@@ -523,30 +421,36 @@ void configuration_load_from_defaults(Configuration *configuration)
 		fclose(f);
 	}
 
-	err = configuration_parse_file(configuration, config_file);
+	err = context_parse_file(context, config_file);
 
 	if (err)
 	{
-		fprintf(stderr, "Error loading configuration from file \n'%s'\n\n",
+		fprintf(stderr, "Error loading context from file \n'%s'\n\n",
 				config_file);
 	}
 
-	printf("Loaded configuration from file '%s'.\n", config_file);
+	printf("Loaded context from file '%s'.\n", config_file);
+
+	return context;
 }
 
-void configuration_load_from_file(Configuration *configuration, char *filename)
+Context *configuration_load_from_file(char *filename)
 {
 
 	int err = 0;
 
-	err = configuration_parse_file(configuration, filename);
+	Context *context = configuration_create_context(NULL, "root", "", "");
+
+	err = context_parse_file(context, filename);
 
 	if (err)
 	{
-		printf("Error loading custom configuration from '%s'\n", filename);
-		return;
+		printf("Error loading custom context from '%s'\n", filename);
+		return NULL;
 	}
 
-	printf("Loaded %i gestures from \n'%s'.\n",
-		   configuration_get_gestures_count(configuration), filename);
+	printf("Loaded configuration from \n'%s'.\n",
+		   filename);
+
+	return context;
 }

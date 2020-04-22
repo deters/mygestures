@@ -1,36 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mygestures>
-
-    <!--
-
-     You can define new movements by composing this 4 basic strokes in a regular expression:
-
-            U
-            ↑
-       L ←     → R
-            ↓
-            D
-
-    If you need more precision, you may need to use more complex strokes.
-
-        7   U   9
-          ↖ ↑ ↗
-       L ←     → R
-          ↙ ↓ ↘
-        1   D   3
-
-    -->
+<context>
 
     <movement name="Up" value="U" />
     <movement name="Down" value="D" />
     <movement name="Left" value="L" />
     <movement name="Right" value="R" />
-    <movement name="NorthWest" value="(7(U|L)?)+" />
-    <movement name="NorthEast" value="(9(U|R)?)+" />
-    <movement name="SouthWest" value="(1(D|L)?)+" />
-    <movement name="SouthEast" value="(3(D|R)?)+" />
-    <!--movement name="A" value="(URD|U?9R?3D?)" /-->
-    <movement name="B" value="(D?U)?((R|3)(D1?L|1))((R|3)(D1?L|1))" />
+
+    <movement name="UpLeft" value="UL" />
+    <movement name="UpRight" value="UR" />
+
+    <movement name="DownLeft" value="DL" />
+    <movement name="DownRight" value="DR" /> <!-- conflicts with "L". will never be reached. -->
+
+    <movement name="LeftUp" value="LU" />
+    <movement name="LeftDown" value="LD" />
+
+    <movement name="RightDown" value="RD" />
+    <movement name="RightUp" value="RU" />
+
+
+    <movement name="A" value="URD" >
+    <movement name="B" value="(U?RDLRDLU)|(URDLRDLU?)" />
     <movement name="C" value="U?LDRU?" />
     <movement name="D" value="DRUL" />
     <movement name="E" value="RULDRU?" />
@@ -38,182 +28,63 @@
     <movement name="G" value="LDRU(LRD?|DL(U|UR))" />
     <movement name="H" value="DURUD" />
     <movement name="I" value="RL?DL?R" />
-    <movement name="J" value="(RLD(RD?)LU?|D3D1L|RLD3L|RD3DL|D1L7)" />
-    <movement name="K" value="DU(9?13|913?|93|RLDR(D(RD?)?)?)" />
-    <movement name="L" value="DR" />
-    <movement name="M" value="(D?UR?DUR?D|9393)" />
-    <movement name="N" value="(9|U|7)+(R?(D|3)R?)+(9|U|7)+" />
+    <movement name="J" value="R?L?DRDLU" />
+    <movement name="M" value="D?UR?DUR?D" />
+    <movement name="N" value="UDU" />
     <movement name="O" value="(LDRUL)+"/>
-    <movement name="O_REVERSE" value="(RDLUR)+"/>
     <movement name="P" value="RULD" />
-    <movement name="Q" value="1?D3?R9?U7?D1?R3?" />
+    <movement name="Q" value="ULDRUD" />
     <movement name="R" value="((RDL?)|DL?|L)?URDLR?(D|DRD?R?)?" />
-    <movement name="S" value="U?7?L1?D3?R3?D1?L7?U?" />
+    <movement name="S" value="U?LDRDLU?" />
     <movement name="T" value="RLD" />
     <movement name="U" value="DRU" />
-    <movement name="V" value="39" />
-    <movement name="W" value="(DR?UDR?U|3939)" />
-    <movement name="X" value="(DLURU?|3L9)" />
-    <movement name="Y" value="(DRUDLUR?|391)" />
-    <movement name="Z" value="R(1?D?L?)*R" />
-    <movement name="UpRight" value="UR" />
-    <movement name="UpRightDown" value="URD" />
-    <movement name="UpLeftDown" value="ULD" />
-    <movement name="UpLeft" value="UL" />
-    <movement name="LeftUp" value="LU" />
-    <movement name="LeftDown" value="LD" />
-    <movement name="DownLeft" value="DL" />
-    <movement name="DownRight" value="DR" /> <!-- conflicts with "L". will never be reached. -->
-    <movement name="RightDown" value="RD" />
-    <movement name="RightUp" value="RU" />
-
-    <!--
-     You can define new contexts to the execution of gestures here.
-    -->
+    <movement name="W" value="DR?UDR?U" />
+    <movement name="X" value="DLURU?" />
+    <movement name="Y" value="DRUDLUR?" />
+    <movement name="Z" value="U?R(D?LD?)+RU?" />
 
 
-    <!--
-    Context: Terminal windows.
-    -->
-
-    <context name="Terminal windows" windowclass=".*(Term|term).*" windowtitle=".*">
-
-        <gesture name="Open new tab (Ctrl+Shift+T)" movement="T">
-            <do action="keypress" value="Control_L+Shift_L+T" />
-        </gesture>
-
-        <gesture name="Open new window (Ctrl+Shift+N)" movement="N">
-            <do action="keypress" value="Control_L+Shift_L+N" />
-        </gesture>
-
-        <gesture name="Copy (Ctrl+Shift+C)" movement="C">
-            <do action="keypress" value="Control_L+Shift_L+C" />
-        </gesture>
-
-        <gesture name="Paste (Ctrl+Shift+V)" movement="V">
-            <do action="keypress" value="Control_L+Shift_L+V" />
-        </gesture>
-
-        <gesture name="Close current tab (Ctrl+Shift+W)" movement="RightDown">
-            <do action="keypress" value="Control_L+Shift_L+W" />
-        </gesture>
-
+    <context windowclass=".*(Term|term).*">
+        <gesture movement="T" command="xdotool key Ctrl+Shift+t"/>
+        <gesture movement="N" command="xdotool key Ctrl+Shift+n"/>
+        <gesture movement="C" command="xdotool key Ctrl+Shift+c">
+        <gesture movement="RightDown" command="xdotool key Ctrl+Shift+w"/>
     </context>
 
 
-    <context name="All applications" windowclass=".*" windowtitle=".*">
-
-      <!-- Window control -->
-
-        <gesture name="Close window (Alt+F4)" movement="DownRight">
-            <do action="keypress" value="Alt_L+F4" />
-        </gesture>
-
-        <gesture name="Maximize window" movement="Up">
-            <do action="toggle-maximized"/> <!-- you can use the "maximize" action too -->
-        </gesture>
-
-        <gesture name="Iconify window" movement="Down">
-            <do action="iconify" />
-        </gesture>
-
-      <!-- Generic actions -->
-
-        <gesture name="Previous page (Alt+Left)" movement="Left">
-            <do action="keypress" value="Alt_L+Left" />
-        </gesture>
-
-        <gesture name="Next page (Alt+Right)" movement="Right">
-            <do action="keypress" value="Alt_L+Right" />
-        </gesture>
-
-        <gesture name="Copy (Ctrl+C)" movement="C">
-            <do action="keypress" value="Control_L+C" />
-        </gesture>
-
-        <gesture name="Paste (Ctrl+V)" movement="V">
-            <do action="keypress" value="Control_L+V" />
-        </gesture>
-
-        <gesture name="New (Ctrl+N)" movement="N">
-            <do action="keypress" value="Control_L+N" />
-        </gesture>
-
-        <gesture name="Open (Ctrl+O)" movement="O">
-            <do action="keypress" value="Control_L+O" />
-        </gesture>
-
-        <gesture name="Print (Ctrl+P)" movement="P">
-            <do action="keypress" value="Control_L+P" />
-        </gesture>
-
-        <gesture name="Save (Ctrl+S)" movement="S">
-            <do action="keypress" value="Control_L+S" />
-        </gesture>
-
-        <gesture name="Escape" movement="E">
-            <do action="keypress" value="Escape" />
-        </gesture>
-
-        <gesture name="New tab (Ctrl+T)" movement="T">
-            <do action="keypress" value="Control_L+T" />
-        </gesture>
-
-        <gesture name="Close tab (Ctrl+W)" movement="RightDown">
-            <do action="keypress" value="Control_L+W" />
-        </gesture>
-
-      <!-- Custom actions -->
-
-        <gesture name="Run default browser" movement="W">
-            <do action="exec" value="x-www-browser" />
-        </gesture>
-
-        <gesture name="Run gedit" movement="G">
-            <do action="exec" value="gedit" />
-        </gesture>
-
-        <!--gesture name="Zoom in" movement="NorthEast" fingers="4">
-            <do action="keypress" value="Control_L+plus" />
-        </gesture>
-
-        <gesture name="Zoom out" movement="SouthWest" fingers="4">
-            <do action="keypress" value="Control_L+minus" />
-        </gesture-->
-
-        <gesture name="Previous Tab" movement="UpLeftDown">
-            <do action="keypress" value="Control_L+Shift_L+Tab" />
-        </gesture>
-
-        <gesture name="Next Tab" movement="UpRightDown">
-            <do action="keypress" value="Control_L+Tab" />
-        </gesture>
-
-
-
+    <context windowclass="Google-chrome">
+        <gesture movement="RightDown" command="Ctrl+F4" />
     </context>
 
 
-    <!--
-     Context: All applications. This context need to be the last one in this file.
-    -->
+    <!-- Window Ctrl -->
 
-    <context name="Chrome" windowclass="Google-chrome" windowtitle=".*">
+    <gesture movement="Up" command="xdotool -ir :ACTIVE: -b add,maximized_vert,maximized_horz"/>
+    <gesture movement="Down" command="xdotool getwindowfocus windowminimize" />
+    <gesture movement="DownRight" command="xdotool getwindowfocus windowclose"/>
+    
+    <!-- Generic actions -->
 
-      <!-- Window control -->
+    <gesture movement="Left" command="xdotool Alt+Left" />
+    <gesture movement="Right" command="xdotool Alt+Right" />
+    <gesture movement="T" command="Ctrl+T" />
+    <gesture movement="RightDown" command="Ctrl+W" />
 
-        <gesture name="Close tab (Ctrl+F4)" movement="RightDown">
-		<do action="keypress" value="Control_L+F4" />
-        </gesture>
+    <gesture movement="C" command="xdotool Ctrl+C" />
+    <gesture movement="DRU" command="Ctrl+V" />
+    <gesture movement="N" command="Ctrl+N" />
+    <gesture movement="O" command="Ctrl+O" />
+    <gesture movement="P" command="Ctrl+P" />
+    <gesture movement="S" command="Ctrl+S" />
+    <gesture movement="E" command="Escape" />
 
-    </context>
+    <gesture movement="G" command="xdotool type google.com; xdotool key Return" />
 
+    <!-- Custom actions -->
 
-
-    <!--
-
-     See http://www.sf.net/p/mygestures for a more complete reference to this file.
-
-    -->
-
-</mygestures>
+    <gesture movement="W" command="x-www-browser" />
+    <gesture movement="G" comman="gedit" />
+    <gesture movement="UpLeftDown" command="Ctrl+Shift_L+Tab" />
+    <gesture movement="UpRightDown" command="Ctrl+Tab" />
+    
+</context>

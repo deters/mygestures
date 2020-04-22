@@ -103,9 +103,8 @@ Mygestures *mygestures_new()
 	bzero(self, sizeof(Mygestures));
 
 	self->device_name = "";
-	self->gestures_configuration = configuration_new();
+	self->gestures_configuration = NULL;
 
-	self->fine_direction_sequence = malloc(sizeof(char) * MAX_STROKES_PER_CAPTURE);
 	self->rought_direction_sequence = malloc(sizeof(char) * MAX_STROKES_PER_CAPTURE);
 
 	self->dpy = XOpenDisplay(NULL);
@@ -118,12 +117,11 @@ void mygestures_load_configuration(Mygestures *self, char *filename)
 
 	if (filename)
 	{
-		configuration_load_from_file(self->gestures_configuration,
-									 filename);
+		self->gestures_configuration = configuration_load_from_file(filename);
 	}
 	else
 	{
-		configuration_load_from_defaults(self->gestures_configuration);
+		self->gestures_configuration = configuration_load_from_defaults(self->gestures_configuration);
 	}
 }
 
@@ -183,78 +181,6 @@ static void grabber_init_drawing(Mygestures *self)
 	}
 }
 
-static char get_fine_direction_from_deltas(int x_delta, int y_delta)
-{
-
-	if ((x_delta == 0) && (y_delta == 0))
-	{
-		return stroke_representations[NONE];
-	}
-
-	// check if the movement is near main axes
-	if ((x_delta == 0) || (y_delta == 0) || (fabs((float)x_delta / (float)y_delta) > 3) || (fabs((float)y_delta / (float)x_delta) > 3))
-	{
-
-		// x axe
-		if (abs(x_delta) > abs(y_delta))
-		{
-
-			if (x_delta > 0)
-			{
-				return stroke_representations[RIGHT];
-			}
-			else
-			{
-				return stroke_representations[LEFT];
-			}
-
-			// y axe
-		}
-		else
-		{
-
-			if (y_delta > 0)
-			{
-				return stroke_representations[DOWN];
-			}
-			else
-			{
-				return stroke_representations[UP];
-			}
-		}
-
-		// diagonal axes
-	}
-	else
-	{
-
-		if (y_delta < 0)
-		{
-			if (x_delta < 0)
-			{
-				return stroke_representations[SEVEN];
-			}
-			else if (x_delta > 0)
-			{ // RIGHT
-				return stroke_representations[NINE];
-			}
-		}
-		else if (y_delta > 0)
-		{ // DOWN
-			if (x_delta < 0)
-			{ // RIGHT
-				return stroke_representations[ONE];
-			}
-			else if (x_delta > 0)
-			{
-				return stroke_representations[THREE];
-			}
-		}
-	}
-
-	return stroke_representations[NONE];
-}
-
 /**
  * Clear previous movement data.
  */
@@ -263,7 +189,6 @@ void mygestures_start_movement(Mygestures *self, int new_x, int new_y, int delta
 
 	self->started = 1;
 
-	self->fine_direction_sequence[0] = '\0';
 	self->rought_direction_sequence[0] = '\0';
 
 	self->old_x = new_x;
@@ -315,10 +240,6 @@ void mygestures_update_movement(Mygestures *self, int new_x, int new_y, int delt
 
 	if ((abs(x_delta) > delta_min) || (abs(y_delta) > delta_min))
 	{
-
-		char stroke = get_fine_direction_from_deltas(x_delta, y_delta);
-
-		movement_add_direction(self->fine_direction_sequence, stroke);
 
 		if (self->delta_updates)
 		{
@@ -429,60 +350,13 @@ static Window get_focused_window(Display *dpy)
 	return win;
 }
 
-static void execute_action(Display *dpy, Action *action, Window focused_window)
+static void execute_action(char *action)
 {
-	int id;
 
-	assert(dpy);
 	assert(action);
-	assert(focused_window);
 
-	switch (action->type)
-	{
-	case ACTION_EXECUTE:
-		id = fork();
-		if (id == 0)
-		{
-			int i = system(action->original_str);
-			exit(i);
-		}
-		if (id < 0)
-		{
-			fprintf(stderr, "Error forking.\n");
-		}
-
-		break;
-	case ACTION_ICONIFY:
-		action_iconify(dpy, focused_window);
-		break;
-	case ACTION_KILL:
-		action_kill(dpy, focused_window);
-		break;
-	case ACTION_RAISE:
-		action_raise(dpy, focused_window);
-		break;
-	case ACTION_LOWER:
-		action_lower(dpy, focused_window);
-		break;
-	case ACTION_MAXIMIZE:
-		action_maximize(dpy, focused_window);
-		break;
-	case ACTION_RESTORE:
-		action_restore(dpy, focused_window);
-		break;
-	case ACTION_TOGGLE_MAXIMIZED:
-		action_toggle_maximized(dpy, focused_window);
-		break;
-	case ACTION_KEYPRESS:
-		action_keypress(dpy, action->original_str);
-		break;
-	default:
-		fprintf(stderr, "found an unknown gesture \n");
-	}
-
-	XFlush(dpy);
-
-	return;
+	int i = system(action);
+	exit(i);
 }
 
 static void fetch_window_title(Display *dpy, Window w, char **out_window_title)
@@ -594,7 +468,7 @@ int grabbing_end_movement(Mygestures *self, int cancel,
 	};
 
 	// if there is no gesture
-	if ((strlen(mygestures->rought_direction_sequence) == 0) && (strlen(mygestures->fine_direction_sequence) == 0))
+	if ((strlen(mygestures->rought_direction_sequence) == 0))
 	{
 		return 0; // TODO: turn into enum.
 	}
@@ -604,7 +478,6 @@ int grabbing_end_movement(Mygestures *self, int cancel,
 		int expression_count = 2;
 		char **expression_list = malloc(sizeof(char *) * expression_count);
 
-		expression_list[0] = self->fine_direction_sequence;
 		expression_list[1] = self->rought_direction_sequence;
 
 		Window focused_window = get_focused_window(self->dpy);
@@ -630,18 +503,12 @@ int grabbing_end_movement(Mygestures *self, int cancel,
 
 		if (gest)
 		{
-			printf("     Movement '%s' matched gesture '%s' on context '%s'\n",
-				   gest->movement->name, gest->name, gest->context->name);
+			printf("     Movement '%s' matched gesture --- on context '%s'\n",
+				   gest->movement->name, gest->context->name);
 
-			int j = 0;
-
-			for (j = 0; j < gest->action_count; ++j)
-			{
-				Action *a = gest->action_list[j];
-				printf("     Executing action: %s %s\n",
-					   get_action_name(a->type), a->original_str);
-				execute_action(self->dpy, a, target_window);
-			}
+			printf("     Executing action: %s\n",
+				   gest->action);
+			execute_action(gest->action);
 		}
 		else
 		{

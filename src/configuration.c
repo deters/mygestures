@@ -71,30 +71,44 @@ void context_set_class(Context *context, char *window_class)
 }
 
 /* alloc a window struct */
-Context *configuration_create_context(Configuration *self, char *context_name,
+Context *configuration_create_context(Context *parent, char *context_name,
 									  char *window_title, char *window_class)
 {
 
-	assert(self);
 	assert(context_name);
 	assert(window_title);
 	assert(window_class);
 
-	Context *context = malloc(sizeof(Context));
-	bzero(context, sizeof(Context));
+	Context *self = malloc(sizeof(Context));
 
-	context->name = strdup(context_name);
-	context->parent_user_configuration = self;
+	bzero(self, sizeof(Context));
 
-	context_set_title(context, window_title);
-	context_set_class(context, window_class);
+	if (context_name)
+	{
+		self->name = strdup(context_name);
+	}
+	else
+	{
+		self->name = "All applications";
+	}
 
-	context->gesture_list = malloc(sizeof(Gesture *) * 255);
-	context->gesture_count = 0;
+	self->parent = parent;
 
-	self->context_list[self->context_count++] = context;
+	context_set_title(self, window_title);
+	context_set_class(self, window_class);
 
-	return context;
+	self->movement_list = malloc(sizeof(Movement *) * 255);
+	self->movement_count = 0;
+
+	self->gesture_list = malloc(sizeof(Gesture *) * 255);
+	self->gesture_count = 0;
+
+	if (parent)
+	{
+		parent->context_list[parent->context_count++] = self;
+	}
+
+	return self;
 }
 
 void movement_set_expression(Movement *movement, char *movement_expression)
@@ -122,12 +136,11 @@ void movement_set_expression(Movement *movement, char *movement_expression)
 }
 
 /* alloc a movement struct */
-Movement *configuration_create_movement(Configuration *self,
+Movement *configuration_create_movement(Context *self,
 										char *movement_name, char *movement_expression)
 {
 
 	assert(self);
-	assert(movement_name);
 	assert(movement_expression);
 
 	Movement *movement = malloc(sizeof(Movement));
@@ -142,58 +155,36 @@ Movement *configuration_create_movement(Configuration *self,
 	return movement;
 }
 
-Gesture *configuration_create_gesture(Context *self, char *gesture_name,
-									  char *gesture_movement)
+Gesture *configuration_create_gesture(Context *self,
+									  char *gesture_movement,
+									  char *action)
 {
 
 	assert(self);
-	assert(gesture_name);
 	assert(gesture_movement);
 
 	Gesture *ans = malloc(sizeof(Gesture));
 	bzero(ans, sizeof(Gesture));
 
-	ans->name = strdup(gesture_name);
 	ans->movement = configuration_find_movement_by_name(
-		self->parent_user_configuration, gesture_movement);
+		self, gesture_movement);
 
 	if (!ans->movement)
 	{
 		printf(
-			"Movement '%s' referenced by gesture '%s' is unknown. The gesture will be inaccessible.\n",
-			gesture_movement, gesture_name);
+			"Movement '%s' is unknown. The gesture will be inaccessible.\n",
+			gesture_movement);
 	}
 
 	ans->context = self;
-	ans->action_count = 0;
-	ans->action_list = malloc(sizeof(Action *) * 20);
+	ans->action = strdup(action);
 
 	self->gesture_list[self->gesture_count++] = ans;
 
 	return ans;
 }
 
-/* alloc an action struct */
-Action *configuration_create_action(Gesture *self, int action_type,
-									char *action_data)
-{
-
-	assert(self);
-	assert(action_type);
-	assert(action_data);
-
-	Action *ans = malloc(sizeof(Action));
-	bzero(ans, sizeof(Action));
-
-	ans->type = action_type;
-	ans->original_str = strdup(action_data);
-
-	self->action_list[self->action_count++] = ans;
-
-	return ans;
-}
-
-Gesture *match_gesture(Configuration *self, char *captured_sequence,
+Gesture *match_gesture(Context *self, char *captured_sequence,
 					   ActiveWindowInfo *window)
 {
 
@@ -201,57 +192,63 @@ Gesture *match_gesture(Configuration *self, char *captured_sequence,
 	assert(captured_sequence);
 	assert(window);
 
-	Gesture *matched_gesture = NULL;
-
 	int c = 0;
+
+	Gesture *match = NULL;
 
 	for (c = 0; c < self->context_count; ++c)
 	{
 
-		Context *context = self->context_list[c];
+		Context *child_context = self->context_list[c];
 
-		assert(context->class);
-		assert(context->title);
-
-		if (regexec(context->class_compiled, window->class, 0,
-					(regmatch_t *)NULL, 0) != 0)
+		match = match_gesture(child_context, captured_sequence, window);
+		if (match)
 		{
-			continue;
-		}
-
-		if (regexec(context->title_compiled, window->title, 0,
-					(regmatch_t *)NULL, 0) != 0)
-		{
-			continue;
-		}
-
-		assert(context->gesture_count);
-
-		int g = 0;
-
-		for (g = 0; g < context->gesture_count; ++g)
-		{
-
-			Gesture *gest = context->gesture_list[g];
-
-			assert(gest);
-			assert(gest->movement);
-			assert(gest->movement->expression_compiled);
-
-			if (regexec(gest->movement->expression_compiled, captured_sequence,
-						0, (regmatch_t *)NULL, 0) == 0)
-			{
-
-				matched_gesture = gest;
-				break;
-			}
+			return match;
 		}
 	}
 
-	return matched_gesture;
+	assert(self->class);
+	assert(self->title);
+
+	if (regexec(self->class_compiled, window->class, 0,
+				(regmatch_t *)NULL, 0) != 0)
+	{
+		return NULL;
+	}
+
+	if (regexec(self->title_compiled, window->title, 0,
+				(regmatch_t *)NULL, 0) != 0)
+	{
+		return NULL;
+	}
+
+	assert(self->gesture_count);
+
+	int g = 0;
+
+	for (g = 0; g < self->gesture_count; ++g)
+	{
+
+		Gesture *gest = self->gesture_list[g];
+
+		assert(gest);
+		assert(gest->movement);
+		assert(gest->movement->expression_compiled);
+
+		if (regexec(gest->movement->expression_compiled, captured_sequence,
+					0, (regmatch_t *)NULL, 0) == 0)
+		{
+
+			match = gest;
+			break;
+		}
+	}
+
+	return match;
 }
 
-Gesture *configuration_process_gesture(Configuration *self, Capture *grab)
+Gesture *configuration_process_gesture(Context *self, Capture *grab)
 {
 
 	assert(self);
@@ -276,23 +273,20 @@ Gesture *configuration_process_gesture(Configuration *self, Capture *grab)
 	return NULL;
 }
 
-Movement *configuration_find_movement_by_name(Configuration *self,
+Movement *configuration_find_movement_by_name(Context *self,
 											  char *movement_name)
 {
 
 	assert(self);
 	assert(movement_name);
 
-	if (!movement_name)
-	{
-		return NULL;
-	}
+	Movement *m = NULL;
 
 	int i = 0;
 
 	for (i = 0; i < self->movement_count; ++i)
 	{
-		Movement *m = self->movement_list[i];
+		m = self->movement_list[i];
 
 		if ((m->name) && (movement_name) && (strcasecmp(movement_name, m->name) == 0))
 		{
@@ -300,35 +294,14 @@ Movement *configuration_find_movement_by_name(Configuration *self,
 		}
 	}
 
-	return NULL;
-}
-
-int configuration_get_gestures_count(Configuration *self)
-{
-
-	assert(self);
-
-	int count = 0;
-
-	for (int c = 0; c < self->context_count; ++c)
+	if (self->parent)
 	{
-		count += self->context_list[c]->gesture_count;
+		m = configuration_find_movement_by_name(self->parent, movement_name);
+		if (m)
+		{
+			return m;
+		}
 	}
 
-	return count;
-}
-
-Configuration *configuration_new()
-{
-
-	Configuration *self = malloc(sizeof(Configuration));
-	bzero(self, sizeof(Configuration));
-
-	self->movement_count = 0;
-	self->movement_list = malloc(sizeof(Movement *) * 254);
-
-	self->context_count = 0;
-	self->context_list = malloc(sizeof(Context *) * 254);
-
-	return self;
+	return NULL;
 }

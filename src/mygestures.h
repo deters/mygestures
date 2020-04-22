@@ -29,12 +29,11 @@ typedef struct mygestures_
 	int rought_old_x;
 	int rought_old_y;
 
-	char *fine_direction_sequence;
 	char *rought_direction_sequence;
 
 	int started;
 
-	Configuration *gestures_configuration;
+	Context *gestures_configuration;
 
 } Mygestures;
 
