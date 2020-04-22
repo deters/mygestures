@@ -45,46 +45,46 @@
 
 
     <context windowclass=".*(Term|term).*">
-        <gesture movement="T" command="xdotool key Ctrl+Shift+t" />
-        <gesture movement="N" command="xdotool key Ctrl+Shift+n" />
-	<gesture movement="C" command="xdotool key Ctrl+Shift+c" />
-        <gesture movement="RightDown" command="xdotool key Ctrl+Shift+w" />
+        <gesture movement="T" command="xdotool key --clearmodifiers  Ctrl+Shift+t" />
+        <gesture movement="N" command="xdotool key --clearmodifiers  Ctrl+Shift+n" />
+	    <gesture movement="C" command="xdotool key --clearmodifiers  Ctrl+Shift+c" />
+        <gesture movement="RightDown" command="xdotool key --clearmodifiers  Ctrl+Shift+w" />
     </context>
 
 
     <context windowclass="Google-chrome">
-        <gesture movement="RightDown" command="xdotool key Ctrl+F4" />
+        <gesture movement="RightDown" command="xdotool key --clearmodifiers  Ctrl+F4" />
     </context>
 
 
     <!-- Window Ctrl -->
 
     <gesture movement="Up" command="wmctrl -r :ACTIVE: -b toggle,maximized_vert,maximized_horz # toggle maximize window"/>
-    <gesture movement="Down" command="xdotool getwindowfocus windowminimize" />
-    <gesture movement="DownRight" command="xdotool getwindowfocus windowclose"/>
+    <gesture movement="Down" command="xdotool getwindowfocus windowminimize # minimize window" />
+    <gesture movement="DownRight" command="xdotool getwindowfocus windowclose # close window"/>
     
     <!-- Generic actions -->
 
-    <gesture movement="Left" command="xdotool key Alt+Left" />
-    <gesture movement="Right" command="xdotool key Alt+Right" />
-    <gesture movement="T" command="xdotool key Ctrl+T" />
-    <gesture movement="RightDown" command="xdotool key Ctrl+W" />
+    <gesture movement="Left" command="xdotool key --clearmodifiers  Alt+Left" />
+    <gesture movement="Right" command="xdotool key --clearmodifiers  Alt+Right" />
+    <gesture movement="T" command="xdotool key --clearmodifiers  Ctrl+T" />
+    <gesture movement="RightDown" command="xdotool key --clearmodifiers  Ctrl+W" />
 
-    <gesture movement="C" command="xdotool key Ctrl+C" />
-    <gesture movement="DRU" command="xdotool key Ctrl+V" />
-    <gesture movement="N" command="xdotool key Ctrl+N" />
-    <gesture movement="O" command="xdotool key Ctrl+O" />
-    <gesture movement="P" command="xdotool key Ctrl+P" />
-    <gesture movement="S" command="xdotool key Ctrl+S" />
-    <gesture movement="E" command="xdotool key Escape" />
+    <gesture movement="C" command="xdotool key --clearmodifiers  Ctrl+C" />
+    <gesture movement="DRU" command="xdotool key --clearmodifiers  Ctrl+V" />
+    <gesture movement="N" command="xdotool key --clearmodifiers  Ctrl+N" />
+    <gesture movement="O" command="xdotool key --clearmodifiers  Ctrl+O" />
+    <gesture movement="P" command="xdotool key --clearmodifiers  Ctrl+P" />
+    <gesture movement="S" command="xdotool key --clearmodifiers  Ctrl+S" />
+    <gesture movement="E" command="xdotool key --clearmodifiers  Escape" />
 
-    <gesture movement="H" command="xdotool type google.com; xdotool key Return" />
+    <gesture movement="H" command="xdotool type google.com; xdotool key --clearmodifiers  Return" />
 
     <!-- Custom actions -->
 
     <gesture movement="W" command="x-www-browser" />
     <gesture movement="G" comman="gedit" />
-    <gesture movement="UpLeftDown" command="xdotool key Ctrl+Shift_L+Tab" />
-    <gesture movement="UpRightDown" command="xdotool key Ctrl+Tab" />
+    <gesture movement="UpLeftDown" command="xdotool key --clearmodifiers  Ctrl+Shift_L+Tab" />
+    <gesture movement="UpRightDown" command="xdotool key --clearmodifiers  Ctrl+Tab" />
     
 </context>
