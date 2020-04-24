@@ -458,22 +458,22 @@ void mygestures_set_delta_updates(Mygestures *self, int delta_updates)
 /**
  *
  */
-int grabbing_end_movement(Mygestures *self, int cancel,
-						  char *device_name, Mygestures *mygestures)
+int mygestures_end_movement(Mygestures *self, int cancel,
+							char *device_name)
 {
 
 	Capture *grab = NULL;
 
-	mygestures->started = 0;
+	self->started = 0;
 
 	// if is drawing
-	if (mygestures->brush_image)
+	if (self->brush_image)
 	{
-		backing_restore(&(mygestures->backing));
+		backing_restore(&(self->backing));
 	};
 
 	// if there is no gesture
-	if ((strlen(mygestures->rought_direction_sequence) == 0))
+	if ((strlen(self->rought_direction_sequence) == 0))
 	{
 		return 0; // TODO: turn into enum.
 	}

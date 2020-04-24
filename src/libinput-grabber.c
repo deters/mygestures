@@ -29,8 +29,10 @@
 
 #include <libevdev/libevdev.h>
 
-#include "shared.h"
+#include "libinput-shared.h"
 #include "libinput-grabber.h"
+
+#include "mygestures.h"
 
 //#include <libinput-version.h>
 //#include "util-strings.h"
@@ -977,7 +979,7 @@ handle_and_print_events(struct libinput *li, Mygestures *mygestures, LibinputGra
                                 if (self->nfingers == libinput_event_gesture_get_finger_count(libinput_event_get_gesture_event(ev)))
                                 {
 
-                                        grabbing_end_movement(mygestures, libinput_event_gesture_get_cancelled(libinput_event_get_gesture_event(ev)), self->devicename, mygestures);
+                                        mygestures_end_movement(mygestures, libinput_event_gesture_get_cancelled(libinput_event_get_gesture_event(ev)), self->devicename);
 
                                         self->devicename = "";
                                         self->event_count = 0;

@@ -51,19 +51,8 @@ typedef struct
 
 } LibinputGrabber;
 
-/* names of the modifier keys */
-extern const char *modifiers_names[];
-
-/* valid strokes */
-extern const char _STROKE_CHARS[];
-
 LibinputGrabber *libinput_grabber_new(char *device_name, int nfingers);
 void libinput_grabber_loop(LibinputGrabber *self, Mygestures *mygestures);
-// void grabber_finalize(LibinputGrabber *self);
-// void grabber_print_devices(LibinputGrabber *self);
-// void grabber_any_modifier(LibinputGrabber *self, int enable);
 void libinput_grabber_list_devices();
-// void grabber_follow_pointer(LibinputGrabber *self, int enable);
-// void grabber_focus(Grabber *LibinputGrabber, int enable);
 
 #endif /* LIBINPUT_GRABBING_H_ */

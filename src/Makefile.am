@@ -18,25 +18,26 @@ common_SOURCES = \
         drawing/drawing-brush-shadow.h \
         drawing/drawing-brush-image.c \
         drawing/drawing-bresenham.c \
-        drawing/drawing-bresenham.h shared.c shared.h
+	drawing/drawing-bresenham.h
 	
 
 touchgestures_SOURCES = \
 	touchgestures.c  \
-        libinput-grabber.c libinput-grabber.h libinput-shared.h \
-        $(common_SOURCES)
+	libinput-grabber.c libinput-grabber.h \
+	libinput-shared.c libinput-shared.h \
+	$(common_SOURCES)
 
 
 mousegestures_SOURCES = \
-        mousegestures.c \
-        xinput-grabber.c xinput-grabber.h  \
-        $(common_SOURCES)
+	mousegestures.c \
+	xinput-grabber.c xinput-grabber.h  \
+	$(common_SOURCES)
 	
 
 common_LDADD=$(LIBXML2_LIBS) $(LIBX11_LIBS) $(LIBXRENDER_LIBS) $(LIBXTST_LIBS) \
- $(LIBXML_LIBS) $(LIBXI_LIBS) $(LIBEVDEV_LIBS) $(LIBUDEV_LIBS) $(LIBINPUT_LIBS) -lm
+ $(LIBXML_LIBS) $(LIBXI_LIBS) $(LIBEVDEV_LIBS) -lm
 
-touchgestures_LDADD=$(common_LDADD)
+touchgestures_LDADD=$(common_LDADD) $(LIBINPUT_LIBS) $(LIBUDEV_LIBS)
 mousegestures_LDADD=$(common_LDADD)
 
 

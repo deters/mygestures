@@ -43,8 +43,8 @@ void mygestures_set_delta_updates(Mygestures *self, int delta_updates);
 void mygestures_set_brush_color(Mygestures *self, char *brush_color);
 void mygestures_start_movement(Mygestures *self, int new_x, int new_y, int delta_min);
 void mygestures_update_movement(Mygestures *self, int new_x, int new_y, int delta_min);
-int grabbing_end_movement(Mygestures *self, int cancel,
-						  char *device_name, Mygestures *mygestures);
+int mygestures_end_movement(Mygestures *self, int cancel,
+							char *device_name);
 
 void mygestures_load_configuration(Mygestures *self, char *filename);
 

@@ -39,7 +39,7 @@
 #include <libevdev/libevdev.h>
 
 //#include "builddir.h"
-#include "shared.h"
+#include "libinput-shared.h"
 //#include "util-macros.h"
 //#include "util-strings.h"
 

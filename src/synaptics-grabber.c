@@ -316,7 +316,7 @@ void grabber_synaptics_loop(SynapticsGrabber *self, Mygestures *mygestures)
 				// reset max fingers
 				max_fingers = 0;
 
-				grabbing_end_movement(mygestures, 0, "Synaptics", mygestures);
+				grabbing_end_movement(mygestures, 0, "Synaptics");
 
 				/// energy economy
 				delay = 50;
