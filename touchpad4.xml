@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mygestures>
+
+    <movement name="Up" value="U" />
+    <movement name="Down" value="D" />
+    <movement name="Left" value="L" />
+    <movement name="Right" value="R" />
+
+
+    <context name="All applications" windowclass=".*" windowtitle=".*">
+
+        <gesture name="Next window" movement="Left">
+            <do action="keypress" value="Super_L+j" />
+        </gesture>
+
+        <gesture name="Previous window" movement="Right">
+            <do action="keypress" value="Super_L+k" />
+        </gesture>
+
+        <gesture name="xfdashboard" movement="Down">
+            <do action="exec" value="skippy-xd --toggle-window-picker" />
+        </gesture>
+
+    </context>
+
+
+</mygestures>
