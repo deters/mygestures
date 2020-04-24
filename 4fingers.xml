@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<context name="root">
+
+    <movement name="Up" value="U" />
+    <movement name="Down" value="D" />
+    <movement name="Left" value="L" />
+    <movement name="Right" value="R" />
+
+    <gesture movement="Up" command="xdotool key --clearmodifiers  Super+d" />
+    <gesture movement="Down" command="skippy-xd --toggle-window-picker" />
+    <gesture movement="Left" command="xdotool key --clearmodifiers  Super+j" />
+    <gesture movement="Right" command="xdotool key --clearmodifiers Super+k" />
+    
+</context>
