@@ -10,7 +10,7 @@
 
 #include "assert.h"
 
-#include "grabbing-libinput.h"
+#include "libinput-grabber.h"
 
 int nfingers = 3;
 int list_devices_flag;

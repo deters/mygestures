@@ -10,7 +10,7 @@
 
 #include "assert.h"
 
-#include "grabbing-xinput.h"
+#include "xinput-grabber.h"
 
 int trigger_button = 3;
 int list_devices_flag;

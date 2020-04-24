@@ -23,13 +23,13 @@ common_SOURCES = \
 
 touchgestures_SOURCES = \
 	touchgestures.c  \
-        grabbing-libinput.c grabbing-libinput.h \
+        libinput-grabber.c libinput-grabber.h libinput-shared.h \
         $(common_SOURCES)
 
 
 mousegestures_SOURCES = \
         mousegestures.c \
-        grabbing-xinput.c grabbing-xinput.h  \
+        xinput-grabber.c xinput-grabber.h  \
         $(common_SOURCES)
 	
 

@@ -42,9 +42,6 @@
 #include "drawing/drawing-brush-image.h"
 #include "actions.h"
 
-#include "grabbing-xinput.h"
-#include "grabbing-synaptics.h"
-
 #ifndef MAX_STROKES_PER_CAPTURE
 #define MAX_STROKES_PER_CAPTURE 63 /*TODO*/
 #endif
@@ -103,7 +100,7 @@ Mygestures *mygestures_new()
 	bzero(self, sizeof(Mygestures));
 
 	self->device_name = "";
-	self->gestures_configuration = NULL;
+	self->root_context = NULL;
 
 	self->rought_direction_sequence = malloc(sizeof(char) * MAX_STROKES_PER_CAPTURE);
 
@@ -117,11 +114,11 @@ void mygestures_load_configuration(Mygestures *self, char *filename)
 
 	if (filename)
 	{
-		self->gestures_configuration = configuration_load_from_file(filename);
+		self->root_context = configuration_load_from_file(filename);
 	}
 	else
 	{
-		self->gestures_configuration = configuration_load_from_defaults(self->gestures_configuration);
+		self->root_context = configuration_load_from_defaults();
 	}
 }
 
@@ -236,7 +233,7 @@ void mygestures_update_movement(Mygestures *self, int new_x, int new_y, int delt
 		y_delta = new_y;
 	}
 
-	printf("%d, %d\n", x_delta, y_delta);
+	//printf("%d, %d\n", x_delta, y_delta);
 
 	if ((abs(x_delta) > delta_min) || (abs(y_delta) > delta_min))
 	{
@@ -449,6 +446,7 @@ static void free_grabbed(Capture *free_me)
 {
 	assert(free_me);
 	free(free_me->active_window_info);
+	free(free_me->expression);
 	free(free_me);
 }
 
@@ -482,11 +480,6 @@ int grabbing_end_movement(Mygestures *self, int cancel,
 	else
 	{
 
-		int expression_count = 2;
-		char **expression_list = malloc(sizeof(char *) * expression_count);
-
-		expression_list[1] = self->rought_direction_sequence;
-
 		Window focused_window = get_focused_window(self->dpy);
 		Window target_window = focused_window;
 
@@ -495,8 +488,7 @@ int grabbing_end_movement(Mygestures *self, int cancel,
 
 		grab = malloc(sizeof(Capture));
 
-		grab->expression_count = expression_count;
-		grab->expression_list = expression_list;
+		grab->expression = strdup(self->rought_direction_sequence);
 		grab->active_window_info = window_info;
 
 		printf("\n");
@@ -504,29 +496,26 @@ int grabbing_end_movement(Mygestures *self, int cancel,
 		printf("     Window class: \"%s\"\n", grab->active_window_info->class);
 		printf("     Device      : \"%s\"\n", device_name);
 
-		assert(self->gestures_configuration);
+		assert(self->root_context);
 
-		Gesture *gest = configuration_process_gesture(self->gestures_configuration, grab);
+		Gesture *gest = match_gesture(self->root_context, grab->expression, grab->active_window_info);
 
 		if (gest)
 		{
-			printf("     Movement '%s' matched gesture --- on context '%s'\n",
+			printf("     Gesture     : '%s' detected on context '%s'\n",
 				   gest->movement->name, gest->context->name);
 
-			printf("     Executing action: %s\n",
+			printf("     Command     : '%s'\n",
 				   gest->action);
+
 			execute_action(gest->action);
 		}
 		else
 		{
 
-			for (int i = 0; i < grab->expression_count; ++i)
-			{
-				char *movement = grab->expression_list[i];
-				printf(
-					"     Sequence '%s' does not match any known movement.\n",
-					movement);
-			}
+			printf(
+				"     Sequence '%s' does not match any known movement.\n",
+				grab->expression);
 		}
 
 		printf("\n");

@@ -124,7 +124,7 @@ void xml_parse_movement(xmlNode *node, Context *eng)
 	configuration_create_movement(eng, movement_name, movement_strokes);
 }
 
-static Context *xml_parse_context(xmlNode *node, Context *eng)
+static Context *xml_parse_context(xmlNode *node, Context *parent)
 {
 
 	char *context_name = "";
@@ -140,7 +140,14 @@ static Context *xml_parse_context(xmlNode *node, Context *eng)
 
 		if (strcasecmp(name, "name") == 0)
 		{
-			context_name = value;
+			if (!parent)
+			{
+				context_name = "root";
+			}
+			else
+			{
+				context_name = value;
+			}
 		}
 		else if (strcasecmp(name, "windowtitle") == 0)
 		{
@@ -154,8 +161,13 @@ static Context *xml_parse_context(xmlNode *node, Context *eng)
 		attribute = attribute->next;
 	}
 
-	Context *ctx = configuration_create_context(eng, context_name,
+	Context *ctx = configuration_create_context(parent, context_name,
 												window_title, window_class);
+
+	if (parent)
+	{
+		parent->context_list[parent->context_count++] = ctx;
+	}
 
 	/* now process the gestures */
 
@@ -177,7 +189,10 @@ static Context *xml_parse_context(xmlNode *node, Context *eng)
 			{
 				xml_parse_movement(cur_node, ctx);
 			}
-
+			else if (strcasecmp(element, "context") == 0)
+			{
+				xml_parse_context(cur_node, ctx);
+			}
 			else
 			{
 				printf("unknown tag '%s' at line %d\n", element,
@@ -403,10 +418,11 @@ Context *configuration_load_from_defaults()
 
 	Context *root = context_parse_file(config_file);
 
-	if (root)
+	if (!root)
 	{
 		fprintf(stderr, "Error loading context from file \n'%s'\n\n",
 				config_file);
+		return NULL;
 	}
 
 	printf("Loaded context from file '%s'.\n", config_file);

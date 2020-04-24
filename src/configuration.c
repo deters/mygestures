@@ -99,14 +99,12 @@ Context *configuration_create_context(Context *parent, char *context_name,
 
 	self->movement_list = malloc(sizeof(Movement *) * 255);
 	self->movement_count = 0;
-
+	self->parent = parent;
 	self->gesture_list = malloc(sizeof(Gesture *) * 255);
 	self->gesture_count = 0;
 
-	if (parent)
-	{
-		parent->context_list[parent->context_count++] = self;
-	}
+	self->context_list = malloc(sizeof(Context *) * 255);
+	self->context_count = 0;
 
 	return self;
 }
@@ -191,12 +189,15 @@ Gesture *match_gesture(Context *self, char *captured_sequence,
 					   ActiveWindowInfo *window)
 {
 
+	// printf(" looking at context '%s %s %s'. %d\n", self->name, self->class, self->title, self->context_count);
+
 	assert(self);
 
 	assert(window);
 
 	if (!captured_sequence)
 	{
+		printf("Empty value to test.\n");
 		return NULL;
 	}
 
@@ -254,31 +255,6 @@ Gesture *match_gesture(Context *self, char *captured_sequence,
 	}
 
 	return match;
-}
-
-Gesture *configuration_process_gesture(Context *self, Capture *grab)
-{
-
-	assert(self);
-	assert(grab);
-
-	Gesture *gest = NULL;
-
-	int i = 0;
-
-	for (i = 0; i < grab->expression_count; ++i)
-	{
-
-		char *sequence = grab->expression_list[i];
-		gest = match_gesture(self, sequence, grab->active_window_info);
-
-		if (gest)
-		{
-			return gest;
-		}
-	}
-
-	return NULL;
 }
 
 Movement *configuration_find_movement_by_name(Context *self,

@@ -33,7 +33,7 @@ typedef struct mygestures_
 
 	int started;
 
-	Context *gestures_configuration;
+	Context *root_context;
 
 } Mygestures;
 

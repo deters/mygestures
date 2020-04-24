@@ -74,8 +74,8 @@ typedef struct active_window_info_
 
 typedef struct capture_
 {
-	int expression_count;
-	char **expression_list;
+
+	char *expression;
 	ActiveWindowInfo *active_window_info;
 } Capture;
 
@@ -88,6 +88,8 @@ Movement *configuration_create_movement(Context *self,
 										char *movement_name,
 										char *movement_expression);
 Movement *configuration_find_movement_by_name(Context *self, char *movement_name);
-Gesture *configuration_process_gesture(Context *self, Capture *capture);
+
+Gesture *match_gesture(Context *self, char *captured_sequence,
+					   ActiveWindowInfo *window);
 
 #endif
