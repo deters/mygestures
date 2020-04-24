@@ -120,17 +120,17 @@ int main(int argc, char *const *argv)
 
 	device_name = "";
 
-	libinput = grabber_libinput_new(device_name, nfingers);
+	libinput = libinput_grabber_new(device_name, nfingers);
 
 	if (list_devices_flag)
 	{
 		//printf("not implemented!\n");
-		grabber_libinput_list_devices();
+		libinput_grabber_list_devices();
 		//grabber_libinput_list_devices(libinput);
 		exit(0);
 	}
 
-	grabber_libinput_loop(libinput, mygestures);
+	libinput_grabber_loop(libinput, mygestures);
 
 	exit(0);
 }
