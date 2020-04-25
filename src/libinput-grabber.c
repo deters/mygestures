@@ -12,10 +12,22 @@
 
 #include "config.h"
 
+//#include <errno.h>
+//#include <inttypes.h>
+//#include <getopt.h>
 #include <poll.h>
+
+//#include <stdio.h>
+//#include <stdbool.h>
+#include <stdlib.h>
 #include <signal.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
+#include "linux/input.h"
+#include <libinput.h>
+
+#include <libevdev/libevdev.h>
 
 #include "libinput-shared.h"
 #include "libinput-grabber.h"
