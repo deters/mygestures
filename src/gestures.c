@@ -293,27 +293,6 @@ void mygestures_update_movement(Mygestures *self, int new_x, int new_y, int delt
 	return;
 }
 
-// static Window get_window_under_pointer(Display *dpy)
-// {
-
-// 	Window root_return, child_return;
-// 	int root_x_return, root_y_return;
-// 	int win_x_return, win_y_return;
-// 	unsigned int mask_return;
-// 	XQueryPointer(dpy, DefaultRootWindow(dpy), &root_return, &child_return,
-// 				  &root_x_return, &root_y_return, &win_x_return, &win_y_return,
-// 				  &mask_return);
-
-// 	Window w = child_return;
-// 	Window parent_return;
-// 	Window *children_return;
-// 	unsigned int nchildren_return;
-// 	XQueryTree(dpy, w, &root_return, &parent_return, &children_return,
-// 			   &nchildren_return);
-
-// 	return children_return[nchildren_return - 1];
-// }
-
 static Window get_parent_window(Display *dpy, Window w)
 {
 	Window root_return, parent_return, *child_return;
