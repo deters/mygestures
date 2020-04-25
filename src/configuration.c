@@ -27,7 +27,7 @@
 
 #include "configuration.h"
 
-void context_set_title(Context *context, char *window_title)
+static void context_set_title(Context *context, char *window_title)
 {
 
 	assert(context);
@@ -49,7 +49,7 @@ void context_set_title(Context *context, char *window_title)
 	context->title_compiled = title_compiled;
 }
 
-void context_set_class(Context *context, char *window_class)
+static void context_set_class(Context *context, char *window_class)
 {
 
 	assert(context);
@@ -71,8 +71,8 @@ void context_set_class(Context *context, char *window_class)
 }
 
 /* alloc a window struct */
-Context *configuration_create_context(Context *parent, char *context_name,
-									  char *window_title, char *window_class)
+Context *context_create_context(Context *parent, char *context_name,
+								char *window_title, char *window_class)
 {
 
 	assert(context_name);
@@ -109,7 +109,7 @@ Context *configuration_create_context(Context *parent, char *context_name,
 	return self;
 }
 
-void movement_set_expression(Movement *movement, char *movement_expression)
+static void set_movement_expression(Movement *movement, char *movement_expression)
 {
 	movement->expression = movement_expression;
 	char *regex_str = malloc(sizeof(char) * (strlen(movement_expression) + 5));
@@ -134,8 +134,8 @@ void movement_set_expression(Movement *movement, char *movement_expression)
 }
 
 /* alloc a movement struct */
-Movement *configuration_create_movement(Context *self,
-										char *movement_name, char *movement_expression)
+Movement *context_create_movement(Context *self,
+								  char *movement_name, char *movement_expression)
 {
 
 	assert(self);
@@ -145,7 +145,7 @@ Movement *configuration_create_movement(Context *self,
 	bzero(movement, sizeof(Movement));
 
 	movement->name = strdup(movement_name);
-	movement_set_expression(movement, strdup(movement_expression));
+	set_movement_expression(movement, strdup(movement_expression));
 
 	self->movement_list[self->movement_count] = movement;
 	self->movement_count++;
@@ -153,9 +153,9 @@ Movement *configuration_create_movement(Context *self,
 	return movement;
 }
 
-Gesture *configuration_create_gesture(Context *self,
-									  char *gesture_movement,
-									  char *action)
+Gesture *context_create_gesture(Context *self,
+								char *gesture_movement,
+								char *action)
 {
 
 	assert(self);
@@ -164,7 +164,7 @@ Gesture *configuration_create_gesture(Context *self,
 	Gesture *ans = malloc(sizeof(Gesture));
 	bzero(ans, sizeof(Gesture));
 
-	ans->movement = configuration_find_movement_by_name(
+	ans->movement = context_find_movement_by_name(
 		self, gesture_movement);
 
 	if (!ans->movement)
@@ -185,8 +185,8 @@ Gesture *configuration_create_gesture(Context *self,
 	return ans;
 }
 
-Gesture *match_gesture(Context *self, char *captured_sequence,
-					   ActiveWindowInfo *window)
+Gesture *context_match_gesture(Context *self, char *captured_sequence,
+							   ActiveWindowInfo *window)
 {
 
 	// printf(" looking at context '%s %s %s'. %d\n", self->name, self->class, self->title, self->context_count);
@@ -210,7 +210,7 @@ Gesture *match_gesture(Context *self, char *captured_sequence,
 
 		Context *child_context = self->context_list[c];
 
-		match = match_gesture(child_context, captured_sequence, window);
+		match = context_match_gesture(child_context, captured_sequence, window);
 		if (match)
 		{
 			return match;
@@ -257,8 +257,8 @@ Gesture *match_gesture(Context *self, char *captured_sequence,
 	return match;
 }
 
-Movement *configuration_find_movement_by_name(Context *self,
-											  char *movement_name)
+Movement *context_find_movement_by_name(Context *self,
+										char *movement_name)
 {
 
 	assert(self);
@@ -280,7 +280,7 @@ Movement *configuration_find_movement_by_name(Context *self,
 
 	if (self->parent)
 	{
-		m = configuration_find_movement_by_name(self->parent, movement_name);
+		m = context_find_movement_by_name(self->parent, movement_name);
 		if (m)
 		{
 			return m;

@@ -25,7 +25,6 @@
 
 #include "assert.h"
 
-#include "config.h"
 #include "configuration_parser.h"
 
 const char *CONFIG_FILE_NAME = "mygestures.xml";
@@ -72,9 +71,9 @@ static void xml_parse_gesture(xmlNode *node, Context *context)
 		return;
 	}
 
-	configuration_create_gesture(context,
-								 gesture_movement,
-								 command);
+	context_create_gesture(context,
+						   gesture_movement,
+						   command);
 }
 
 void xml_parse_movement(xmlNode *node, Context *eng)
@@ -120,7 +119,7 @@ void xml_parse_movement(xmlNode *node, Context *eng)
 		return;
 	}
 
-	configuration_create_movement(eng, movement_name, movement_strokes);
+	context_create_movement(eng, movement_name, movement_strokes);
 }
 
 static Context *xml_parse_context(xmlNode *node, Context *parent)
@@ -160,8 +159,8 @@ static Context *xml_parse_context(xmlNode *node, Context *parent)
 		attribute = attribute->next;
 	}
 
-	Context *ctx = configuration_create_context(parent, context_name,
-												window_title, window_class);
+	Context *ctx = context_create_context(parent, context_name,
+										  window_title, window_class);
 
 	if (parent)
 	{
@@ -203,46 +202,7 @@ static Context *xml_parse_context(xmlNode *node, Context *parent)
 	return ctx;
 }
 
-// void xml_parse_root(xmlNode *node, Context *eng)
-// {
-
-// 	assert(node);
-// 	assert(eng);
-
-// 	xmlNode *cur_node = NULL;
-
-// 	int gestures_count = 0;
-// 	int contexts_count = 0;
-
-// 	for (cur_node = node->children; cur_node; cur_node = cur_node->next)
-// 	{
-// 		if (cur_node->type == XML_ELEMENT_NODE)
-// 		{
-
-// 			char *element = (char *)cur_node->name;
-
-// 			if (strcasecmp(element, "movement") == 0)
-// 			{
-
-// 				xml_parse_movement(cur_node, eng);
-// 			}
-// 			else if (strcasecmp(element, "context") == 0)
-// 			{
-
-// 				Context *ctx = xml_parse_context(cur_node, eng);
-// 				gestures_count += ctx->gesture_count;
-// 				contexts_count += 1;
-// 			}
-// 			else
-// 			{
-// 				printf("unknown tag '%s' at line %d\n", element,
-// 					   cur_node->line);
-// 			}
-// 		}
-// 	}
-// }
-
-Context *context_parse_file(char *filename)
+Context *xml_open_file(char *filename)
 {
 	xmlDocPtr doc = NULL;
 	xmlNode *root_element = NULL;
@@ -415,7 +375,7 @@ Context *configuration_load_from_defaults()
 		fclose(f);
 	}
 
-	Context *root = context_parse_file(config_file);
+	Context *root = xml_open_file(config_file);
 
 	if (!root)
 	{
@@ -434,7 +394,7 @@ Context *configuration_load_from_file(char *filename)
 
 	int err = 0;
 
-	Context *root = context_parse_file(
+	Context *root = xml_open_file(
 		filename);
 
 	if (err)

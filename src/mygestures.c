@@ -496,7 +496,7 @@ int mygestures_end_movement(Mygestures *self, int cancel,
 
 		assert(self->root_context);
 
-		Gesture *gest = match_gesture(self->root_context, grab->expression, grab->active_window_info);
+		Gesture *gest = context_match_gesture(self->root_context, grab->expression, grab->active_window_info);
 
 		if (gest)
 		{
