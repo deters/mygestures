@@ -18,7 +18,7 @@
 #ifndef LIBINPUT_GRABBING_H_
 #define LIBINPUT_GRABBING_H_
 
-#include "mygestures.h"
+#include "gestures.h"
 
 typedef struct
 {

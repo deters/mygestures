@@ -34,7 +34,7 @@
 #include "string.h"
 #include "config.h"
 
-#include "mygestures.h"
+#include "gestures.h"
 //#include "singleton.h"
 
 #include "configuration.h"

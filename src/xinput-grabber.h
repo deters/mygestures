@@ -18,7 +18,7 @@
 #ifndef XINPUT_GRABBING_H_
 #define XINPUT_GRABBING_H_
 
-#include "mygestures.h"
+#include "gestures.h"
 
 /* modifier keys */
 enum

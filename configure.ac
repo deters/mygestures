@@ -4,7 +4,7 @@
 AC_PREREQ([2.69])
 AC_INIT([MyGestures], [3.0], [lucasdeters@gmail.com])
 AM_INIT_AUTOMAKE([subdir-objects])
-AC_CONFIG_SRCDIR([src/mygestures.c])
+AC_CONFIG_SRCDIR([src/gestures.c])
 AC_CONFIG_HEADERS([src/config.h])
 
 # Checks for programs.

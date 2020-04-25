@@ -32,8 +32,6 @@
 #include "libinput-shared.h"
 #include "libinput-grabber.h"
 
-#include "mygestures.h"
-
 static uint32_t start_time;
 static struct tools_options options;
 static volatile sig_atomic_t stop = 0;

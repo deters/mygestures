@@ -26,8 +26,6 @@
 #include <X11/extensions/XInput2.h> /* capturing device events */
 #include <X11/extensions/XTest.h>	/* emulating device events */
 
-#include "mygestures.h"
-
 #include "xinput-grabber.h"
 
 static void mouse_click(Display *display, int button, int x, int y)
