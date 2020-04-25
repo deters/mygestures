@@ -48,112 +48,6 @@ static bool be_quiet = true;
 
 #define printq(...) ({ if (!be_quiet)  printf(__VA_ARGS__); })
 
-// static void
-// print_event_header(struct libinput_event *ev)
-// {
-//         /* use for pointer value only, do not dereference */
-//         static void *last_device = NULL;
-//         struct libinput_device *dev = libinput_event_get_device(ev);
-//         const char *type = NULL;
-//         char prefix;
-
-//         switch (libinput_event_get_type(ev))
-//         {
-//         case LIBINPUT_EVENT_NONE:
-//                 abort();
-//         case LIBINPUT_EVENT_DEVICE_ADDED:
-//                 type = "DEVICE_ADDED";
-//                 break;
-//         case LIBINPUT_EVENT_DEVICE_REMOVED:
-//                 type = "DEVICE_REMOVED";
-//                 break;
-//         case LIBINPUT_EVENT_KEYBOARD_KEY:
-//                 type = "KEYBOARD_KEY";
-//                 break;
-//         case LIBINPUT_EVENT_POINTER_MOTION:
-//                 type = "POINTER_MOTION";
-//                 break;
-//         case LIBINPUT_EVENT_POINTER_MOTION_ABSOLUTE:
-//                 type = "POINTER_MOTION_ABSOLUTE";
-//                 break;
-//         case LIBINPUT_EVENT_POINTER_BUTTON:
-//                 type = "POINTER_BUTTON";
-//                 break;
-//         case LIBINPUT_EVENT_POINTER_AXIS:
-//                 type = "POINTER_AXIS";
-//                 break;
-//         case LIBINPUT_EVENT_TOUCH_DOWN:
-//                 type = "TOUCH_DOWN";
-//                 break;
-//         case LIBINPUT_EVENT_TOUCH_MOTION:
-//                 type = "TOUCH_MOTION";
-//                 break;
-//         case LIBINPUT_EVENT_TOUCH_UP:
-//                 type = "TOUCH_UP";
-//                 break;
-//         case LIBINPUT_EVENT_TOUCH_CANCEL:
-//                 type = "TOUCH_CANCEL";
-//                 break;
-//         case LIBINPUT_EVENT_TOUCH_FRAME:
-//                 type = "TOUCH_FRAME";
-//                 break;
-//         case LIBINPUT_EVENT_GESTURE_SWIPE_BEGIN:
-//                 type = "GESTURE_SWIPE_BEGIN";
-//                 break;
-//         case LIBINPUT_EVENT_GESTURE_SWIPE_UPDATE:
-//                 type = "GESTURE_SWIPE_UPDATE";
-//                 break;
-//         case LIBINPUT_EVENT_GESTURE_SWIPE_END:
-//                 type = "GESTURE_SWIPE_END";
-//                 break;
-//         case LIBINPUT_EVENT_GESTURE_PINCH_BEGIN:
-//                 type = "GESTURE_PINCH_BEGIN";
-//                 break;
-//         case LIBINPUT_EVENT_GESTURE_PINCH_UPDATE:
-//                 type = "GESTURE_PINCH_UPDATE";
-//                 break;
-//         case LIBINPUT_EVENT_GESTURE_PINCH_END:
-//                 type = "GESTURE_PINCH_END";
-//                 break;
-//         case LIBINPUT_EVENT_TABLET_TOOL_AXIS:
-//                 type = "TABLET_TOOL_AXIS";
-//                 break;
-//         case LIBINPUT_EVENT_TABLET_TOOL_PROXIMITY:
-//                 type = "TABLET_TOOL_PROXIMITY";
-//                 break;
-//         case LIBINPUT_EVENT_TABLET_TOOL_TIP:
-//                 type = "TABLET_TOOL_TIP";
-//                 break;
-//         case LIBINPUT_EVENT_TABLET_TOOL_BUTTON:
-//                 type = "TABLET_TOOL_BUTTON";
-//                 break;
-//         case LIBINPUT_EVENT_TABLET_PAD_BUTTON:
-//                 type = "TABLET_PAD_BUTTON";
-//                 break;
-//         case LIBINPUT_EVENT_TABLET_PAD_RING:
-//                 type = "TABLET_PAD_RING";
-//                 break;
-//         case LIBINPUT_EVENT_TABLET_PAD_STRIP:
-//                 type = "TABLET_PAD_STRIP";
-//                 break;
-//         case LIBINPUT_EVENT_TABLET_PAD_KEY:
-//                 type = "TABLET_PAD_KEY";
-//                 break;
-//         case LIBINPUT_EVENT_SWITCH_TOGGLE:
-//                 type = "SWITCH_TOGGLE";
-//                 break;
-//         }
-
-//         prefix = (last_device != dev) ? '-' : ' ';
-
-//         printq("%c%-7s  %-16s ",
-//                prefix,
-//                libinput_device_get_sysname(dev),
-//                type);
-
-//         last_device = dev;
-// }
-
 static void
 print_event_time(uint32_t time)
 {
@@ -1080,97 +974,8 @@ void libinput_grabber_loop(LibinputGrabber *self, Mygestures *mygestures)
 
         tools_init_options(&options);
 
-        // while (1)
-        // {
-        // int c;
-        // int option_index = 0;
-        // enum
-        // {
-        //         OPT_DEVICE = 1,
-        //         OPT_UDEV,
-        //         OPT_GRAB,
-        //         OPT_VERBOSE,
-        //         OPT_SHOW_KEYCODES,
-        //         OPT_QUIET,
-        // };
-        // static struct option opts[] = {
-        //     CONFIGURATION_OPTIONS,
-        //     {"show-keycodes", no_argument, 0, OPT_SHOW_KEYCODES},
-        //     {"device", required_argument, 0, OPT_DEVICE},
-        //     {"udev", required_argument, 0, OPT_UDEV},
-        //     {"grab", no_argument, 0, OPT_GRAB},
-        //     {"verbose", no_argument, 0, OPT_VERBOSE},
-        //     {"quiet", no_argument, 0, OPT_QUIET},
-        //     {0, 0, 0, 0}};
-
-        // c = getopt_long(argc, argv, "h", opts, &option_index);
-        // if (c == -1)
-        //         break;
-
-        // switch (c)
-        // {
-        // case OPT_SHOW_KEYCODES:
-        //         show_keycodes = true;
-        //         break;
-        // case OPT_QUIET:
-        //         be_quiet = true;
-        //         break;
-        /*case OPT_DEVICE:
-                        if (backend == BACKEND_UDEV ||
-                            ndevices >= ARRAY_LENGTH(seat_or_devices))
-                        {
-                                usage();
-                                return EXIT_INVALID_USAGE;
-                        }
-                        backend = BACKEND_DEVICE;
-                        seat_or_devices[ndevices++] = optarg;
-                        break;*/
-        /*case OPT_UDEV:
-                        if (backend == BACKEND_DEVICE ||
-                            ndevices >= ARRAY_LENGTH(seat_or_devices))
-                        {
-                                usage();
-                                return EXIT_INVALID_USAGE;
-                        }
-                        backend = BACKEND_UDEV;
-                        seat_or_devices[0] = optarg;
-                        ndevices = 1;
-                        break;*/
-        // case OPT_GRAB:
-        //         grab = true;
-        //         break;
-        // case OPT_VERBOSE:
-        //         verbose = true;
-        //         break;
-        // default:
-        //         break;
-        // }
-        // }
-
-        // if (optind < argc)
-        // {
-        //         if (backend == BACKEND_UDEV)
-        //         {
-        //                 return EXIT_INVALID_USAGE;
-        //         }
-        //         backend = BACKEND_DEVICE;
-        //         /*do
-        //         {
-        //                 if (ndevices >= ARRAY_LENGTH(seat_or_devices))
-        //                 {
-        //                         usage();
-        //                         return EXIT_INVALID_USAGE;
-        //                 }
-        //                 seat_or_devices[ndevices++] = argv[optind];
-        //         } while (++optind < argc);*/
-        // }
-        // else if (backend == BACKEND_NONE)
-        // {
-
         backend = BACKEND_UDEV;
         seat_or_devices[0] = "seat0";
-
-        // }
 
         memset(&act, 0, sizeof(act));
         act.sa_sigaction = sighandler;
@@ -1183,9 +988,6 @@ void libinput_grabber_loop(LibinputGrabber *self, Mygestures *mygestures)
                 return; // EXIT_FAILURE;
         }
 
-        //if (verbose)
-        //        printf("libinput version: %s\n", LIBINPUT_VERSION);
-
         li = tools_open_backend(backend, seat_or_devices, verbose, &grab);
         if (!li)
                 return; // EXIT_FAILURE;
@@ -1195,65 +997,6 @@ void libinput_grabber_loop(LibinputGrabber *self, Mygestures *mygestures)
         libinput_unref(li);
 
         return; // EXIT_SUCCESS;
-
-        // XEvent ev;
-
-        // assert(self);
-        // assert(mygestures);
-
-        // grabber_open_display(self);
-
-        // grabber_xinput_open_devices(self, True);
-
-        // grabbing_xinput_grab_start(self);
-
-        // while (!self->shut_down)
-        // {
-
-        //         XNextEvent(self->dpy, &ev);
-
-        //         if (ev.xcookie.type == GenericEvent && ev.xcookie.extension == self->opcode && XGetEventData(self->dpy, &ev.xcookie))
-        //         {
-
-        //                 XIDeviceEvent *data = NULL;
-
-        //                 switch (ev.xcookie.evtype)
-        //                 {
-
-        //                 case XI_Motion:
-        //                         data = (XIDeviceEvent *)ev.xcookie.data;
-        //                         mygestures_update_movement(mygestures, data->root_x, data->root_y, self->delta_min);
-        //                         break;
-
-        //                 case XI_ButtonPress:
-        //                         data = (XIDeviceEvent *)ev.xcookie.data;
-        //                         mygestures_start_movement(mygestures, data->root_x, data->root_y, self->delta_min);
-        //                         break;
-
-        //                 case XI_ButtonRelease:
-        //                         data = (XIDeviceEvent *)ev.xcookie.data;
-
-        //                         char *device_name = get_device_name_from_event(self, data);
-
-        //                         grabbing_xinput_grab_stop(self);
-        //                         int status = grabbing_end_movement(mygestures, data->root_x, data->root_y,
-        //                                                            device_name, mygestures);
-
-        //                         if (!status)
-        //                         {
-        //                                 printf("\nEmulating click\n");
-
-        //                                 //grabbing_xinput_grab_stop(self);
-        //                                 mouse_click(self->dpy, self->button, data->root_x, data->root_y);
-        //                                 //grabbing_xinput_grab_start(self);
-        //                         }
-
-        //                         grabbing_xinput_grab_start(self);
-        //                         break;
-        //                 }
-        //         }
-        //         XFreeEventData(self->dpy, &ev.xcookie);
-        // }
 }
 
 LibinputGrabber *libinput_grabber_new(char *device_name, int nfingers)
