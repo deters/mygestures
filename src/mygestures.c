@@ -45,8 +45,7 @@
 #define MAX_STROKES_PER_CAPTURE 63 /*TODO*/
 #endif
 
-const char stroke_representations[] = {' ', 'L', 'R', 'U', 'D', '1', '3', '7',
-									   '9'};
+const char stroke_representations[] = {' ', 'L', 'R', 'U', 'D'};
 
 static char get_direction_from_deltas(int x_delta, int y_delta)
 {
@@ -98,7 +97,7 @@ Mygestures *mygestures_new()
 	Mygestures *self = malloc(sizeof(Mygestures));
 	bzero(self, sizeof(Mygestures));
 
-	self->device_name = "";
+	// self->device_name = "";
 	self->root_context = NULL;
 
 	self->rought_direction_sequence = malloc(sizeof(char) * MAX_STROKES_PER_CAPTURE);

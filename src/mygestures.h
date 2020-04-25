@@ -10,14 +10,8 @@
 typedef struct mygestures_
 {
 	Display *dpy;
-	int trigger_button;
-	int multitouch;
-	int libinput;
 	int list_devices_flag;
 	int delta_updates;
-
-	char *device_name;
-	char *brush_color;
 
 	backing_t backing;
 	brush_t brush;
