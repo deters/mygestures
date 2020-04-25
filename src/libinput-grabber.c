@@ -3,7 +3,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h> // for close
-#include <fcntl.h>
 #include <errno.h>
 #include <stdio.h>
 #include <assert.h>
@@ -13,21 +12,10 @@
 
 #include "config.h"
 
-#include <errno.h>
-#include <inttypes.h>
-#include <getopt.h>
 #include <poll.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <stdlib.h>
 #include <signal.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
-#include "linux/input.h"
-#include <libinput.h>
-
-#include <libevdev/libevdev.h>
 
 #include "libinput-shared.h"
 #include "libinput-grabber.h"
@@ -499,6 +487,3 @@ void libinput_grabber_list_devices()
 
         libinput_unref(li);
 }
-
-// void libinput_grabber_loop(LibinputGrabber *self, Mygestures *mygestures);
-// void grabber_libinput_finalize(LibinputGrabber *self);

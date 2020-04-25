@@ -26,22 +26,14 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <fnmatch.h>
-#include <getopt.h>
-#include <limits.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <libudev.h>
 #include <unistd.h>
 
 #include <libevdev/libevdev.h>
 
-//#include "builddir.h"
 #include "libinput-shared.h"
-//#include "util-macros.h"
-//#include "util-strings.h"
 
 LIBINPUT_ATTRIBUTE_PRINTF(3, 0)
 static void
