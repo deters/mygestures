@@ -500,5 +500,5 @@ void libinput_grabber_list_devices()
         libinput_unref(li);
 }
 
-void libinput_grabber_loop(LibinputGrabber *self, Mygestures *mygestures);
-void grabber_libinput_finalize(LibinputGrabber *self);
+// void libinput_grabber_loop(LibinputGrabber *self, Mygestures *mygestures);
+// void grabber_libinput_finalize(LibinputGrabber *self);
