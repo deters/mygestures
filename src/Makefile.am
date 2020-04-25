@@ -1,12 +1,12 @@
 
-AM_CFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' -O2 $(LIBXML2_CFLAGS) $(LIBEVDEV_CFLAGS) \ 
+AM_CFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' -O2 $(LIBXML2_CFLAGS) $(LIBEVDEV_CFLAGS) \
   $(LIBUDEV_CFLAGS)  -Wall -Wunreachable-code # -fprofile-arcs -ftest-coverage
 
 bin_PROGRAMS=touchgestures mousegestures
 
 
 common_SOURCES = \
-        mygestures.c mygestures.h \
+        gestures.c gestures.h \
         configuration.c configuration.h \
         configuration_parser.c configuration_parser.h \
         drawing/drawing-backing.c \
