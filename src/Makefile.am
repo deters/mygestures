@@ -9,7 +9,6 @@ common_SOURCES = \
         mygestures.c mygestures.h \
         configuration.c configuration.h \
         configuration_parser.c configuration_parser.h \
-        actions.c actions.h \
         drawing/drawing-backing.c \
         drawing/drawing-backing.h \
         drawing/drawing-brush.c \

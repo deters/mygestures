@@ -26,7 +26,6 @@
 #include "assert.h"
 
 #include "config.h"
-#include "actions.h"
 #include "configuration_parser.h"
 
 const char *CONFIG_FILE_NAME = "mygestures.xml";

@@ -40,7 +40,6 @@
 #include "configuration.h"
 #include "configuration_parser.h"
 #include "drawing/drawing-brush-image.h"
-#include "actions.h"
 
 #ifndef MAX_STROKES_PER_CAPTURE
 #define MAX_STROKES_PER_CAPTURE 63 /*TODO*/
