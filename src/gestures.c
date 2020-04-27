@@ -100,7 +100,7 @@ Mygestures *mygestures_new()
 	// self->device_name = "";
 	self->root_context = NULL;
 
-	self->rought_direction_sequence = malloc(sizeof(char) * MAX_STROKES_PER_CAPTURE);
+	self->sequence = malloc(sizeof(char) * MAX_STROKES_PER_CAPTURE);
 
 	self->dpy = XOpenDisplay(NULL);
 
@@ -184,13 +184,7 @@ void mygestures_start_movement(Mygestures *self, int new_x, int new_y, int delta
 
 	self->started = 1;
 
-	self->rought_direction_sequence[0] = '\0';
-
-	self->old_x = new_x;
-	self->old_y = new_y;
-
-	self->rought_old_x = new_x;
-	self->rought_old_y = new_y;
+	self->sequence[0] = '\0';
 
 	if (self->brush_image)
 	{
@@ -204,7 +198,7 @@ void mygestures_start_movement(Mygestures *self, int new_x, int new_y, int delta
 	return;
 }
 
-void mygestures_update_movement(Mygestures *self, int new_x, int new_y, int delta_min)
+void mygestures_update_movement(Mygestures *self, int delta_x, int delta_y, int delta_min)
 {
 
 	if (!self->started)
@@ -212,85 +206,19 @@ void mygestures_update_movement(Mygestures *self, int new_x, int new_y, int delt
 		return;
 	}
 
-	// se for o caso, desenha o movimento na tela
-	if (self->brush_image)
-	{
-		backing_save(&(self->backing), new_x - self->brush.image_width,
-					 new_y - self->brush.image_height);
+	char direction = get_direction_from_deltas(delta_x,
+											   delta_y);
 
-		brush_line_to(&(self->brush), new_x, new_y);
-	}
-
-	int x_delta = (new_x - self->old_x);
-	int y_delta = (new_y - self->old_y);
-
-	/// se os valores já vierem na forma de deltas...
-	if (self->delta_updates)
-	{
-		x_delta = new_x;
-		y_delta = new_y;
-	}
-
-	//printf("%d, %d\n", x_delta, y_delta);
-
-	if ((abs(x_delta) > delta_min) || (abs(y_delta) > delta_min))
-	{
-
-		if (self->delta_updates)
-		{
-
-			// reset start position
-			self->old_x = self->old_x + x_delta;
-			self->old_y = self->old_y + y_delta;
-		}
-		else
-		{
-
-			// reset start position
-			self->old_x = new_x;
-			self->old_y = new_y;
-		}
-	}
-
-	int rought_delta_x = new_x - self->rought_old_x;
-	int rought_delta_y = new_y - self->rought_old_y;
-
-	if (self->delta_updates)
-	{
-
-		rought_delta_x = (self->rought_old_x + new_x) - self->rought_old_x;
-		rought_delta_y = (self->rought_old_y + new_y) - self->rought_old_y;
-	}
-
-	char rought_direction = get_direction_from_deltas(rought_delta_x,
-													  rought_delta_y);
-
-	int square_distance_2 = rought_delta_x * rought_delta_x + rought_delta_y * rought_delta_y;
+	int square_distance_2 = delta_x * delta_x + delta_y * delta_y;
 
 	if (delta_min * delta_min < square_distance_2)
 	{
 		// grab stroke
 
-		movement_add_direction(self->rought_direction_sequence,
-							   rought_direction);
-
-		if (self->delta_updates)
-		{
-
-			// reset start position
-			self->rought_old_x = self->rought_old_x + new_x;
-			self->rought_old_y = self->rought_old_y + new_y;
-		}
-		else
-		{
-
-			// reset start position
-			self->rought_old_x = new_x;
-			self->rought_old_y = new_y;
-		}
+		movement_add_direction(self->sequence,
+							   direction);
+		return;
 	}
-
-	return;
 }
 
 static Window get_parent_window(Display *dpy, Window w)
@@ -450,7 +378,7 @@ int mygestures_end_movement(Mygestures *self, int cancel,
 	};
 
 	// if there is no gesture
-	if ((strlen(self->rought_direction_sequence) == 0))
+	if ((strlen(self->sequence) == 0))
 	{
 		return 0; // TODO: turn into enum.
 	}
@@ -465,7 +393,7 @@ int mygestures_end_movement(Mygestures *self, int cancel,
 
 		grab = malloc(sizeof(Capture));
 
-		grab->expression = strdup(self->rought_direction_sequence);
+		grab->expression = strdup(self->sequence);
 		grab->active_window_info = window_info;
 
 		printf("\n");

@@ -20,10 +20,7 @@ typedef struct mygestures_
 	int old_x;
 	int old_y;
 
-	int rought_old_x;
-	int rought_old_y;
-
-	char *rought_direction_sequence;
+	char *sequence;
 
 	int started;
 
