@@ -224,151 +224,65 @@ Context *xml_open_file(char *filename)
 	return root;
 }
 
-static char *get_config_dir()
+static char *get_user_configuration()
 {
-	char *dir = NULL;
-
-	dir = getenv("XDG_CONFIG_HOME");
-	if (!dir)
-	{
-		char *home = getenv("HOME");
-		int size = asprintf(&dir, "%s/.config/mygestures", home);
-		if (size < 0)
-		{
-			printf("Error in asprintf at get_config_dir\n");
-			exit(1);
-		}
-	}
-
-	assert(dir);
-
-	return dir;
-}
-
-char *xml_get_template_filename()
-{
-	char *template_file; // = malloc(sizeof(char) * 4096);
-	int size = asprintf(&template_file, "%s/mygestures.xml", SYSCONFDIR);
-
-	if (size < 0)
-	{
-		printf("Error in asprintf at xml_get_template_filename\n");
-		exit(1);
-	}
-
-	return template_file;
-}
-
-int file_copy(const char *from, const char *to)
-{
-	int fd_to, fd_from;
-	char buf[4096];
-	ssize_t nread;
-	int saved_errno;
-
-	fd_from = open(from, O_RDONLY);
-	if (fd_from < 0)
-		return -1;
-
-	fd_to = open(to, O_WRONLY | O_CREAT | O_EXCL, 0666);
-	if (fd_to < 0)
-		goto out_error;
-
-	while (nread = read(fd_from, buf, sizeof buf), nread > 0)
-	{
-		char *out_ptr = buf;
-		ssize_t nwritten;
-
-		do
-		{
-			nwritten = write(fd_to, out_ptr, nread);
-
-			if (nwritten >= 0)
-			{
-				nread -= nwritten;
-				out_ptr += nwritten;
-			}
-			else if (errno != EINTR)
-			{
-				goto out_error;
-			}
-		} while (nread > 0);
-	}
-
-	if (nread == 0)
-	{
-		if (close(fd_to) < 0)
-		{
-			fd_to = -1;
-			goto out_error;
-		}
-		close(fd_from);
-
-		/* Success! */
-		return 0;
-	}
-
-out_error:
-	saved_errno = errno;
-
-	close(fd_from);
-	if (fd_to >= 0)
-		close(fd_to);
-
-	errno = saved_errno;
-	return -1;
-}
-
-void test_create_dir(char *dir)
-{
-	struct stat st = {0};
-	if (stat(dir, &st) == -1)
-	{
-		mkdir(dir, 0700);
-		perror("in createdir");
-	}
-}
-
-char *context_get_default_filename()
-{
-	char *dir = get_config_dir();
+	char *home = getenv("XDG_CONFIG_HOME");
 
 	char *filename = NULL;
-	int size = asprintf(&filename, "%s/mygestures.xml", dir);
 
+	if (!filename)
+	{
+		home = getenv("HOME");
+	}
+
+	int size = asprintf(&filename, "%s/.config/mygestures/mygestures.xml", home);
 	if (size < 0)
 	{
-		printf("Error in asprintf at context_get_default_filename\n");
+		printf("Error in asprintf at get_user_configuration\n");
 		exit(1);
 	}
 
 	assert(filename);
+
+	return filename;
+}
+
+static char *get_system_configuration()
+{
+
+	char *filename = NULL;
+
+	int size = asprintf(&filename, "%s/mygestures.xml", SYSCONFDIR);
+	if (size < 0)
+	{
+		printf("Error in asprintf at get_system_configuration\n");
+		exit(1);
+	}
+
+	assert(filename);
+
 	return filename;
 }
 
 Context *configuration_load_from_defaults()
 {
 
-	int err = 0;
-
-	char *dir = get_config_dir();
-	test_create_dir(dir);
-
-	char *config_file = context_get_default_filename();
+	char *config_file = get_user_configuration();
 
 	FILE *f = fopen(config_file, "r");
 
 	if (!f)
 	{
-		char *template = xml_get_template_filename();
-		err = file_copy(template, config_file);
-		if (err)
-		{
-			fprintf(stderr,
-					"Error creating default context on '%s' from '%s'\n",
-					config_file, template);
-			return NULL;
-		}
+		printf("%s NOT FOUND. Ignoring\n", config_file);
+
+		config_file = get_system_configuration();
+		f = fopen(config_file, "r");
+	}
+
+	if (!f)
+	{
+		printf("%s NOT FOUND. EXITING\n", config_file);
+		exit(1);
 	}
 	else
 	{
@@ -384,7 +298,7 @@ Context *configuration_load_from_defaults()
 		return NULL;
 	}
 
-	printf("Loaded context from file '%s'.\n", config_file);
+	printf("Loaded configuration from %s\n", config_file);
 
 	return root;
 }
@@ -403,8 +317,8 @@ Context *configuration_load_from_file(char *filename)
 		return NULL;
 	}
 
-	printf("Loaded configuration from \n'%s\n with %d gestures'.\n",
-		   filename, root->gesture_count);
+	printf("Loaded configuration from %s\n",
+		   filename);
 
 	return root;
 }
