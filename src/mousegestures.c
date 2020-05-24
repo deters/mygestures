@@ -14,7 +14,6 @@
 
 int trigger_button = 3;
 int list_devices_flag;
-int visual = 0;
 char *config_file;
 char *device_name = "";
 
@@ -34,7 +33,6 @@ static void mygestures_usage()
 	printf(" -d, --device <DEVICENAME>  : Device to grab. Default: the first detected touchpad.\n");
 	printf(" -b, --button <BUTTON>      : Device to grab. Default: the first detected touchpad.\n");
 	printf(" -l, --device-list          : Print all available devices an exit.\n");
-	printf(" -v, --visual               : Visual mode - paint the gesture on screen.\n");
 	printf(" -h, --help                 : Help\n");
 }
 
@@ -47,7 +45,6 @@ static void process_arguments(int argc, char *const *argv)
 		{"button", required_argument, 0, 'b'},
 		{"config", required_argument, 0, 'c'},
 		{"help", no_argument, 0, 'h'},
-		{"visual", no_argument, 0, 'v'},
 		{0, 0, 0, 0}};
 
 	/* read params */
@@ -67,10 +64,6 @@ static void process_arguments(int argc, char *const *argv)
 
 		case 'd':
 			device_name = strdup(optarg);
-			break;
-
-		case 'v':
-			visual = 1;
 			break;
 
 		case 'c':
@@ -108,11 +101,6 @@ int main(int argc, char *const *argv)
 	process_arguments(argc, argv);
 
 	Mygestures *mygestures = mygestures_new();
-
-	if (visual)
-	{
-		mygestures_set_brush_color(mygestures, "red");
-	}
 
 	mygestures_load_configuration(mygestures, config_file);
 

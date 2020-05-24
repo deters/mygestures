@@ -280,7 +280,7 @@ handle_and_print_events(struct libinput *li, Mygestures *mygestures, LibinputGra
 
                                         // já está enviando a diferença (delta).
                                         mygestures_set_delta_updates(mygestures, 1);
-                                        mygestures_start_movement(mygestures, 0, 0, self->delta_min);
+                                        mygestures_start_movement(mygestures);
 
                                         // mygestures_start_movement(mygestures, ev)
                                 }

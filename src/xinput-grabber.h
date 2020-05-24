@@ -54,6 +54,9 @@ typedef struct
 	int event;
 	int error;
 
+	int old_x;
+	int old_y;
+
 	int delta_min;
 
 	int synaptics;

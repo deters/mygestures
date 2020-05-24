@@ -359,12 +359,16 @@ void grabber_xinput_loop(XInputGrabber *self, Mygestures *mygestures)
 
 			case XI_Motion:
 				data = (XIDeviceEvent *)ev.xcookie.data;
-				mygestures_update_movement(mygestures, data->root_x, data->root_y, self->delta_min);
+				mygestures_update_movement(mygestures, data->event_x - self->old_x, data->event_y - self->old_y, self->delta_min);
+				self->old_x = data->event_x;
+				self->old_y = data->event_y;
 				break;
 
 			case XI_ButtonPress:
 				data = (XIDeviceEvent *)ev.xcookie.data;
-				mygestures_start_movement(mygestures, data->root_x, data->root_y, self->delta_min);
+				mygestures_start_movement(mygestures);
+				self->old_x = data->event_x;
+				self->old_y = data->event_y;
 				break;
 
 			case XI_ButtonRelease:
@@ -372,17 +376,20 @@ void grabber_xinput_loop(XInputGrabber *self, Mygestures *mygestures)
 
 				char *device_name = get_device_name_from_event(self, data);
 
-				grabbing_xinput_grab_stop(self);
 				int status = mygestures_end_movement(mygestures, 0,
 													 device_name);
 
 				if (!status)
 				{
 					printf("\nEmulating click\n");
+					grabbing_xinput_grab_stop(self);
 					mouse_click(self->dpy, self->button, data->root_x, data->root_y);
+					grabbing_xinput_grab_start(self);
 				}
 
-				grabbing_xinput_grab_start(self);
+				self->old_x = data->event_x;
+				self->old_y = data->event_y;
+
 				break;
 			}
 		}

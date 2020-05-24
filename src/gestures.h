@@ -4,18 +4,12 @@
 
 #include "configuration.h"
 #include <X11/Xlib.h>
-#include "drawing/drawing-backing.h"
-#include "drawing/drawing-brush.h"
 
 typedef struct mygestures_
 {
 	Display *dpy;
 	int list_devices_flag;
 	int delta_updates;
-
-	backing_t backing;
-	brush_t brush;
-	struct brush_image_t *brush_image;
 
 	int old_x;
 	int old_y;
@@ -32,7 +26,7 @@ Mygestures *mygestures_new();
 
 void mygestures_set_delta_updates(Mygestures *self, int delta_updates);
 void mygestures_set_brush_color(Mygestures *self, char *brush_color);
-void mygestures_start_movement(Mygestures *self, int new_x, int new_y, int delta_min);
+void mygestures_start_movement(Mygestures *self);
 void mygestures_update_movement(Mygestures *self, int new_x, int new_y, int delta_min);
 int mygestures_end_movement(Mygestures *self, int cancel,
 							char *device_name);

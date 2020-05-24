@@ -28,6 +28,8 @@
 
 #include <math.h>
 #include <X11/extensions/XTest.h> /* emulating device events */
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <sys/mman.h>
 
 #include "assert.h"
@@ -39,7 +41,6 @@
 
 #include "configuration.h"
 #include "configuration_parser.h"
-#include "drawing/drawing-brush-image.h"
 
 #ifndef MAX_STROKES_PER_CAPTURE
 #define MAX_STROKES_PER_CAPTURE 63 /*TODO*/
@@ -120,81 +121,16 @@ void mygestures_load_configuration(Mygestures *self, char *filename)
 	}
 }
 
-static struct brush_image_t *get_brush_image(char *color)
-{
-
-	struct brush_image_t *brush_image = NULL;
-
-	if (!color)
-		brush_image = NULL;
-	else if (strcasecmp(color, "red") == 0)
-		brush_image = &brush_image_red;
-	else if (strcasecmp(color, "green") == 0)
-		brush_image = &brush_image_green;
-	else if (strcasecmp(color, "yellow") == 0)
-		brush_image = &brush_image_yellow;
-	else if (strcasecmp(color, "white") == 0)
-		brush_image = &brush_image_white;
-	else if (strcasecmp(color, "purple") == 0)
-		brush_image = &brush_image_purple;
-	else if (strcasecmp(color, "blue") == 0)
-		brush_image = &brush_image_blue;
-	else
-		brush_image = NULL;
-
-	return brush_image;
-}
-
-void mygestures_set_brush_color(Mygestures *self, char *brush_color)
-{
-	self->brush_image = get_brush_image(brush_color);
-}
-
-static void grabber_init_drawing(Mygestures *self)
-{
-
-	if (self->brush_image)
-	{
-
-		assert(self->dpy);
-
-		int err = 0;
-		int scr = DefaultScreen(self->dpy);
-
-		err = backing_init(&(self->backing), self->dpy,
-						   DefaultRootWindow(self->dpy), DisplayWidth(self->dpy, scr),
-						   DisplayHeight(self->dpy, scr), DefaultDepth(self->dpy, scr));
-		if (err)
-		{
-			fprintf(stderr, "cannot open backing store.... \n");
-		}
-		err = brush_init(&(self->brush), &(self->backing), self->brush_image);
-		if (err)
-		{
-			fprintf(stderr, "cannot init brush.... \n");
-		}
-	}
-}
-
 /**
  * Clear previous movement data.
  */
-void mygestures_start_movement(Mygestures *self, int new_x, int new_y, int delta_min)
+void mygestures_start_movement(Mygestures *self)
 {
 
 	self->started = 1;
 
 	self->sequence[0] = '\0';
 
-	if (self->brush_image)
-	{
-
-		grabber_init_drawing(self);
-
-		backing_save(&(self->backing), new_x - self->brush.image_width,
-					 new_y - self->brush.image_height);
-		brush_draw(&(self->brush), self->old_x, self->old_y);
-	}
 	return;
 }
 
@@ -205,6 +141,8 @@ void mygestures_update_movement(Mygestures *self, int delta_x, int delta_y, int 
 	{
 		return;
 	}
+
+	//printf("%d, %d\n", delta_x, delta_y);
 
 	char direction = get_direction_from_deltas(delta_x,
 											   delta_y);
@@ -370,12 +308,6 @@ int mygestures_end_movement(Mygestures *self, int cancel,
 	Capture *grab = NULL;
 
 	self->started = 0;
-
-	// if is drawing
-	if (self->brush_image)
-	{
-		backing_restore(&(self->backing));
-	};
 
 	// if there is no gesture
 	if ((strlen(self->sequence) == 0))

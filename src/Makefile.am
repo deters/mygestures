@@ -8,16 +8,7 @@ bin_PROGRAMS=touchgestures mousegestures
 common_SOURCES = \
         gestures.c gestures.h \
         configuration.c configuration.h \
-        configuration_parser.c configuration_parser.h \
-        drawing/drawing-backing.c \
-        drawing/drawing-backing.h \
-        drawing/drawing-brush.c \
-        drawing/drawing-brush.h \
-        drawing/drawing-brush-image.h \
-        drawing/drawing-brush-shadow.h \
-        drawing/drawing-brush-image.c \
-        drawing/drawing-bresenham.c \
-	drawing/drawing-bresenham.h
+        configuration_parser.c configuration_parser.h 
 	
 
 touchgestures_SOURCES = \
