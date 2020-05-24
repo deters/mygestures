@@ -379,10 +379,7 @@ void grabber_xinput_loop(XInputGrabber *self, Mygestures *mygestures)
 				if (!status)
 				{
 					printf("\nEmulating click\n");
-
-					//grabbing_xinput_grab_stop(self);
 					mouse_click(self->dpy, self->button, data->root_x, data->root_y);
-					//grabbing_xinput_grab_start(self);
 				}
 
 				grabbing_xinput_grab_start(self);

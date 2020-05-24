@@ -1,6 +1,6 @@
 
 AM_CFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' -O2 $(LIBXML2_CFLAGS) $(LIBEVDEV_CFLAGS) \
-  $(LIBUDEV_CFLAGS)  -Wall -Wunreachable-code # -fprofile-arcs -ftest-coverage
+  $(LIBUDEV_CFLAGS) $(LIBINPUT_CFLAGS) -Wall -Wunreachable-code # -fprofile-arcs -ftest-coverage
 
 bin_PROGRAMS=touchgestures mousegestures
 

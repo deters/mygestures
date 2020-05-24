@@ -33,7 +33,7 @@
     <movement name="I" value="RL?DL?R" />
     <movement name="J" value="R?L?DRDLU" />
     <movement name="M" value="D?UR?DUR?D" />
-    <movement name="N" value="UDU" />
+    <movement name="N" value="UR?DR?U" />
     <movement name="O" value="(LDRUL)+"/>
     <movement name="P" value="RULD" />
     <movement name="Q" value="ULDRUD" />
@@ -72,15 +72,15 @@
     <gesture movement="Right" command="xdotool key --clearmodifiers  Alt+Right" />
     <!--gesture movement="T" command="xdotool key \-\-clearmodifiers  Ctrl+T" /-->
 
-    <gesture movement="RightDown" command="xdotool key --clearmodifiers  Ctrl+W" />
+    <gesture movement="RightDown" command="xdotool key --clearmodifiers  Ctrl+w" />
 
     <!-- some common shortcuts -->
 
-    <gesture movement="N" command="xdotool key --clearmodifiers  Ctrl+N" />
-    <gesture movement="T" command="xdotool key --clearmodifiers  Ctrl+T" />
-    <gesture movement="O" command="xdotool key --clearmodifiers  Ctrl+O" />
-    <gesture movement="S" command="xdotool key --clearmodifiers  Ctrl+S" />
-    <gesture movement="P" command="xdotool key --clearmodifiers  Ctrl+P" />
+    <gesture movement="N" command="xdotool key --clearmodifiers  Ctrl+n" />
+    <gesture movement="T" command="xdotool key --clearmodifiers  Ctrl+t" />
+    <gesture movement="O" command="xdotool key --clearmodifiers  Ctrl+o" />
+    <gesture movement="S" command="xdotool key --clearmodifiers  Ctrl+s" />
+    <gesture movement="P" command="xdotool key --clearmodifiers  Ctrl+p" />
 
 
     <!-- commands will be interpreted using shell script -->

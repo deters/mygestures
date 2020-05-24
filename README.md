@@ -2,14 +2,14 @@
 MyGestures - mouse gestures for linux
 =====================================
 
- Mouse gestures - "draw" commands using your mouse/touchscreen/touchpad.
- Now with multitouch gestures on synaptics touchpads (experimental).
+ Mouse gestures - mouse gestures / touchpad gestures on linux.
 
   
 Installing from source:
 -----------------------
 
     sudo apt install pkg-config autoconf libtool libx11-dev libxrender-dev libxtst-dev libxml2-dev git make
+
     git clone https://github.com/deters/mygestures.git
     cd mygestures/
     sh autogen.sh
@@ -22,7 +22,7 @@ Generating a .deb package (optional)
   After installing from source:
 
     sudo apt install debhelper
-    dpkg-buildpackage # it'll probably complain about not being able to sign the package. thats fine.
+    dpkg-buildpackage # it'll probably complain about not being able to sign the package. That's fine.
     ls ../mygestures*.deb
 
 Usage:
