@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([MyGestures], [3.0], [lucasdeters@gmail.com])
+AC_INIT([Gesto], [1.0], [lucasdeters@gmail.com])
 AM_INIT_AUTOMAKE([subdir-objects])
 AC_CONFIG_SRCDIR([src/gestures.c])
 AC_CONFIG_HEADERS([src/config.h])
