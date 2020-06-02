@@ -13,6 +13,7 @@ Installing from source:
     git clone https://github.com/deters/mygestures.git
     cd mygestures/
     sh autogen.sh
+    ./configure
     make
     sudo make install
 
