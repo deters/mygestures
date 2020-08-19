@@ -6,11 +6,14 @@
 #include <unistd.h>
 #include <getopt.h>
 #include "assert.h"
+#include "signal.h"
 
 #include "mousegestures.h"
 #include "touchgestures.h"
 #include "gestos.h"
 #include "gestures.h"
+
+static Gestos *gestos;
 
 static void gestos_usage()
 {
@@ -24,10 +27,10 @@ static void gestos_usage()
 	printf("  -l, --device-list          : Print all available devices an exit.\n");
 	printf("  -h, --help                 : Help\n");
 	printf("\n");
-	printf(" TOUCHGESTURES OPTIONS:\n");
+	printf(" TOUCH GESTURES OPTIONS:\n");
 	printf("  -f, --fingers <FINGERS>    : Default: 3 fingers to trigger gestures\n");
 	printf("\n");
-	printf(" MOUSEGESTURES OPTIONS:\n");
+	printf(" MOUSE GESTURES OPTIONS:\n");
 	printf("  -b, --button <BUTTON>      : The mouse button to be pressed. Default button: 3 (right button))\n");
 	printf("\n");
 }
@@ -96,28 +99,36 @@ Gestos *gestos_new()
 	return self;
 }
 
+void child_exit()
+{
+
+	if (gestos->grabbers--)
+	{
+		printf("All processes gone. Exiting\n");
+		exit(0);
+	}
+
+	wait();
+}
+
 void gestos_run(Gestos *self)
 {
 	Gestures *gestures = gestures_new();
 	gestures_load_from_file(gestures, self->config_file);
 	self->gestures = gestures;
 
-	int pid = fork();
+	signal(SIGCHLD, child_exit);
 
-	if (pid == 0)
-	{
-		touchgestures_loop(self);
-	}
-	else
-	{
-		mousegestures_loop(self);
-	}
+	touchgestures_loop(self);
+	mousegestures_loop(self);
+
+	wait();
 }
 
 int main(int argc, char *const *argv)
 {
 
-	Gestos *gestos = gestos_new();
+	gestos = gestos_new();
 
 	gestos_process_arguments(gestos, argc, argv);
 	gestos_run(gestos);

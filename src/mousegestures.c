@@ -16,17 +16,27 @@
 int mousegestures_loop(Gestos *gestos)
 {
 
-	XInputGrabber *xinput;
+	int pid = fork();
 
-	xinput = grabber_xinput_new(gestos->device_name, gestos->button);
-
-	if (gestos->list_devices_flag)
+	if (pid == 0)
 	{
-		grabber_xinput_list_devices(xinput);
+
+		gestos->grabbers++;
+
+		XInputGrabber *xinput;
+
+		xinput = grabber_xinput_new(gestos->device_name, gestos->button);
+
+		if (gestos->list_devices_flag)
+		{
+			grabber_xinput_list_devices(xinput);
+			exit(0);
+		}
+
+		grabber_xinput_loop(xinput, gestos->gestures);
+
 		exit(0);
 	}
 
-	grabber_xinput_loop(xinput, gestos->gestures);
-
-	exit(0);
+	return pid;
 }

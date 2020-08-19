@@ -16,18 +16,27 @@
 int touchgestures_loop(Gestos *gestos)
 {
 
-	
-	LibinputGrabber *libinput;
+	int pid = fork();
 
-	if (gestos->list_devices_flag)
+	if (pid == 0)
 	{
-		libinput_grabber_list_devices();
+
+		gestos->grabbers++;
+
+		LibinputGrabber *libinput;
+
+		if (gestos->list_devices_flag)
+		{
+			libinput_grabber_list_devices();
+			exit(0);
+		}
+
+		libinput = libinput_grabber_new(gestos->device_name, gestos->fingers);
+
+		libinput_grabber_loop(libinput, gestos->gestures);
+
 		exit(0);
 	}
 
-	libinput = libinput_grabber_new(gestos->device_name, gestos->fingers);
-
-	libinput_grabber_loop(libinput, gestos->gestures);
-
-	exit(0);
+	return pid;
 }

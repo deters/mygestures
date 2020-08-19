@@ -3,6 +3,6 @@
 
 #include "gestos.h"
 
-int touchgestures_loop(Gestos *gestos);
+void touchgestures_loop(Gestos *gestos);
 
 #endif
