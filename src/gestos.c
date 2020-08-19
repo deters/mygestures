@@ -7,11 +7,12 @@
 #include <getopt.h>
 #include "assert.h"
 #include "signal.h"
+#include <sys/wait.h>
 
-#include "mousegestures.h"
-#include "touchgestures.h"
 #include "gestos.h"
 #include "gestures.h"
+#include "xinput-grabber.h"
+#include "libinput-grabber.h"
 
 static Gestos *gestos;
 
@@ -108,7 +109,65 @@ void child_exit()
 		exit(0);
 	}
 
-	wait();
+	wait(NULL);
+}
+
+int mousegestures_loop(Gestos *gestos)
+{
+
+	int pid = fork();
+
+	if (pid == 0)
+	{
+
+		gestos->grabbers++;
+
+		XInputGrabber *xinput;
+
+		// mousegestures handing will make use of xinput.
+		xinput = grabber_xinput_new(gestos->device_name, gestos->button);
+
+		if (gestos->list_devices_flag)
+		{
+			grabber_xinput_list_devices(xinput);
+			exit(0);
+		}
+
+		grabber_xinput_loop(xinput, gestos->gestures);
+
+		exit(0);
+	}
+
+	return pid;
+}
+
+int touchgestures_loop(Gestos *gestos)
+{
+
+	int pid = fork();
+
+	if (pid == 0)
+	{
+
+		gestos->grabbers++;
+
+		// touchgestures handing will make use of libinput.
+		LibinputGrabber *libinput;
+
+		if (gestos->list_devices_flag)
+		{
+			libinput_grabber_list_devices();
+			exit(0);
+		}
+
+		libinput = libinput_grabber_new(gestos->device_name, gestos->fingers);
+
+		libinput_grabber_loop(libinput, gestos->gestures);
+
+		exit(0);
+	}
+
+	return pid;
 }
 
 void gestos_run(Gestos *self)
@@ -122,7 +181,7 @@ void gestos_run(Gestos *self)
 	touchgestures_loop(self);
 	mousegestures_loop(self);
 
-	wait();
+	wait(NULL);
 }
 
 int main(int argc, char *const *argv)
