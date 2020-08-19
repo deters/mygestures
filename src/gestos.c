@@ -14,7 +14,8 @@
 #include "xinput-grabber.h"
 #include "libinput-grabber.h"
 
-static Gestos *gestos;
+// to control child proceses
+int CHILD_COUNT = 0;
 
 static void gestos_usage()
 {
@@ -103,7 +104,7 @@ Gestos *gestos_new()
 void child_exit()
 {
 
-	if (gestos->grabbers--)
+	if (CHILD_COUNT--)
 	{
 		printf("All processes gone. Exiting\n");
 		exit(0);
@@ -112,7 +113,7 @@ void child_exit()
 	wait(NULL);
 }
 
-int mousegestures_loop(Gestos *gestos)
+int gestos_mousegestures_loop(Gestos *gestos)
 {
 
 	int pid = fork();
@@ -120,7 +121,7 @@ int mousegestures_loop(Gestos *gestos)
 	if (pid == 0)
 	{
 
-		gestos->grabbers++;
+		CHILD_COUNT++;
 
 		XInputGrabber *xinput;
 
@@ -141,7 +142,14 @@ int mousegestures_loop(Gestos *gestos)
 	return pid;
 }
 
-int touchgestures_loop(Gestos *gestos)
+void gestos_load_gestures(Gestos *self)
+{
+	Gestures *gestures = gestures_new();
+	gestures_load_from_file(gestures, self->config_file);
+	self->gestures = gestures;
+}
+
+int gestos_touchgestures_loop(Gestos *gestos)
 {
 
 	int pid = fork();
@@ -149,7 +157,7 @@ int touchgestures_loop(Gestos *gestos)
 	if (pid == 0)
 	{
 
-		gestos->grabbers++;
+		CHILD_COUNT++;
 
 		// touchgestures handing will make use of libinput.
 		LibinputGrabber *libinput;
@@ -170,25 +178,19 @@ int touchgestures_loop(Gestos *gestos)
 	return pid;
 }
 
-void gestos_run(Gestos *self)
-{
-	Gestures *gestures = gestures_new();
-	gestures_load_from_file(gestures, self->config_file);
-	self->gestures = gestures;
-
-	signal(SIGCHLD, child_exit);
-
-	touchgestures_loop(self);
-	mousegestures_loop(self);
-
-	wait(NULL);
-}
-
 int main(int argc, char *const *argv)
 {
 
-	gestos = gestos_new();
+	Gestos *self = gestos_new();
 
-	gestos_process_arguments(gestos, argc, argv);
-	gestos_run(gestos);
+	signal(SIGCHLD, child_exit);
+
+	gestos_process_arguments(self, argc, argv);
+
+	gestos_load_gestures(self);
+
+	gestos_touchgestures_loop(self);
+	gestos_mousegestures_loop(self);
+
+	wait(NULL);
 }
