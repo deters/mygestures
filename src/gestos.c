@@ -14,20 +14,22 @@
 
 static void gestos_usage()
 {
-	printf("Usage: gestos [OPTIONS]\n");
 
 	printf("\n");
-	printf("GENERAL OPTIONS:\n");
-	printf(" -c, --config <CONFIG_FILE> : Gestures configuration file.\n");
-	printf(" -d, --device <DEVICENAME>  : Device to grab. Default: the first detected touchpad.\n");
-	printf(" -l, --device-list          : Print all available devices an exit.\n");
-	printf(" -h, --help                 : Help\n");
-
-	printf("TOUCHGESTURES OPTIONS:\n");
-	printf(" -f, --fingers <FINGERS>    : How many fingers will trigger the gesture. Default: 3\n");
-
-	printf("MOUSEGESTURES OPTIONS:\n");
-	printf(" -b, --button <BUTTON>      : Device to grab. Default: the first detected touchpad.\n");
+	printf(" Usage: gestos [OPTIONS]\n");
+	printf("\n");
+	printf(" GENERAL OPTIONS:\n");
+	printf("  -c, --config <CONFIG_FILE> : Gestures configuration file.\n");
+	printf("  -d, --device <DEVICENAME>  : The device to grab (only if you want to restrict gestures to this device)\n");
+	printf("  -l, --device-list          : Print all available devices an exit.\n");
+	printf("  -h, --help                 : Help\n");
+	printf("\n");
+	printf(" TOUCHGESTURES OPTIONS:\n");
+	printf("  -f, --fingers <FINGERS>    : Default: 3 fingers to trigger gestures\n");
+	printf("\n");
+	printf(" MOUSEGESTURES OPTIONS:\n");
+	printf("  -b, --button <BUTTON>      : The mouse button to be pressed. Default button: 3 (right button))\n");
+	printf("\n");
 }
 
 static void gestos_process_arguments(Gestos *self, int argc, char *const *argv)
