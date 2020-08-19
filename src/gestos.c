@@ -1,19 +1,14 @@
 #define _GNU_SOURCE /* needed by asprintf */
 
 #include <stdio.h>
-
 #include <string.h>
 #include <stdlib.h>
-
 #include <unistd.h>
-
-#include "assert.h"
-
 #include <getopt.h>
+#include "assert.h"
 
 #include "mousegestures.h"
 #include "touchgestures.h"
-
 #include "gestures.h"
 
 int list_devices_flag;
@@ -22,13 +17,7 @@ char *device_name = "";
 
 static void mouse_usage()
 {
-	printf("Usage: touchgestures [OPTIONS]\n");
-	printf("\n");
-	//printf("CONFIG_FILE:\n");
-
-	//char *default_file = mygestures. configuration_get_default_filename(mygestures);
-	//printf(" Default: %s\n", default_file);
-	//free(default_file);
+	printf("Usage: gestos [OPTIONS]\n");
 
 	printf("\n");
 	printf("OPTIONS:\n");
@@ -39,7 +28,7 @@ static void mouse_usage()
 	printf(" -h, --help                 : Help\n");
 }
 
-static void process_arguments(int argc, char *const *argv)
+static void process_arguments(Gestures *gestures, int argc, char *const *argv)
 {
 
 	char opt;
@@ -83,20 +72,21 @@ static void process_arguments(int argc, char *const *argv)
 int main(int argc, char *const *argv)
 {
 
-	process_arguments(argc, argv);
+	Gestures *gestures = gestures_new();
 
-	Mygestures *mygestures = mygestures_new();
-	mygestures_load_configuration(mygestures, config_file);
+	process_arguments(gestures, argc, argv);
+
+	gestures_load_from_file(gestures, config_file);
 
 	int pid = fork();
 
 	if (pid == 0)
 	{
-		touchgestures_main(argc, argv, mygestures);
+		touchgestures_main(argc, argv, gestures);
 	}
 	else
 	{
-		mousegestures_main(argc, argv, mygestures);
+		mousegestures_main(argc, argv, gestures);
 	}
 
 	exit(0);

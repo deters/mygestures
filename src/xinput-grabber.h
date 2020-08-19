@@ -36,7 +36,7 @@ enum
 typedef struct
 {
 
-	Mygestures *mygestures;
+	Gestures *mygestures;
 	Display *dpy;
 
 	char *devicename;
@@ -72,7 +72,7 @@ extern const char *modifiers_names[];
 extern const char _STROKE_CHARS[];
 
 XInputGrabber *grabber_xinput_new(char *device_name, int button);
-void grabber_xinput_loop(XInputGrabber *self, Mygestures *mygestures);
+void grabber_xinput_loop(XInputGrabber *self, Gestures *mygestures);
 // void grabber_finalize(XInputGrabber *self);
 // void grabber_print_devices(XInputGrabber *self);
 // void grabber_any_modifier(XInputGrabber *self, int enable);

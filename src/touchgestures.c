@@ -55,7 +55,7 @@ static void touchgestures_process_arguments(int argc, char *const *argv)
 	}
 }
 
-int touchgestures_main(int argc, char *const *argv, Mygestures *mygestures)
+int touchgestures_main(int argc, char *const *argv, Gestures *mygestures)
 {
 
 	touchgestures_process_arguments(argc, argv);

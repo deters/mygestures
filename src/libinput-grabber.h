@@ -23,7 +23,7 @@
 typedef struct
 {
 
-    Mygestures *mygestures;
+    Gestures *mygestures;
     Display *dpy;
 
     char *devicename;
@@ -52,7 +52,7 @@ typedef struct
 } LibinputGrabber;
 
 LibinputGrabber *libinput_grabber_new(char *device_name, int nfingers);
-void libinput_grabber_loop(LibinputGrabber *self, Mygestures *mygestures);
+void libinput_grabber_loop(LibinputGrabber *self, Gestures *mygestures);
 void libinput_grabber_list_devices();
 
 #endif /* LIBINPUT_GRABBING_H_ */

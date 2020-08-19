@@ -330,7 +330,7 @@ void grabber_xinput_list_devices(XInputGrabber *self)
 	grabber_xinput_open_devices(self, True);
 };
 
-void grabber_xinput_loop(XInputGrabber *self, Mygestures *mygestures)
+void grabber_xinput_loop(XInputGrabber *self, Gestures *mygestures)
 {
 
 	XEvent ev;

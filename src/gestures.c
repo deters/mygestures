@@ -92,11 +92,11 @@ static void movement_add_direction(char *stroke_sequence, char direction)
 	}
 }
 
-Mygestures *mygestures_new()
+Gestures *gestures_new()
 {
 
-	Mygestures *self = malloc(sizeof(Mygestures));
-	bzero(self, sizeof(Mygestures));
+	Gestures *self = malloc(sizeof(Gestures));
+	bzero(self, sizeof(Gestures));
 
 	// self->device_name = "";
 	self->root_context = NULL;
@@ -108,7 +108,7 @@ Mygestures *mygestures_new()
 	return self;
 }
 
-void mygestures_load_configuration(Mygestures *self, char *filename)
+void gestures_load_from_file(Gestures *self, char *filename)
 {
 
 	if (filename)
@@ -124,7 +124,7 @@ void mygestures_load_configuration(Mygestures *self, char *filename)
 /**
  * Clear previous movement data.
  */
-void mygestures_start_movement(Mygestures *self)
+void mygestures_start_movement(Gestures *self)
 {
 
 	self->started = 1;
@@ -134,7 +134,7 @@ void mygestures_start_movement(Mygestures *self)
 	return;
 }
 
-void mygestures_update_movement(Mygestures *self, int delta_x, int delta_y, int delta_min)
+void mygestures_update_movement(Gestures *self, int delta_x, int delta_y, int delta_min)
 {
 
 	if (!self->started)
@@ -288,7 +288,7 @@ static void free_grabbed(Capture *free_me)
 	free(free_me);
 }
 
-void mygestures_set_delta_updates(Mygestures *self, int delta_updates)
+void mygestures_set_delta_updates(Gestures *self, int delta_updates)
 {
 	self->delta_updates = 1;
 }
@@ -296,7 +296,7 @@ void mygestures_set_delta_updates(Mygestures *self, int delta_updates)
 /**
  *
  */
-int mygestures_end_movement(Mygestures *self, int cancel,
+int mygestures_end_movement(Gestures *self, int cancel,
 							char *device_name)
 {
 

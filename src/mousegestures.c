@@ -47,7 +47,7 @@ static void process_arguments(int argc, char *const *argv)
 	}
 }
 
-int mousegestures_main(int argc, char *const *argv, Mygestures *mygestures)
+int mousegestures_main(int argc, char *const *argv, Gestures *mygestures)
 {
 
 	process_arguments(argc, argv);

@@ -222,7 +222,7 @@ print_gesture_event_with_coords(struct libinput_event *ev)
 }
 
 static int
-handle_and_print_events(struct libinput *li, Mygestures *mygestures, LibinputGrabber *self)
+handle_and_print_events(struct libinput *li, Gestures *mygestures, LibinputGrabber *self)
 {
         int rc = -1;
         struct libinput_event *ev;
@@ -376,7 +376,7 @@ sighandler(int signal, siginfo_t *siginfo, void *userdata)
 }
 
 static void
-mainloop(struct libinput *li, Mygestures *mygestures, LibinputGrabber *self)
+mainloop(struct libinput *li, Gestures *mygestures, LibinputGrabber *self)
 {
         struct pollfd fds;
 
@@ -405,7 +405,7 @@ mainloop(struct libinput *li, Mygestures *mygestures, LibinputGrabber *self)
         printf("\n");
 }
 
-void libinput_grabber_loop(LibinputGrabber *self, Mygestures *mygestures)
+void libinput_grabber_loop(LibinputGrabber *self, Gestures *mygestures)
 {
 
         struct libinput *li;

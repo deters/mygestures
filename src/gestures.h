@@ -20,18 +20,18 @@ typedef struct mygestures_
 
 	Context *root_context;
 
-} Mygestures;
+} Gestures;
 
-Mygestures *mygestures_new();
+Gestures *gestures_new();
 
-void mygestures_set_delta_updates(Mygestures *self, int delta_updates);
-void mygestures_set_brush_color(Mygestures *self, char *brush_color);
-void mygestures_start_movement(Mygestures *self);
-void mygestures_update_movement(Mygestures *self, int new_x, int new_y, int delta_min);
-int mygestures_end_movement(Mygestures *self, int cancel,
+void mygestures_set_delta_updates(Gestures *self, int delta_updates);
+void mygestures_set_brush_color(Gestures *self, char *brush_color);
+void mygestures_start_movement(Gestures *self);
+void mygestures_update_movement(Gestures *self, int new_x, int new_y, int delta_min);
+int mygestures_end_movement(Gestures *self, int cancel,
 							char *device_name);
 
-void mygestures_load_configuration(Mygestures *self, char *filename);
+void gestures_load_from_file(Gestures *self, char *filename);
 
 // void on_interrupt(int a);
 // void on_kill(int a);
