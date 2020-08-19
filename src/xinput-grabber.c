@@ -298,11 +298,17 @@ XInputGrabber *grabber_xinput_new(char *device_name, int button)
 	bzero(self, sizeof(XInputGrabber));
 
 	assert(device_name);
-	assert(button);
+	// assert(button);
 
 	self->devicename = device_name;
 	self->synaptics = 0;
 	self->delta_min = 30;
+
+	if (!button)
+	{
+		self->button = 3;
+	}
+
 	self->button = button;
 
 	return self;

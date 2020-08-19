@@ -1,3 +1,8 @@
-#include "gestures.h"
+#ifndef TOUCHGESTURES_H_
+#define TOUCHGESTURES_H_
 
-int touchgestures_main(int argc, char *const *argv, Gestures *mygestures);
+#include "gestos.h"
+
+int touchgestures_loop(Gestos *gestos);
+
+#endif

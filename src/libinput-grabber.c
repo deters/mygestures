@@ -231,7 +231,7 @@ handle_and_print_events(struct libinput *li, Gestures *mygestures, LibinputGrabb
         while ((ev = libinput_get_event(li)))
         {
 
-                //  print_event_header(ev);
+                // print_event_header(ev);
 
                 switch (libinput_event_get_type(ev))
                 {
@@ -378,6 +378,7 @@ sighandler(int signal, siginfo_t *siginfo, void *userdata)
 static void
 mainloop(struct libinput *li, Gestures *mygestures, LibinputGrabber *self)
 {
+
         struct pollfd fds;
 
         fds.fd = libinput_get_fd(li);
@@ -407,6 +408,11 @@ mainloop(struct libinput *li, Gestures *mygestures, LibinputGrabber *self)
 
 void libinput_grabber_loop(LibinputGrabber *self, Gestures *mygestures)
 {
+
+        printf("touchgestures_loo aa ap\n");
+
+        assert(self);
+        assert(mygestures);
 
         struct libinput *li;
         enum tools_backend backend = BACKEND_NONE;
@@ -451,9 +457,17 @@ LibinputGrabber *libinput_grabber_new(char *device_name, int nfingers)
         assert(device_name);
         //assert(button);
 
-        self->devicename = strdup(device_name);
+        self->devicename = device_name;
 
-        self->nfingers = nfingers;
+        if (self->nfingers)
+        {
+                self->nfingers = nfingers;
+        }
+        else
+        {
+                self->nfingers = 3;
+        }
+
         return self;
 }
 
