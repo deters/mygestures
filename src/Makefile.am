@@ -2,7 +2,7 @@
 AM_CFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' -O2 $(LIBXML2_CFLAGS) $(LIBEVDEV_CFLAGS) \
   $(LIBUDEV_CFLAGS) $(LIBINPUT_CFLAGS) -Wall -Wunreachable-code # -fprofile-arcs -ftest-coverage
 
-bin_PROGRAMS=gestos touchgestures mousegestures
+bin_PROGRAMS=gestos
 
 common = \
         gestures.c gestures.h \
@@ -11,20 +11,15 @@ common = \
 
 libinput = \
 	libinput-grabber.c libinput-grabber.h \
-	libinput-shared.c libinput-shared.h 
+	libinput-shared.c libinput-shared.h touchgestures.h \
+	touchgestures.c
 
 xinput = \
-	xinput-grabber.c xinput-grabber.h 
-
-touchgestures_SOURCES = \
-	$(common) $(libinput) touchgestures.c 
-
-
-mousegestures_SOURCES = \
-	$(common) $(xinput) mousegestures.c
+	xinput-grabber.c xinput-grabber.h mousegestures.h \
+	mousegestures.c
 
 gestos_SOURCES = \
-	$(common) $(xinput) $(libinput) gestos.c
+	$(common) $(xinput) $(libinput) $(touchgestures) $(mousegestures) gestos.c
 
 
 common_LDADD=$(LIBXML2_LIBS) $(LIBX11_LIBS) $(LIBXRENDER_LIBS) $(LIBXTST_LIBS) \

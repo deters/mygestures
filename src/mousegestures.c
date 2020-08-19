@@ -12,10 +12,10 @@
 
 #include "xinput-grabber.h"
 
-int trigger_button = 3;
-int list_devices_flag;
-char *config_file;
-char *device_name = "";
+int mouse_trigger_button = 3;
+int mouse_list_devices_flag;
+char *mouse_config_file;
+char *mouse_device_name = "";
 
 static void mygestures_usage()
 {
@@ -59,19 +59,19 @@ static void process_arguments(int argc, char *const *argv)
 		{
 
 		case 'b':
-			trigger_button = atoi(optarg);
+			mouse_trigger_button = atoi(optarg);
 			break;
 
 		case 'd':
-			device_name = strdup(optarg);
+			mouse_device_name = strdup(optarg);
 			break;
 
 		case 'c':
-			config_file = strdup(optarg);
+			mouse_config_file = strdup(optarg);
 			break;
 
 		case 'l':
-			list_devices_flag = 1;
+			mouse_list_devices_flag = 1;
 			break;
 
 		case 'h':
@@ -83,7 +83,7 @@ static void process_arguments(int argc, char *const *argv)
 
 	if (optind < argc)
 	{
-		config_file = argv[optind++];
+		mouse_config_file = argv[optind++];
 	}
 
 	if (optind < argc)
@@ -95,20 +95,20 @@ static void process_arguments(int argc, char *const *argv)
 	}
 }
 
-int main(int argc, char *const *argv)
+int mousegestures_main(int argc, char *const *argv)
 {
 
 	process_arguments(argc, argv);
 
 	Mygestures *mygestures = mygestures_new();
 
-	mygestures_load_configuration(mygestures, config_file);
+	mygestures_load_configuration(mygestures, mouse_config_file);
 
 	XInputGrabber *xinput;
 
-	xinput = grabber_xinput_new(device_name, trigger_button);
+	xinput = grabber_xinput_new(mouse_device_name, mouse_trigger_button);
 
-	if (list_devices_flag)
+	if (mouse_list_devices_flag)
 	{
 		grabber_xinput_list_devices(xinput);
 		exit(0);

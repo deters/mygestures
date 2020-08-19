@@ -12,10 +12,11 @@
 
 #include "libinput-grabber.h"
 
-int nfingers = 3;
-int list_devices_flag;
-char *config_file;
-char *device_name = "";
+int touch_nfingers = 3;
+int touch_devices_flag;
+int touch_list_device_flags;
+char *touch_config_file;
+char *touch_device_name = "";
 
 static void touchgestures_usage()
 {
@@ -36,7 +37,7 @@ static void touchgestures_usage()
 	printf(" -h, --help                 : Help\n");
 }
 
-static void process_arguments(int argc, char *const *argv)
+static void touchgestures_process_arguments(int argc, char *const *argv)
 {
 
 	char opt;
@@ -59,19 +60,19 @@ static void process_arguments(int argc, char *const *argv)
 		{
 
 		case 'f':
-			nfingers = atoi(optarg);
+			touch_nfingers = atoi(optarg);
 			break;
 
 		case 'd':
-			device_name = strdup(optarg);
+			touch_device_name = strdup(optarg);
 			break;
 
 		case 'c':
-			config_file = strdup(optarg);
+			touch_config_file = strdup(optarg);
 			break;
 
 		case 'l':
-			list_devices_flag = 1;
+			touch_list_device_flags = 1;
 			break;
 
 		case 'h':
@@ -83,7 +84,7 @@ static void process_arguments(int argc, char *const *argv)
 
 	if (optind < argc)
 	{
-		config_file = argv[optind++];
+		touch_config_file = argv[optind++];
 	}
 
 	if (optind < argc)
@@ -95,22 +96,22 @@ static void process_arguments(int argc, char *const *argv)
 	}
 }
 
-int main(int argc, char *const *argv)
+int touchgestures_main(int argc, char *const *argv)
 {
 
-	process_arguments(argc, argv);
+	touchgestures_process_arguments(argc, argv);
 
 	Mygestures *mygestures = mygestures_new();
 
-	mygestures_load_configuration(mygestures, config_file);
+	mygestures_load_configuration(mygestures, touch_config_file);
 
 	LibinputGrabber *libinput;
 
-	device_name = "";
+	touch_device_name = "";
 
-	libinput = libinput_grabber_new(device_name, nfingers);
+	libinput = libinput_grabber_new(touch_device_name, touch_nfingers);
 
-	if (list_devices_flag)
+	if (touch_list_device_flags)
 	{
 		//printf("not implemented!\n");
 		libinput_grabber_list_devices();
