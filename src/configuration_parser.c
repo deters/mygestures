@@ -267,21 +267,21 @@ static char *get_system_configuration()
 Context *configuration_load_from_defaults()
 {
 
-	char *mouse_config_file = get_user_configuration();
+	char *config_file = get_user_configuration();
 
-	FILE *f = fopen(mouse_config_file, "r");
+	FILE *f = fopen(config_file, "r");
 
 	if (!f)
 	{
-		printf("%s NOT FOUND. Ignoring\n", mouse_config_file);
+		printf("%s NOT FOUND. Ignoring\n", config_file);
 
-		mouse_config_file = get_system_configuration();
-		f = fopen(mouse_config_file, "r");
+		config_file = get_system_configuration();
+		f = fopen(config_file, "r");
 	}
 
 	if (!f)
 	{
-		printf("%s NOT FOUND. EXITING\n", mouse_config_file);
+		printf("%s NOT FOUND. EXITING\n", config_file);
 		exit(1);
 	}
 	else
@@ -289,16 +289,16 @@ Context *configuration_load_from_defaults()
 		fclose(f);
 	}
 
-	Context *root = xml_open_file(mouse_config_file);
+	Context *root = xml_open_file(config_file);
 
 	if (!root)
 	{
 		fprintf(stderr, "Error loading context from file \n'%s'\n\n",
-				mouse_config_file);
+				config_file);
 		return NULL;
 	}
 
-	printf("Loaded configuration from %s\n", mouse_config_file);
+	printf("Loaded configuration from %s\n", config_file);
 
 	return root;
 }
