@@ -271,10 +271,8 @@ static void grabber_xinput_open_devices(XInputGrabber *self, int verbose)
 	XIFreeDeviceInfo(devices);
 }
 
-static void grabber_open_display(XInputGrabber *self)
+static void grabber_initialize(XInputGrabber *self)
 {
-
-	self->dpy = XOpenDisplay(NULL);
 
 	if (!XQueryExtension(self->dpy, "XInputExtension", &(self->opcode),
 						 &(self->event), &(self->error)))
@@ -332,19 +330,21 @@ char *get_device_name_from_event(XInputGrabber *self, XIDeviceEvent *data)
 
 void grabber_xinput_list_devices(XInputGrabber *self)
 {
-	grabber_open_display(self);
+	grabber_initialize(self);
 	grabber_xinput_open_devices(self, True);
 };
 
 void grabber_xinput_loop(XInputGrabber *self, Gestures *mygestures)
 {
 
+	self->dpy = XOpenDisplay("");
+
 	XEvent ev;
 
 	assert(self);
 	assert(mygestures);
 
-	grabber_open_display(self);
+	grabber_initialize(self);
 
 	grabber_xinput_open_devices(self, True);
 
@@ -383,7 +383,7 @@ void grabber_xinput_loop(XInputGrabber *self, Gestures *mygestures)
 				char *device_name = get_device_name_from_event(self, data);
 
 				int status = mygestures_end_movement(mygestures, 0,
-													 device_name);
+													 device_name, self->dpy);
 
 				if (!status)
 				{
@@ -401,21 +401,11 @@ void grabber_xinput_loop(XInputGrabber *self, Gestures *mygestures)
 		}
 		XFreeEventData(self->dpy, &ev.xcookie);
 	}
+
+	//	grabber_finalize(self);
 }
 
 char *grabber_get_device_name(XInputGrabber *self)
 {
 	return self->devicename;
 }
-
-// void grabber_finalize(Grabber *self)
-// {
-// 	if (self->brush_image)
-// 	{
-// 		brush_deinit(&(self->brush));
-// 		backing_deinit(&(self->backing));
-// 	}
-
-// 	XCloseDisplay(self->dpy);
-// 	return;
-// }

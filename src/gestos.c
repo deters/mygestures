@@ -101,19 +101,27 @@ Gestos *gestos_new()
 	return self;
 }
 
-void child_exit()
+static void children_handler()
 {
 
-	if (CHILD_COUNT--)
+	int mypid = getpid();
+
+	printf("child count: %d %d\n", CHILD_COUNT, mypid);
+
+	CHILD_COUNT--;
+
+	if (!CHILD_COUNT)
 	{
 		printf("All processes gone. Exiting\n");
+		// i'll not close the opened display because when the process exit it will be automatically closed.
+		// besides that, i don't have access to the display info from this method :P
 		exit(0);
 	}
 
 	wait(NULL);
 }
 
-int gestos_mousegestures_loop(Gestos *gestos)
+int gestos_mousegestures_loop(Gestos *self)
 {
 
 	int pid = fork();
@@ -122,19 +130,21 @@ int gestos_mousegestures_loop(Gestos *gestos)
 	{
 
 		CHILD_COUNT++;
+		// RESET THE CHILDREN HANDLER, because we are in the children process now, and in this process we dont want to be informed about children processes ending.
+		signal(SIGCHLD, SIG_DFL);
 
 		XInputGrabber *xinput;
 
 		// mousegestures handing will make use of xinput.
-		xinput = grabber_xinput_new(gestos->device_name, gestos->button);
+		xinput = grabber_xinput_new(self->device_name, self->button);
 
-		if (gestos->list_devices_flag)
+		if (self->list_devices_flag)
 		{
 			grabber_xinput_list_devices(xinput);
 			exit(0);
 		}
 
-		grabber_xinput_loop(xinput, gestos->gestures);
+		grabber_xinput_loop(xinput, self->gestures);
 
 		exit(0);
 	}
@@ -158,6 +168,8 @@ int gestos_touchgestures_loop(Gestos *gestos)
 	{
 
 		CHILD_COUNT++;
+		// RESET THE CHILDREN HANDLER, because we are in the children process now, and we dont want to be informed about children processes ending.
+		signal(SIGCHLD, SIG_DFL);
 
 		// touchgestures handing will make use of libinput.
 		LibinputGrabber *libinput;
@@ -174,16 +186,16 @@ int gestos_touchgestures_loop(Gestos *gestos)
 
 		exit(0);
 	}
-
 	return pid;
 }
 
 int main(int argc, char *const *argv)
 {
 
-	Gestos *self = gestos_new();
+	// SET A CHILDREN HANDLER, because we are in the parent process and we want to be informed about children processes ending.
+	signal(SIGCHLD, children_handler);
 
-	signal(SIGCHLD, child_exit);
+	Gestos *self = gestos_new();
 
 	gestos_process_arguments(self, argc, argv);
 

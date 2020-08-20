@@ -103,8 +103,6 @@ Gestures *gestures_new()
 
 	self->sequence = malloc(sizeof(char) * MAX_STROKES_PER_CAPTURE);
 
-	self->dpy = XOpenDisplay(NULL);
-
 	return self;
 }
 
@@ -141,8 +139,6 @@ void mygestures_update_movement(Gestures *self, int delta_x, int delta_y, int de
 	{
 		return;
 	}
-
-	//printf("%d, %d\n", delta_x, delta_y);
 
 	char direction = get_direction_from_deltas(delta_x,
 											   delta_y);
@@ -194,8 +190,6 @@ static void execute_action(char *action)
 {
 
 	assert(action);
-
-	// we are in the child process
 
 	int i = system(action);
 	printf("result: %d\n", i);
@@ -297,7 +291,7 @@ void mygestures_set_delta_updates(Gestures *self, int delta_updates)
  *
  */
 int mygestures_end_movement(Gestures *self, int cancel,
-							char *device_name)
+							char *device_name, Display *dpy)
 {
 
 	Capture *grab = NULL;
@@ -312,10 +306,10 @@ int mygestures_end_movement(Gestures *self, int cancel,
 	else
 	{
 
-		Window focused_window = get_focused_window(self->dpy);
+		Window focused_window = get_focused_window(dpy);
 		Window target_window = focused_window;
 
-		ActiveWindowInfo *window_info = get_active_window_info(self->dpy,
+		ActiveWindowInfo *window_info = get_active_window_info(dpy,
 															   target_window);
 
 		grab = malloc(sizeof(Capture));

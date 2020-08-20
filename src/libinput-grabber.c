@@ -323,7 +323,7 @@ handle_and_print_events(struct libinput *li, Gestures *mygestures, LibinputGrabb
                                 if (self->nfingers == libinput_event_gesture_get_finger_count(libinput_event_get_gesture_event(ev)))
                                 {
 
-                                        mygestures_end_movement(mygestures, libinput_event_gesture_get_cancelled(libinput_event_get_gesture_event(ev)), self->devicename);
+                                        mygestures_end_movement(mygestures, libinput_event_gesture_get_cancelled(libinput_event_get_gesture_event(ev)), self->devicename, self->dpy);
 
                                         self->devicename = "";
                                         self->event_count = 0;
@@ -409,10 +409,10 @@ mainloop(struct libinput *li, Gestures *mygestures, LibinputGrabber *self)
 void libinput_grabber_loop(LibinputGrabber *self, Gestures *mygestures)
 {
 
-        printf("touchgestures_loo aa ap\n");
-
         assert(self);
         assert(mygestures);
+
+        self->dpy = XOpenDisplay("");
 
         struct libinput *li;
         enum tools_backend backend = BACKEND_NONE;

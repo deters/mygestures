@@ -7,7 +7,6 @@
 
 typedef struct mygestures_
 {
-	Display *dpy;
 	int list_devices_flag;
 	int delta_updates;
 
@@ -29,7 +28,7 @@ void mygestures_set_brush_color(Gestures *self, char *brush_color);
 void mygestures_start_movement(Gestures *self);
 void mygestures_update_movement(Gestures *self, int new_x, int new_y, int delta_min);
 int mygestures_end_movement(Gestures *self, int cancel,
-							char *device_name);
+							char *device_name, Display *dpy);
 
 void gestures_load_from_file(Gestures *self, char *filename);
 
