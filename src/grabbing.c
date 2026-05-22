@@ -818,6 +818,17 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 void grabber_set_button(Grabber *self, int button)
 {
 	self->button = button;
+	if (self->button == 0)
+	{
+		if (self->synaptics)
+		{
+			self->button = 1;
+		}
+		else
+		{
+			self->button = 3;
+		}
+	}
 }
 
 void grabber_set_device(Grabber *self, char *device_name)
