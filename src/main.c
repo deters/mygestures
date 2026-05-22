@@ -36,13 +36,14 @@ static void process_arguments(Mygestures *self, int argc, char *const *argv)
 		{"help", no_argument, 0, 'h'},
 		{"visual", no_argument, 0, 'v'},
 		{"multitouch", no_argument, 0, 'm'},
+		{"evdev", no_argument, 0, 'e'},
 		{0, 0, 0, 0}};
 
 	/* read params */
 
 	while (1)
 	{
-		opt = getopt_long(argc, argv, "b:c:d:vhlm", opts, NULL);
+		opt = getopt_long(argc, argv, "b:c:d:vhlme", opts, NULL);
 		if (opt == -1)
 			break;
 
@@ -59,6 +60,10 @@ static void process_arguments(Mygestures *self, int argc, char *const *argv)
 
 		case 'm':
 			self->multitouch = 1;
+			break;
+
+		case 'e':
+			self->evdev = 1;
 			break;
 
 		case 'v':

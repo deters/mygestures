@@ -30,6 +30,7 @@
 
 #include "grabbing.h"
 #include "grabbing-synaptics.h"
+#include "grabbing-evdev.h"
 #include "actions.h"
 
 #ifndef MAX_STROKES_PER_CAPTURE
@@ -892,6 +893,10 @@ void grabber_loop(Grabber *self, Configuration *conf)
 	if (self->synaptics)
 	{
 		grabber_synaptics_loop(self, conf);
+	}
+	else if (self->evdev)
+	{
+		grabber_evdev_loop(self, conf);
 	}
 	else
 	{

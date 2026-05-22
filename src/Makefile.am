@@ -1,5 +1,5 @@
 
-AM_CFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' -O2 $(libXML_CFLAGS) 
+AM_CFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' -O2 $(libXML_CFLAGS) $(libevdev_CFLAGS)
 
 bin_PROGRAMS=mygestures
 
@@ -11,6 +11,7 @@ mygestures_SOURCES = \
 	    actions.c actions.h \
 	    grabbing.c grabbing.h \
 	    grabbing-synaptics.c grabbing-synaptics.h \
+	    grabbing-evdev.c grabbing-evdev.h \
         drawing/drawing-backing.c \
         drawing/drawing-backing.h \
         drawing/drawing-brush.c \
@@ -24,4 +25,4 @@ mygestures_SOURCES = \
 
 #SUBDIRS=drawing
 
-mygestures_LDADD=$(libXML_LIBS) $(X11_LIBS) $(Xrender_LIBS) $(Xtst_LIBS) $(libXML_LIBS) $(Xi_LIBS) -lm
+mygestures_LDADD=$(libXML_LIBS) $(X11_LIBS) $(Xrender_LIBS) $(Xtst_LIBS) $(libXML_LIBS) $(Xi_LIBS) $(libevdev_LIBS) -lm

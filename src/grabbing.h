@@ -69,6 +69,7 @@ typedef struct
 	int delta_min;
 
 	int synaptics;
+	int evdev;
 
 	int rought_old_x;
 	int rought_old_y;

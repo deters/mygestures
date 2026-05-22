@@ -33,6 +33,7 @@
 #include "main.h"
 
 #include "grabbing.h"
+#include "grabbing-evdev.h"
 #include "configuration.h"
 #include "configuration_parser.h"
 
@@ -63,6 +64,7 @@ static void mygestures_usage(Mygestures *self)
 	printf(" -m, --multitouch           : Multitouch mode on some synaptic touchpads.\n");
 	printf("                              It depends on this patched synaptics driver to work:\n");
 	printf("                               https://github.com/Chosko/xserver-xorg-input-synaptics\n");
+	printf(" -e, --evdev                : Read events directly using libevdev (requires sudo).\n");
 }
 
 Mygestures *mygestures_new()
@@ -106,6 +108,7 @@ static void mygestures_grab_device(Mygestures *self, char *device_name)
 		alloc_shared_memory(device_name, self->trigger_button);
 
 		Grabber *grabber = grabber_new(device_name, self->trigger_button);
+		grabber->evdev = self->evdev;
 
 		grabber_set_brush_color(grabber, self->brush_color);
 
@@ -148,6 +151,30 @@ void mygestures_run(Mygestures *self)
 	{
 		printf("Starting in multitouch mode.\n");
 		mygestures_grab_device(self, "synaptics");
+	}
+	else if (self->evdev)
+	{
+		printf("Starting in evdev mode.\n");
+		if (self->device_count)
+		{
+			for (int i = 0; i < self->device_count; ++i)
+			{
+				mygestures_grab_device(self, self->device_list[i]);
+			}
+		}
+		else
+		{
+			char device_path[256];
+			if (find_mouse_device(device_path, sizeof(device_path)) == 0)
+			{
+				mygestures_grab_device(self, device_path);
+			}
+			else
+			{
+				fprintf(stderr, "Could not find default evdev mouse device.\n");
+				exit(1);
+			}
+		}
 	}
 	else
 	{
