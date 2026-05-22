@@ -31,6 +31,7 @@
 #include "grabbing.h"
 #include "grabbing-synaptics.h"
 #include "grabbing-evdev.h"
+#include "uinput_device.h"
 #include "actions.h"
 
 #ifndef MAX_STROKES_PER_CAPTURE
@@ -316,10 +317,16 @@ void grabbing_xinput_grab_stop(Grabber *self)
 
 static void mouse_click(Display *display, int button, int x, int y)
 {
-
-	XTestFakeMotionEvent(display, DefaultScreen(display), x, y, 0);
-	XTestFakeButtonEvent(display, button, True, CurrentTime);
-	XTestFakeButtonEvent(display, button, False, CurrentTime);
+	if (display == NULL)
+	{
+		uinput_click(button);
+	}
+	else
+	{
+		XTestFakeMotionEvent(display, DefaultScreen(display), x, y, 0);
+		XTestFakeButtonEvent(display, button, True, CurrentTime);
+		XTestFakeButtonEvent(display, button, False, CurrentTime);
+	}
 }
 
 static Window get_window_under_pointer(Display *dpy)
@@ -381,7 +388,7 @@ static void execute_action(Display *dpy, Action *action, Window focused_window)
 		return;
 	}
 
-	if (!dpy)
+	if (!dpy && action->type != ACTION_KEYPRESS)
 	{
 		fprintf(stderr, "Warning: X11 display is not available. Skipping X11 action: %s %s\n",
 				get_action_name(action->type), action->original_str);
@@ -418,7 +425,10 @@ static void execute_action(Display *dpy, Action *action, Window focused_window)
 		fprintf(stderr, "found an unknown gesture \n");
 	}
 
-	XAllowEvents(dpy, 0, CurrentTime);
+	if (dpy)
+	{
+		XAllowEvents(dpy, 0, CurrentTime);
+	}
 
 	return;
 }
@@ -948,5 +958,6 @@ void grabber_finalize(Grabber *self)
 	{
 		XCloseDisplay(self->dpy);
 	}
+	uinput_close();
 	return;
 }

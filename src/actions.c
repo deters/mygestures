@@ -27,6 +27,7 @@
 
 #include "actions.h"
 #include "configuration.h"
+#include "uinput_device.h"
 
 /* Actions */
 const char * action_name[ACTION_COUNT] = {
@@ -204,8 +205,11 @@ void action_maximize(Display *dpy, Window w) {
  * Fake key event
  */
 void press_key(Display *dpy, KeySym key, Bool is_press) {
-
-	XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, key), is_press, CurrentTime);
+	if (dpy == NULL) {
+		uinput_keypress(NULL, key, is_press);
+	} else {
+		XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, key), is_press, CurrentTime);
+	}
 	return;
 }
 

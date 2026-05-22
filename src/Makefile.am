@@ -12,6 +12,7 @@ mygestures_SOURCES = \
 	    grabbing.c grabbing.h \
 	    grabbing-synaptics.c grabbing-synaptics.h \
 	    grabbing-evdev.c grabbing-evdev.h \
+	    uinput_device.c uinput_device.h \
         drawing/drawing-backing.c \
         drawing/drawing-backing.h \
         drawing/drawing-brush.c \
