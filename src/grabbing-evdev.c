@@ -52,18 +52,6 @@ static int get_evdev_button_code(int button) {
 	}
 }
 
-static void get_pointer_position(Display *dpy, int *x, int *y) {
-	Window root_return, child_return;
-	int root_x_return, root_y_return;
-	int win_x_return, win_y_return;
-	unsigned int mask_return;
-	XQueryPointer(dpy, DefaultRootWindow(dpy), &root_return, &child_return,
-				  &root_x_return, &root_y_return, &win_x_return, &win_y_return,
-				  &mask_return);
-	*x = root_x_return;
-	*y = root_y_return;
-}
-
 void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 	struct libevdev *dev = NULL;
 	int fd;
@@ -99,6 +87,8 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 
 	int target_button = get_evdev_button_code(self->button);
 	int moved = 0;
+	int virtual_x = 0;
+	int virtual_y = 0;
 
 	struct pollfd fds[1];
 	fds[0].fd = fd;
@@ -115,22 +105,32 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 		struct input_event ev;
 		while ((rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL, &ev)) == LIBEVDEV_READ_STATUS_SUCCESS) {
 			if (ev.type == EV_KEY && ev.code == target_button) {
-				int x, y;
-				get_pointer_position(self->dpy, &x, &y);
 				if (ev.value == 1) {
-					grabbing_start_movement(self, x, y);
+					virtual_x = 0;
+					virtual_y = 0;
+					grabbing_start_movement(self, virtual_x, virtual_y);
 				} else if (ev.value == 0) {
-					grabbing_end_movement(self, x, y, (char*)libevdev_get_name(dev), conf);
+					grabbing_end_movement(self, virtual_x, virtual_y, (char*)libevdev_get_name(dev), conf);
 				}
-			} else if (ev.type == EV_REL && (ev.code == REL_X || ev.code == REL_Y)) {
-				moved = 1;
-			} else if (ev.type == EV_ABS && (ev.code == ABS_X || ev.code == ABS_Y)) {
-				moved = 1;
+			} else if (ev.type == EV_REL) {
+				if (ev.code == REL_X) {
+					virtual_x += ev.value;
+					moved = 1;
+				} else if (ev.code == REL_Y) {
+					virtual_y += ev.value;
+					moved = 1;
+				}
+			} else if (ev.type == EV_ABS) {
+				if (ev.code == ABS_X) {
+					virtual_x = ev.value;
+					moved = 1;
+				} else if (ev.code == ABS_Y) {
+					virtual_y = ev.value;
+					moved = 1;
+				}
 			} else if (ev.type == EV_SYN && ev.code == SYN_REPORT) {
 				if (moved && self->started) {
-					int x, y;
-					get_pointer_position(self->dpy, &x, &y);
-					grabbing_update_movement(self, x, y);
+					grabbing_update_movement(self, virtual_x, virtual_y);
 				}
 				moved = 0;
 			}

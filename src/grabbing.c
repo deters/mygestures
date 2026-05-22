@@ -44,6 +44,11 @@ static void grabber_open_display(Grabber *self)
 {
 
 	self->dpy = XOpenDisplay(NULL);
+	if (!self->dpy)
+	{
+		fprintf(stderr, "Warning: Could not open X display. Visual drawing and X11 action simulation will be disabled.\n");
+		return;
+	}
 
 	if (!XQueryExtension(self->dpy, "XInputExtension", &(self->opcode),
 						 &(self->event), &(self->error)))
@@ -88,7 +93,7 @@ static struct brush_image_t *get_brush_image(char *color)
 static void grabber_init_drawing(Grabber *self)
 {
 
-	assert(self->dpy);
+	if (!self->dpy) return;
 
 	int err = 0;
 	int scr = DefaultScreen(self->dpy);
@@ -145,13 +150,20 @@ static Status fetch_window_title(Display *dpy, Window w, char **out_window_title
 static ActiveWindowInfo *get_active_window_info(Display *dpy, Window win)
 {
 
+	ActiveWindowInfo *ans = malloc(sizeof(ActiveWindowInfo));
+	bzero(ans, sizeof(ActiveWindowInfo));
+
+	if (!dpy || win == 0)
+	{
+		ans->class = "";
+		ans->title = "";
+		return ans;
+	}
+
 	int ret, val;
 
 	char *win_title;
 	ret = fetch_window_title(dpy, win, &win_title);
-
-	ActiveWindowInfo *ans = malloc(sizeof(ActiveWindowInfo));
-	bzero(ans, sizeof(ActiveWindowInfo));
 
 	char *win_class = NULL;
 
@@ -205,6 +217,8 @@ static Window get_parent_window(Display *dpy, Window w)
 
 void grabbing_xinput_grab_start(Grabber *self)
 {
+
+	if (!self->dpy) return;
 
 	int count = XScreenCount(self->dpy);
 
@@ -274,6 +288,8 @@ void grabbing_xinput_grab_start(Grabber *self)
 void grabbing_xinput_grab_stop(Grabber *self)
 {
 
+	if (!self->dpy) return;
+
 	int count = XScreenCount(self->dpy);
 
 	int screen;
@@ -330,6 +346,8 @@ static Window get_window_under_pointer(Display *dpy)
 static Window get_focused_window(Display *dpy)
 {
 
+	if (!dpy) return 0;
+
 	Window win = 0;
 	int ret, val;
 	ret = XGetInputFocus(dpy, &win, &val);
@@ -346,13 +364,10 @@ static void execute_action(Display *dpy, Action *action, Window focused_window)
 {
 	int id;
 
-	assert(dpy);
 	assert(action);
-	assert(focused_window);
 
-	switch (action->type)
+	if (action->type == ACTION_EXECUTE)
 	{
-	case ACTION_EXECUTE:
 		id = fork();
 		if (id == 0)
 		{
@@ -363,8 +378,18 @@ static void execute_action(Display *dpy, Action *action, Window focused_window)
 		{
 			fprintf(stderr, "Error forking.\n");
 		}
+		return;
+	}
 
-		break;
+	if (!dpy)
+	{
+		fprintf(stderr, "Warning: X11 display is not available. Skipping X11 action: %s %s\n",
+				get_action_name(action->type), action->original_str);
+		return;
+	}
+
+	switch (action->type)
+	{
 	case ACTION_ICONIFY:
 		action_iconify(dpy, focused_window);
 		break;
@@ -609,7 +634,7 @@ void grabbing_start_movement(Grabber *self, int new_x, int new_y)
 	self->rought_old_x = new_x;
 	self->rought_old_y = new_y;
 
-	if (self->brush_image)
+	if (self->brush_image && self->dpy)
 	{
 
 		backing_save(&(self->backing), new_x - self->brush.image_width,
@@ -628,7 +653,7 @@ void grabbing_update_movement(Grabber *self, int new_x, int new_y)
 	}
 
 	// se for o caso, desenha o movimento na tela
-	if (self->brush_image)
+	if (self->brush_image && self->dpy)
 	{
 		backing_save(&(self->backing), new_x - self->brush.image_width,
 					 new_y - self->brush.image_height);
@@ -691,7 +716,7 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 	self->started = 0;
 
 	// if is drawing
-	if (self->brush_image)
+	if (self->brush_image && self->dpy)
 	{
 		backing_restore(&(self->backing));
 	};
@@ -700,7 +725,7 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 	if ((strlen(self->rought_direction_sequence) == 0) && (strlen(self->fine_direction_sequence) == 0))
 	{
 
-		if (!(self->synaptics))
+		if (!(self->synaptics) && self->dpy)
 		{
 
 			printf("\nEmulating click\n");
@@ -913,12 +938,15 @@ char *grabber_get_device_name(Grabber *self)
 
 void grabber_finalize(Grabber *self)
 {
-	if (self->brush_image)
+	if (self->brush_image && self->dpy)
 	{
 		brush_deinit(&(self->brush));
 		backing_deinit(&(self->backing));
 	}
 
-	XCloseDisplay(self->dpy);
+	if (self->dpy)
+	{
+		XCloseDisplay(self->dpy);
+	}
 	return;
 }

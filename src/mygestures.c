@@ -139,6 +139,21 @@ void mygestures_run(Mygestures *self)
 		exit(0);
 	}
 
+	/* Check if we are running in a Wayland session */
+	const char *wayland_display = getenv("WAYLAND_DISPLAY");
+	const char *xdg_session = getenv("XDG_SESSION_TYPE");
+	int is_wayland = (wayland_display != NULL) || (xdg_session && strcmp(xdg_session, "wayland") == 0);
+
+	if (is_wayland && !self->evdev && !self->multitouch)
+	{
+		printf("Wayland session detected. Automatically enabling evdev mode.\n");
+		if (getuid() != 0)
+		{
+			fprintf(stderr, "Warning: Running on Wayland requires root/sudo privileges to read evdev devices.\n");
+		}
+		self->evdev = 1;
+	}
+
 	/*
 	 * Will not load configuration if it is only listing the devices.
 	 */
