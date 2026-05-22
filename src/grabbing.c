@@ -37,6 +37,9 @@
 #include "grabbing-evdev.h"
 #include "uinput_device.h"
 #include "actions.h"
+#include "wayland.h"
+#include "x11_window.h"
+#include "logging.h"
 
 #ifndef MAX_STROKES_PER_CAPTURE
 #define MAX_STROKES_PER_CAPTURE 63 /*TODO*/
@@ -51,21 +54,21 @@ static void grabber_open_display(Grabber *self)
 	self->dpy = XOpenDisplay(NULL);
 	if (!self->dpy)
 	{
-		fprintf(stderr, "Warning: Could not open X display. Visual drawing and X11 action simulation will be disabled.\n");
+		LOG_WARN("Could not open X display. Visual drawing and X11 action simulation will be disabled.\n");
 		return;
 	}
 
 	if (!XQueryExtension(self->dpy, "XInputExtension", &(self->opcode),
 						 &(self->event), &(self->error)))
 	{
-		printf("X Input extension not available.\n");
+		LOG_ERROR("X Input extension not available.\n");
 		exit(-1);
 	}
 
 	int major = 2, minor = 0;
 	if (XIQueryVersion(self->dpy, &major, &minor) == BadRequest)
 	{
-		printf("XI2 not available. Server supports %d.%d\n", major, minor);
+		LOG_ERROR("XI2 not available. Server supports %d.%d\n", major, minor);
 		exit(-1);
 	}
 }
@@ -111,676 +114,17 @@ static void grabber_init_drawing(Grabber *self)
 						   DisplayHeight(self->dpy, scr), DefaultDepth(self->dpy, scr));
 		if (err)
 		{
-			fprintf(stderr, "cannot open backing store.... \n");
+			LOG_ERROR("cannot open backing store.... \n");
 		}
 		err = brush_init(&(self->brush), &(self->backing), self->brush_image);
 		if (err)
 		{
-			fprintf(stderr, "cannot init brush.... \n");
+			LOG_ERROR("cannot init brush.... \n");
 		}
 	}
 }
 
-static Status fetch_window_title(Display *dpy, Window w, char **out_window_title)
-{
-	int status;
-	XTextProperty text_prop;
-	char **list = NULL;
-	int num = 0;
 
-	status = XGetWMName(dpy, w, &text_prop);
-	if (!status || !text_prop.value || !text_prop.nitems)
-	{
-		*out_window_title = strdup("");
-		return 1;
-	}
-	status = Xutf8TextPropertyToTextList(dpy, &text_prop, &list, &num);
-
-	if (status < Success || !num || !*list)
-	{
-		*out_window_title = strdup("");
-	}
-	else
-	{
-		*out_window_title = (char *)strdup(*list);
-	}
-	XFree(text_prop.value);
-	if (list)
-	{
-		XFreeStringList(list);
-	}
-
-	return 1;
-}
-
-/*
- * Return a window_info struct for the focused window at a given Display.
- */
-static ActiveWindowInfo *get_active_window_info(Display *dpy, Window win)
-{
-
-	ActiveWindowInfo *ans = malloc(sizeof(ActiveWindowInfo));
-	bzero(ans, sizeof(ActiveWindowInfo));
-
-	if (!dpy || win == 0)
-	{
-		ans->class = strdup("");
-		ans->title = strdup("");
-		return ans;
-	}
-
-	char *win_title = NULL;
-	fetch_window_title(dpy, win, &win_title);
-
-	char *win_class = NULL;
-
-	XClassHint class_hints;
-
-	int result = XGetClassHint(dpy, win, &class_hints);
-
-	if (result)
-	{
-
-		if (class_hints.res_class != NULL)
-			win_class = strdup(class_hints.res_class);
-
-		if (class_hints.res_name != NULL)
-			XFree(class_hints.res_name);
-
-		if (class_hints.res_class != NULL)
-			XFree(class_hints.res_class);
-	}
-
-	ans->class = win_class ? win_class : strdup("");
-	ans->title = win_title ? win_title : strdup("");
-
-	return ans;
-}
-
-typedef struct JsonNode {
-	char *name;
-	char *app_id;
-	char *class;
-	int focused;
-} JsonNode;
-
-static void skip_space(const char **ptr)
-{
-	while (**ptr && (**ptr == ' ' || **ptr == '\t' || **ptr == '\r' || **ptr == '\n'))
-	{
-		(*ptr)++;
-	}
-}
-
-static char *parse_json_string(const char **ptr)
-{
-	if (**ptr != '"') return NULL;
-	(*ptr)++; // skip open quote
-	const char *start = *ptr;
-	while (**ptr && **ptr != '"')
-	{
-		if (**ptr == '\\' && *(*ptr + 1))
-		{
-			(*ptr)++; // skip escape char
-		}
-		(*ptr)++;
-	}
-	size_t len = *ptr - start;
-	char *str = malloc(len + 1);
-	if (str)
-	{
-		memcpy(str, start, len);
-		str[len] = '\0';
-	}
-	if (**ptr == '"') (*ptr)++; // skip close quote
-	return str;
-}
-
-static void parse_json_val(const char **ptr, JsonNode *focused_node, JsonNode *current_node);
-
-static void parse_json_object(const char **ptr, JsonNode *focused_node, JsonNode *current_node)
-{
-	if (**ptr != '{') return;
-	(*ptr)++; // skip '{'
-
-	JsonNode local_node;
-	memset(&local_node, 0, sizeof(local_node));
-
-	while (**ptr)
-	{
-		skip_space(ptr);
-		if (**ptr == '}')
-		{
-			(*ptr)++; // skip '}'
-			break;
-		}
-
-		char *key = parse_json_string(ptr);
-		if (!key) break;
-
-		skip_space(ptr);
-		if (**ptr == ':') (*ptr)++; // skip ':'
-		skip_space(ptr);
-
-		if (strcmp(key, "focused") == 0)
-		{
-			if (strncmp(*ptr, "true", 4) == 0)
-			{
-				local_node.focused = 1;
-				*ptr += 4;
-			}
-			else if (strncmp(*ptr, "false", 5) == 0)
-			{
-				local_node.focused = 0;
-				*ptr += 5;
-			}
-			else
-			{
-				parse_json_val(ptr, focused_node, &local_node);
-			}
-		}
-		else if (strcmp(key, "name") == 0)
-		{
-			local_node.name = parse_json_string(ptr);
-			if (!local_node.name)
-			{
-				parse_json_val(ptr, focused_node, &local_node);
-			}
-		}
-		else if (strcmp(key, "app_id") == 0)
-		{
-			local_node.app_id = parse_json_string(ptr);
-			if (!local_node.app_id)
-			{
-				parse_json_val(ptr, focused_node, &local_node);
-			}
-		}
-		else if (strcmp(key, "window_properties") == 0)
-		{
-			JsonNode sub_node;
-			memset(&sub_node, 0, sizeof(sub_node));
-			parse_json_val(ptr, focused_node, &sub_node);
-			if (sub_node.class)
-			{
-				local_node.class = strdup(sub_node.class);
-			}
-			else if (sub_node.name)
-			{
-				local_node.class = strdup(sub_node.name);
-			}
-
-			if (sub_node.class) free(sub_node.class);
-			if (sub_node.name) free(sub_node.name);
-		}
-		else if (strcmp(key, "class") == 0)
-		{
-			local_node.class = parse_json_string(ptr);
-			if (!local_node.class)
-			{
-				parse_json_val(ptr, focused_node, &local_node);
-			}
-		}
-		else
-		{
-			parse_json_val(ptr, focused_node, &local_node);
-		}
-
-		free(key);
-
-		skip_space(ptr);
-		if (**ptr == ',')
-		{
-			(*ptr)++; // skip ','
-		}
-	}
-
-	if (local_node.focused)
-	{
-		if (focused_node->name) free(focused_node->name);
-		if (focused_node->app_id) free(focused_node->app_id);
-		if (focused_node->class) free(focused_node->class);
-
-		focused_node->focused = 1;
-		focused_node->name = local_node.name ? strdup(local_node.name) : NULL;
-		focused_node->app_id = local_node.app_id ? strdup(local_node.app_id) : NULL;
-		focused_node->class = local_node.class ? strdup(local_node.class) : NULL;
-	}
-
-	if (current_node)
-	{
-		if (local_node.name && !current_node->name)
-			current_node->name = strdup(local_node.name);
-		if (local_node.app_id && !current_node->app_id)
-			current_node->app_id = strdup(local_node.app_id);
-		if (local_node.class && !current_node->class)
-			current_node->class = strdup(local_node.class);
-	}
-
-	if (local_node.name) free(local_node.name);
-	if (local_node.app_id) free(local_node.app_id);
-	if (local_node.class) free(local_node.class);
-}
-
-static void parse_json_array(const char **ptr, JsonNode *focused_node, JsonNode *current_node)
-{
-	if (**ptr != '[') return;
-	(*ptr)++; // skip '['
-	while (**ptr)
-	{
-		skip_space(ptr);
-		if (**ptr == ']')
-		{
-			(*ptr)++; // skip ']'
-			break;
-		}
-		parse_json_val(ptr, focused_node, NULL);
-		skip_space(ptr);
-		if (**ptr == ',')
-		{
-			(*ptr)++; // skip ','
-		}
-	}
-}
-
-static void parse_json_val(const char **ptr, JsonNode *focused_node, JsonNode *current_node)
-{
-	skip_space(ptr);
-	if (**ptr == '{')
-	{
-		parse_json_object(ptr, focused_node, current_node);
-	}
-	else if (**ptr == '[')
-	{
-		parse_json_array(ptr, focused_node, current_node);
-	}
-	else if (**ptr == '"')
-	{
-		char *s = parse_json_string(ptr);
-		if (s) free(s);
-	}
-	else
-	{
-		while (**ptr && **ptr != ',' && **ptr != '}' && **ptr != ']' && **ptr != ' ' && **ptr != '\n' && **ptr != '\r' && **ptr != '\t')
-		{
-			(*ptr)++;
-		}
-	}
-}
-
-static char *read_all_from_pipe(FILE *fp, size_t *out_len)
-{
-	size_t capacity = 4096;
-	size_t len = 0;
-	char *buf = malloc(capacity);
-	if (!buf) return NULL;
-
-	char chunk[4096];
-	size_t n;
-	while ((n = fread(chunk, 1, sizeof(chunk), fp)) > 0)
-	{
-		if (len + n >= capacity)
-		{
-			capacity *= 2;
-			char *new_buf = realloc(buf, capacity);
-			if (!new_buf)
-			{
-				free(buf);
-				return NULL;
-			}
-			buf = new_buf;
-		}
-		memcpy(buf + len, chunk, n);
-		len += n;
-	}
-	buf[len] = '\0';
-	if (out_len) *out_len = len;
-	return buf;
-}
-
-static void parse_hyprctl_output(FILE *fp, char **out_class, char **out_title)
-{
-	char line[1024];
-	*out_class = NULL;
-	*out_title = NULL;
-	while (fgets(line, sizeof(line), fp))
-	{
-		char *p = line;
-		while (*p == ' ' || *p == '\t') p++;
-
-		size_t len = strlen(p);
-		while (len > 0 && (p[len - 1] == '\n' || p[len - 1] == '\r'))
-		{
-			p[len - 1] = '\0';
-			len--;
-		}
-
-		if (strncmp(p, "class: ", 7) == 0)
-		{
-			*out_class = strdup(p + 7);
-		}
-		else if (strncmp(p, "title: ", 7) == 0)
-		{
-			*out_title = strdup(p + 7);
-		}
-	}
-}
-
-static void free_active_window_info(ActiveWindowInfo *info)
-{
-	if (info)
-	{
-		if (info->title)
-		{
-			free(info->title);
-		}
-		if (info->class)
-		{
-			free(info->class);
-		}
-		free(info);
-	}
-}
-
-static ActiveWindowInfo *get_wayland_active_window_info(void)
-{
-	ActiveWindowInfo *ans = malloc(sizeof(ActiveWindowInfo));
-	bzero(ans, sizeof(ActiveWindowInfo));
-	ans->class = strdup("");
-	ans->title = strdup("");
-
-	uid_t uid = 0;
-	char *username = NULL;
-	char sway_sock[1024] = "";
-	char hypr_sig[256] = "";
-
-	char *sudo_uid_env = getenv("SUDO_UID");
-	char *sudo_user_env = getenv("SUDO_USER");
-
-	if (sudo_uid_env && sudo_user_env)
-	{
-		uid = atoi(sudo_uid_env);
-		username = strdup(sudo_user_env);
-
-		char path[512];
-		snprintf(path, sizeof(path), "/run/user/%d", uid);
-		DIR *dir = opendir(path);
-		if (dir)
-		{
-			struct dirent *entry;
-			while ((entry = readdir(dir)))
-			{
-				if (strncmp(entry->d_name, "sway-ipc.", 9) == 0 &&
-					strstr(entry->d_name, ".sock"))
-				{
-					snprintf(sway_sock, sizeof(sway_sock), "/run/user/%d/%s", uid, entry->d_name);
-					break;
-				}
-			}
-			closedir(dir);
-		}
-
-		if (strlen(sway_sock) == 0)
-		{
-			snprintf(path, sizeof(path), "/run/user/%d/hypr", uid);
-			DIR *dir2 = opendir(path);
-			if (!dir2)
-			{
-				snprintf(path, sizeof(path), "/tmp/hypr");
-				dir2 = opendir(path);
-			}
-			if (dir2)
-			{
-				struct dirent *entry;
-				while ((entry = readdir(dir2)))
-				{
-					if (strlen(entry->d_name) > 10)
-					{
-						snprintf(hypr_sig, sizeof(hypr_sig), "%s", entry->d_name);
-						break;
-					}
-				}
-				closedir(dir2);
-			}
-		}
-	}
-	else
-	{
-		uid = getuid();
-		if (uid > 0)
-		{
-			struct passwd *pw = getpwuid(uid);
-			if (pw) username = strdup(pw->pw_name);
-
-			char path[512];
-			snprintf(path, sizeof(path), "/run/user/%d", uid);
-			DIR *dir = opendir(path);
-			if (dir)
-			{
-				struct dirent *entry;
-				while ((entry = readdir(dir)))
-				{
-					if (strncmp(entry->d_name, "sway-ipc.", 9) == 0 &&
-						strstr(entry->d_name, ".sock"))
-					{
-						snprintf(sway_sock, sizeof(sway_sock), "/run/user/%d/%s", uid, entry->d_name);
-						break;
-					}
-				}
-				closedir(dir);
-			}
-
-			if (strlen(sway_sock) == 0)
-			{
-				snprintf(path, sizeof(path), "/run/user/%d/hypr", uid);
-				DIR *dir2 = opendir(path);
-				if (!dir2)
-				{
-					snprintf(path, sizeof(path), "/tmp/hypr");
-					dir2 = opendir(path);
-				}
-				if (dir2)
-				{
-					struct dirent *entry;
-					while ((entry = readdir(dir2)))
-					{
-						if (strlen(entry->d_name) > 10)
-						{
-							snprintf(hypr_sig, sizeof(hypr_sig), "%s", entry->d_name);
-							break;
-						}
-					}
-					closedir(dir2);
-				}
-			}
-		}
-
-		if (uid == 0 || (strlen(sway_sock) == 0 && strlen(hypr_sig) == 0))
-		{
-			DIR *dir = opendir("/run/user");
-			if (dir)
-			{
-				struct dirent *entry;
-				while ((entry = readdir(dir)))
-				{
-					uid_t d_uid = atoi(entry->d_name);
-					if (d_uid >= 1000)
-					{
-						char path[512];
-						snprintf(path, sizeof(path), "/run/user/%d", d_uid);
-						DIR *sub_dir = opendir(path);
-						if (sub_dir)
-						{
-							struct dirent *sub_entry;
-							while ((sub_entry = readdir(sub_dir)))
-							{
-								if (strncmp(sub_entry->d_name, "sway-ipc.", 9) == 0 &&
-									strstr(sub_entry->d_name, ".sock"))
-								{
-									snprintf(sway_sock, sizeof(sway_sock), "/run/user/%d/%s", d_uid, sub_entry->d_name);
-									break;
-								}
-							}
-							closedir(sub_dir);
-						}
-
-						if (strlen(sway_sock) == 0)
-						{
-							snprintf(path, sizeof(path), "/run/user/%d/hypr", d_uid);
-							DIR *sub_dir2 = opendir(path);
-							if (!sub_dir2)
-							{
-								snprintf(path, sizeof(path), "/tmp/hypr");
-								sub_dir2 = opendir(path);
-							}
-							if (sub_dir2)
-							{
-								struct dirent *sub_entry;
-								while ((sub_entry = readdir(sub_dir2)))
-								{
-									if (strlen(sub_entry->d_name) > 10)
-									{
-										snprintf(hypr_sig, sizeof(hypr_sig), "%s", sub_entry->d_name);
-										break;
-									}
-								}
-								closedir(sub_dir2);
-							}
-						}
-
-						if (strlen(sway_sock) > 0 || strlen(hypr_sig) > 0)
-						{
-							uid = d_uid;
-							struct passwd *pw = getpwuid(uid);
-							if (username) free(username);
-							username = pw ? strdup(pw->pw_name) : NULL;
-							break;
-						}
-					}
-				}
-				closedir(dir);
-			}
-		}
-	}
-
-	char cmd[2048] = "";
-	int is_sway = 0;
-
-	if (getenv("SWAYSOCK"))
-	{
-		snprintf(cmd, sizeof(cmd), "swaymsg -t get_tree 2>/dev/null");
-		is_sway = 1;
-	}
-	else if (getenv("HYPRLAND_INSTANCE_SIGNATURE"))
-	{
-		snprintf(cmd, sizeof(cmd), "hyprctl activewindow 2>/dev/null");
-		is_sway = 0;
-	}
-	else if (strlen(sway_sock) > 0)
-	{
-		if (getuid() == 0 && username)
-		{
-			snprintf(cmd, sizeof(cmd),
-				"sudo -u %s env SWAYSOCK=%s XDG_RUNTIME_DIR=/run/user/%d swaymsg -t get_tree 2>/dev/null",
-				username, sway_sock, uid);
-		}
-		else
-		{
-			snprintf(cmd, sizeof(cmd),
-				"env SWAYSOCK=%s XDG_RUNTIME_DIR=/run/user/%d swaymsg -t get_tree 2>/dev/null",
-				sway_sock, uid);
-		}
-		is_sway = 1;
-	}
-	else if (strlen(hypr_sig) > 0)
-	{
-		if (getuid() == 0 && username)
-		{
-			snprintf(cmd, sizeof(cmd),
-				"sudo -u %s env HYPRLAND_INSTANCE_SIGNATURE=%s XDG_RUNTIME_DIR=/run/user/%d hyprctl activewindow 2>/dev/null",
-				username, hypr_sig, uid);
-		}
-		else
-		{
-			snprintf(cmd, sizeof(cmd),
-				"env HYPRLAND_INSTANCE_SIGNATURE=%s XDG_RUNTIME_DIR=/run/user/%d hyprctl activewindow 2>/dev/null",
-				hypr_sig, uid);
-		}
-		is_sway = 0;
-	}
-
-	if (strlen(cmd) > 0)
-	{
-		FILE *fp = popen(cmd, "r");
-		if (fp)
-		{
-			if (is_sway)
-			{
-				size_t len = 0;
-				char *json_str = read_all_from_pipe(fp, &len);
-				pclose(fp);
-				if (json_str)
-				{
-					JsonNode focused_node;
-					memset(&focused_node, 0, sizeof(focused_node));
-					const char *ptr = json_str;
-					parse_json_val(&ptr, &focused_node, NULL);
-
-					if (focused_node.focused)
-					{
-						char *class_val = focused_node.app_id ? focused_node.app_id : focused_node.class;
-						if (class_val)
-						{
-							free(ans->class);
-							ans->class = strdup(class_val);
-						}
-						if (focused_node.name)
-						{
-							free(ans->title);
-							ans->title = strdup(focused_node.name);
-						}
-					}
-
-					if (focused_node.name) free(focused_node.name);
-					if (focused_node.app_id) free(focused_node.app_id);
-					if (focused_node.class) free(focused_node.class);
-					free(json_str);
-				}
-			}
-			else
-			{
-				char *class_val = NULL;
-				char *title_val = NULL;
-				parse_hyprctl_output(fp, &class_val, &title_val);
-				pclose(fp);
-
-				if (class_val)
-				{
-					free(ans->class);
-					ans->class = class_val;
-				}
-				if (title_val)
-				{
-					free(ans->title);
-					ans->title = title_val;
-				}
-			}
-		}
-	}
-
-	if (username) free(username);
-	return ans;
-}
-
-static Window get_parent_window(Display *dpy, Window w)
-{
-	Window root_return, parent_return, *child_return;
-	unsigned int nchildren_return;
-	int ret;
-	ret = XQueryTree(dpy, w, &root_return, &parent_return, &child_return,
-					 &nchildren_return);
-
-	return parent_return;
-}
 
 void grabbing_xinput_grab_start(Grabber *self)
 {
@@ -895,44 +239,6 @@ static void mouse_click(Grabber *self, int button, int x, int y)
 	}
 }
 
-static Window get_window_under_pointer(Display *dpy)
-{
-
-	Window root_return, child_return;
-	int root_x_return, root_y_return;
-	int win_x_return, win_y_return;
-	unsigned int mask_return;
-	XQueryPointer(dpy, DefaultRootWindow(dpy), &root_return, &child_return,
-				  &root_x_return, &root_y_return, &win_x_return, &win_y_return,
-				  &mask_return);
-
-	Window w = child_return;
-	Window parent_return;
-	Window *children_return;
-	unsigned int nchildren_return;
-	XQueryTree(dpy, w, &root_return, &parent_return, &children_return,
-			   &nchildren_return);
-
-	return children_return[nchildren_return - 1];
-}
-
-static Window get_focused_window(Display *dpy)
-{
-
-	if (!dpy) return 0;
-
-	Window win = 0;
-	int ret, val;
-	ret = XGetInputFocus(dpy, &win, &val);
-
-	if (val == RevertToParent)
-	{
-		win = get_parent_window(dpy, win);
-	}
-
-	return win;
-}
-
 static void execute_action(Grabber *self, Action *action, Window focused_window)
 {
 	int id;
@@ -950,7 +256,7 @@ static void execute_action(Grabber *self, Action *action, Window focused_window)
 		}
 		if (id < 0)
 		{
-			fprintf(stderr, "Error forking.\n");
+			LOG_ERROR("Error forking.\n");
 		}
 		return;
 	}
@@ -1000,7 +306,7 @@ static void execute_action(Grabber *self, Action *action, Window focused_window)
 		action_keypress(dpy, action->original_str);
 		break;
 	default:
-		fprintf(stderr, "found an unknown gesture \n");
+		LOG_ERROR("found an unknown gesture \n");
 	}
 
 	if (dpy)
@@ -1163,10 +469,7 @@ static void grabber_xinput_open_devices(Grabber *self, int verbose)
 	XIDeviceInfo *devices;
 	int deviceid = -1;
 	devices = XIQueryDevice(self->dpy, XIAllDevices, &ndevices);
-	if (verbose)
-	{
-		printf("\nXInput Devices:\n");
-	}
+	LOG_INFO(verbose, "\nXInput Devices:\n");
 	for (i = 0; i < ndevices; i++)
 	{
 		device = &devices[i];
@@ -1178,19 +481,13 @@ static void grabber_xinput_open_devices(Grabber *self, int verbose)
 		case XIFloatingSlave:
 			if (strcasecmp(device->name, self->devicename) == 0)
 			{
-				if (verbose)
-				{
-					printf("   [x] '%s'\n", device->name);
-				}
+				LOG_INFO(verbose, "   [x] '%s'\n", device->name);
 				self->deviceid = device->deviceid;
 				self->is_direct_touch = get_touch_status(device);
 			}
 			else
 			{
-				if (verbose)
-				{
-					printf("   [ ] '%s'\n", device->name);
-				}
+				LOG_INFO(verbose, "   [ ] '%s'\n", device->name);
 			}
 			break;
 		case XIMasterKeyboard:
@@ -1316,7 +613,7 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 		if (!(self->synaptics) && (self->dpy || self->evdev))
 		{
 
-			printf("\nEmulating click\n");
+			LOG_INFO(1, "\nEmulating click\n");
 
 			//grabbing_xinput_grab_stop(self);
 			mouse_click(self, self->button, new_x, new_y);
@@ -1361,16 +658,16 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 	if (grab)
 	{
 
-		printf("\n");
-		printf("     Window title: \"%s\"\n", grab->active_window_info->title);
-		printf("     Window class: \"%s\"\n", grab->active_window_info->class);
-		printf("     Device      : \"%s\"\n", device_name);
+		LOG_INFO(1, "\n");
+		LOG_INFO(1, "     Window title: \"%s\"\n", grab->active_window_info->title);
+		LOG_INFO(1, "     Window class: \"%s\"\n", grab->active_window_info->class);
+		LOG_INFO(1, "     Device      : \"%s\"\n", device_name);
 
 		Gesture *gest = configuration_process_gesture(conf, grab);
 
 		if (gest)
 		{
-			printf("     Movement '%s' matched gesture '%s' on context '%s'\n",
+			LOG_INFO(1, "     Movement '%s' matched gesture '%s' on context '%s'\n",
 				   gest->movement->name, gest->name, gest->context->name);
 
 			int j = 0;
@@ -1378,7 +675,7 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 			for (j = 0; j < gest->action_count; ++j)
 			{
 				Action *a = gest->action_list[j];
-				printf("     Executing action: %s %s\n",
+				LOG_INFO(1, "     Executing action: %s %s\n",
 					   get_action_name(a->type), a->original_str);
 				execute_action(self, a, target_window);
 			}
@@ -1389,13 +686,13 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 			for (int i = 0; i < grab->expression_count; ++i)
 			{
 				char *movement = grab->expression_list[i];
-				printf(
+				LOG_INFO(1,
 					"     Sequence '%s' does not match any known movement.\n",
 					movement);
 			}
 		}
 
-		printf("\n");
+		LOG_INFO(1, "\n");
 
 		free_grabbed(grab);
 	}
@@ -1532,7 +829,7 @@ void grabber_loop(Grabber *self, Configuration *conf)
 		grabber_xinput_loop(self, conf);
 	}
 
-	printf("Grabbing loop finished for device '%s'.\n", self->devicename);
+	LOG_INFO(1, "Grabbing loop finished for device '%s'.\n", self->devicename);
 }
 
 char *grabber_get_device_name(Grabber *self)

@@ -10,6 +10,8 @@ mygestures_SOURCES = \
         configuration_parser.c configuration_parser.h \
 	    actions.c actions.h \
 	    grabbing.c grabbing.h \
+	    wayland.c wayland.h \
+	    x11_window.c x11_window.h \
 	    grabbing-synaptics.c grabbing-synaptics.h \
 	    grabbing-evdev.c grabbing-evdev.h \
 	    uinput_device.c uinput_device.h \
