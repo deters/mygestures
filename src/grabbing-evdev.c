@@ -79,10 +79,11 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 			fprintf(stderr, "1. Add your user to the 'input' group:\n");
 			fprintf(stderr, "   sudo usermod -aG input $USER\n");
 			fprintf(stderr, "   (Note: You will need to log out and log back in for this to take effect)\n\n");
-			fprintf(stderr, "2. Install the mygestures udev rules to allow non-root uinput device creation.\n");
-			fprintf(stderr, "   If you built from source, copy the udev rule file:\n");
-			fprintf(stderr, "   sudo cp 99-mygestures.rules /etc/udev/rules.d/\n");
-			fprintf(stderr, "   sudo udevadm control --reload-rules && sudo udevadm trigger\n");
+			fprintf(stderr, "2. Ensure the mygestures udev rules are installed to allow non-root uinput device creation:\n");
+			fprintf(stderr, "   - If you installed via package (e.g. deb), the rules are already installed.\n");
+			fprintf(stderr, "   - If you built from source, copy the rules file manually:\n");
+			fprintf(stderr, "     sudo cp 99-mygestures.rules /etc/udev/rules.d/\n");
+			fprintf(stderr, "     sudo udevadm control --reload-rules && sudo udevadm trigger\n");
 			fprintf(stderr, "=========================================================================\n\n");
 		} else {
 			fprintf(stderr, "Did you run the program with 'sudo'?\n");
