@@ -258,6 +258,13 @@ struct key_press * string_to_keypress(char *str_ptr) {
 	return base.next;
 }
 
+static void release_keys_reverse(Display *dpy, struct key_press *key) {
+	if (key == NULL)
+		return;
+	release_keys_reverse(dpy, key->next);
+	press_key(dpy, key->key, False);
+}
+
 /**
  * Fake sequence key events
  */
@@ -279,9 +286,7 @@ void action_keypress(Display *dpy, char *data) {
 		press_key(dpy, tmp->key, True);
 	}
 
-	for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
-		press_key(dpy, tmp->key, False);
-	}
+	release_keys_reverse(dpy, first_key);
 
 	return;
 }
