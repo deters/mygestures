@@ -108,11 +108,22 @@ static void mygestures_grab_device(Mygestures *self, char *device_name)
 		int trigger_button = self->trigger_button;
 		if (trigger_button == 0)
 		{
-			if (self->multitouch || (device_name && strcasecmp(device_name, "synaptics") == 0))
+			const char *desktop = getenv("XDG_CURRENT_DESKTOP");
+			int is_gnome = 0;
+			if (desktop && (strstr(desktop, "GNOME") != NULL || strstr(desktop, "gnome") != NULL))
+			{
+				is_gnome = 1;
+			}
+
+			if (is_gnome)
+			{
+				trigger_button = 2;
+			}
+			else if (self->multitouch || (device_name && strcasecmp(device_name, "synaptics") == 0))
 			{
 				trigger_button = 1;
 			}
-			else if (self->evdev)
+			else
 			{
 				trigger_button = 3;
 			}
@@ -152,19 +163,87 @@ void mygestures_run(Mygestures *self)
 		exit(0);
 	}
 
-	/* Check if we are running in a Wayland session */
-	const char *wayland_display = getenv("WAYLAND_DISPLAY");
-	const char *xdg_session = getenv("XDG_SESSION_TYPE");
-	int is_wayland = (wayland_display != NULL) || (xdg_session && strcmp(xdg_session, "wayland") == 0);
-
-	if (is_wayland && !self->evdev && !self->multitouch)
+	/* Select capture method based on the environment */
+	if (!self->evdev && !self->multitouch)
 	{
-		printf("Wayland session detected. Automatically enabling evdev mode.\n");
-		if (getuid() != 0)
+		const char *wayland_display = getenv("WAYLAND_DISPLAY");
+		const char *xdg_session = getenv("XDG_SESSION_TYPE");
+		int is_wayland = (wayland_display != NULL) || (xdg_session && strcmp(xdg_session, "wayland") == 0);
+
+		const char *display_env = getenv("DISPLAY");
+		int has_x11 = (display_env != NULL && strlen(display_env) > 0);
+
+		if (is_wayland || !has_x11)
 		{
-			fprintf(stderr, "Warning: Running on Wayland requires root/sudo privileges to read evdev devices.\n");
+			printf("Wayland or no X11 display environment detected. Automatically enabling evdev capture mode.\n");
+			if (getuid() != 0)
+			{
+				fprintf(stderr, "Warning: Running in evdev mode requires root/sudo privileges to read evdev devices.\n");
+			}
+			self->evdev = 1;
 		}
-		self->evdev = 1;
+		else
+		{
+			self->evdev = 0;
+		}
+	}
+
+	/* Resolve default trigger button if not specified */
+	if (self->trigger_button == 0)
+	{
+		const char *desktop = getenv("XDG_CURRENT_DESKTOP");
+		int is_gnome = 0;
+		if (desktop && (strstr(desktop, "GNOME") != NULL || strstr(desktop, "gnome") != NULL))
+		{
+			is_gnome = 1;
+		}
+
+		if (is_gnome)
+		{
+			self->trigger_button = 2;
+		}
+		else
+		{
+			int is_synaptics = self->multitouch;
+			if (!is_synaptics && self->device_count > 0)
+			{
+				for (int i = 0; i < self->device_count; i++)
+				{
+					if (self->device_list[i] && strcasecmp(self->device_list[i], "synaptics") == 0)
+					{
+						is_synaptics = 1;
+						break;
+					}
+				}
+			}
+
+			if (is_synaptics)
+			{
+				self->trigger_button = 1;
+			}
+			else
+			{
+				self->trigger_button = 3;
+			}
+		}
+	}
+
+	/* Always print the trigger button when starting the daemon */
+	if (!self->list_devices_flag)
+	{
+		printf("Trigger button: %d\n", self->trigger_button);
+		if (self->multitouch)
+		{
+			printf("Capture method: multitouch\n");
+		}
+		else if (self->evdev)
+		{
+			printf("Capture method: evdev\n");
+		}
+		else
+		{
+			printf("Capture method: XInput\n");
+		}
 	}
 
 	/*
