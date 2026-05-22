@@ -81,7 +81,7 @@ Context *configuration_create_context(Configuration * self, char * context_name,
 	context_set_title(context, window_title);
 	context_set_class(context, window_class);
 
-	context->gesture_list = malloc(sizeof(Gesture) * 255);
+	context->gesture_list = malloc(sizeof(Gesture *) * 255);
 	context->gesture_count = 0;
 
 	self->context_list[self->context_count++] = context;
@@ -153,7 +153,7 @@ Gesture * configuration_create_gesture(Context * self, char * gesture_name,
 
 	ans->context = self;
 	ans->action_count = 0;
-	ans->action_list = malloc(sizeof(Action) * 20);
+	ans->action_list = malloc(sizeof(Action *) * 20);
 
 	self->gesture_list[self->gesture_count++] = ans;
 

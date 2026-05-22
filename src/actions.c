@@ -255,6 +255,7 @@ struct key_press * string_to_keypress(char *str_ptr) {
 	}
 
 	base.next->original_str = str_ptr;
+	free(str);
 	return base.next;
 }
 
@@ -287,6 +288,12 @@ void action_keypress(Display *dpy, char *data) {
 	}
 
 	release_keys_reverse(dpy, first_key);
+
+	while (first_key != NULL) {
+		struct key_press *next = first_key->next;
+		free(first_key);
+		first_key = next;
+	}
 
 	return;
 }

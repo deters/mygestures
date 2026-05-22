@@ -94,8 +94,10 @@ void xml_parse_action(xmlNode *node, Gesture * gest) {
 	}
 
 	if (!action_value) {
-		action_value = "";
+		action_value = strdup("");
 	}
+
+	free(action_name);
 
 	configuration_create_action(gest, id, action_value);
 
@@ -139,6 +141,8 @@ static Gesture * xml_parse_gesture(xmlNode *node, Context * context) {
 
 	Gesture * gest = configuration_create_gesture(context, gesture_name,
 			gesture_movement);
+
+	free(gesture_movement);
 
 	xmlNode *cur_node = NULL;
 
@@ -335,10 +339,11 @@ static int configuration_parse_file(Configuration * conf, char * filename) {
 }
 
 static char * get_config_dir() {
+	char * env = getenv("XDG_CONFIG_HOME");
 	char * dir = NULL;
-
-	dir = getenv("XDG_CONFIG_HOME");
-	if (!dir) {
+	if (env) {
+		dir = strdup(env);
+	} else {
 		char * home = getenv("HOME");
 		int bytes = asprintf(&dir, "%s/.config/mygestures", home);
 	}
@@ -349,8 +354,8 @@ static char * get_config_dir() {
 }
 
 char * xml_get_template_filename() {
-	char * template_file = malloc(sizeof(char *) * 4096);
-	sprintf(template_file, "%s/mygestures.xml", SYSCONFDIR);
+	char * template_file = NULL;
+	int bytes = asprintf(&template_file, "%s/mygestures.xml", SYSCONFDIR);
 	return template_file;
 }
 
@@ -445,6 +450,7 @@ char* configuration_get_default_filename() {
 		int bytes = asprintf(&filename, "%s/mygestures.xml", dir);
 	}
 
+	free(dir);
 	assert(filename);
 	return filename;
 }
@@ -455,6 +461,7 @@ void configuration_load_from_defaults(Configuration * configuration) {
 
 	char* dir = get_config_dir();
 	test_create_dir(dir);
+	free(dir);
 
 	char* config_file = configuration_get_default_filename();
 

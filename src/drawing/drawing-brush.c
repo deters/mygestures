@@ -102,6 +102,8 @@ int brush_init(brush_t *brush, backing_t *backing, struct brush_image_t *bi) {
 			brush->image_width, brush->image_height, 32, brush->image_width * 4);
 	XPutImage(dpy, brush->image_pixmap, image_gc, image, 0, 0, 0, 0, brush->image_width,
 			brush->image_height);
+	image->data = NULL;
+	XDestroyImage(image);
 
 	fix_image(brush_shadow.pixel_data, brush_shadow.width * brush_shadow.height);
 	image = XCreateImage(dpy, DefaultVisual(dpy, screen), 32, ZPixmap, 0,
@@ -109,6 +111,8 @@ int brush_init(brush_t *brush, backing_t *backing, struct brush_image_t *bi) {
 			brush->shadow_width * 4);
 	XPutImage(dpy, brush->shadow_pixmap, image_gc, image, 0, 0, 0, 0, brush->shadow_width,
 			brush->shadow_height);
+	image->data = NULL;
+	XDestroyImage(image);
 
 	XFreeGC(dpy, image_gc);
 

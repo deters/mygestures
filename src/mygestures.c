@@ -140,7 +140,7 @@ Mygestures *mygestures_new()
 	Mygestures *self = malloc(sizeof(Mygestures));
 	bzero(self, sizeof(Mygestures));
 
-	self->device_list = malloc(sizeof(uint) * MAX_GRABBED_DEVICES);
+	self->device_list = malloc(sizeof(char *) * MAX_GRABBED_DEVICES);
 	self->gestures_configuration = configuration_new();
 
 	return self;
@@ -165,10 +165,10 @@ static void mygestures_grab_device(Mygestures *self, char *device_name)
 
 	int p = fork();
 
-	if (p != 0)
+	if (p == 0)
 	{
 
-		/* We are in the forked thread. Start grabbing a device */
+		/* We are in the child process. Start grabbing a device */
 
 		printf("Listening to device '%s'\n\n", device_name);
 
@@ -216,6 +216,7 @@ static void mygestures_grab_device(Mygestures *self, char *device_name)
 		{
 			grabber_loop(grabber, self->gestures_configuration);
 		}
+		exit(0);
 	}
 }
 
@@ -377,4 +378,8 @@ void mygestures_run(Mygestures *self)
 		 */
 		}
 	}
+
+	/* Wait for all child grabber processes to finish */
+	int status;
+	while (wait(&status) > 0);
 }
