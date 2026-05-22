@@ -56,5 +56,6 @@ void action_maximize(Display *dpy, Window w);
 void action_restore(Display *dpy, Window w);
 void action_toggle_maximized(Display *dpy, Window w);
 void action_keypress(Display *dpy, char *data);
+void execute_wayland_action(Action *action);
 
 #endif

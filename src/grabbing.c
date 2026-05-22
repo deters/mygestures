@@ -394,10 +394,16 @@ static void execute_action(Grabber *self, Action *action, Window focused_window)
 		dpy = NULL;
 	}
 
-	if (!dpy && action->type != ACTION_KEYPRESS)
+	if (!dpy)
 	{
-		fprintf(stderr, "Warning: X11 display is not available. Skipping X11 action: %s %s\n",
-				get_action_name(action->type), action->original_str);
+		if (action->type == ACTION_KEYPRESS)
+		{
+			action_keypress(dpy, action->original_str);
+		}
+		else
+		{
+			execute_wayland_action(action);
+		}
 		return;
 	}
 
