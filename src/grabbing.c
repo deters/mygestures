@@ -227,21 +227,15 @@ void grabbing_xinput_grab_stop(Grabber *self)
 
 static void mouse_click(Grabber *self, int button, int x, int y)
 {
-	int click_button = button;
-	if (self->evdev && button == 3)
-	{
-		click_button = 4;
-	}
-
 	if (self->evdev || self->dpy == NULL)
 	{
-		uinput_click(click_button);
+		uinput_click(button);
 	}
 	else
 	{
 		XTestFakeMotionEvent(self->dpy, DefaultScreen(self->dpy), x, y, 0);
-		XTestFakeButtonEvent(self->dpy, click_button, True, CurrentTime);
-		XTestFakeButtonEvent(self->dpy, click_button, False, CurrentTime);
+		XTestFakeButtonEvent(self->dpy, button, True, CurrentTime);
+		XTestFakeButtonEvent(self->dpy, button, False, CurrentTime);
 	}
 }
 
