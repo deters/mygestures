@@ -83,9 +83,16 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 		return;
 	}
 
-	printf("Listening for events from %s using libevdev\n", libevdev_get_name(dev));
+	if (self->button == 0) {
+		if (self->synaptics) {
+			self->button = 1;
+		} else {
+			self->button = 3;
+		}
+	}
 
 	int target_button = get_evdev_button_code(self->button);
+	printf("Listening for events from %s using libevdev (button %d)\n", libevdev_get_name(dev), self->button);
 	int moved = 0;
 	int virtual_x = 0;
 	int virtual_y = 0;

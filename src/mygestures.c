@@ -105,9 +105,22 @@ static void mygestures_grab_device(Mygestures *self, char *device_name)
 
 		printf("Listening to device '%s'\n\n", device_name);
 
-		alloc_shared_memory(device_name, self->trigger_button);
+		int trigger_button = self->trigger_button;
+		if (trigger_button == 0)
+		{
+			if (self->multitouch || (device_name && strcasecmp(device_name, "synaptics") == 0))
+			{
+				trigger_button = 1;
+			}
+			else if (self->evdev)
+			{
+				trigger_button = 3;
+			}
+		}
 
-		Grabber *grabber = grabber_new(device_name, self->trigger_button);
+		alloc_shared_memory(device_name, trigger_button);
+
+		Grabber *grabber = grabber_new(device_name, trigger_button);
 		grabber->evdev = self->evdev;
 
 		grabber_set_brush_color(grabber, self->brush_color);
