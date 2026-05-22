@@ -180,10 +180,21 @@ int uinput_init(void) {
 		perror("mygestures: ioctl UI_SET_EVBIT EV_KEY failed");
 	}
 	
-	// Enable relative events (for mouse clicks)
+	// Enable relative events (for mouse clicks and movements)
 	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_REL) < 0) {
 		perror("mygestures: ioctl UI_SET_EVBIT EV_REL failed");
 	}
+	
+	ioctl(uinput_fd, UI_SET_RELBIT, REL_X);
+	ioctl(uinput_fd, UI_SET_RELBIT, REL_Y);
+	ioctl(uinput_fd, UI_SET_RELBIT, REL_WHEEL);
+	ioctl(uinput_fd, UI_SET_RELBIT, REL_HWHEEL);
+#ifdef REL_WHEEL_HI_RES
+	ioctl(uinput_fd, UI_SET_RELBIT, REL_WHEEL_HI_RES);
+#endif
+#ifdef REL_HWHEEL_HI_RES
+	ioctl(uinput_fd, UI_SET_RELBIT, REL_HWHEEL_HI_RES);
+#endif
 	
 	// Enable mouse buttons
 	ioctl(uinput_fd, UI_SET_KEYBIT, BTN_LEFT);
@@ -272,4 +283,9 @@ void uinput_keypress(Display *dpy, KeySym keysym, int is_press) {
 	} else {
 		fprintf(stderr, "mygestures: Could not map keysym %lu to uinput keycode\n", keysym);
 	}
+}
+
+void uinput_forward_event(int type, int code, int value) {
+	if (uinput_fd < 0 && uinput_init() < 0) return;
+	emit(uinput_fd, type, code, value);
 }

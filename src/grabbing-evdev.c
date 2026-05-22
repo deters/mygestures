@@ -13,22 +13,7 @@
 
 #include "grabbing.h"
 #include "grabbing-evdev.h"
-
-static char *input_remapper_device_to_stop = NULL;
-
-static void cleanup_input_remapper(void) {
-	if (input_remapper_device_to_stop) {
-		char *cmd = NULL;
-		if (asprintf(&cmd, "input-remapper-control --command stop --device \"%s\" &", input_remapper_device_to_stop) != -1) {
-			printf("mygestures: Running shutdown remapping restore command: %s\n", cmd);
-			int res = system(cmd);
-			(void)res;
-			free(cmd);
-		}
-		free(input_remapper_device_to_stop);
-		input_remapper_device_to_stop = NULL;
-	}
-}
+#include "uinput_device.h"
 
 int find_mouse_device(char *path, size_t len) {
     DIR *dir;
@@ -127,25 +112,19 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 		}
 	}
 
+	int grabbed = 0;
 	if (self->button == 3) {
-		const char *device_friendly_name = libevdev_get_name(dev);
-		const char *phys_name = device_friendly_name;
-		if (strncmp(phys_name, "mapped: ", 8) == 0) {
-			phys_name += 8;
+		rc = libevdev_grab(dev, LIBEVDEV_GRAB);
+		if (rc < 0) {
+			fprintf(stderr, "mygestures: Failed to grab device %s exclusively: %s\n",
+				libevdev_get_name(dev), strerror(-rc));
+		} else {
+			printf("mygestures: Grabbed device %s exclusively.\n", libevdev_get_name(dev));
+			grabbed = 1;
+			if (uinput_init() < 0) {
+				fprintf(stderr, "mygestures: Failed to initialize uinput for forwarding.\n");
+			}
 		}
-
-		input_remapper_device_to_stop = strdup(phys_name);
-		atexit(cleanup_input_remapper);
-
-		char *cmd = NULL;
-		if (asprintf(&cmd, "input-remapper-control --command start --device \"%s\" --preset \"mygestures\" &", phys_name) != -1) {
-			printf("mygestures: Running startup remapping command: %s\n", cmd);
-			int res = system(cmd);
-			(void)res;
-			free(cmd);
-		}
-
-		self->button = 4;
 	}
 
 	int target_button = get_evdev_button_code(self->button);
@@ -176,27 +155,32 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 				} else if (ev.value == 0) {
 					grabbing_end_movement(self, virtual_x, virtual_y, (char*)libevdev_get_name(dev), conf);
 				}
-			} else if (ev.type == EV_REL) {
-				if (ev.code == REL_X) {
-					virtual_x += ev.value;
-					moved = 1;
-				} else if (ev.code == REL_Y) {
-					virtual_y += ev.value;
-					moved = 1;
+			} else {
+				if (grabbed) {
+					uinput_forward_event(ev.type, ev.code, ev.value);
 				}
-			} else if (ev.type == EV_ABS) {
-				if (ev.code == ABS_X) {
-					virtual_x = ev.value;
-					moved = 1;
-				} else if (ev.code == ABS_Y) {
-					virtual_y = ev.value;
-					moved = 1;
+				if (ev.type == EV_REL) {
+					if (ev.code == REL_X) {
+						virtual_x += ev.value;
+						moved = 1;
+					} else if (ev.code == REL_Y) {
+						virtual_y += ev.value;
+						moved = 1;
+					}
+				} else if (ev.type == EV_ABS) {
+					if (ev.code == ABS_X) {
+						virtual_x = ev.value;
+						moved = 1;
+					} else if (ev.code == ABS_Y) {
+						virtual_y = ev.value;
+						moved = 1;
+					}
+				} else if (ev.type == EV_SYN && ev.code == SYN_REPORT) {
+					if (moved && self->started) {
+						grabbing_update_movement(self, virtual_x, virtual_y);
+					}
+					moved = 0;
 				}
-			} else if (ev.type == EV_SYN && ev.code == SYN_REPORT) {
-				if (moved && self->started) {
-					grabbing_update_movement(self, virtual_x, virtual_y);
-				}
-				moved = 0;
 			}
 		}
 
@@ -206,6 +190,9 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 		}
 	}
 
+	if (grabbed) {
+		libevdev_grab(dev, LIBEVDEV_UNGRAB);
+	}
 	libevdev_free(dev);
 	close(fd);
 }
