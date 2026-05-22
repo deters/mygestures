@@ -45,7 +45,7 @@ static void mygestures_usage(Mygestures *self)
 	printf("\n");
 	printf("CONFIG_FILE:\n");
 
-	char *default_file = configuration_get_default_filename(self);
+	char *default_file = configuration_get_default_filename();
 	printf(" Default: %s\n", default_file);
 	free(default_file);
 
