@@ -346,6 +346,16 @@ static void parse_json_object(const char **ptr, JsonNode *focused_node, JsonNode
 		focused_node->class = local_node.class ? strdup(local_node.class) : NULL;
 	}
 
+	if (current_node)
+	{
+		if (local_node.name && !current_node->name)
+			current_node->name = strdup(local_node.name);
+		if (local_node.app_id && !current_node->app_id)
+			current_node->app_id = strdup(local_node.app_id);
+		if (local_node.class && !current_node->class)
+			current_node->class = strdup(local_node.class);
+	}
+
 	if (local_node.name) free(local_node.name);
 	if (local_node.app_id) free(local_node.app_id);
 	if (local_node.class) free(local_node.class);
@@ -363,7 +373,7 @@ static void parse_json_array(const char **ptr, JsonNode *focused_node, JsonNode 
 			(*ptr)++; // skip ']'
 			break;
 		}
-		parse_json_val(ptr, focused_node, current_node);
+		parse_json_val(ptr, focused_node, NULL);
 		skip_space(ptr);
 		if (**ptr == ',')
 		{
@@ -480,6 +490,9 @@ static ActiveWindowInfo *get_wayland_active_window_info(void)
 
 	uid_t uid = 0;
 	char *username = NULL;
+	char sway_sock[1024] = "";
+	char hypr_sig[256] = "";
+
 	char *sudo_uid_env = getenv("SUDO_UID");
 	char *sudo_user_env = getenv("SUDO_USER");
 
@@ -487,46 +500,7 @@ static ActiveWindowInfo *get_wayland_active_window_info(void)
 	{
 		uid = atoi(sudo_uid_env);
 		username = strdup(sudo_user_env);
-	}
-	else
-	{
-		uid = getuid();
-		if (uid == 0)
-		{
-			DIR *dir = opendir("/run/user");
-			if (dir)
-			{
-				struct dirent *entry;
-				while ((entry = readdir(dir)))
-				{
-					uid_t d_uid = atoi(entry->d_name);
-					if (d_uid >= 1000)
-					{
-						uid = d_uid;
-						struct passwd *pw = getpwuid(uid);
-						if (pw)
-						{
-							username = strdup(pw->pw_name);
-						}
-						break;
-					}
-				}
-				closedir(dir);
-			}
-		}
-		else
-		{
-			struct passwd *pw = getpwuid(uid);
-			if (pw)
-			{
-				username = strdup(pw->pw_name);
-			}
-		}
-	}
 
-	char sway_sock[1024] = "";
-	if (uid > 0)
-	{
 		char path[512];
 		snprintf(path, sizeof(path), "/run/user/%d", uid);
 		DIR *dir = opendir(path);
@@ -544,31 +518,147 @@ static ActiveWindowInfo *get_wayland_active_window_info(void)
 			}
 			closedir(dir);
 		}
-	}
 
-	char hypr_sig[256] = "";
-	if (uid > 0 && strlen(sway_sock) == 0)
-	{
-		char path[512];
-		snprintf(path, sizeof(path), "/run/user/%d/hypr", uid);
-		DIR *dir = opendir(path);
-		if (!dir)
+		if (strlen(sway_sock) == 0)
 		{
-			snprintf(path, sizeof(path), "/tmp/hypr");
-			dir = opendir(path);
-		}
-		if (dir)
-		{
-			struct dirent *entry;
-			while ((entry = readdir(dir)))
+			snprintf(path, sizeof(path), "/run/user/%d/hypr", uid);
+			DIR *dir2 = opendir(path);
+			if (!dir2)
 			{
-				if (strlen(entry->d_name) > 10)
+				snprintf(path, sizeof(path), "/tmp/hypr");
+				dir2 = opendir(path);
+			}
+			if (dir2)
+			{
+				struct dirent *entry;
+				while ((entry = readdir(dir2)))
 				{
-					snprintf(hypr_sig, sizeof(hypr_sig), "%s", entry->d_name);
-					break;
+					if (strlen(entry->d_name) > 10)
+					{
+						snprintf(hypr_sig, sizeof(hypr_sig), "%s", entry->d_name);
+						break;
+					}
+				}
+				closedir(dir2);
+			}
+		}
+	}
+	else
+	{
+		uid = getuid();
+		if (uid > 0)
+		{
+			struct passwd *pw = getpwuid(uid);
+			if (pw) username = strdup(pw->pw_name);
+
+			char path[512];
+			snprintf(path, sizeof(path), "/run/user/%d", uid);
+			DIR *dir = opendir(path);
+			if (dir)
+			{
+				struct dirent *entry;
+				while ((entry = readdir(dir)))
+				{
+					if (strncmp(entry->d_name, "sway-ipc.", 9) == 0 &&
+						strstr(entry->d_name, ".sock"))
+					{
+						snprintf(sway_sock, sizeof(sway_sock), "/run/user/%d/%s", uid, entry->d_name);
+						break;
+					}
+				}
+				closedir(dir);
+			}
+
+			if (strlen(sway_sock) == 0)
+			{
+				snprintf(path, sizeof(path), "/run/user/%d/hypr", uid);
+				DIR *dir2 = opendir(path);
+				if (!dir2)
+				{
+					snprintf(path, sizeof(path), "/tmp/hypr");
+					dir2 = opendir(path);
+				}
+				if (dir2)
+				{
+					struct dirent *entry;
+					while ((entry = readdir(dir2)))
+					{
+						if (strlen(entry->d_name) > 10)
+						{
+							snprintf(hypr_sig, sizeof(hypr_sig), "%s", entry->d_name);
+							break;
+						}
+					}
+					closedir(dir2);
 				}
 			}
-			closedir(dir);
+		}
+
+		if (uid == 0 || (strlen(sway_sock) == 0 && strlen(hypr_sig) == 0))
+		{
+			DIR *dir = opendir("/run/user");
+			if (dir)
+			{
+				struct dirent *entry;
+				while ((entry = readdir(dir)))
+				{
+					uid_t d_uid = atoi(entry->d_name);
+					if (d_uid >= 1000)
+					{
+						char path[512];
+						snprintf(path, sizeof(path), "/run/user/%d", d_uid);
+						DIR *sub_dir = opendir(path);
+						if (sub_dir)
+						{
+							struct dirent *sub_entry;
+							while ((sub_entry = readdir(sub_dir)))
+							{
+								if (strncmp(sub_entry->d_name, "sway-ipc.", 9) == 0 &&
+									strstr(sub_entry->d_name, ".sock"))
+								{
+									snprintf(sway_sock, sizeof(sway_sock), "/run/user/%d/%s", d_uid, sub_entry->d_name);
+									break;
+								}
+							}
+							closedir(sub_dir);
+						}
+
+						if (strlen(sway_sock) == 0)
+						{
+							snprintf(path, sizeof(path), "/run/user/%d/hypr", d_uid);
+							DIR *sub_dir2 = opendir(path);
+							if (!sub_dir2)
+							{
+								snprintf(path, sizeof(path), "/tmp/hypr");
+								sub_dir2 = opendir(path);
+							}
+							if (sub_dir2)
+							{
+								struct dirent *sub_entry;
+								while ((sub_entry = readdir(sub_dir2)))
+								{
+									if (strlen(sub_entry->d_name) > 10)
+									{
+										snprintf(hypr_sig, sizeof(hypr_sig), "%s", sub_entry->d_name);
+										break;
+									}
+								}
+								closedir(sub_dir2);
+							}
+						}
+
+						if (strlen(sway_sock) > 0 || strlen(hypr_sig) > 0)
+						{
+							uid = d_uid;
+							struct passwd *pw = getpwuid(uid);
+							if (username) free(username);
+							username = pw ? strdup(pw->pw_name) : NULL;
+							break;
+						}
+					}
+				}
+				closedir(dir);
+			}
 		}
 	}
 
@@ -633,7 +723,7 @@ static ActiveWindowInfo *get_wayland_active_window_info(void)
 					JsonNode focused_node;
 					memset(&focused_node, 0, sizeof(focused_node));
 					const char *ptr = json_str;
-					parse_json_val(&ptr, &focused_node, &focused_node);
+					parse_json_val(&ptr, &focused_node, NULL);
 
 					if (focused_node.focused)
 					{
@@ -1242,11 +1332,7 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 		expression_list[0] = self->fine_direction_sequence;
 		expression_list[1] = self->rought_direction_sequence;
 
-		ActiveWindowInfo *window_info = NULL;
-		if (getenv("SWAYSOCK") || getenv("HYPRLAND_INSTANCE_SIGNATURE"))
-		{
-			window_info = get_wayland_active_window_info();
-		}
+		ActiveWindowInfo *window_info = get_wayland_active_window_info();
 
 		if ((!window_info || (strlen(window_info->class) == 0 && strlen(window_info->title) == 0)) && self->dpy)
 		{
