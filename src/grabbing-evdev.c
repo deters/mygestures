@@ -72,7 +72,21 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 	fd = open(device_path, O_RDONLY | O_NONBLOCK);
 	if (fd < 0) {
 		fprintf(stderr, "Failed to open %s: %s\n", device_path, strerror(errno));
-		fprintf(stderr, "Did you run the program with 'sudo'?\n");
+		if (errno == EACCES || errno == EPERM) {
+			fprintf(stderr, "\n=========================================================================\n");
+			fprintf(stderr, "PERMISSIONS GUIDE FOR NON-ROOT EXECUTION:\n");
+			fprintf(stderr, "To capture input events without running as root (via sudo), do the following:\n\n");
+			fprintf(stderr, "1. Add your user to the 'input' group:\n");
+			fprintf(stderr, "   sudo usermod -aG input $USER\n");
+			fprintf(stderr, "   (Note: You will need to log out and log back in for this to take effect)\n\n");
+			fprintf(stderr, "2. Install the mygestures udev rules to allow non-root uinput device creation.\n");
+			fprintf(stderr, "   If you built from source, copy the udev rule file:\n");
+			fprintf(stderr, "   sudo cp 99-mygestures.rules /etc/udev/rules.d/\n");
+			fprintf(stderr, "   sudo udevadm control --reload-rules && sudo udevadm trigger\n");
+			fprintf(stderr, "=========================================================================\n\n");
+		} else {
+			fprintf(stderr, "Did you run the program with 'sudo'?\n");
+		}
 		return;
 	}
 

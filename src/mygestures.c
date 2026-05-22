@@ -178,7 +178,7 @@ void mygestures_run(Mygestures *self)
 			printf("Wayland or no X11 display environment detected. Automatically enabling evdev capture mode.\n");
 			if (getuid() != 0)
 			{
-				fprintf(stderr, "Warning: Running in evdev mode requires root/sudo privileges to read evdev devices.\n");
+				printf("Running as non-root user. If device opening fails, ensure your user has input/uinput permissions.\n");
 			}
 			self->evdev = 1;
 		}

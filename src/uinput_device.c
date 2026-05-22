@@ -156,7 +156,21 @@ int uinput_init(void) {
 	}
 
 	if (uinput_fd < 0) {
-		perror("mygestures: Failed to open uinput device");
+		fprintf(stderr, "mygestures: Failed to open uinput device: %s\n", strerror(errno));
+		if (errno == EACCES || errno == EPERM) {
+			fprintf(stderr, "\n=========================================================================\n");
+			fprintf(stderr, "PERMISSIONS GUIDE FOR NON-ROOT EXECUTION (uinput):\n");
+			fprintf(stderr, "To simulate keyboard shortcuts and clicks without running as root, you must\n");
+			fprintf(stderr, "configure udev rules to make /dev/uinput accessible to the 'input' group.\n\n");
+			fprintf(stderr, "1. Copy the udev rule file:\n");
+			fprintf(stderr, "   sudo cp 99-mygestures.rules /etc/udev/rules.d/\n");
+			fprintf(stderr, "2. Reload rules:\n");
+			fprintf(stderr, "   sudo udevadm control --reload-rules && sudo udevadm trigger\n");
+			fprintf(stderr, "3. Ensure your user is in the 'input' group:\n");
+			fprintf(stderr, "   sudo usermod -aG input $USER\n");
+			fprintf(stderr, "   (Note: You will need to log out and log back in for this to take effect)\n");
+			fprintf(stderr, "=========================================================================\n\n");
+		}
 		return -1;
 	}
 
