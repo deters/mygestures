@@ -413,11 +413,37 @@ void test_create_dir(char* dir) {
 	}
 }
 
+static const char *get_environment_suffix(void) {
+	const char *swaysock = getenv("SWAYSOCK");
+	if (swaysock) {
+		return "sway";
+	}
+	const char *hyprland_sig = getenv("HYPRLAND_INSTANCE_SIGNATURE");
+	if (hyprland_sig) {
+		return "hyprland";
+	}
+	const char *desktop = getenv("XDG_CURRENT_DESKTOP");
+	if (desktop) {
+		if (strstr(desktop, "GNOME") != NULL || strstr(desktop, "gnome") != NULL) {
+			return "gnome";
+		}
+		if (strstr(desktop, "KDE") != NULL || strstr(desktop, "kde") != NULL) {
+			return "kde";
+		}
+	}
+	return NULL;
+}
+
 char* configuration_get_default_filename() {
 	char* dir = get_config_dir();
+	const char *suffix = get_environment_suffix();
 
 	char* filename = NULL;
-	int bytes = asprintf(&filename, "%s/mygestures.xml", dir);
+	if (suffix) {
+		int bytes = asprintf(&filename, "%s/mygestures_%s.xml", dir, suffix);
+	} else {
+		int bytes = asprintf(&filename, "%s/mygestures.xml", dir);
+	}
 
 	assert(filename);
 	return filename;
@@ -435,14 +461,35 @@ void configuration_load_from_defaults(Configuration * configuration) {
 	FILE * f = fopen(config_file, "r");
 
 	if (!f) {
-		char * template = xml_get_template_filename();
+		char * template = NULL;
+		const char *suffix = get_environment_suffix();
+		int has_template = 0;
+		if (suffix) {
+			int bytes = asprintf(&template, "%s/mygestures_%s.xml", SYSCONFDIR, suffix);
+			FILE *tf = fopen(template, "r");
+			if (tf) {
+				fclose(tf);
+				has_template = 1;
+			} else {
+				free(template);
+				template = NULL;
+			}
+		}
+
+		if (!has_template) {
+			template = xml_get_template_filename();
+		}
+
 		err = file_copy(template, config_file);
 		if (err) {
 			fprintf(stderr,
 					"Error creating default configuration on '%s' from '%s'\n",
 					config_file, template);
+			free(template);
+			free(config_file);
 			return;
 		}
+		free(template);
 	} else {
 		fclose(f);
 	}
@@ -455,7 +502,7 @@ void configuration_load_from_defaults(Configuration * configuration) {
 	}
 
 	printf("Loaded configuration from file '%s'.\n", config_file);
-
+	free(config_file);
 }
 
 void configuration_load_from_file(Configuration * configuration, char * filename) {
