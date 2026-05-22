@@ -23,6 +23,10 @@
 #include <math.h>
 #include <assert.h>
 
+#include <sys/types.h>
+#include <dirent.h>
+#include <pwd.h>
+
 #include <X11/extensions/XTest.h>	/* emulating device events */
 #include <X11/extensions/XInput2.h> /* capturing device events */
 
@@ -474,69 +478,206 @@ static ActiveWindowInfo *get_wayland_active_window_info(void)
 	ans->class = strdup("");
 	ans->title = strdup("");
 
-	char *swaysock = getenv("SWAYSOCK");
-	char *hyprland_sig = getenv("HYPRLAND_INSTANCE_SIGNATURE");
+	uid_t uid = 0;
+	char *username = NULL;
+	char *sudo_uid_env = getenv("SUDO_UID");
+	char *sudo_user_env = getenv("SUDO_USER");
 
-	if (swaysock)
+	if (sudo_uid_env && sudo_user_env)
 	{
-		FILE *fp = popen("swaymsg -t get_tree 2>/dev/null", "r");
-		if (fp)
+		uid = atoi(sudo_uid_env);
+		username = strdup(sudo_user_env);
+	}
+	else
+	{
+		uid = getuid();
+		if (uid == 0)
 		{
-			size_t len = 0;
-			char *json_str = read_all_from_pipe(fp, &len);
-			pclose(fp);
-			if (json_str)
+			DIR *dir = opendir("/run/user");
+			if (dir)
 			{
-				JsonNode focused_node;
-				memset(&focused_node, 0, sizeof(focused_node));
-				const char *ptr = json_str;
-				parse_json_val(&ptr, &focused_node, &focused_node);
-
-				if (focused_node.focused)
+				struct dirent *entry;
+				while ((entry = readdir(dir)))
 				{
-					char *class_val = focused_node.app_id ? focused_node.app_id : focused_node.class;
-					if (class_val)
+					uid_t d_uid = atoi(entry->d_name);
+					if (d_uid >= 1000)
 					{
-						free(ans->class);
-						ans->class = strdup(class_val);
-					}
-					if (focused_node.name)
-					{
-						free(ans->title);
-						ans->title = strdup(focused_node.name);
+						uid = d_uid;
+						struct passwd *pw = getpwuid(uid);
+						if (pw)
+						{
+							username = strdup(pw->pw_name);
+						}
+						break;
 					}
 				}
-
-				if (focused_node.name) free(focused_node.name);
-				if (focused_node.app_id) free(focused_node.app_id);
-				if (focused_node.class) free(focused_node.class);
-				free(json_str);
+				closedir(dir);
+			}
+		}
+		else
+		{
+			struct passwd *pw = getpwuid(uid);
+			if (pw)
+			{
+				username = strdup(pw->pw_name);
 			}
 		}
 	}
-	else if (hyprland_sig)
+
+	char sway_sock[1024] = "";
+	if (uid > 0)
 	{
-		FILE *fp = popen("hyprctl activewindow 2>/dev/null", "r");
+		char path[512];
+		snprintf(path, sizeof(path), "/run/user/%d", uid);
+		DIR *dir = opendir(path);
+		if (dir)
+		{
+			struct dirent *entry;
+			while ((entry = readdir(dir)))
+			{
+				if (strncmp(entry->d_name, "sway-ipc.", 9) == 0 &&
+					strstr(entry->d_name, ".sock"))
+				{
+					snprintf(sway_sock, sizeof(sway_sock), "/run/user/%d/%s", uid, entry->d_name);
+					break;
+				}
+			}
+			closedir(dir);
+		}
+	}
+
+	char hypr_sig[256] = "";
+	if (uid > 0 && strlen(sway_sock) == 0)
+	{
+		char path[512];
+		snprintf(path, sizeof(path), "/run/user/%d/hypr", uid);
+		DIR *dir = opendir(path);
+		if (!dir)
+		{
+			snprintf(path, sizeof(path), "/tmp/hypr");
+			dir = opendir(path);
+		}
+		if (dir)
+		{
+			struct dirent *entry;
+			while ((entry = readdir(dir)))
+			{
+				if (strlen(entry->d_name) > 10)
+				{
+					snprintf(hypr_sig, sizeof(hypr_sig), "%s", entry->d_name);
+					break;
+				}
+			}
+			closedir(dir);
+		}
+	}
+
+	char cmd[2048] = "";
+	int is_sway = 0;
+
+	if (getenv("SWAYSOCK"))
+	{
+		snprintf(cmd, sizeof(cmd), "swaymsg -t get_tree 2>/dev/null");
+		is_sway = 1;
+	}
+	else if (getenv("HYPRLAND_INSTANCE_SIGNATURE"))
+	{
+		snprintf(cmd, sizeof(cmd), "hyprctl activewindow 2>/dev/null");
+		is_sway = 0;
+	}
+	else if (strlen(sway_sock) > 0)
+	{
+		if (getuid() == 0 && username)
+		{
+			snprintf(cmd, sizeof(cmd),
+				"sudo -u %s env SWAYSOCK=%s XDG_RUNTIME_DIR=/run/user/%d swaymsg -t get_tree 2>/dev/null",
+				username, sway_sock, uid);
+		}
+		else
+		{
+			snprintf(cmd, sizeof(cmd),
+				"env SWAYSOCK=%s XDG_RUNTIME_DIR=/run/user/%d swaymsg -t get_tree 2>/dev/null",
+				sway_sock, uid);
+		}
+		is_sway = 1;
+	}
+	else if (strlen(hypr_sig) > 0)
+	{
+		if (getuid() == 0 && username)
+		{
+			snprintf(cmd, sizeof(cmd),
+				"sudo -u %s env HYPRLAND_INSTANCE_SIGNATURE=%s XDG_RUNTIME_DIR=/run/user/%d hyprctl activewindow 2>/dev/null",
+				username, hypr_sig, uid);
+		}
+		else
+		{
+			snprintf(cmd, sizeof(cmd),
+				"env HYPRLAND_INSTANCE_SIGNATURE=%s XDG_RUNTIME_DIR=/run/user/%d hyprctl activewindow 2>/dev/null",
+				hypr_sig, uid);
+		}
+		is_sway = 0;
+	}
+
+	if (strlen(cmd) > 0)
+	{
+		FILE *fp = popen(cmd, "r");
 		if (fp)
 		{
-			char *class_val = NULL;
-			char *title_val = NULL;
-			parse_hyprctl_output(fp, &class_val, &title_val);
-			pclose(fp);
+			if (is_sway)
+			{
+				size_t len = 0;
+				char *json_str = read_all_from_pipe(fp, &len);
+				pclose(fp);
+				if (json_str)
+				{
+					JsonNode focused_node;
+					memset(&focused_node, 0, sizeof(focused_node));
+					const char *ptr = json_str;
+					parse_json_val(&ptr, &focused_node, &focused_node);
 
-			if (class_val)
-			{
-				free(ans->class);
-				ans->class = class_val;
+					if (focused_node.focused)
+					{
+						char *class_val = focused_node.app_id ? focused_node.app_id : focused_node.class;
+						if (class_val)
+						{
+							free(ans->class);
+							ans->class = strdup(class_val);
+						}
+						if (focused_node.name)
+						{
+							free(ans->title);
+							ans->title = strdup(focused_node.name);
+						}
+					}
+
+					if (focused_node.name) free(focused_node.name);
+					if (focused_node.app_id) free(focused_node.app_id);
+					if (focused_node.class) free(focused_node.class);
+					free(json_str);
+				}
 			}
-			if (title_val)
+			else
 			{
-				free(ans->title);
-				ans->title = title_val;
+				char *class_val = NULL;
+				char *title_val = NULL;
+				parse_hyprctl_output(fp, &class_val, &title_val);
+				pclose(fp);
+
+				if (class_val)
+				{
+					free(ans->class);
+					ans->class = class_val;
+				}
+				if (title_val)
+				{
+					free(ans->title);
+					ans->title = title_val;
+				}
 			}
 		}
 	}
 
+	if (username) free(username);
 	return ans;
 }
 
