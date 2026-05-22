@@ -189,6 +189,8 @@ int uinput_init(void) {
 	ioctl(uinput_fd, UI_SET_KEYBIT, BTN_LEFT);
 	ioctl(uinput_fd, UI_SET_KEYBIT, BTN_RIGHT);
 	ioctl(uinput_fd, UI_SET_KEYBIT, BTN_MIDDLE);
+	ioctl(uinput_fd, UI_SET_KEYBIT, BTN_SIDE);
+	ioctl(uinput_fd, UI_SET_KEYBIT, BTN_EXTRA);
 
 	// Enable keyboard keys we want to support
 	for (int i = 1; i < KEY_MAX; i++) {
@@ -236,6 +238,8 @@ void uinput_click(int button) {
 		case 1: ev_button = BTN_LEFT; break;
 		case 2: ev_button = BTN_MIDDLE; break;
 		case 3: ev_button = BTN_RIGHT; break;
+		case 4: ev_button = BTN_SIDE; break;
+		case 5: ev_button = BTN_EXTRA; break;
 		default: ev_button = button; break;
 	}
 

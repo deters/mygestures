@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
 #include <libevdev/libevdev.h>
@@ -12,6 +13,22 @@
 
 #include "grabbing.h"
 #include "grabbing-evdev.h"
+
+static char *input_remapper_device_to_stop = NULL;
+
+static void cleanup_input_remapper(void) {
+	if (input_remapper_device_to_stop) {
+		char *cmd = NULL;
+		if (asprintf(&cmd, "input-remapper-control --command stop --device \"%s\" &", input_remapper_device_to_stop) != -1) {
+			printf("mygestures: Running shutdown remapping restore command: %s\n", cmd);
+			int res = system(cmd);
+			(void)res;
+			free(cmd);
+		}
+		free(input_remapper_device_to_stop);
+		input_remapper_device_to_stop = NULL;
+	}
+}
 
 int find_mouse_device(char *path, size_t len) {
     DIR *dir;
@@ -46,6 +63,10 @@ static int get_evdev_button_code(int button) {
 			return BTN_MIDDLE;
 		case 3:
 			return BTN_RIGHT;
+		case 4:
+			return BTN_SIDE;
+		case 5:
+			return BTN_EXTRA;
 		default:
 			if (button > 3) return button;
 			return BTN_LEFT;
@@ -104,6 +125,27 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 		} else {
 			self->button = 3;
 		}
+	}
+
+	if (self->button == 3) {
+		const char *device_friendly_name = libevdev_get_name(dev);
+		const char *phys_name = device_friendly_name;
+		if (strncmp(phys_name, "mapped: ", 8) == 0) {
+			phys_name += 8;
+		}
+
+		input_remapper_device_to_stop = strdup(phys_name);
+		atexit(cleanup_input_remapper);
+
+		char *cmd = NULL;
+		if (asprintf(&cmd, "input-remapper-control --command start --device \"%s\" --preset \"mygestures\" &", phys_name) != -1) {
+			printf("mygestures: Running startup remapping command: %s\n", cmd);
+			int res = system(cmd);
+			(void)res;
+			free(cmd);
+		}
+
+		self->button = 4;
 	}
 
 	int target_button = get_evdev_button_code(self->button);
