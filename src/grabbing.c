@@ -315,17 +315,17 @@ void grabbing_xinput_grab_stop(Grabber *self)
 	}
 }
 
-static void mouse_click(Display *display, int button, int x, int y)
+static void mouse_click(Grabber *self, int button, int x, int y)
 {
-	if (display == NULL)
+	if (self->evdev || self->dpy == NULL)
 	{
 		uinput_click(button);
 	}
 	else
 	{
-		XTestFakeMotionEvent(display, DefaultScreen(display), x, y, 0);
-		XTestFakeButtonEvent(display, button, True, CurrentTime);
-		XTestFakeButtonEvent(display, button, False, CurrentTime);
+		XTestFakeMotionEvent(self->dpy, DefaultScreen(self->dpy), x, y, 0);
+		XTestFakeButtonEvent(self->dpy, button, True, CurrentTime);
+		XTestFakeButtonEvent(self->dpy, button, False, CurrentTime);
 	}
 }
 
@@ -367,9 +367,10 @@ static Window get_focused_window(Display *dpy)
 	return win;
 }
 
-static void execute_action(Display *dpy, Action *action, Window focused_window)
+static void execute_action(Grabber *self, Action *action, Window focused_window)
 {
 	int id;
+	Display *dpy = self->dpy;
 
 	assert(action);
 
@@ -386,6 +387,11 @@ static void execute_action(Display *dpy, Action *action, Window focused_window)
 			fprintf(stderr, "Error forking.\n");
 		}
 		return;
+	}
+
+	if (self->evdev)
+	{
+		dpy = NULL;
 	}
 
 	if (!dpy && action->type != ACTION_KEYPRESS)
@@ -735,13 +741,13 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 	if ((strlen(self->rought_direction_sequence) == 0) && (strlen(self->fine_direction_sequence) == 0))
 	{
 
-		if (!(self->synaptics) && self->dpy)
+		if (!(self->synaptics) && (self->dpy || self->evdev))
 		{
 
 			printf("\nEmulating click\n");
 
 			//grabbing_xinput_grab_stop(self);
-			mouse_click(self->dpy, self->button, new_x, new_y);
+			mouse_click(self, self->button, new_x, new_y);
 			//grabbing_xinput_grab_start(self);
 		}
 	}
@@ -786,7 +792,7 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 				Action *a = gest->action_list[j];
 				printf("     Executing action: %s %s\n",
 					   get_action_name(a->type), a->original_str);
-				execute_action(self->dpy, a, target_window);
+				execute_action(self, a, target_window);
 			}
 		}
 		else
