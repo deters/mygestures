@@ -1,0 +1,191 @@
+{
+  "movements": [
+    {"name": "Up", "value": "U"},
+    {"name": "Down", "value": "D"},
+    {"name": "Left", "value": "L"},
+    {"name": "Right", "value": "R"},
+    {"name": "NorthWest", "value": "(7(U|L)?)+"},
+    {"name": "NorthEast", "value": "(9(U|R)?)+"},
+    {"name": "SouthWest", "value": "(1(D|L)?)+"},
+    {"name": "SouthEast", "value": "(3(D|R)?)+"},
+    {"name": "B", "value": "(D?U)?((R|3)(D1?L|1))((R|3)(D1?L|1))"},
+    {"name": "C", "value": "U?LDRU?"},
+    {"name": "D", "value": "DRUL"},
+    {"name": "E", "value": "RULDRU?"},
+    {"name": "F", "value": "(LD(UR|RLD)|RUL?DU(R|RU)?)"},
+    {"name": "G", "value": "LDRU(LRD?|DL(U|UR))"},
+    {"name": "H", "value": "DURUD"},
+    {"name": "I", "value": "RL?DL?R"},
+    {"name": "J", "value": "(RLD(RD?)LU?|D3D1L|RLD3L|RD3DL|D1L7)"},
+    {"name": "K", "value": "DU(9?13|913?|93|RLDR(D(RD?)?)?)"},
+    {"name": "L", "value": "DR"},
+    {"name": "M", "value": "(D?UR?DUR?D|9393)"},
+    {"name": "N", "value": "(9|U|7)+(R?(D|3)R?)+(9|U|7)+"},
+    {"name": "O", "value": "(LDRUL)+"},
+    {"name": "O_REVERSE", "value": "(RDLUR)+"},
+    {"name": "P", "value": "RULD"},
+    {"name": "Q", "value": "1?D3?R9?U7?D1?R3?"},
+    {"name": "R", "value": "((RDL?)|DL?|L)?URDLR?(D|DRD?R?)?"},
+    {"name": "S", "value": "U?7?L1?D3?R3?D1?L7?U?"},
+    {"name": "T", "value": "RLD"},
+    {"name": "U", "value": "DRU"},
+    {"name": "V", "value": "39"},
+    {"name": "W", "value": "(DR?UDR?U|3939)"},
+    {"name": "X", "value": "(DLURU?|3L9)"},
+    {"name": "Y", "value": "(DRUDLUR?|391)"},
+    {"name": "Z", "value": "R(1?D?L?)*R"},
+    {"name": "UpRight", "value": "UR"},
+    {"name": "UpRightDown", "value": "URD"},
+    {"name": "UpLeftDown", "value": "ULD"},
+    {"name": "UpLeft", "value": "UL"},
+    {"name": "LeftUp", "value": "LU"},
+    {"name": "LeftDown", "value": "LD"},
+    {"name": "DownLeft", "value": "DL"},
+    {"name": "DownRight", "value": "DR"},
+    {"name": "RightDown", "value": "RD"},
+    {"name": "RightUp", "value": "RU"}
+  ],
+  "contexts": [
+    {
+      "name": "Terminal windows",
+      "windowclass": ".*(Term|term).*",
+      "windowtitle": ".*",
+      "gestures": [
+        {
+          "name": "Open new tab (Ctrl+Shift+T)",
+          "movement": "T",
+          "actions": [{"action": "keypress", "value": "Control_L+Shift_L+T"}]
+        },
+        {
+          "name": "Open new window (Ctrl+Shift+N)",
+          "movement": "N",
+          "actions": [{"action": "keypress", "value": "Control_L+Shift_L+N"}]
+        },
+        {
+          "name": "Copy (Ctrl+Shift+C)",
+          "movement": "C",
+          "actions": [{"action": "keypress", "value": "Control_L+Shift_L+C"}]
+        },
+        {
+          "name": "Paste (Ctrl+Shift+V)",
+          "movement": "V",
+          "actions": [{"action": "keypress", "value": "Control_L+Shift_L+V"}]
+        },
+        {
+          "name": "Close current tab (Ctrl+Shift+W)",
+          "movement": "RightDown",
+          "actions": [{"action": "keypress", "value": "Control_L+Shift_L+W"}]
+        }
+      ]
+    },
+    {
+      "name": "All applications",
+      "windowclass": ".*",
+      "windowtitle": ".*",
+      "gestures": [
+        {
+          "name": "Close window",
+          "movement": "DownRight",
+          "actions": [{"action": "kill"}]
+        },
+        {
+          "name": "Maximize window",
+          "movement": "Up",
+          "actions": [{"action": "toggle-maximized"}]
+        },
+        {
+          "name": "Iconify window",
+          "movement": "Down",
+          "actions": [{"action": "iconify"}]
+        },
+        {
+          "name": "Previous page (Alt+Left)",
+          "movement": "Left",
+          "actions": [{"action": "keypress", "value": "Alt_L+Left"}]
+        },
+        {
+          "name": "Next page (Alt+Right)",
+          "movement": "Right",
+          "actions": [{"action": "keypress", "value": "Alt_L+Right"}]
+        },
+        {
+          "name": "Copy (Ctrl+C)",
+          "movement": "C",
+          "actions": [{"action": "keypress", "value": "Control_L+C"}]
+        },
+        {
+          "name": "Paste (Ctrl+V)",
+          "movement": "V",
+          "actions": [{"action": "keypress", "value": "Control_L+V"}]
+        },
+        {
+          "name": "New (Ctrl+N)",
+          "movement": "N",
+          "actions": [{"action": "keypress", "value": "Control_L+N"}]
+        },
+        {
+          "name": "Open (Ctrl+O)",
+          "movement": "O",
+          "actions": [{"action": "keypress", "value": "Control_L+O"}]
+        },
+        {
+          "name": "Print (Ctrl+P)",
+          "movement": "P",
+          "actions": [{"action": "keypress", "value": "Control_L+P"}]
+        },
+        {
+          "name": "Save (Ctrl+S)",
+          "movement": "S",
+          "actions": [{"action": "keypress", "value": "Control_L+S"}]
+        },
+        {
+          "name": "Escape",
+          "movement": "Up",
+          "actions": [{"action": "keypress", "value": "Escape"}]
+        },
+        {
+          "name": "New tab (Ctrl+T)",
+          "movement": "T",
+          "actions": [{"action": "keypress", "value": "Control_L+T"}]
+        },
+        {
+          "name": "Close tab (Ctrl+W)",
+          "movement": "RightDown",
+          "actions": [{"action": "keypress", "value": "Control_L+W"}]
+        },
+        {
+          "name": "Run default browser",
+          "movement": "W",
+          "actions": [{"action": "exec", "value": "x-www-browser"}]
+        },
+        {
+          "name": "Run gedit",
+          "movement": "G",
+          "actions": [{"action": "exec", "value": "gedit"}]
+        },
+        {
+          "name": "Previous Tab",
+          "movement": "UpLeftDown",
+          "actions": [{"action": "keypress", "value": "Control_L+Shift_L+Tab"}]
+        },
+        {
+          "name": "Next Tab",
+          "movement": "UpRightDown",
+          "actions": [{"action": "keypress", "value": "Control_L+Tab"}]
+        }
+      ]
+    },
+    {
+      "name": "Chrome",
+      "windowclass": "Google-chrome",
+      "windowtitle": ".*",
+      "gestures": [
+        {
+          "name": "Close tab (Ctrl+F4)",
+          "movement": "RightDown",
+          "actions": [{"action": "keypress", "value": "Control_L+F4"}]
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 
-sysconf_DATA = mygestures.xml
-dist_sysconf_DATA = mygestures.xml
+sysconf_DATA = mygestures.yaml
+dist_sysconf_DATA = mygestures.yaml
 
 udevrulesdir = $(prefix)/lib/udev/rules.d
 udevrules_DATA = 99-mygestures.rules

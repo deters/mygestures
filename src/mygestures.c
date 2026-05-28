@@ -58,7 +58,7 @@ static void mygestures_usage(Mygestures *self)
 	printf("                              Default: '1' on touchscreens,\n");
 	printf("                                       '3' on pointer devices\n");
 	printf(" -l, --device-list          : Print all available devices an exit.\n");
-	printf(" -C, --create-config        : Create a default config file in the user's config directory.\n");
+	printf(" -C, --create-config        : Create a default YAML config file in the user's config directory.\n");
 	printf(" -v, --visual               : Don't paint the gesture on screen.\n");
 	printf(" -c, --color                : Brush color.\n");
 	printf("                              Default: blue\n");

@@ -77,7 +77,7 @@ Gestures configuration:
 
   In the first execution mygestures will create a configuration file for your user:
 
-    ~/.config/mygestures/mygestures.xml
+    ~/.config/mygestures/mygestures.yaml
 
   Mygestures works by capturing your mouse movements and define them in terms of basic directions:
   

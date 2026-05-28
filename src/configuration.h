@@ -62,7 +62,6 @@ typedef struct user_configuration_ {
 
 typedef struct action_ {
 	int type;
-	//struct key_press *data;
 	char *original_str;
 } Action;
 
@@ -91,13 +90,22 @@ Context * configuration_create_context(	Configuration * self,
 										char * context_name,
 										char *window_title,
 										char *window_class);
-Gesture * configuration_create_gesture(Context * self, char * gesture_name, char * gesture_movement);
+
+Gesture * configuration_create_gesture(Context * self, char * gesture_name, char * gesture_movement_or_stroke);
+
 Movement * configuration_create_movement(	Configuration * self,
 											char *movement_name,
 											char *movement_expression);
+
 Action * configuration_create_action(Gesture * self, int action_type, char * original_str);
+
+void configuration_add_action_from_string(Gesture * self, const char * action_str);
+
 Movement * configuration_find_movement_by_name(Configuration * self, char * movement_name);
 int configuration_get_gestures_count(Configuration * self);
 Gesture * configuration_process_gesture(Configuration * self, Capture * capture);
+
+void configuration_load_from_defaults(Configuration * configuration, int create_config);
+void configuration_load_from_file(Configuration * configuration, char * filename);
 
 #endif

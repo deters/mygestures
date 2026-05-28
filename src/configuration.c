@@ -26,6 +26,7 @@
 #include <assert.h>
 
 #include "configuration.h"
+#include "actions.h"
 
 void context_set_title(Context* context, char* window_title) {
 
@@ -130,25 +131,25 @@ Movement *configuration_create_movement(Configuration * self,
 }
 
 Gesture * configuration_create_gesture(Context * self, char * gesture_name,
-		char * gesture_movement) {
+		char * gesture_movement_or_stroke) {
 
 	assert(self);
 	assert(gesture_name);
-	assert(gesture_movement);
+	assert(gesture_movement_or_stroke);
 
 	Gesture *ans = malloc(sizeof(Gesture));
 	bzero(ans, sizeof(Gesture));
 
-	Movement *m = NULL;
-
-	ans->name = gesture_name;
+	ans->name = strdup(gesture_name);
 	ans->movement = configuration_find_movement_by_name(
-			self->parent_user_configuration, gesture_movement);
+			self->parent_user_configuration, gesture_movement_or_stroke);
 
 	if (!ans->movement) {
-		printf(
-				"Movement '%s' referenced by gesture '%s' is unknown. The gesture will be inaccessible.\n",
-				gesture_movement, gesture_name);
+		// Treat as a raw stroke and create an anonymous movement
+		ans->movement = malloc(sizeof(Movement));
+		bzero(ans->movement, sizeof(Movement));
+		ans->movement->name = strdup("anonymous");
+		movement_set_expression(ans->movement, strdup(gesture_movement_or_stroke));
 	}
 
 	ans->context = self;
@@ -158,6 +159,52 @@ Gesture * configuration_create_gesture(Context * self, char * gesture_name,
 	self->gesture_list[self->gesture_count++] = ans;
 
 	return ans;
+}
+
+void configuration_add_action_from_string(Gesture * self, const char * action_str) {
+	assert(self);
+	assert(action_str);
+
+	char *copy = strdup(action_str);
+	char *action_name = copy;
+	char *value = strchr(copy, ' ');
+	
+	if (value) {
+		*value = '\0';
+		value++;
+		while (*value == ' ') value++; // Skip extra spaces
+	} else {
+		value = "";
+	}
+
+	int id = ACTION_NULL;
+
+	if (strcasecmp(action_name, "iconify") == 0) {
+		id = ACTION_ICONIFY;
+	} else if (strcasecmp(action_name, "kill") == 0) {
+		id = ACTION_KILL;
+	} else if (strcasecmp(action_name, "lower") == 0) {
+		id = ACTION_LOWER;
+	} else if (strcasecmp(action_name, "raise") == 0) {
+		id = ACTION_RAISE;
+	} else if (strcasecmp(action_name, "maximize") == 0) {
+		id = ACTION_MAXIMIZE;
+	} else if (strcasecmp(action_name, "restore") == 0) {
+		id = ACTION_RESTORE;
+	} else if (strcasecmp(action_name, "toggle-maximized") == 0) {
+		id = ACTION_TOGGLE_MAXIMIZED;
+	} else if (strcasecmp(action_name, "keypress") == 0 || strcasecmp(action_name, "keys") == 0) {
+		id = ACTION_KEYPRESS;
+	} else if (strcasecmp(action_name, "exec") == 0) {
+		id = ACTION_EXECUTE;
+	} else {
+		fprintf(stderr, "Warning: unknown action '%s' in gesture '%s'\n", action_name, self->name);
+		free(copy);
+		return;
+	}
+
+	configuration_create_action(self, id, strdup(value));
+	free(copy);
 }
 
 /* alloc an action struct */

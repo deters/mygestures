@@ -1,0 +1,150 @@
+# MyGestures - Modern YAML Configuration
+
+# Reusable movement definitions (Regex)
+movements:
+  Up: U
+  Down: D
+  Left: L
+  Right: R
+  NorthWest: (7(U|L)?)+
+  NorthEast: (9(U|R)?)+
+  SouthWest: (1(D|L)?)+
+  SouthEast: (3(D|R)?)+
+  B: (D?U)?((R|3)(D1?L|1))((R|3)(D1?L|1))
+  C: U?LDRU?
+  D: DRUL
+  E: RULDRU?
+  F: (LD(UR|RLD)|RUL?DU(R|RU)?)
+  G: LDRU(LRD?|DL(U|UR))
+  H: DURUD
+  I: RL?DL?R
+  J: (RLD(RD?)LU?|D3D1L|RLD3L|RD3DL|D1L7)
+  K: DU(9?13|913?|93|RLDR(D(RD?)?)?)
+  L: DR
+  M: (D?UR?DUR?D|9393)
+  N: (9|U|7)+(R?(D|3)R?)+(9|U|7)+
+  O: (LDRUL)+
+  O_REVERSE: (RDLUR)+
+  P: RULD
+  Q: 1?D3?R9?U7?D1?R3?
+  R: ((RDL?)|DL?|L)?URDLR?(D|DRD?R?)?
+  S: U?7?L1?D3?R3?D1?L7?U?
+  T: RLD
+  U: DRU
+  V: 39
+  W: (DR?UDR?U|3939)
+  X: (DLURU?|3L9)
+  Y: (DRUDLUR?|391)
+  Z: R(1?D?L?)*R
+  UpRight: UR
+  UpRightDown: URD
+  UpLeftDown: ULD
+  UpLeft: UL
+  LeftUp: LU
+  LeftDown: LD
+  DownLeft: DL
+  DownRight: DR
+  RightDown: RD
+  RightUp: RU
+
+# Default gestures available in all windows
+global:
+  "Close window":
+    move: DownRight
+    do: kill
+
+  "Maximize window":
+    move: Up
+    do: toggle-maximized
+
+  "Iconify window":
+    move: Down
+    do: iconify
+
+  "Previous page":
+    move: Left
+    do: keypress Alt_L+Left
+
+  "Next page":
+    move: Right
+    do: keypress Alt_L+Right
+
+  "Copy":
+    move: C
+    do: keypress Control_L+C
+
+  "Paste":
+    move: V
+    do: keypress Control_L+V
+
+  "New":
+    move: N
+    do: keypress Control_L+N
+
+  "Open":
+    move: O
+    do: keypress Control_L+O
+
+  "Print":
+    move: P
+    do: keypress Control_L+P
+
+  "Save":
+    move: S
+    do: keypress Control_L+S
+
+  "Escape":
+    move: Up
+    do: keypress Escape
+
+  "New tab":
+    move: T
+    do: keypress Control_L+T
+
+  "Close tab":
+    move: RightDown
+    do: keypress Control_L+W
+
+  "Run default browser":
+    move: W
+    do: exec x-www-browser
+
+  "Run gedit":
+    move: G
+    do: exec gedit
+
+  "Previous Tab":
+    move: UpLeftDown
+    do: keypress Control_L+Shift_L+Tab
+
+  "Next Tab":
+    move: UpRightDown
+    do: keypress Control_L+Tab
+
+# App-specific overrides
+apps:
+  - name: Terminal
+    match: { class: ".*(Term|term).*" }
+    gestures:
+      "New tab":
+        move: T
+        do: keypress Control_L+Shift_L+T
+      "New window":
+        move: N
+        do: keypress Control_L+Shift_L+N
+      "Copy":
+        move: C
+        do: keypress Control_L+Shift_L+C
+      "Paste":
+        move: V
+        do: keypress Control_L+Shift_L+V
+      "Close current tab":
+        move: RightDown
+        do: keypress Control_L+Shift_L+W
+
+  - name: Chrome
+    match: { class: "Google-chrome" }
+    gestures:
+      "Close tab":
+        move: RightDown
+        do: keypress Control_L+F4

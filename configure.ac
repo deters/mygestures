@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([MyGestures], [3.0], [lucasdeters@gmail.com])
+AC_INIT([MyGestures], [3.1.0], [lucasdeters@gmail.com])
 AM_INIT_AUTOMAKE([subdir-objects])
 AC_CONFIG_SRCDIR([src/mygestures.c])
 AC_CONFIG_HEADERS([src/config.h])
@@ -15,7 +15,7 @@ PKG_CHECK_MODULES(X11, x11)
 PKG_CHECK_MODULES(Xrender, xrender)
 PKG_CHECK_MODULES(Xtst, xtst)
 PKG_CHECK_MODULES(Xi, xi)
-PKG_CHECK_MODULES(libXML, libxml-2.0 >= 2.4)
+PKG_CHECK_MODULES(libyaml, yaml-0.1)
 PKG_CHECK_MODULES(libevdev, libevdev)
 
 AC_SEARCH_LIBS([shm_open], [rt], [])
@@ -30,14 +30,12 @@ AC_TYPE_MODE_T
 # Checks for library functions.
 AC_FUNC_FORK
 AC_FUNC_MALLOC
-AC_CHECK_FUNCS([bzero memset mkdir regcomp strcasecmp strdup strncasecmp])          
+AC_CHECK_FUNCS([bzero memset mkdir regcomp strcasecmp strdup strncasecmp])
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile])
-                 
-                 
 
-            
+
+
+
 AC_OUTPUT
-
-
