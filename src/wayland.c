@@ -543,112 +543,109 @@ ActiveWindowInfo *get_wayland_active_window_info(void)
 }
 
 void execute_wayland_action(Action *action) {
-	WaylandContext ctx;
-	discover_wayland_context(&ctx);
+	const char *swaysock = getenv("SWAYSOCK");
+	const char *hyprland_sig = getenv("HYPRLAND_INSTANCE_SIGNATURE");
 
-	char cmd_prefix[1024] = "";
-	if (ctx.is_sway) {
-		if (getuid() == 0 && ctx.username) {
-			snprintf(cmd_prefix, sizeof(cmd_prefix), "sudo -u %s env SWAYSOCK=%s XDG_RUNTIME_DIR=/run/user/%d swaymsg ",
-				ctx.username, ctx.sway_sock, ctx.uid);
-		} else {
-			snprintf(cmd_prefix, sizeof(cmd_prefix), "env SWAYSOCK=%s XDG_RUNTIME_DIR=/run/user/%d swaymsg ",
-				ctx.sway_sock, ctx.uid);
-		}
-	} else if (ctx.is_hypr) {
-		if (getuid() == 0 && ctx.username) {
-			snprintf(cmd_prefix, sizeof(cmd_prefix), "sudo -u %s env HYPRLAND_INSTANCE_SIGNATURE=%s XDG_RUNTIME_DIR=/run/user/%d hyprctl ",
-				ctx.username, ctx.hypr_sig, ctx.uid);
-		} else {
-			snprintf(cmd_prefix, sizeof(cmd_prefix), "env HYPRLAND_INSTANCE_SIGNATURE=%s XDG_RUNTIME_DIR=/run/user/%d hyprctl ",
-				ctx.hypr_sig, ctx.uid);
-		}
-	}
-
-	if (ctx.is_sway) {
-		LOG_INFO(1, "Wayland: Detected Sway. Socket: %s, User: %s\n", ctx.sway_sock, ctx.username ? ctx.username : "N/A");
-		char full_cmd[2048];
+	if (swaysock) {
 		switch (action->type) {
 			case ACTION_ICONIFY:
-				snprintf(full_cmd, sizeof(full_cmd), "%smove scratchpad 2>&1", cmd_prefix);
+				{
+					int r = system("swaymsg move scratchpad");
+					(void)r;
+				}
 				break;
 			case ACTION_KILL:
-				snprintf(full_cmd, sizeof(full_cmd), "%skill 2>&1", cmd_prefix);
+				{
+					int r = system("swaymsg kill");
+					(void)r;
+				}
 				break;
 			case ACTION_RAISE:
-				snprintf(full_cmd, sizeof(full_cmd), "%sfocus 2>&1", cmd_prefix);
+				{
+					int r = system("swaymsg focus");
+					(void)r;
+				}
 				break;
 			case ACTION_LOWER:
 				LOG_WARN("Lower action is not natively supported under Sway tiling layout.\n");
-				full_cmd[0] = '\0';
 				break;
 			case ACTION_MAXIMIZE:
-				snprintf(full_cmd, sizeof(full_cmd), "%sfullscreen enable 2>&1", cmd_prefix);
+				{
+					int r = system("swaymsg fullscreen enable");
+					(void)r;
+				}
 				break;
 			case ACTION_RESTORE:
-				snprintf(full_cmd, sizeof(full_cmd), "%sfullscreen disable 2>&1", cmd_prefix);
+				{
+					int r = system("swaymsg fullscreen disable");
+					(void)r;
+				}
 				break;
 			case ACTION_TOGGLE_MAXIMIZED:
-				snprintf(full_cmd, sizeof(full_cmd), "%sfullscreen toggle 2>&1", cmd_prefix);
+				{
+					int r = system("swaymsg fullscreen toggle");
+					(void)r;
+				}
 				break;
 			default:
 				LOG_WARN("Wayland action %s is not implemented or supported under Sway.\n",
 						get_action_name(action->type));
-				full_cmd[0] = '\0';
 				break;
 		}
-		if (full_cmd[0] != '\0') {
-			LOG_INFO(1, "Wayland: Executing Sway command: %s\n", full_cmd);
-			int r = system(full_cmd);
-			if (r != 0) LOG_WARN("Wayland: Sway command returned %d\n", r);
-		}
-		if (ctx.username) free(ctx.username);
 		return;
 	}
 
-	if (ctx.is_hypr) {
-		LOG_INFO(1, "Wayland: Detected Hyprland. Signature: %s, User: %s\n", ctx.hypr_sig, ctx.username ? ctx.username : "N/A");
-		char full_cmd[2048];
+	if (hyprland_sig) {
 		switch (action->type) {
 			case ACTION_ICONIFY:
-				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch movetoworkspacesilent special:minimized 2>&1", cmd_prefix);
+				{
+					int r = system("hyprctl dispatch movetoworkspacesilent special:minimized");
+					(void)r;
+				}
 				break;
 			case ACTION_KILL:
-				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch killactive 2>&1", cmd_prefix);
+				{
+					int r = system("hyprctl dispatch killactive");
+					(void)r;
+				}
 				break;
 			case ACTION_RAISE:
-				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch alterzorder top 2>&1", cmd_prefix);
+				{
+					int r = system("hyprctl dispatch alterzorder top");
+					(void)r;
+				}
 				break;
 			case ACTION_LOWER:
-				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch alterzorder bottom 2>&1", cmd_prefix);
+				{
+					int r = system("hyprctl dispatch alterzorder bottom");
+					(void)r;
+				}
 				break;
 			case ACTION_MAXIMIZE:
-				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch fullscreen 1 2>&1", cmd_prefix);
+				{
+					int r = system("hyprctl dispatch fullscreen 1");
+					(void)r;
+				}
 				break;
 			case ACTION_RESTORE:
-				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch fullscreen 1 2>&1", cmd_prefix);
+				{
+					int r = system("hyprctl dispatch fullscreen 1"); // Toggles maximize back to normal
+					(void)r;
+				}
 				break;
 			case ACTION_TOGGLE_MAXIMIZED:
-				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch fullscreen 1 2>&1", cmd_prefix);
+				{
+					int r = system("hyprctl dispatch fullscreen 1");
+					(void)r;
+				}
 				break;
 			default:
 				LOG_WARN("Wayland action %s is not implemented or supported under Hyprland.\n",
 						get_action_name(action->type));
-				full_cmd[0] = '\0';
 				break;
 		}
-		if (full_cmd[0] != '\0') {
-			LOG_INFO(1, "Wayland: Executing Hyprland command: %s\n", full_cmd);
-			int r = system(full_cmd);
-			if (r != 0) LOG_WARN("Wayland: Hyprland command returned %d\n", r);
-		}
-		if (ctx.username) free(ctx.username);
 		return;
 	}
-
-	LOG_INFO(1, "Wayland: No specific compositor detected, falling back to uinput.\n");
-
-	if (ctx.username) free(ctx.username);
 
 	// Fallback to simulating standard shortcuts via uinput virtual keyboard
 	const char *desktop = getenv("XDG_CURRENT_DESKTOP");
@@ -669,7 +666,6 @@ void execute_wayland_action(Action *action) {
 				action_keypress(NULL, "Super_L+h");
 				break;
 			case ACTION_KILL:
-				LOG_INFO(1, "Wayland: Executing GNOME kill fallback (Alt_L+F4)\n");
 				action_keypress(NULL, "Alt_L+F4");
 				break;
 			case ACTION_RAISE:
