@@ -344,22 +344,14 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
     GtkCssProvider *provider = gtk_css_provider_new();
     gtk_css_provider_load_from_string(provider,
-        "window { background-color: #f6f6f6; }\n"
-        ".sidebar { background-color: #f0f0f0; border-right: 1px solid #dcdcdc; }\n"
-        ".sidebar-header { color: #808080; font-weight: bold; font-size: 0.75em; text-transform: uppercase; margin-bottom: 12px; }\n"
-        ".sidebar-list { background: transparent; }\n"
+        ".sidebar-header { font-weight: bold; font-size: 0.75em; text-transform: uppercase; margin-bottom: 12px; }\n"
         ".sidebar-list row { border-radius: 8px; margin: 2px 12px; padding: 2px; }\n"
-        ".sidebar-list row:selected { background-color: #3584e4; color: white; }\n"
-        ".context-title { font-size: 2.2em; font-weight: 800; color: #000; }\n"
-        ".boxed-list { border: 1px solid #dcdcdc; border-radius: 12px; background: white; }\n"
-        ".boxed-list row { border-bottom: 1px solid #f0f0f0; }\n"
+        ".context-title { font-size: 2.2em; font-weight: 800; }\n"
+        ".boxed-list { border-radius: 12px; }\n"
         ".boxed-list row:last-child { border-bottom: none; }\n"
-        ".boxed-list row:hover { background-color: #fafafa; }\n"
-        ".move-badge { background-color: #e1f0ff; color: #3584e4; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 0.8em; }\n"
-        ".action-label { color: #808080; font-size: 0.85em; }\n"
-        ".destructive-action { color: #e01b24; }\n"
-        ".destructive-action:hover { background-color: #fce8e8; }\n"
-        ".toast { background: #333; color: white; padding: 10px 20px; border-radius: 20px; position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); font-weight: bold; }\n");
+        ".move-badge { padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 0.8em; }\n"
+        ".action-label { font-size: 0.85em; }\n"
+        ".toast { padding: 10px 20px; border-radius: 20px; position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); font-weight: bold; }\n");
     gtk_style_context_add_provider_for_display(gdk_display_get_default(),
                                                GTK_STYLE_PROVIDER(provider),
                                                GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
