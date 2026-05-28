@@ -25,10 +25,7 @@ AC_ARG_ENABLE([ui],
     [enable_ui=yes])
 
 if test "x$enable_ui" = "xyes"; then
-    PKG_CHECK_MODULES(GTK, [gtk4], [enable_ui=yes], [
-        AC_MSG_WARN([GTK4 not found, disabling UI])
-        enable_ui=no
-    ])
+    PKG_CHECK_MODULES(GTK, [gtk4])
 fi
 
 AM_CONDITIONAL([ENABLE_UI], [test "x$enable_ui" = "xyes"])
