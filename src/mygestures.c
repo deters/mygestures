@@ -56,7 +56,7 @@ static void mygestures_usage(Mygestures *self)
 	printf(" -d, --device <DEVICENAME>  : Device to grab\n");
 	printf(" -b, --button <BUTTON>      : Button used to draw the gesture\n");
 	printf("                              Default: '1' on touchscreens,\n");
-	printf("                                       '3' on other pointer dev\n");
+	printf("                                       '3' on pointer devices\n");
 	printf(" -l, --device-list          : Print all available devices an exit.\n");
 	printf(" -v, --visual               : Don't paint the gesture on screen.\n");
 	printf(" -c, --color                : Brush color.\n");
@@ -184,7 +184,7 @@ static void mygestures_grab_device(Mygestures *self, char *device_name)
 
 			if (is_gnome)
 			{
-				trigger_button = 2;
+				trigger_button = 3;
 			}
 			else if (self->multitouch || (device_name && strcasecmp(device_name, "synaptics") == 0))
 			{
@@ -268,7 +268,7 @@ void mygestures_run(Mygestures *self)
 
 		if (is_gnome)
 		{
-			self->trigger_button = 2;
+			self->trigger_button = 3;
 		}
 		else
 		{
