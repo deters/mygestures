@@ -23,7 +23,12 @@ typedef struct {
     GtkWidget *dialog;
     GtkWidget *name_entry;
     GtkWidget *move_combo;
-    GtkWidget *action_entry;
+    GtkWidget *action_type_combo;
+    GtkWidget *action_val_entry;
+    GtkWidget *action_val_label;
+    GtkWidget *action_val_box;
+    GtkWidget *record_btn;
+    gboolean recording;
 } GestureEditor;
 
 typedef struct {
@@ -75,30 +80,37 @@ static void open_app_editor(GestosApp *gestos, Context *ctx) {
                                                NULL);
     
     GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(editor->dialog));
-    gtk_widget_set_margin_top(content, 12);
-    gtk_widget_set_margin_bottom(content, 12);
-    gtk_widget_set_margin_start(content, 12);
-    gtk_widget_set_margin_end(content, 12);
+    gtk_widget_set_margin_top(content, 18);
+    gtk_widget_set_margin_bottom(content, 18);
+    gtk_widget_set_margin_start(content, 18);
+    gtk_widget_set_margin_end(content, 18);
     
     GtkWidget *grid = gtk_grid_new();
     gtk_grid_set_row_spacing(GTK_GRID(grid), 12);
     gtk_grid_set_column_spacing(GTK_GRID(grid), 12);
     gtk_box_append(GTK_BOX(content), grid);
     
-    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Name:"), 0, 0, 1, 1);
+    GtkWidget *helper = gtk_label_new("Use Regular Expressions (Regex) to match Title and Class.");
+    gtk_widget_add_css_class(helper, "dim-label");
+    gtk_grid_attach(GTK_GRID(grid), helper, 0, 0, 2, 1);
+
+    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Name:"), 0, 1, 1, 1);
     editor->name_entry = gtk_entry_new();
+    gtk_widget_set_hexpand(editor->name_entry, TRUE);
     if (ctx) gtk_editable_set_text(GTK_EDITABLE(editor->name_entry), ctx->name);
-    gtk_grid_attach(GTK_GRID(grid), editor->name_entry, 1, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), editor->name_entry, 1, 1, 1, 1);
     
-    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Window Title (Regex):"), 0, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Window Title:"), 0, 2, 1, 1);
     editor->title_entry = gtk_entry_new();
+    gtk_widget_set_hexpand(editor->title_entry, TRUE);
     if (ctx) gtk_editable_set_text(GTK_EDITABLE(editor->title_entry), ctx->title ? ctx->title : "");
-    gtk_grid_attach(GTK_GRID(grid), editor->title_entry, 1, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), editor->title_entry, 1, 2, 1, 1);
     
-    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Window Class (Regex):"), 0, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Window Class:"), 0, 3, 1, 1);
     editor->class_entry = gtk_entry_new();
+    gtk_widget_set_hexpand(editor->class_entry, TRUE);
     if (ctx) gtk_editable_set_text(GTK_EDITABLE(editor->class_entry), ctx->class ? ctx->class : "");
-    gtk_grid_attach(GTK_GRID(grid), editor->class_entry, 1, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), editor->class_entry, 1, 3, 1, 1);
     
     g_signal_connect(editor->dialog, "response", G_CALLBACK(on_app_editor_response), editor);
     gtk_window_present(GTK_WINDOW(editor->dialog));
@@ -139,7 +151,220 @@ static void on_sidebar_row_activated(GtkListBox *list, GtkListBoxRow *row, gpoin
     }
 }
 
-/* --- GESTURE EDITOR --- */
+typedef struct {
+    int id;
+    const char *name;
+    const char *prefix;
+    const char *icon;
+} ActionType;
+
+static ActionType action_types[] = {
+    { ACTION_KEYPRESS, "Key Combination", "keypress", "input-keyboard-symbolic" },
+    { ACTION_EXECUTE, "Execute Command", "exec", "system-run-symbolic" },
+    { ACTION_KILL, "Close Window", "kill", "window-close-symbolic" },
+    { ACTION_TOGGLE_MAXIMIZED, "Toggle Maximized", "toggle-maximized", "window-maximize-symbolic" },
+    { ACTION_MAXIMIZE, "Maximize Window", "maximize", "window-maximize-symbolic" },
+    { ACTION_RESTORE, "Restore Window", "restore", "window-restore-symbolic" },
+    { ACTION_ICONIFY, "Minimize Window", "iconify", "window-minimize-symbolic" },
+    { ACTION_RAISE, "Raise Window", "raise", "go-up-symbolic" },
+    { ACTION_LOWER, "Lower Window", "lower", "go-down-symbolic" },
+    { 0, NULL, NULL, NULL }
+};
+
+static const char* get_action_icon(int id) {
+    for (int i = 0; action_types[i].name; i++) {
+        if (action_types[i].id == id) return action_types[i].icon;
+    }
+    return "system-run-symbolic";
+}
+
+static void on_action_type_changed(GtkComboBox *combo, gpointer user_data) {
+    GestureEditor *editor = (GestureEditor *)user_data;
+    int index = gtk_combo_box_get_active(combo);
+    if (index < 0) return;
+    
+    int id = action_types[index].id;
+    
+    if (id == ACTION_EXECUTE || id == ACTION_KEYPRESS) {
+        gtk_widget_set_visible(editor->action_val_box, TRUE);
+        gtk_label_set_text(GTK_LABEL(editor->action_val_label), 
+            (id == ACTION_EXECUTE) ? "Command:" : "Keys:");
+        gtk_widget_set_visible(editor->record_btn, (id == ACTION_KEYPRESS));
+    } else {
+        gtk_widget_set_visible(editor->action_val_box, FALSE);
+    }
+}
+
+static gboolean on_record_key_pressed(GtkEventControllerKey *controller,
+                                     guint keyval,
+                                     guint keycode,
+                                     GdkModifierType state,
+                                     gpointer user_data) {
+    GestureEditor *editor = (GestureEditor *)user_data;
+    if (!editor->recording) return FALSE;
+
+    GString *s = g_string_new("");
+    if (state & GDK_CONTROL_MASK) g_string_append(s, "Control_L+");
+    if (state & GDK_ALT_MASK) g_string_append(s, "Alt_L+");
+    if (state & GDK_SHIFT_MASK) g_string_append(s, "Shift_L+");
+    if (state & GDK_SUPER_MASK) g_string_append(s, "Super_L+");
+
+    char *name = gdk_keyval_name(keyval);
+    if (name) {
+        /* Basic mapping for common keys */
+        if (strcmp(name, "Control_L") != 0 && strcmp(name, "Control_R") != 0 &&
+            strcmp(name, "Alt_L") != 0 && strcmp(name, "Alt_R") != 0 &&
+            strcmp(name, "Shift_L") != 0 && strcmp(name, "Shift_R") != 0 &&
+            strcmp(name, "Super_L") != 0 && strcmp(name, "Super_R") != 0) {
+            
+            g_string_append(s, name);
+            gtk_editable_set_text(GTK_EDITABLE(editor->action_val_entry), s->str);
+            
+            editor->recording = FALSE;
+            gtk_button_set_label(GTK_BUTTON(editor->record_btn), "Record");
+            gtk_widget_remove_css_class(editor->record_btn, "suggested-action");
+        }
+    }
+    
+    g_string_free(s, TRUE);
+    return TRUE;
+}
+
+static void on_record_clicked(GtkWidget *btn, gpointer user_data) {
+    GestureEditor *editor = (GestureEditor *)user_data;
+    editor->recording = !editor->recording;
+    if (editor->recording) {
+        gtk_button_set_label(GTK_BUTTON(btn), "Recording...");
+        gtk_widget_add_css_class(btn, "suggested-action");
+    } else {
+        gtk_button_set_label(GTK_BUTTON(btn), "Record");
+        gtk_widget_remove_css_class(btn, "suggested-action");
+    }
+}
+
+static void on_gesture_editor_response(GtkDialog *dialog, int response, gpointer user_data) {
+    GestureEditor *editor = (GestureEditor *)user_data;
+    if (response == GTK_RESPONSE_ACCEPT) {
+        const char *name = gtk_editable_get_text(GTK_EDITABLE(editor->name_entry));
+        const char *move_name = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(editor->move_combo));
+        
+        int type_idx = gtk_combo_box_get_active(GTK_COMBO_BOX(editor->action_type_combo));
+        ActionType *type = &action_types[type_idx];
+        const char *val = gtk_editable_get_text(GTK_EDITABLE(editor->action_val_entry));
+        
+        char *full_action;
+        if (type->id == ACTION_EXECUTE || type->id == ACTION_KEYPRESS) {
+            if (asprintf(&full_action, "%s %s", type->prefix, val) == -1) full_action = NULL;
+        } else {
+            full_action = strdup(type->prefix);
+        }
+
+        if (editor->gesture) {
+            editor->gesture->name = strdup(name);
+            editor->gesture->movement = configuration_find_movement_by_name(editor->app->config, (char*)move_name);
+            editor->gesture->action_count = 0;
+            configuration_add_action_from_string(editor->gesture, full_action);
+        } else {
+            Gesture *new_g = configuration_create_gesture(editor->app->current_context, (char*)name, (char*)move_name);
+            configuration_add_action_from_string(new_g, full_action);
+        }
+        free(full_action);
+        refresh_gesture_list(editor->app);
+    }
+    gtk_window_destroy(GTK_WINDOW(dialog));
+    g_free(editor);
+}
+
+static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
+    GestureEditor *editor = g_new0(GestureEditor, 1);
+    editor->app = gestos;
+    editor->gesture = g;
+    
+    editor->dialog = gtk_dialog_new_with_buttons(g ? "Edit Gesture" : "New Gesture",
+                                               GTK_WINDOW(gestos->window),
+                                               GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+                                               "_Cancel", GTK_RESPONSE_CANCEL,
+                                               "_Save", GTK_RESPONSE_ACCEPT,
+                                               NULL);
+    
+    GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(editor->dialog));
+    gtk_widget_set_margin_top(content, 18);
+    gtk_widget_set_margin_bottom(content, 18);
+    gtk_widget_set_margin_start(content, 18);
+    gtk_widget_set_margin_end(content, 18);
+    
+    GtkWidget *grid = gtk_grid_new();
+    gtk_grid_set_row_spacing(GTK_GRID(grid), 12);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), 12);
+    gtk_box_append(GTK_BOX(content), grid);
+    
+    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Name:"), 0, 0, 1, 1);
+    editor->name_entry = gtk_entry_new();
+    gtk_widget_set_hexpand(editor->name_entry, TRUE);
+    if (g) gtk_editable_set_text(GTK_EDITABLE(editor->name_entry), g->name);
+    gtk_grid_attach(GTK_GRID(grid), editor->name_entry, 1, 0, 1, 1);
+    
+    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Movement:"), 0, 1, 1, 1);
+    editor->move_combo = gtk_combo_box_text_new();
+    for (int i = 0; i < gestos->config->movement_count; i++) {
+        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(editor->move_combo), gestos->config->movement_list[i]->name);
+        if (g && g->movement && strcmp(g->movement->name, gestos->config->movement_list[i]->name) == 0) {
+            gtk_combo_box_set_active(GTK_COMBO_BOX(editor->move_combo), i);
+        }
+    }
+    if (!g) gtk_combo_box_set_active(GTK_COMBO_BOX(editor->move_combo), 0);
+    gtk_grid_attach(GTK_GRID(grid), editor->move_combo, 1, 1, 1, 1);
+    
+    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Action Type:"), 0, 2, 1, 1);
+    editor->action_type_combo = gtk_combo_box_text_new();
+    int active_type = 0;
+    for (int i = 0; action_types[i].name; i++) {
+        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(editor->action_type_combo), action_types[i].name);
+        if (g && g->action_count > 0 && g->action_list[0]->type == action_types[i].id) {
+            active_type = i;
+        }
+    }
+    gtk_combo_box_set_active(GTK_COMBO_BOX(editor->action_type_combo), active_type);
+    gtk_grid_attach(GTK_GRID(grid), editor->action_type_combo, 1, 2, 1, 1);
+    
+    editor->action_val_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    editor->action_val_label = gtk_label_new("Command:");
+    gtk_grid_attach(GTK_GRID(grid), editor->action_val_label, 0, 3, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), editor->action_val_box, 1, 3, 1, 1);
+    
+    editor->action_val_entry = gtk_entry_new();
+    gtk_widget_set_hexpand(editor->action_val_entry, TRUE);
+    gtk_box_append(GTK_BOX(editor->action_val_box), editor->action_val_entry);
+    
+    editor->record_btn = gtk_button_new_with_label("Record");
+    gtk_box_append(GTK_BOX(editor->action_val_box), editor->record_btn);
+    g_signal_connect(editor->record_btn, "clicked", G_CALLBACK(on_record_clicked), editor);
+
+    if (g && g->action_count > 0) {
+        if (g->action_list[0]->original_str)
+            gtk_editable_set_text(GTK_EDITABLE(editor->action_val_entry), g->action_list[0]->original_str);
+    }
+    
+    g_signal_connect(editor->action_type_combo, "changed", G_CALLBACK(on_action_type_changed), editor);
+    on_action_type_changed(GTK_COMBO_BOX(editor->action_type_combo), editor);
+
+    GtkEventController *key_controller = gtk_event_controller_key_new();
+    g_signal_connect(key_controller, "key-pressed", G_CALLBACK(on_record_key_pressed), editor);
+    gtk_widget_add_controller(editor->dialog, key_controller);
+    
+    g_signal_connect(editor->dialog, "response", G_CALLBACK(on_gesture_editor_response), editor);
+    gtk_window_present(GTK_WINDOW(editor->dialog));
+}
+
+static void on_gesture_row_activated(GtkListBox *list, GtkListBoxRow *row, gpointer user_data) {
+    GestosApp *gestos = (GestosApp *)user_data;
+    Gesture *g = g_object_get_data(G_OBJECT(row), "gesture-ptr");
+    if (g) open_gesture_editor(gestos, g);
+}
+
+static void on_add_gesture_clicked(GtkWidget *widget, gpointer user_data) {
+    open_gesture_editor((GestosApp *)user_data, NULL);
+}
 
 static void on_gesture_delete_clicked(GtkWidget *widget, gpointer user_data) {
     Gesture *g = (Gesture *)user_data;
@@ -163,111 +388,18 @@ static void on_gesture_delete_clicked(GtkWidget *widget, gpointer user_data) {
 }
 
 static char* get_full_action_str(Action *a) {
-    const char *type_str = "";
-    switch(a->type) {
-        case ACTION_EXECUTE: type_str = "exec"; break;
-        case ACTION_KEYPRESS: type_str = "keypress"; break;
-        case ACTION_KILL: type_str = "kill"; break;
-        case ACTION_ICONIFY: type_str = "iconify"; break;
-        case ACTION_RESTORE: type_str = "restore"; break;
-        case ACTION_MAXIMIZE: type_str = "maximize"; break;
-        case ACTION_LOWER: type_str = "lower"; break;
-        case ACTION_RAISE: type_str = "raise"; break;
-        case ACTION_TOGGLE_MAXIMIZED: type_str = "toggle-maximized"; break;
-        default: type_str = "unknown"; break;
-    }
-    char *res = NULL;
-    if (a->original_str && strlen(a->original_str) > 0) {
-        if (asprintf(&res, "%s %s", type_str, a->original_str) == -1) res = NULL;
-    } else {
-        res = strdup(type_str);
-    }
-    return res;
-}
-
-static void on_gesture_editor_response(GtkDialog *dialog, int response, gpointer user_data) {
-    GestureEditor *editor = (GestureEditor *)user_data;
-    if (response == GTK_RESPONSE_ACCEPT) {
-        const char *name = gtk_editable_get_text(GTK_EDITABLE(editor->name_entry));
-        const char *move_name = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(editor->move_combo));
-        const char *action = gtk_editable_get_text(GTK_EDITABLE(editor->action_entry));
-        
-        if (editor->gesture) {
-            editor->gesture->name = strdup(name);
-            editor->gesture->movement = configuration_find_movement_by_name(editor->app->config, (char*)move_name);
-            /* Reset actions and re-add from string to correctly set type */
-            editor->gesture->action_count = 0;
-            configuration_add_action_from_string(editor->gesture, action);
-        } else {
-            Gesture *new_g = configuration_create_gesture(editor->app->current_context, (char*)name, (char*)move_name);
-            configuration_add_action_from_string(new_g, action);
-        }
-        refresh_gesture_list(editor->app);
-    }
-    gtk_window_destroy(GTK_WINDOW(dialog));
-    g_free(editor);
-}
-
-static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
-    GestureEditor *editor = g_new0(GestureEditor, 1);
-    editor->app = gestos;
-    editor->gesture = g;
-    
-    editor->dialog = gtk_dialog_new_with_buttons(g ? "Edit Gesture" : "New Gesture",
-                                               GTK_WINDOW(gestos->window),
-                                               GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-                                               "_Cancel", GTK_RESPONSE_CANCEL,
-                                               "_Save", GTK_RESPONSE_ACCEPT,
-                                               NULL);
-    
-    GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(editor->dialog));
-    gtk_widget_set_margin_top(content, 12);
-    gtk_widget_set_margin_bottom(content, 12);
-    gtk_widget_set_margin_start(content, 12);
-    gtk_widget_set_margin_end(content, 12);
-    
-    GtkWidget *grid = gtk_grid_new();
-    gtk_grid_set_row_spacing(GTK_GRID(grid), 12);
-    gtk_grid_set_column_spacing(GTK_GRID(grid), 12);
-    gtk_box_append(GTK_BOX(content), grid);
-    
-    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Name:"), 0, 0, 1, 1);
-    editor->name_entry = gtk_entry_new();
-    if (g) gtk_editable_set_text(GTK_EDITABLE(editor->name_entry), g->name);
-    gtk_grid_attach(GTK_GRID(grid), editor->name_entry, 1, 0, 1, 1);
-    
-    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Movement:"), 0, 1, 1, 1);
-    editor->move_combo = gtk_combo_box_text_new();
-    for (int i = 0; i < gestos->config->movement_count; i++) {
-        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(editor->move_combo), gestos->config->movement_list[i]->name);
-        if (g && g->movement && strcmp(g->movement->name, gestos->config->movement_list[i]->name) == 0) {
-            gtk_combo_box_set_active(GTK_COMBO_BOX(editor->move_combo), i);
+    for (int i = 0; action_types[i].name; i++) {
+        if (action_types[i].id == a->type) {
+            char *res = NULL;
+            if (a->original_str && strlen(a->original_str) > 0) {
+                if (asprintf(&res, "%s %s", action_types[i].prefix, a->original_str) == -1) res = NULL;
+            } else {
+                res = strdup(action_types[i].prefix);
+            }
+            return res;
         }
     }
-    if (!g) gtk_combo_box_set_active(GTK_COMBO_BOX(editor->move_combo), 0);
-    gtk_grid_attach(GTK_GRID(grid), editor->move_combo, 1, 1, 1, 1);
-    
-    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Action:"), 0, 2, 1, 1);
-    editor->action_entry = gtk_entry_new();
-    if (g && g->action_count > 0) {
-        char *full_action = get_full_action_str(g->action_list[0]);
-        gtk_editable_set_text(GTK_EDITABLE(editor->action_entry), full_action);
-        free(full_action);
-    }
-    gtk_grid_attach(GTK_GRID(grid), editor->action_entry, 1, 2, 1, 1);
-    
-    g_signal_connect(editor->dialog, "response", G_CALLBACK(on_gesture_editor_response), editor);
-    gtk_window_present(GTK_WINDOW(editor->dialog));
-}
-
-static void on_gesture_row_activated(GtkListBox *list, GtkListBoxRow *row, gpointer user_data) {
-    GestosApp *gestos = (GestosApp *)user_data;
-    Gesture *g = g_object_get_data(G_OBJECT(row), "gesture-ptr");
-    if (g) open_gesture_editor(gestos, g);
-}
-
-static void on_add_gesture_clicked(GtkWidget *widget, gpointer user_data) {
-    open_gesture_editor((GestosApp *)user_data, NULL);
+    return strdup("unknown");
 }
 
 /* --- MAIN UI LOGIC --- */
@@ -276,14 +408,23 @@ static void add_gesture_row(GestosApp *gestos, Gesture *gesture) {
     GtkWidget *row = gtk_list_box_row_new();
     g_object_set_data(G_OBJECT(row), "gesture-ptr", gesture);
     
-    GtkWidget *main_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
+    GtkWidget *main_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 16);
     gtk_widget_set_margin_start(main_hbox, 16);
     gtk_widget_set_margin_end(main_hbox, 16);
-    gtk_widget_set_margin_top(main_hbox, 8);
-    gtk_widget_set_margin_bottom(main_hbox, 8);
+    gtk_widget_set_margin_top(main_hbox, 12);
+    gtk_widget_set_margin_bottom(main_hbox, 12);
 
-    GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+    int action_id = ACTION_NULL;
+    if (gesture->action_count > 0) action_id = gesture->action_list[0]->type;
+    
+    GtkWidget *icon = gtk_image_new_from_icon_name(get_action_icon(action_id));
+    gtk_widget_set_valign(icon, GTK_ALIGN_CENTER);
+    gtk_widget_set_size_request(icon, 32, 32);
+    gtk_box_append(GTK_BOX(main_hbox), icon);
+
+    GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
     gtk_widget_set_hexpand(vbox, TRUE);
+    gtk_widget_set_valign(vbox, GTK_ALIGN_CENTER);
 
     GtkWidget *label_name = gtk_label_new(gesture->name);
     gtk_widget_set_halign(label_name, GTK_ALIGN_START);
@@ -306,11 +447,13 @@ static void add_gesture_row(GestosApp *gestos, Gesture *gesture) {
 
     GtkWidget *label_move = gtk_label_new(gesture->movement ? gesture->movement->name : "Unknown");
     gtk_widget_add_css_class(label_move, "move-badge");
+    gtk_widget_set_valign(label_move, GTK_ALIGN_CENTER);
     gtk_box_append(GTK_BOX(main_hbox), label_move);
 
     GtkWidget *del_btn = gtk_button_new_from_icon_name("user-trash-symbolic");
     gtk_widget_add_css_class(del_btn, "flat");
     gtk_widget_add_css_class(del_btn, "destructive-action");
+    gtk_widget_set_valign(del_btn, GTK_ALIGN_CENTER);
     g_signal_connect(del_btn, "clicked", G_CALLBACK(on_gesture_delete_clicked), gesture);
     gtk_box_append(GTK_BOX(main_hbox), del_btn);
 
@@ -513,9 +656,10 @@ static void activate(GtkApplication *app, gpointer user_data) {
         ".sidebar-list row { border-radius: 8px; margin: 2px 12px; padding: 2px; }\n"
         ".context-title { font-size: 2.2em; font-weight: 800; }\n"
         ".boxed-list { border-radius: 12px; }\n"
-        ".move-badge { padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 0.8em; }\n"
-        ".action-label { font-size: 0.85em; }\n"
-        ".toast { padding: 10px 20px; border-radius: 20px; position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); font-weight: bold; }\n");
+        ".move-badge { background: alpha(currentColor, 0.1); padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 0.8em; }\n"
+        ".action-label { font-size: 0.85em; opacity: 0.7; }\n"
+        ".dim-label { font-size: 0.85em; opacity: 0.7; font-style: italic; }\n"
+        ".toast { background: alpha(@theme_text_color, 0.9); color: @theme_bg_color; padding: 10px 20px; border-radius: 20px; position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); font-weight: bold; }\n");
     gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
     gtk_window_present(GTK_WINDOW(gestos->window));
