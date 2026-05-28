@@ -180,11 +180,13 @@ void alloc_shared_memory(char *device_name, int button)
 	message = (struct shm_message *)mmap(NULL, shared_seg_size,
 										 PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);
 
-	if (message == NULL)
+	if (message == MAP_FAILED)
 	{
 		perror("In mmap()");
+		close(shmfd);
 		exit(1);
 	}
+	close(shmfd);
 }
 
 static void release_shared_memory()
@@ -195,20 +197,26 @@ static void release_shared_memory()
 	if (shm_identifier)
 	{
 
-		if (shm_unlink(shm_identifier) != 0)
+		if (shm_unlink(shm_identifier) != 0 && errno != ENOENT)
 		{
 			perror("In shm_unlink()");
-			exit(1);
 		}
 
 		free(shm_identifier);
+		shm_identifier = NULL;
+	}
+
+	if (message && message != MAP_FAILED)
+	{
+		munmap(message, sizeof(struct shm_message));
+		message = NULL;
 	}
 }
 
-void on_interrupt(int a)
+static void on_interrupt(int a)
 {
 
-	if (message->kill)
+	if (message && message != MAP_FAILED && message->kill)
 	{
 		printf("\nMygestures on PID %d asked me to exit.\n", message->pid);
 		// shared memory now belongs to the other process. will not be released
@@ -222,9 +230,9 @@ void on_interrupt(int a)
 	exit(0);
 }
 
-void on_kill(int a)
+static void on_kill(int a)
 {
-	//release_shared_memory();
+	release_shared_memory();
 
 	exit(0);
 }

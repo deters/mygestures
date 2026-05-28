@@ -4,6 +4,8 @@
 
 #include "configuration.h"
 
+#define MAX_GRABBED_DEVICES 16
+
 typedef struct mygestures_
 {
 	int help_flag;

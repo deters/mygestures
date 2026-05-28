@@ -39,8 +39,6 @@
 #include "configuration.h"
 #include "configuration_parser.h"
 
-uint MAX_GRABBED_DEVICES = 10;
-
 static void mygestures_usage(Mygestures *self)
 {
 	printf("Usage: mygestures [OPTIONS] [CONFIG_FILE]\n");
@@ -207,7 +205,7 @@ static void mygestures_grab_device(Mygestures *self, char *device_name)
 		send_kill_message(device_name);
 
 		signal(SIGINT, on_interrupt);
-		signal(SIGKILL, on_kill);
+		signal(SIGTERM, on_kill);
 
 		if (self->list_devices_flag)
 		{
