@@ -357,7 +357,7 @@ static void discover_wayland_context(WaylandContext *ctx) {
 		if (dir) {
 			struct dirent *entry;
 			while ((entry = readdir(dir))) {
-				if (strncmp(entry->d_name, "sway-ipc.", 9) == 0 && strstr(entry->d_name, ".sock")) {
+				if (strstr(entry->d_name, "sway-ipc") && strstr(entry->d_name, ".sock")) {
 					snprintf(ctx->sway_sock, sizeof(ctx->sway_sock), "/run/user/%d/%s", ctx->uid, entry->d_name);
 					ctx->is_sway = 1;
 					break;
@@ -367,16 +367,13 @@ static void discover_wayland_context(WaylandContext *ctx) {
 		}
 
 		if (!ctx->is_sway) {
+			// Check for Hyprland signature in subdirectories or different patterns
 			snprintf(path, sizeof(path), "/run/user/%d/hypr", ctx->uid);
 			DIR *dir2 = opendir(path);
-			if (!dir2) {
-				snprintf(path, sizeof(path), "/tmp/hypr");
-				dir2 = opendir(path);
-			}
 			if (dir2) {
 				struct dirent *entry;
 				while ((entry = readdir(dir2))) {
-					if (strlen(entry->d_name) > 10) {
+					if (strlen(entry->d_name) >= 40) { // Typical length of Hyprland signature
 						snprintf(ctx->hypr_sig, sizeof(ctx->hypr_sig), "%s", entry->d_name);
 						ctx->is_hypr = 1;
 						break;
@@ -400,7 +397,7 @@ static void discover_wayland_context(WaylandContext *ctx) {
 					if (sub_dir) {
 						struct dirent *sub_entry;
 						while ((sub_entry = readdir(sub_dir))) {
-							if (strncmp(sub_entry->d_name, "sway-ipc.", 9) == 0 && strstr(sub_entry->d_name, ".sock")) {
+							if (strstr(sub_entry->d_name, "sway-ipc") && strstr(sub_entry->d_name, ".sock")) {
 								snprintf(ctx->sway_sock, sizeof(ctx->sway_sock), "/run/user/%d/%s", d_uid, sub_entry->d_name);
 								ctx->is_sway = 1;
 								break;
@@ -412,14 +409,10 @@ static void discover_wayland_context(WaylandContext *ctx) {
 					if (!ctx->is_sway) {
 						snprintf(path, sizeof(path), "/run/user/%d/hypr", d_uid);
 						DIR *sub_dir2 = opendir(path);
-						if (!sub_dir2) {
-							snprintf(path, sizeof(path), "/tmp/hypr");
-							sub_dir2 = opendir(path);
-						}
 						if (sub_dir2) {
 							struct dirent *sub_entry;
 							while ((sub_entry = readdir(sub_dir2))) {
-								if (strlen(sub_entry->d_name) > 10) {
+								if (strlen(sub_entry->d_name) >= 40) {
 									snprintf(ctx->hypr_sig, sizeof(ctx->hypr_sig), "%s", sub_entry->d_name);
 									ctx->is_hypr = 1;
 									break;
