@@ -93,7 +93,10 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
                                                NULL);
     
     GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(editor->dialog));
-    gtk_widget_set_margin_all(content, 12);
+    gtk_widget_set_margin_top(content, 12);
+    gtk_widget_set_margin_bottom(content, 12);
+    gtk_widget_set_margin_start(content, 12);
+    gtk_widget_set_margin_end(content, 12);
     
     GtkWidget *grid = gtk_grid_new();
     gtk_grid_set_row_spacing(GTK_GRID(grid), 12);
@@ -122,7 +125,7 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     gtk_grid_attach(GTK_GRID(grid), editor->action_entry, 1, 2, 1, 1);
     
     g_signal_connect(editor->dialog, "response", G_CALLBACK(on_editor_response), editor);
-    gtk_widget_show(editor->dialog);
+    gtk_window_present(GTK_WINDOW(editor->dialog));
 }
 
 static void on_edit_clicked(GtkListBox *list, GtkListBoxRow *row, gpointer user_data) {
@@ -289,7 +292,10 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_paned_set_end_child(GTK_PANED(paned), content_vbox);
 
     GtkWidget *content_header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
-    gtk_widget_set_margin_all(content_header, 24);
+    gtk_widget_set_margin_top(content_header, 24);
+    gtk_widget_set_margin_bottom(content_header, 24);
+    gtk_widget_set_margin_start(content_header, 24);
+    gtk_widget_set_margin_end(content_header, 24);
     gtk_box_append(GTK_BOX(content_vbox), content_header);
 
     gestos->context_title = gtk_label_new("Global");

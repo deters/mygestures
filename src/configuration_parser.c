@@ -35,7 +35,7 @@ static char *get_config_dir() {
 		dir = strdup(env);
 	} else {
 		char *home = getenv("HOME");
-		int bytes = asprintf(&dir, "%s/.config/mygestures", home);
+		if (asprintf(&dir, "%s/.config/mygestures", home) == -1) dir = NULL;
 	}
 	assert(dir);
 	return dir;
@@ -59,9 +59,9 @@ char *configuration_get_default_filename() {
 	const char *suffix = get_environment_suffix();
 	char *filename = NULL;
 	if (suffix) {
-		asprintf(&filename, "%s/mygestures_%s.yaml", dir, suffix);
+		if (asprintf(&filename, "%s/mygestures_%s.yaml", dir, suffix) == -1) filename = NULL;
 	} else {
-		asprintf(&filename, "%s/mygestures.yaml", dir);
+		if (asprintf(&filename, "%s/mygestures.yaml", dir) == -1) filename = NULL;
 	}
 	free(dir);
 	assert(filename);
@@ -70,7 +70,7 @@ char *configuration_get_default_filename() {
 
 static char *yaml_get_template_filename() {
 	char *template_file = NULL;
-	asprintf(&template_file, "%s/mygestures.yaml", SYSCONFDIR);
+	if (asprintf(&template_file, "%s/mygestures.yaml", SYSCONFDIR) == -1) template_file = NULL;
 	return template_file;
 }
 
@@ -323,8 +323,8 @@ void configuration_load_from_defaults(Configuration * configuration, int create_
 		char *template = NULL;
 		const char *suffix = get_environment_suffix();
 		if (suffix) {
-			asprintf(&template, "%s/mygestures_%s.yaml", SYSCONFDIR, suffix);
-			if (access(template, R_OK) != 0) { free(template); template = NULL; }
+			if (asprintf(&template, "%s/mygestures_%s.yaml", SYSCONFDIR, suffix) == -1) template = NULL;
+			if (template && access(template, R_OK) != 0) { free(template); template = NULL; }
 		}
 		if (!template) template = yaml_get_template_filename();
 
