@@ -8,6 +8,7 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <signal.h>
+#include <errno.h>
 
 #include "assert.h"
 
