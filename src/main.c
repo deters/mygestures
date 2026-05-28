@@ -214,7 +214,7 @@ static void release_shared_memory()
 	}
 }
 
-static void on_interrupt(int a)
+void on_interrupt(int a)
 {
 
 	if (message && message != MAP_FAILED && message->kill)
@@ -231,7 +231,7 @@ static void on_interrupt(int a)
 	exit(0);
 }
 
-static void on_kill(int a)
+void on_kill(int a)
 {
 	release_shared_memory();
 
