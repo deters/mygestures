@@ -679,13 +679,13 @@ void execute_wayland_action(Action *action) {
 				action_keypress(NULL, "Alt_L+Escape");
 				break;
 			case ACTION_MAXIMIZE:
-				action_keypress(NULL, "Super_L+Up"); // Changed from Super_L+space
+				action_keypress(NULL, "Super_L+space");
 				break;
 			case ACTION_RESTORE:
-				action_keypress(NULL, "Super_L+Down"); // Changed from Super_L+space
+				action_keypress(NULL, "Super_L+space");
 				break;
 			case ACTION_TOGGLE_MAXIMIZED:
-				action_keypress(NULL, "Alt_L+F10"); // Changed from Super_L+space
+				action_keypress(NULL, "Super_L+space");
 				break;
 			default:
 				LOG_WARN("Wayland action %s is not implemented or supported under GNOME.\n",
