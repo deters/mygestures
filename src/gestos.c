@@ -345,6 +345,10 @@ static void on_sidebar_row_selected(GtkListBox *list, GtkListBoxRow *row, gpoint
     refresh_gesture_list(gestos);
 }
 
+static void on_search_changed(GtkSearchEntry *entry, gpointer user_data) {
+    refresh_gesture_list((GestosApp *)user_data);
+}
+
 static void on_save_config_clicked(GtkWidget *widget, gpointer user_data) {
     GestosApp *gestos = (GestosApp *)user_data;
     char *filename = configuration_get_default_filename();
@@ -396,7 +400,10 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_paned_set_start_child(GTK_PANED(paned), sidebar_box);
 
     GtkWidget *sidebar_top = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_widget_set_margin_all(sidebar_top, 16);
+    gtk_widget_set_margin_top(sidebar_top, 16);
+    gtk_widget_set_margin_bottom(sidebar_top, 16);
+    gtk_widget_set_margin_start(sidebar_top, 16);
+    gtk_widget_set_margin_end(sidebar_top, 16);
     gtk_box_append(GTK_BOX(sidebar_box), sidebar_top);
 
     GtkWidget *sidebar_title = gtk_label_new("Applications");
@@ -417,7 +424,10 @@ static void activate(GtkApplication *app, gpointer user_data) {
     g_signal_connect(gestos->sidebar_list, "row-activated", G_CALLBACK(on_sidebar_row_activated), gestos);
 
     GtkWidget *sidebar_bottom = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_widget_set_margin_all(sidebar_bottom, 8);
+    gtk_widget_set_margin_top(sidebar_bottom, 8);
+    gtk_widget_set_margin_bottom(sidebar_bottom, 8);
+    gtk_widget_set_margin_start(sidebar_bottom, 8);
+    gtk_widget_set_margin_end(sidebar_bottom, 8);
     gtk_box_append(GTK_BOX(sidebar_box), sidebar_bottom);
 
     GtkWidget *del_app_btn = gtk_button_new_from_icon_name("user-trash-symbolic");
@@ -431,7 +441,10 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_paned_set_end_child(GTK_PANED(paned), content_vbox);
 
     GtkWidget *content_header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
-    gtk_widget_set_margin_all(content_header, 24);
+    gtk_widget_set_margin_top(content_header, 24);
+    gtk_widget_set_margin_bottom(content_header, 24);
+    gtk_widget_set_margin_start(content_header, 24);
+    gtk_widget_set_margin_end(content_header, 24);
     gtk_box_append(GTK_BOX(content_vbox), content_header);
 
     gestos->context_title = gtk_label_new("Global");
