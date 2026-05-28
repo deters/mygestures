@@ -27,7 +27,11 @@ static void add_gesture_row(GestosApp *gestos, Gesture *gesture) {
     GtkWidget *label_name = gtk_label_new(gesture->name);
     gtk_widget_set_halign(label_name, GTK_ALIGN_START);
     gtk_widget_set_hexpand(label_name, TRUE);
-    gtk_label_set_weight(GTK_LABEL(label_name), PANGO_WEIGHT_BOLD);
+    
+    PangoAttrList *attrs = pango_attr_list_new();
+    pango_attr_list_insert(attrs, pango_attr_weight_new(PANGO_WEIGHT_BOLD));
+    gtk_label_set_attributes(GTK_LABEL(label_name), attrs);
+    pango_attr_list_unref(attrs);
 
     GtkWidget *label_move = gtk_label_new(gesture->movement ? gesture->movement->name : "Unknown");
     gtk_widget_set_halign(label_move, GTK_ALIGN_END);
@@ -202,7 +206,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
     /* Professional CSS Styling */
     GtkCssProvider *provider = gtk_css_provider_new();
-    gtk_css_provider_load_from_data(provider,
+    gtk_css_provider_load_from_string(provider,
         "window { background-color: #f5f5f7; }\n"
         ".sidebar { background-color: #ebebeb; border-right: 1px solid #d1d1d1; }\n"
         ".sidebar-header { color: #6e6e73; font-weight: bold; font-size: 0.8em; text-transform: uppercase; }\n"
@@ -215,7 +219,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
         ".boxed-list row:last-child { border-bottom: none; }\n"
         ".move-badge { background-color: #f2f2f7; color: #007aff; padding: 4px 10px; border-radius: 10px; font-weight: bold; font-size: 0.85em; }\n"
         ".action-label { color: #86868b; font-size: 0.9em; }\n"
-        "scrollbar { background: transparent; }\n", -1);
+        "scrollbar { background: transparent; }\n");
     gtk_style_context_add_provider_for_display(gdk_display_get_default(),
                                                GTK_STYLE_PROVIDER(provider),
                                                GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
