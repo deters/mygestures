@@ -666,7 +666,7 @@ void execute_wayland_action(Action *action) {
 				action_keypress(NULL, "Super_L+h");
 				break;
 			case ACTION_KILL:
-				action_keypress(NULL, "Alt_L+F4");
+				action_keypress(NULL, "Super_L+q");
 				break;
 			case ACTION_RAISE:
 				// Window is focused upon click/grab start, so this is generally a no-op
