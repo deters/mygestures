@@ -542,6 +542,77 @@ ActiveWindowInfo *get_wayland_active_window_info(void)
 	return ans;
 }
 
+static char *get_gnome_shortcut(const char *schema, const char *key) {
+	char cmd[512];
+	snprintf(cmd, sizeof(cmd), "gsettings get %s %s 2>/dev/null", schema, key);
+	FILE *fp = popen(cmd, "r");
+	if (!fp) return NULL;
+
+	char line[512];
+	if (fgets(line, sizeof(line), fp)) {
+		pclose(fp);
+		// GNOME gsettings output is usually like: ['<Alt>F4', '<Super>q']
+		// We'll take the first one or the one with <Super>
+		char *start = strchr(line, '\'');
+		if (!start) start = strchr(line, '"');
+		if (start) {
+			start++;
+			char *end = strchr(start, '\'');
+			if (!end) end = strchr(start, '"');
+			if (end) {
+				*end = '\0';
+				
+				// Translate GNOME format to MyGestures format
+				// <Alt> -> Alt_L, <Super> -> Super_L, <Shift> -> Shift_L, <Control> -> Control_L
+				// Also change lowercase letters to uppercase if needed by Xlib? No, Xlib likes "q" or "Q".
+				// But we need to replace "+" or just handle the tokens.
+				
+				char *translated = malloc(strlen(start) * 2 + 1);
+				translated[0] = '\0';
+				
+				char *p = start;
+				while (*p) {
+					if (strncmp(p, "<Alt>", 5) == 0) {
+						strcat(translated, "Alt_L+");
+						p += 5;
+					} else if (strncmp(p, "<Super>", 7) == 0) {
+						strcat(translated, "Super_L+");
+						p += 7;
+					} else if (strncmp(p, "<Shift>", 7) == 0) {
+						strcat(translated, "Shift_L+");
+						p += 7;
+					} else if (strncmp(p, "<Control>", 9) == 0) {
+						strcat(translated, "Control_L+");
+						p += 9;
+					} else if (strncmp(p, "<Ctrl>", 6) == 0) {
+						strcat(translated, "Control_L+");
+						p += 6;
+					} else if (*p == '>') {
+						p++; // Should not happen with above logic
+					} else {
+						// Append the rest (F4, q, etc.)
+						size_t len = strlen(translated);
+						translated[len] = *p;
+						translated[len+1] = '\0';
+						p++;
+					}
+				}
+				
+				// Remove trailing "+" if any
+				size_t final_len = strlen(translated);
+				if (final_len > 0 && translated[final_len - 1] == '+') {
+					translated[final_len - 1] = '\0';
+				}
+				
+				return translated;
+			}
+		}
+	} else {
+		pclose(fp);
+	}
+	return NULL;
+}
+
 void execute_wayland_action(Action *action) {
 	const char *swaysock = getenv("SWAYSOCK");
 	const char *hyprland_sig = getenv("HYPRLAND_INSTANCE_SIGNATURE");
@@ -661,12 +732,18 @@ void execute_wayland_action(Action *action) {
 	}
 
 	if (is_gnome) {
+		static char *gnome_kill_shortcut = NULL;
 		switch (action->type) {
 			case ACTION_ICONIFY:
 				action_keypress(NULL, "Super_L+h");
 				break;
 			case ACTION_KILL:
-				action_keypress(NULL, "Super_L+q");
+				if (!gnome_kill_shortcut) {
+					gnome_kill_shortcut = get_gnome_shortcut("org.gnome.desktop.wm.keybindings", "close");
+					if (!gnome_kill_shortcut) gnome_kill_shortcut = strdup("Super_L+q");
+				}
+				LOG_INFO(1, "Wayland: Executing GNOME kill fallback (%s)\n", gnome_kill_shortcut);
+				action_keypress(NULL, gnome_kill_shortcut);
 				break;
 			case ACTION_RAISE:
 				// Window is focused upon click/grab start, so this is generally a no-op
