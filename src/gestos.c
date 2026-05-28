@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <gtk/gtk.h>
 #include <string.h>
 #include "configuration.h"
@@ -160,6 +161,29 @@ static void on_gesture_delete_clicked(GtkWidget *widget, gpointer user_data) {
     refresh_gesture_list(gestos);
 }
 
+static char* get_full_action_str(Action *a) {
+    const char *type_str = "";
+    switch(a->type) {
+        case ACTION_EXECUTE: type_str = "exec"; break;
+        case ACTION_KEYPRESS: type_str = "keypress"; break;
+        case ACTION_KILL: type_str = "kill"; break;
+        case ACTION_ICONIFY: type_str = "iconify"; break;
+        case ACTION_RESTORE: type_str = "restore"; break;
+        case ACTION_MAXIMIZE: type_str = "maximize"; break;
+        case ACTION_LOWER: type_str = "lower"; break;
+        case ACTION_RAISE: type_str = "raise"; break;
+        case ACTION_TOGGLE_MAXIMIZED: type_str = "toggle-maximized"; break;
+        default: type_str = "unknown"; break;
+    }
+    char *res = NULL;
+    if (a->original_str && strlen(a->original_str) > 0) {
+        if (asprintf(&res, "%s %s", type_str, a->original_str) == -1) res = NULL;
+    } else {
+        res = strdup(type_str);
+    }
+    return res;
+}
+
 static void on_gesture_editor_response(GtkDialog *dialog, int response, gpointer user_data) {
     GestureEditor *editor = (GestureEditor *)user_data;
     if (response == GTK_RESPONSE_ACCEPT) {
@@ -170,11 +194,9 @@ static void on_gesture_editor_response(GtkDialog *dialog, int response, gpointer
         if (editor->gesture) {
             editor->gesture->name = strdup(name);
             editor->gesture->movement = configuration_find_movement_by_name(editor->app->config, (char*)move_name);
-            if (editor->gesture->action_count > 0) {
-                editor->gesture->action_list[0]->original_str = strdup(action);
-            } else {
-                configuration_add_action_from_string(editor->gesture, action);
-            }
+            /* Reset actions and re-add from string to correctly set type */
+            editor->gesture->action_count = 0;
+            configuration_add_action_from_string(editor->gesture, action);
         } else {
             Gesture *new_g = configuration_create_gesture(editor->app->current_context, (char*)name, (char*)move_name);
             configuration_add_action_from_string(new_g, action);
@@ -226,7 +248,11 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     
     gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Action:"), 0, 2, 1, 1);
     editor->action_entry = gtk_entry_new();
-    if (g && g->action_count > 0) gtk_editable_set_text(GTK_EDITABLE(editor->action_entry), g->action_list[0]->original_str);
+    if (g && g->action_count > 0) {
+        char *full_action = get_full_action_str(g->action_list[0]);
+        gtk_editable_set_text(GTK_EDITABLE(editor->action_entry), full_action);
+        free(full_action);
+    }
     gtk_grid_attach(GTK_GRID(grid), editor->action_entry, 1, 2, 1, 1);
     
     g_signal_connect(editor->dialog, "response", G_CALLBACK(on_gesture_editor_response), editor);
@@ -266,11 +292,13 @@ static void add_gesture_row(GestosApp *gestos, Gesture *gesture) {
     pango_attr_list_unref(attrs);
     gtk_box_append(GTK_BOX(vbox), label_name);
 
-    if (gesture->action_count > 0 && gesture->action_list[0]->original_str) {
-        GtkWidget *label_action = gtk_label_new(gesture->action_list[0]->original_str);
+    if (gesture->action_count > 0) {
+        char *full_action = get_full_action_str(gesture->action_list[0]);
+        GtkWidget *label_action = gtk_label_new(full_action);
         gtk_widget_set_halign(label_action, GTK_ALIGN_START);
         gtk_widget_add_css_class(label_action, "action-label");
         gtk_box_append(GTK_BOX(vbox), label_action);
+        free(full_action);
     }
     
     gtk_box_append(GTK_BOX(main_hbox), vbox);
