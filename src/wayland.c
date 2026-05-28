@@ -733,9 +733,17 @@ void execute_wayland_action(Action *action) {
 
 	if (is_gnome) {
 		static char *gnome_kill_shortcut = NULL;
+		static char *gnome_minimize_shortcut = NULL;
+		static char *gnome_maximize_shortcut = NULL;
+		static char *gnome_toggle_max_shortcut = NULL;
+
 		switch (action->type) {
 			case ACTION_ICONIFY:
-				action_keypress(NULL, "Super_L+h");
+				if (!gnome_minimize_shortcut) {
+					gnome_minimize_shortcut = get_gnome_shortcut("org.gnome.desktop.wm.keybindings", "minimize");
+					if (!gnome_minimize_shortcut) gnome_minimize_shortcut = strdup("Super_L+h");
+				}
+				action_keypress(NULL, gnome_minimize_shortcut);
 				break;
 			case ACTION_KILL:
 				if (!gnome_kill_shortcut) {
@@ -752,13 +760,21 @@ void execute_wayland_action(Action *action) {
 				action_keypress(NULL, "Alt_L+Escape");
 				break;
 			case ACTION_MAXIMIZE:
-				action_keypress(NULL, "Super_L+space");
+				if (!gnome_maximize_shortcut) {
+					gnome_maximize_shortcut = get_gnome_shortcut("org.gnome.desktop.wm.keybindings", "maximize");
+					if (!gnome_maximize_shortcut) gnome_maximize_shortcut = strdup("Super_L+Up");
+				}
+				action_keypress(NULL, gnome_maximize_shortcut);
 				break;
 			case ACTION_RESTORE:
-				action_keypress(NULL, "Super_L+space");
+				action_keypress(NULL, "Super_L+Down"); 
 				break;
 			case ACTION_TOGGLE_MAXIMIZED:
-				action_keypress(NULL, "Super_L+space");
+				if (!gnome_toggle_max_shortcut) {
+					gnome_toggle_max_shortcut = get_gnome_shortcut("org.gnome.desktop.wm.keybindings", "toggle-maximized");
+					if (!gnome_toggle_max_shortcut) gnome_toggle_max_shortcut = strdup("Super_L+space");
+				}
+				action_keypress(NULL, gnome_toggle_max_shortcut);
 				break;
 			default:
 				LOG_WARN("Wayland action %s is not implemented or supported under GNOME.\n",
