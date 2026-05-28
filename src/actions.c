@@ -292,6 +292,8 @@ void action_keypress(Display *dpy, char *data) {
 		press_key(dpy, tmp->key, True);
 	}
 
+	usleep(20000); // 20ms delay to ensure combination is registered
+
 	release_keys_reverse(dpy, first_key);
 
 	while (first_key != NULL) {
