@@ -40,6 +40,26 @@ typedef struct {
     GtkWidget *class_entry;
 } AppEditor;
 
+typedef struct {
+    int id;
+    const char *name;
+    const char *prefix;
+    const char *icon;
+} ActionType;
+
+static ActionType action_types[] = {
+    { ACTION_KEYPRESS, "Key Combination", "keypress", "input-keyboard-symbolic" },
+    { ACTION_EXECUTE, "Execute Command", "exec", "system-run-symbolic" },
+    { ACTION_KILL, "Close Window", "kill", "window-close-symbolic" },
+    { ACTION_TOGGLE_MAXIMIZED, "Toggle Maximized", "toggle-maximized", "window-maximize-symbolic" },
+    { ACTION_MAXIMIZE, "Maximize Window", "maximize", "window-maximize-symbolic" },
+    { ACTION_RESTORE, "Restore Window", "restore", "window-restore-symbolic" },
+    { ACTION_ICONIFY, "Minimize Window", "iconify", "window-minimize-symbolic" },
+    { ACTION_RAISE, "Raise Window", "raise", "go-up-symbolic" },
+    { ACTION_LOWER, "Lower Window", "lower", "go-down-symbolic" },
+    { 0, NULL, NULL, NULL }
+};
+
 static void refresh_gesture_list(GestosApp *gestos);
 static void refresh_sidebar(GestosApp *gestos);
 
@@ -406,26 +426,6 @@ static void open_gnome_action_browser(GtkWidget *btn, gpointer user_data) {
 }
 
 /* --- GESTURE EDITOR --- */
-
-typedef struct {
-    int id;
-    const char *name;
-    const char *prefix;
-    const char *icon;
-} ActionType;
-
-static ActionType action_types[] = {
-    { ACTION_KEYPRESS, "Key Combination", "keypress", "input-keyboard-symbolic" },
-    { ACTION_EXECUTE, "Execute Command", "exec", "system-run-symbolic" },
-    { ACTION_KILL, "Close Window", "kill", "window-close-symbolic" },
-    { ACTION_TOGGLE_MAXIMIZED, "Toggle Maximized", "toggle-maximized", "window-maximize-symbolic" },
-    { ACTION_MAXIMIZE, "Maximize Window", "maximize", "window-maximize-symbolic" },
-    { ACTION_RESTORE, "Restore Window", "restore", "window-restore-symbolic" },
-    { ACTION_ICONIFY, "Minimize Window", "iconify", "window-minimize-symbolic" },
-    { ACTION_RAISE, "Raise Window", "raise", "go-up-symbolic" },
-    { ACTION_LOWER, "Lower Window", "lower", "go-down-symbolic" },
-    { 0, NULL, NULL, NULL }
-};
 
 static const char* get_action_icon(int id) {
     for (int i = 0; action_types[i].name; i++) {
