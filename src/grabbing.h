@@ -76,6 +76,8 @@ typedef struct
 
 	char *fine_direction_sequence;
 	char *rought_direction_sequence;
+	int fine_len;
+	int rought_len;
 
 	backing_t backing;
 	brush_t brush;

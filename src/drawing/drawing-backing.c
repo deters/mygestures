@@ -154,17 +154,6 @@ int backing_restore(backing_t *backing) {
 				backing->y, backing->width, backing->height, backing->x, backing->y);
 
 		backing->active = 0;
-
-		XFreePixmap(backing->dpy, backing->root_pixmap);
-		backing->root_pixmap = 0;
-		XRenderFreePicture(backing->dpy, backing->root_pict);
-		backing->root_pict = 0;
-
-		XFreePixmap(backing->dpy, backing->brush_pixmap);
-		backing->brush_pixmap = 0;
-		XRenderFreePicture(backing->dpy, backing->brush_pict);
-		backing->brush_pict = 0;
-
 	}
 
 	return 0;
@@ -174,6 +163,18 @@ int backing_reconfigure(backing_t *backing, int width, int height, int depth) {
 
 	XRenderColor color;
 	XRenderPictureAttributes attr;
+
+	if (backing->root_pixmap && backing->total_width == width && backing->total_height == height && backing->depth == depth) {
+		// Already configured correctly, just clear brush pict
+		color.red = 0;
+		color.green = 0;
+		color.blue = 0;
+		color.alpha = 0;
+		XRenderFillRectangle(backing->dpy,
+		PictOpSrc, backing->brush_pict, &color, 0, 0, backing->total_width, backing->total_height);
+		return 0;
+	}
+
 	backing_t old_backing = *backing;
 
 	backing->total_width = width;

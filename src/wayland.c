@@ -443,8 +443,13 @@ ActiveWindowInfo *get_wayland_active_window_info(void)
 	ans->class = strdup("");
 	ans->title = strdup("");
 
-	WaylandContext ctx;
-	discover_wayland_context(&ctx);
+	static WaylandContext ctx;
+	static int ctx_discovered = 0;
+	if (!ctx_discovered)
+	{
+		discover_wayland_context(&ctx);
+		ctx_discovered = 1;
+	}
 
 	char cmd[2048] = "";
 

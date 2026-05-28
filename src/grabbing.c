@@ -254,12 +254,15 @@ static char get_fine_direction_from_deltas(int x_delta, int y_delta)
 		return stroke_representations[NONE];
 	}
 
+	int abs_x = abs(x_delta);
+	int abs_y = abs(y_delta);
+
 	// check if the movement is near main axes
-	if ((x_delta == 0) || (y_delta == 0) || (fabs((float)x_delta / (float)y_delta) > 3) || (fabs((float)y_delta / (float)x_delta) > 3))
+	if ((x_delta == 0) || (y_delta == 0) || (abs_x > 3 * abs_y) || (abs_y > 3 * abs_x))
 	{
 
 		// x axe
-		if (abs(x_delta) > abs(y_delta))
+		if (abs_x > abs_y)
 		{
 
 			if (x_delta > 0)
@@ -345,10 +348,10 @@ static char get_direction_from_deltas(int x_delta, int y_delta)
 	}
 }
 
-static void movement_add_direction(char *stroke_sequence, char direction)
+static void movement_add_direction(char *stroke_sequence, int *len_ptr, char direction)
 {
 	// grab stroke
-	int len = strlen(stroke_sequence);
+	int len = *len_ptr;
 	if ((len == 0) || (stroke_sequence[len - 1] != direction))
 	{
 
@@ -357,6 +360,7 @@ static void movement_add_direction(char *stroke_sequence, char direction)
 
 			stroke_sequence[len] = direction;
 			stroke_sequence[len + 1] = '\0';
+			(*len_ptr)++;
 		}
 	}
 }
@@ -434,6 +438,8 @@ void grabbing_start_movement(Grabber *self, int new_x, int new_y)
 
 	self->fine_direction_sequence[0] = '\0';
 	self->rought_direction_sequence[0] = '\0';
+	self->fine_len = 0;
+	self->rought_len = 0;
 
 	self->old_x = new_x;
 	self->old_y = new_y;
@@ -476,7 +482,7 @@ void grabbing_update_movement(Grabber *self, int new_x, int new_y)
 
 		char stroke = get_fine_direction_from_deltas(x_delta, y_delta);
 
-		movement_add_direction(self->fine_direction_sequence, stroke);
+		movement_add_direction(self->fine_direction_sequence, &self->fine_len, stroke);
 
 		// reset start position
 		self->old_x = new_x;
@@ -486,16 +492,15 @@ void grabbing_update_movement(Grabber *self, int new_x, int new_y)
 	int rought_delta_x = new_x - self->rought_old_x;
 	int rought_delta_y = new_y - self->rought_old_y;
 
-	char rought_direction = get_direction_from_deltas(rought_delta_x,
-													  rought_delta_y);
-
 	int square_distance_2 = rought_delta_x * rought_delta_x + rought_delta_y * rought_delta_y;
 
 	if (self->delta_min * self->delta_min < square_distance_2)
 	{
 		// grab stroke
+		char rought_direction = get_direction_from_deltas(rought_delta_x,
+														  rought_delta_y);
 
-		movement_add_direction(self->rought_direction_sequence,
+		movement_add_direction(self->rought_direction_sequence, &self->rought_len,
 							   rought_direction);
 
 		// reset start position
@@ -529,7 +534,7 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 	};
 
 	// if there is no gesture
-	if ((strlen(self->rought_direction_sequence) == 0) && (strlen(self->fine_direction_sequence) == 0))
+	if ((self->rought_len == 0) && (self->fine_len == 0))
 	{
 
 		if (!(self->synaptics) && (self->dpy || self->evdev))
@@ -654,8 +659,10 @@ Grabber *grabber_new(char *device_name, int button)
 	Grabber *self = malloc(sizeof(Grabber));
 	bzero(self, sizeof(Grabber));
 
-	self->fine_direction_sequence = malloc(sizeof(char *) * 30);
-	self->rought_direction_sequence = malloc(sizeof(char *) * 30);
+	self->fine_direction_sequence = malloc(MAX_STROKES_PER_CAPTURE + 1);
+	self->rought_direction_sequence = malloc(MAX_STROKES_PER_CAPTURE + 1);
+	self->fine_len = 0;
+	self->rought_len = 0;
 
 	grabber_set_device(self, device_name);
 	grabber_set_button(self, button);
