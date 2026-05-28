@@ -105,8 +105,8 @@
 
       <!-- Window control -->
 
-        <gesture name="Close window (Alt+F4)" movement="DownRight">
-            <do action="keypress" value="Alt_L+F4" />
+        <gesture name="Close window" movement="DownRight">
+            <do action="kill" />
         </gesture>
 
         <gesture name="Maximize window" movement="Up">

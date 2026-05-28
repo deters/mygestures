@@ -239,84 +239,6 @@ static void mouse_click(Grabber *self, int button, int x, int y)
 	}
 }
 
-static void execute_action(Grabber *self, Action *action, Window focused_window)
-{
-	int id;
-	Display *dpy = self->dpy;
-
-	assert(action);
-
-	if (action->type == ACTION_EXECUTE)
-	{
-		id = fork();
-		if (id == 0)
-		{
-			int i = system(action->original_str);
-			exit(i);
-		}
-		if (id < 0)
-		{
-			LOG_ERROR("Error forking.\n");
-		}
-		return;
-	}
-
-	if (self->evdev)
-	{
-		dpy = NULL;
-	}
-
-	if (!dpy)
-	{
-		if (action->type == ACTION_KEYPRESS)
-		{
-			action_keypress(dpy, action->original_str);
-		}
-		else
-		{
-			execute_wayland_action(action);
-		}
-		return;
-	}
-
-	switch (action->type)
-	{
-	case ACTION_ICONIFY:
-		action_iconify(dpy, focused_window);
-		break;
-	case ACTION_KILL:
-		action_kill(dpy, focused_window);
-		break;
-	case ACTION_RAISE:
-		action_raise(dpy, focused_window);
-		break;
-	case ACTION_LOWER:
-		action_lower(dpy, focused_window);
-		break;
-	case ACTION_MAXIMIZE:
-		action_maximize(dpy, focused_window);
-		break;
-	case ACTION_RESTORE:
-		action_restore(dpy, focused_window);
-		break;
-	case ACTION_TOGGLE_MAXIMIZED:
-		action_toggle_maximized(dpy, focused_window);
-		break;
-	case ACTION_KEYPRESS:
-		action_keypress(dpy, action->original_str);
-		break;
-	default:
-		LOG_ERROR("found an unknown gesture \n");
-	}
-
-	if (dpy)
-	{
-		XAllowEvents(dpy, 0, CurrentTime);
-	}
-
-	return;
-}
-
 static void free_grabbed(Capture *free_me)
 {
 	assert(free_me);
@@ -677,7 +599,7 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 				Action *a = gest->action_list[j];
 				LOG_INFO(1, "     Executing action: %s %s\n",
 					   get_action_name(a->type), a->original_str);
-				execute_action(self, a, target_window);
+				execute_action(self->evdev ? NULL : self->dpy, target_window, a);
 			}
 		}
 		else

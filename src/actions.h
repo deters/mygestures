@@ -20,6 +20,8 @@
 
 #include <X11/Xlib.h>
 
+#include "configuration.h"
+
 #define ACTION_COUNT 14
 
 /* Actions */
@@ -56,4 +58,6 @@ void action_maximize(Display *dpy, Window w);
 void action_restore(Display *dpy, Window w);
 void action_toggle_maximized(Display *dpy, Window w);
 void action_keypress(Display *dpy, char *data);
+
+void execute_action(Display *dpy, Window focused_window, Action *action);
 #endif
