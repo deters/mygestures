@@ -180,10 +180,10 @@ static char* translate_gnome_accel(const char *accel) {
 
         if (parts[i+1] != NULL) {
             /* Modifier */
-            if (g_strcasecmp(p, "Control") == 0 || g_strcasecmp(p, "Primary") == 0) g_string_append(res, "Control_L+");
-            else if (g_strcasecmp(p, "Alt") == 0) g_string_append(res, "Alt_L+");
-            else if (g_strcasecmp(p, "Shift") == 0) g_string_append(res, "Shift_L+");
-            else if (g_strcasecmp(p, "Super") == 0) g_string_append(res, "Super_L+");
+            if (g_ascii_strcasecmp(p, "Control") == 0 || g_ascii_strcasecmp(p, "Primary") == 0) g_string_append(res, "Control_L+");
+            else if (g_ascii_strcasecmp(p, "Alt") == 0) g_string_append(res, "Alt_L+");
+            else if (g_ascii_strcasecmp(p, "Shift") == 0) g_string_append(res, "Shift_L+");
+            else if (g_ascii_strcasecmp(p, "Super") == 0) g_string_append(res, "Super_L+");
         } else {
             /* Final key */
             g_string_append(res, p);
@@ -324,6 +324,8 @@ static void open_gnome_action_browser(GtkWidget *btn, gpointer user_data) {
 }
 
 /* --- GESTURE EDITOR --- */
+
+typedef struct {
     int id;
     const char *name;
     const char *prefix;
@@ -381,7 +383,7 @@ static gboolean on_record_key_pressed(GtkEventControllerKey *controller,
     if (state & GDK_SHIFT_MASK) g_string_append(s, "Shift_L+");
     if (state & GDK_SUPER_MASK) g_string_append(s, "Super_L+");
 
-    char *name = gdk_keyval_name(keyval);
+    const char *name = gdk_keyval_name(keyval);
     if (name) {
         /* Basic mapping for common keys */
         if (strcmp(name, "Control_L") != 0 && strcmp(name, "Control_R") != 0 &&
