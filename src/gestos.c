@@ -157,6 +157,7 @@ typedef struct {
     char *name;
     char *accelerator;
     char *description;
+    char *command;
 } GnomeAction;
 
 typedef struct {
@@ -240,6 +241,34 @@ static void fetch_gnome_shortcuts(GnomeActionBrowser *browser) {
             g_settings_schema_key_unref(skey);
         }
 
+        /* Fetch custom shortcuts from this schema if it's media-keys */
+        if (strcmp(schemas[i], "org.gnome.settings-daemon.plugins.media-keys") == 0) {
+            char **paths = g_settings_get_strv(settings, "custom-keybindings");
+            if (paths) {
+                for (int k = 0; paths[k]; k++) {
+                    GSettings *custom = g_settings_new_with_path("org.gnome.settings-daemon.plugins.media-keys.custom-keybinding", paths[k]);
+                    char *c_name = g_settings_get_string(custom, "name");
+                    char *c_cmd = g_settings_get_string(custom, "command");
+                    char *c_bind = g_settings_get_string(custom, "binding");
+                    
+                    if (c_bind && strlen(c_bind) > 0) {
+                        GnomeAction *action = g_new0(GnomeAction, 1);
+                        action->name = g_strdup(c_name);
+                        action->description = g_strdup(c_name);
+                        action->accelerator = c_bind;
+                        action->command = c_cmd;
+                        browser->actions = g_list_append(browser->actions, action);
+                    } else {
+                        g_free(c_cmd);
+                    }
+                    g_free(c_name);
+                    g_free(c_bind);
+                    g_object_unref(custom);
+                }
+                g_strfreev(paths);
+            }
+        }
+
         g_strfreev(keys);
         g_settings_schema_unref(schema);
         g_object_unref(settings);
@@ -251,13 +280,53 @@ static void on_gnome_action_row_activated(GtkListBox *list, GtkListBoxRow *row, 
     GnomeAction *action = g_object_get_data(G_OBJECT(row), "gnome-action");
 
     if (action) {
-        gtk_combo_box_set_active(GTK_COMBO_BOX(browser->editor->action_type_combo), 0); /* Keypress */
-        char *translated = translate_gnome_accel(action->accelerator);
-        gtk_editable_set_text(GTK_EDITABLE(browser->editor->action_val_entry), translated);
-        free(translated);
+        if (action->command) {
+            /* If it's a custom command, use EXECUTE instead of faking keys */
+            gtk_combo_box_set_active(GTK_COMBO_BOX(browser->editor->action_type_combo), 1); /* Execute */
+            gtk_editable_set_text(GTK_EDITABLE(browser->editor->action_val_entry), action->command);
+        } else {
+            /* Try to map common actions to native types first */
+            int native_id = -1;
+            if (strcmp(action->name, "close") == 0) native_id = ACTION_KILL;
+            else if (strcmp(action->name, "maximize") == 0) native_id = ACTION_MAXIMIZE;
+            else if (strcmp(action->name, "unmaximize") == 0) native_id = ACTION_RESTORE;
+            else if (strcmp(action->name, "minimize") == 0) native_id = ACTION_ICONIFY;
+            
+            if (native_id != -1) {
+                for (int i = 0; action_types[i].name; i++) {
+                    if (action_types[i].id == native_id) {
+                        gtk_combo_box_set_active(GTK_COMBO_BOX(browser->editor->action_type_combo), i);
+                        break;
+                    }
+                }
+            } else {
+                gtk_combo_box_set_active(GTK_COMBO_BOX(browser->editor->action_type_combo), 0); /* Keypress */
+                char *translated = translate_gnome_accel(action->accelerator);
+                gtk_editable_set_text(GTK_EDITABLE(browser->editor->action_val_entry), translated);
+                free(translated);
+            }
+        }
     }
 
     gtk_window_destroy(GTK_WINDOW(browser->dialog));
+}
+
+static gboolean gnome_action_filter_func(GtkListBoxRow *row, gpointer user_data) {
+    const char *search_text = (const char *)user_data;
+    if (!search_text || strlen(search_text) == 0) return TRUE;
+    
+    GnomeAction *action = g_object_get_data(G_OBJECT(row), "gnome-action");
+    if (!action) return FALSE;
+    
+    return (g_strrstr(action->name, search_text) || 
+            g_strrstr(action->description, search_text) ||
+            (action->command && g_strrstr(action->command, search_text)));
+}
+
+static void on_gnome_browser_search_changed(GtkSearchEntry *entry, gpointer user_data) {
+    GnomeActionBrowser *browser = (GnomeActionBrowser *)user_data;
+    const char *text = gtk_editable_get_text(GTK_EDITABLE(entry));
+    gtk_list_box_set_filter_func(GTK_LIST_BOX(browser->list), gnome_action_filter_func, (gpointer)text, NULL);
 }
 
 static void open_gnome_action_browser(GtkWidget *btn, gpointer user_data) {
@@ -270,9 +339,18 @@ static void open_gnome_action_browser(GtkWidget *btn, gpointer user_data) {
                                                 GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
                                                 "_Close", GTK_RESPONSE_CLOSE,
                                                 NULL);
-    gtk_window_set_default_size(GTK_WINDOW(browser->dialog), 500, 600);
+    gtk_window_set_default_size(GTK_WINDOW(browser->dialog), 550, 650);
 
     GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(browser->dialog));
+    
+    GtkWidget *search_entry = gtk_search_entry_new();
+    gtk_widget_set_margin_top(search_entry, 12);
+    gtk_widget_set_margin_bottom(search_entry, 12);
+    gtk_widget_set_margin_start(search_entry, 12);
+    gtk_widget_set_margin_end(search_entry, 12);
+    gtk_box_append(GTK_BOX(content), search_entry);
+    g_signal_connect(search_entry, "search-changed", G_CALLBACK(on_gnome_browser_search_changed), browser);
+
     GtkWidget *scrolled = gtk_scrolled_window_new();
     gtk_widget_set_vexpand(scrolled, TRUE);
     gtk_box_append(GTK_BOX(content), scrolled);
@@ -302,10 +380,14 @@ static void open_gnome_action_browser(GtkWidget *btn, gpointer user_data) {
         gtk_label_set_wrap(GTK_LABEL(l_desc), TRUE);
         gtk_box_append(GTK_BOX(vbox), l_desc);
 
-        GtkWidget *l_name = gtk_label_new(a->name);
+        GString *subtext = g_string_new(a->name);
+        if (a->command) g_string_append_printf(subtext, " — %s", a->command);
+        
+        GtkWidget *l_name = gtk_label_new(subtext->str);
         gtk_widget_set_halign(l_name, GTK_ALIGN_START);
         gtk_widget_add_css_class(l_name, "dim-label");
         gtk_box_append(GTK_BOX(vbox), l_name);
+        g_string_free(subtext, TRUE);
 
         gtk_box_append(GTK_BOX(hbox), vbox);
 
