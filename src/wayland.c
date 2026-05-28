@@ -573,83 +573,87 @@ void execute_wayland_action(Action *action) {
 	}
 
 	if (ctx.is_sway) {
+		LOG_INFO(1, "Wayland: Detected Sway. Socket: %s, User: %s\n", ctx.sway_sock, ctx.username ? ctx.username : "N/A");
 		char full_cmd[2048];
 		switch (action->type) {
 			case ACTION_ICONIFY:
-				snprintf(full_cmd, sizeof(full_cmd), "%smove scratchpad", cmd_prefix);
-				system(full_cmd);
+				snprintf(full_cmd, sizeof(full_cmd), "%smove scratchpad 2>&1", cmd_prefix);
 				break;
 			case ACTION_KILL:
-				snprintf(full_cmd, sizeof(full_cmd), "%skill", cmd_prefix);
-				system(full_cmd);
+				snprintf(full_cmd, sizeof(full_cmd), "%skill 2>&1", cmd_prefix);
 				break;
 			case ACTION_RAISE:
-				snprintf(full_cmd, sizeof(full_cmd), "%sfocus", cmd_prefix);
-				system(full_cmd);
+				snprintf(full_cmd, sizeof(full_cmd), "%sfocus 2>&1", cmd_prefix);
 				break;
 			case ACTION_LOWER:
 				LOG_WARN("Lower action is not natively supported under Sway tiling layout.\n");
+				full_cmd[0] = '\0';
 				break;
 			case ACTION_MAXIMIZE:
-				snprintf(full_cmd, sizeof(full_cmd), "%sfullscreen enable", cmd_prefix);
-				system(full_cmd);
+				snprintf(full_cmd, sizeof(full_cmd), "%sfullscreen enable 2>&1", cmd_prefix);
 				break;
 			case ACTION_RESTORE:
-				snprintf(full_cmd, sizeof(full_cmd), "%sfullscreen disable", cmd_prefix);
-				system(full_cmd);
+				snprintf(full_cmd, sizeof(full_cmd), "%sfullscreen disable 2>&1", cmd_prefix);
 				break;
 			case ACTION_TOGGLE_MAXIMIZED:
-				snprintf(full_cmd, sizeof(full_cmd), "%sfullscreen toggle", cmd_prefix);
-				system(full_cmd);
+				snprintf(full_cmd, sizeof(full_cmd), "%sfullscreen toggle 2>&1", cmd_prefix);
 				break;
 			default:
 				LOG_WARN("Wayland action %s is not implemented or supported under Sway.\n",
 						get_action_name(action->type));
+				full_cmd[0] = '\0';
 				break;
+		}
+		if (full_cmd[0] != '\0') {
+			LOG_INFO(1, "Wayland: Executing Sway command: %s\n", full_cmd);
+			int r = system(full_cmd);
+			if (r != 0) LOG_WARN("Wayland: Sway command returned %d\n", r);
 		}
 		if (ctx.username) free(ctx.username);
 		return;
 	}
 
 	if (ctx.is_hypr) {
+		LOG_INFO(1, "Wayland: Detected Hyprland. Signature: %s, User: %s\n", ctx.hypr_sig, ctx.username ? ctx.username : "N/A");
 		char full_cmd[2048];
 		switch (action->type) {
 			case ACTION_ICONIFY:
-				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch movetoworkspacesilent special:minimized", cmd_prefix);
-				system(full_cmd);
+				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch movetoworkspacesilent special:minimized 2>&1", cmd_prefix);
 				break;
 			case ACTION_KILL:
-				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch killactive", cmd_prefix);
-				system(full_cmd);
+				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch killactive 2>&1", cmd_prefix);
 				break;
 			case ACTION_RAISE:
-				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch alterzorder top", cmd_prefix);
-				system(full_cmd);
+				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch alterzorder top 2>&1", cmd_prefix);
 				break;
 			case ACTION_LOWER:
-				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch alterzorder bottom", cmd_prefix);
-				system(full_cmd);
+				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch alterzorder bottom 2>&1", cmd_prefix);
 				break;
 			case ACTION_MAXIMIZE:
-				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch fullscreen 1", cmd_prefix);
-				system(full_cmd);
+				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch fullscreen 1 2>&1", cmd_prefix);
 				break;
 			case ACTION_RESTORE:
-				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch fullscreen 1", cmd_prefix);
-				system(full_cmd);
+				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch fullscreen 1 2>&1", cmd_prefix);
 				break;
 			case ACTION_TOGGLE_MAXIMIZED:
-				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch fullscreen 1", cmd_prefix);
-				system(full_cmd);
+				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch fullscreen 1 2>&1", cmd_prefix);
 				break;
 			default:
 				LOG_WARN("Wayland action %s is not implemented or supported under Hyprland.\n",
 						get_action_name(action->type));
+				full_cmd[0] = '\0';
 				break;
+		}
+		if (full_cmd[0] != '\0') {
+			LOG_INFO(1, "Wayland: Executing Hyprland command: %s\n", full_cmd);
+			int r = system(full_cmd);
+			if (r != 0) LOG_WARN("Wayland: Hyprland command returned %d\n", r);
 		}
 		if (ctx.username) free(ctx.username);
 		return;
 	}
+
+	LOG_INFO(1, "Wayland: No specific compositor detected, falling back to uinput.\n");
 
 	if (ctx.username) free(ctx.username);
 
