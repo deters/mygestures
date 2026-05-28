@@ -8,7 +8,8 @@ bin_PROGRAMS += gestos
 endif
 
 mygestures_SOURCES = \
-    main.c main.h \
+    main.c \
+	ipc.c ipc.h \
 	mygestures.c mygestures.h \
 	configuration.c configuration.h \
         configuration_parser.c configuration_parser.h \
@@ -31,6 +32,7 @@ mygestures_SOURCES = \
 
 gestos_SOURCES = \
 	gestos.c \
+	ipc.c ipc.h \
 	configuration.c configuration.h \
 	configuration_parser.c configuration_parser.h \
 	actions.c actions.h \

@@ -32,7 +32,7 @@
 #include "config.h"
 
 #include "mygestures.h"
-#include "main.h"
+#include "ipc.h"
 
 #include "grabbing.h"
 #include "grabbing-evdev.h"
