@@ -18,6 +18,21 @@ PKG_CHECK_MODULES(Xi, xi)
 PKG_CHECK_MODULES(libyaml, yaml-0.1)
 PKG_CHECK_MODULES(libevdev, libevdev)
 
+# Check for GTK4
+AC_ARG_ENABLE([ui],
+    [AS_HELP_STRING([--disable-ui], [Disable the GTK UI (gestos)])],
+    [enable_ui=$enableval],
+    [enable_ui=yes])
+
+if test "x$enable_ui" = "xyes"; then
+    PKG_CHECK_MODULES(GTK, [gtk4], [enable_ui=yes], [
+        AC_MSG_WARN([GTK4 not found, disabling UI])
+        enable_ui=no
+    ])
+fi
+
+AM_CONDITIONAL([ENABLE_UI], [test "x$enable_ui" = "xyes"])
+
 AC_SEARCH_LIBS([shm_open], [rt], [])
 
 # Checks for header files.
