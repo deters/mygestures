@@ -243,6 +243,10 @@ static void free_grabbed(Capture *free_me)
 {
 	assert(free_me);
 	free_active_window_info(free_me->active_window_info);
+	if (free_me->expression_list)
+	{
+		free(free_me->expression_list);
+	}
 	free(free_me);
 }
 

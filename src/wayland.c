@@ -542,8 +542,6 @@ ActiveWindowInfo *get_wayland_active_window_info(void)
 			}
 		}
 	}
-
-	if (ctx.username) free(ctx.username);
 	return ans;
 }
 

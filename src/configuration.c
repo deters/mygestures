@@ -85,7 +85,11 @@ Context *configuration_create_context(Configuration * self, char * context_name,
 	context->gesture_list = malloc(sizeof(Gesture *) * 255);
 	context->gesture_count = 0;
 
-	self->context_list[self->context_count++] = context;
+	if (self->context_count < 254) {
+		self->context_list[self->context_count++] = context;
+	} else {
+		fprintf(stderr, "Warning: Maximum contexts (254) reached. Ignoring context '%s'.\n", context_name);
+	}
 
 	return context;
 }
@@ -103,8 +107,6 @@ void movement_set_expression(Movement* movement, char* movement_expression) {
 		fprintf(stderr, "Warning: Invalid movement sequence: %s\n", regex_str);
 		free(movement_compiled);
 		movement_compiled = NULL;
-	} else {
-		regcomp(movement_compiled, regex_str, REG_EXTENDED | REG_NOSUB);
 	}
 	free(regex_str);
 	movement->expression_compiled = movement_compiled;
@@ -124,8 +126,11 @@ Movement *configuration_create_movement(Configuration * self,
 	movement->name = movement_name;
 	movement_set_expression(movement, movement_expression);
 
-	self->movement_list[self->movement_count] = movement;
-	self->movement_count++;
+	if (self->movement_count < 254) {
+		self->movement_list[self->movement_count++] = movement;
+	} else {
+		fprintf(stderr, "Warning: Maximum movements (254) reached. Ignoring movement '%s'.\n", movement_name);
+	}
 
 	return movement;
 }
@@ -156,7 +161,11 @@ Gesture * configuration_create_gesture(Context * self, char * gesture_name,
 	ans->action_count = 0;
 	ans->action_list = malloc(sizeof(Action *) * 20);
 
-	self->gesture_list[self->gesture_count++] = ans;
+	if (self->gesture_count < 255) {
+		self->gesture_list[self->gesture_count++] = ans;
+	} else {
+		fprintf(stderr, "Warning: Maximum gestures (255) reached for context '%s'. Ignoring gesture '%s'.\n", self->name, gesture_name);
+	}
 
 	return ans;
 }
@@ -221,7 +230,11 @@ Action *configuration_create_action(Gesture * self, int action_type,
 	ans->type = action_type;
 	ans->original_str = action_data;
 
-	self->action_list[self->action_count++] = ans;
+	if (self->action_count < 20) {
+		self->action_list[self->action_count++] = ans;
+	} else {
+		fprintf(stderr, "Warning: Maximum actions (20) reached for gesture '%s'. Ignoring extra actions.\n", self->name);
+	}
 
 	return ans;
 }

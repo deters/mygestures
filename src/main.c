@@ -60,7 +60,11 @@ static void process_arguments(Mygestures *self, int argc, char *const *argv)
 			break;
 
 		case 'd':
-			self->device_list[self->device_count++] = strdup(optarg);
+			if (self->device_count < MAX_GRABBED_DEVICES) {
+				self->device_list[self->device_count++] = strdup(optarg);
+			} else {
+				fprintf(stderr, "Warning: Maximum devices (%d) reached. Ignoring device '%s'.\n", MAX_GRABBED_DEVICES, optarg);
+			}
 			break;
 
 		case 'm':
@@ -146,19 +150,20 @@ static void char_replace(char *str, char oldChar, char newChar)
 void alloc_shared_memory(char *device_name, int button)
 {
 
-	char *sanitized_device_name = strdup(device_name);
+	char *sanitized_device_name = strdup(device_name ? device_name : "");
 
 	if (sanitized_device_name)
 	{
 		char_replace(sanitized_device_name, '/', '%');
 	}
-	else
-	{
-		sanitized_device_name = "";
-	}
 
 	int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s_button_%d", getuid(),
-						 sanitized_device_name, button);
+						 sanitized_device_name ? sanitized_device_name : "", button);
+
+	if (sanitized_device_name)
+	{
+		free(sanitized_device_name);
+	}
 
 	int shared_seg_size = sizeof(struct shm_message);
 	int shmfd = shm_open(shm_identifier, O_CREAT | O_RDWR, 0600);
