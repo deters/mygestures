@@ -37,18 +37,23 @@ static void process_arguments(Mygestures *self, int argc, char *const *argv)
 		{"visual", no_argument, 0, 'v'},
 		{"multitouch", no_argument, 0, 'm'},
 		{"evdev", no_argument, 0, 'e'},
+		{"create-config", no_argument, 0, 'C'},
 		{0, 0, 0, 0}};
 
 	/* read params */
 
 	while (1)
 	{
-		opt = getopt_long(argc, argv, "b:c:d:vhlme", opts, NULL);
+		opt = getopt_long(argc, argv, "b:c:d:vhlmeC", opts, NULL);
 		if (opt == -1)
 			break;
 
 		switch (opt)
 		{
+
+		case 'C':
+			self->create_config_flag = 1;
+			break;
 
 		case 'b':
 			self->trigger_button = atoi(optarg);

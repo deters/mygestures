@@ -455,13 +455,9 @@ char* configuration_get_default_filename() {
 	return filename;
 }
 
-void configuration_load_from_defaults(Configuration * configuration) {
+void configuration_load_from_defaults(Configuration * configuration, int create_config) {
 
 	int err = 0;
-
-	char* dir = get_config_dir();
-	test_create_dir(dir);
-	free(dir);
 
 	char* config_file = configuration_get_default_filename();
 
@@ -471,6 +467,7 @@ void configuration_load_from_defaults(Configuration * configuration) {
 		char * template = NULL;
 		const char *suffix = get_environment_suffix();
 		int has_template = 0;
+
 		if (suffix) {
 			int bytes = asprintf(&template, "%s/mygestures_%s.xml", SYSCONFDIR, suffix);
 			FILE *tf = fopen(template, "r");
@@ -487,11 +484,28 @@ void configuration_load_from_defaults(Configuration * configuration) {
 			template = xml_get_template_filename();
 		}
 
-		err = file_copy(template, config_file);
-		if (err) {
-			fprintf(stderr,
-					"Error creating default configuration on '%s' from '%s'\n",
-					config_file, template);
+		if (create_config) {
+			char* dir = get_config_dir();
+			test_create_dir(dir);
+			free(dir);
+
+			err = file_copy(template, config_file);
+			if (err) {
+				fprintf(stderr,
+						"Error creating default configuration on '%s' from '%s'\n",
+						config_file, template);
+				free(template);
+				free(config_file);
+				return;
+			}
+			printf("Created default configuration file at '%s'.\n", config_file);
+		} else {
+			printf("Using internal default configuration from '%s'.\n", template);
+			err = configuration_parse_file(configuration, template);
+			if (err) {
+				fprintf(stderr, "Error loading internal configuration from file \n'%s'\n\n",
+						template);
+			}
 			free(template);
 			free(config_file);
 			return;

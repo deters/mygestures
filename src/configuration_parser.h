@@ -22,6 +22,6 @@
 char * configuration_get_default_filename();
 
 void configuration_load_from_file(Configuration * configuration, char * filename);
-void configuration_load_from_defaults(Configuration * configuration);
+void configuration_load_from_defaults(Configuration * configuration, int create_config);
 
 #endif

@@ -11,6 +11,7 @@ typedef struct mygestures_
 	int multitouch;
 	int evdev;
 	int list_devices_flag;
+	int create_config_flag;
 
 	char *custom_config_file;
 
