@@ -551,6 +551,8 @@ static char *get_gnome_shortcut(const char *schema, const char *key) {
 	char line[512];
 	if (fgets(line, sizeof(line), fp)) {
 		pclose(fp);
+		LOG_INFO(1, "Wayland: gsettings output for %s %s: %s", schema, key, line);
+		
 		// GNOME gsettings output is usually like: ['<Alt>F4', '<Super>q']
 		// We'll take the first one or the one with <Super>
 		char *start = strchr(line, '\'');
@@ -564,8 +566,6 @@ static char *get_gnome_shortcut(const char *schema, const char *key) {
 				
 				// Translate GNOME format to MyGestures format
 				// <Alt> -> Alt_L, <Super> -> Super_L, <Shift> -> Shift_L, <Control> -> Control_L
-				// Also change lowercase letters to uppercase if needed by Xlib? No, Xlib likes "q" or "Q".
-				// But we need to replace "+" or just handle the tokens.
 				
 				char *translated = malloc(strlen(start) * 2 + 1);
 				translated[0] = '\0';
@@ -588,9 +588,8 @@ static char *get_gnome_shortcut(const char *schema, const char *key) {
 						strcat(translated, "Control_L+");
 						p += 6;
 					} else if (*p == '>') {
-						p++; // Should not happen with above logic
+						p++; 
 					} else {
-						// Append the rest (F4, q, etc.)
 						size_t len = strlen(translated);
 						translated[len] = *p;
 						translated[len+1] = '\0';
@@ -598,17 +597,18 @@ static char *get_gnome_shortcut(const char *schema, const char *key) {
 					}
 				}
 				
-				// Remove trailing "+" if any
 				size_t final_len = strlen(translated);
 				if (final_len > 0 && translated[final_len - 1] == '+') {
 					translated[final_len - 1] = '\0';
 				}
 				
+				LOG_INFO(1, "Wayland: Translated GNOME shortcut: %s\n", translated);
 				return translated;
 			}
 		}
 	} else {
 		pclose(fp);
+		LOG_WARN("Wayland: gsettings command failed or returned no output.\n");
 	}
 	return NULL;
 }
