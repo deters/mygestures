@@ -3,6 +3,7 @@
 #include <string.h>
 #include "configuration.h"
 #include "configuration_parser.h"
+#include "actions.h"
 #include "mygestures.h"
 
 typedef struct {
