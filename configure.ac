@@ -25,7 +25,9 @@ AC_ARG_ENABLE([ui],
     [enable_ui=yes])
 
 if test "x$enable_ui" = "xyes"; then
-    PKG_CHECK_MODULES(GTK, [gtk4])
+    PKG_CHECK_MODULES(GTK, [gtk4], [], [
+        AC_MSG_ERROR([GTK4 not found. Install GTK4 or use --disable-ui to compile without the GUI (gestos).])
+    ])
 fi
 
 AM_CONDITIONAL([ENABLE_UI], [test "x$enable_ui" = "xyes"])
