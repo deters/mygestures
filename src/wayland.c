@@ -655,7 +655,7 @@ void execute_wayland_action(Action *action) {
 	int is_gnome = 0;
 	int is_kde = 0;
 	if (desktop) {
-		if (strstr(desktop, "GNOME") != NULL || strstr(desktop, "gnome") != NULL) {
+		if (strstr(desktop, "GNOME") != NULL || strstr(desktop, "gnome") != NULL || strstr(desktop, "Ubuntu") != NULL) {
 			is_gnome = 1;
 		}
 		if (strstr(desktop, "KDE") != NULL || strstr(desktop, "kde") != NULL) {
@@ -669,6 +669,7 @@ void execute_wayland_action(Action *action) {
 				action_keypress(NULL, "Super_L+h");
 				break;
 			case ACTION_KILL:
+				LOG_INFO(1, "Wayland: Executing GNOME kill fallback (Alt_L+F4)\n");
 				action_keypress(NULL, "Alt_L+F4");
 				break;
 			case ACTION_RAISE:
@@ -678,13 +679,13 @@ void execute_wayland_action(Action *action) {
 				action_keypress(NULL, "Alt_L+Escape");
 				break;
 			case ACTION_MAXIMIZE:
-				action_keypress(NULL, "Super_L+space");
+				action_keypress(NULL, "Super_L+Up"); // Changed from Super_L+space
 				break;
 			case ACTION_RESTORE:
-				action_keypress(NULL, "Super_L+space");
+				action_keypress(NULL, "Super_L+Down"); // Changed from Super_L+space
 				break;
 			case ACTION_TOGGLE_MAXIMIZED:
-				action_keypress(NULL, "Super_L+space");
+				action_keypress(NULL, "Alt_L+F10"); // Changed from Super_L+space
 				break;
 			default:
 				LOG_WARN("Wayland action %s is not implemented or supported under GNOME.\n",

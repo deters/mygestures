@@ -250,7 +250,8 @@ struct key_press * string_to_keypress(char *str_ptr) {
 		k = XStringToKeysym(token);
 		if (k == NoSymbol) {
 			fprintf(stderr, "error converting %s to keysym\n", token);
-			exit(-1);
+			// Do not exit, just skip or return what we have so far
+			continue;
 		}
 		key->next = alloc_key_press();
 		key = key->next;
