@@ -290,9 +290,10 @@ void action_keypress(Display *dpy, char *data) {
 
 	for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
 		press_key(dpy, tmp->key, True);
+		usleep(10000); // 10ms delay between each key press in a sequence
 	}
 
-	usleep(20000); // 20ms delay to ensure combination is registered
+	usleep(50000); // 50ms delay to ensure combination is registered
 
 	release_keys_reverse(dpy, first_key);
 
