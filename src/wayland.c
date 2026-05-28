@@ -310,61 +310,75 @@ void free_active_window_info(ActiveWindowInfo *info)
 	}
 }
 
-ActiveWindowInfo *get_wayland_active_window_info(void)
-{
-	ActiveWindowInfo *ans = malloc(sizeof(ActiveWindowInfo));
-	bzero(ans, sizeof(ActiveWindowInfo));
-	ans->class = strdup("");
-	ans->title = strdup("");
+typedef struct WaylandContext {
+	uid_t uid;
+	char *username;
+	char sway_sock[1024];
+	char hypr_sig[256];
+	int is_sway;
+	int is_hypr;
+} WaylandContext;
 
-	uid_t uid = 0;
-	char *username = NULL;
-	char sway_sock[1024] = "";
-	char hypr_sig[256] = "";
+static void discover_wayland_context(WaylandContext *ctx) {
+	memset(ctx, 0, sizeof(WaylandContext));
+
+	const char *env_sway = getenv("SWAYSOCK");
+	const char *env_hypr = getenv("HYPRLAND_INSTANCE_SIGNATURE");
+
+	if (env_sway) {
+		snprintf(ctx->sway_sock, sizeof(ctx->sway_sock), "%s", env_sway);
+		ctx->is_sway = 1;
+		return;
+	}
+	if (env_hypr) {
+		snprintf(ctx->hypr_sig, sizeof(ctx->hypr_sig), "%s", env_hypr);
+		ctx->is_hypr = 1;
+		return;
+	}
 
 	char *sudo_uid_env = getenv("SUDO_UID");
 	char *sudo_user_env = getenv("SUDO_USER");
 
-	if (sudo_uid_env && sudo_user_env)
-	{
-		uid = atoi(sudo_uid_env);
-		username = strdup(sudo_user_env);
+	if (sudo_uid_env && sudo_user_env) {
+		ctx->uid = atoi(sudo_uid_env);
+		ctx->username = strdup(sudo_user_env);
+	} else {
+		ctx->uid = getuid();
+		if (ctx->uid > 0) {
+			struct passwd *pw = getpwuid(ctx->uid);
+			if (pw) ctx->username = strdup(pw->pw_name);
+		}
+	}
 
+	if (ctx->uid > 0) {
 		char path[512];
-		snprintf(path, sizeof(path), "/run/user/%d", uid);
+		snprintf(path, sizeof(path), "/run/user/%d", ctx->uid);
 		DIR *dir = opendir(path);
-		if (dir)
-		{
+		if (dir) {
 			struct dirent *entry;
-			while ((entry = readdir(dir)))
-			{
-				if (strncmp(entry->d_name, "sway-ipc.", 9) == 0 &&
-					strstr(entry->d_name, ".sock"))
-				{
-					snprintf(sway_sock, sizeof(sway_sock), "/run/user/%d/%s", uid, entry->d_name);
+			while ((entry = readdir(dir))) {
+				if (strncmp(entry->d_name, "sway-ipc.", 9) == 0 && strstr(entry->d_name, ".sock")) {
+					snprintf(ctx->sway_sock, sizeof(ctx->sway_sock), "/run/user/%d/%s", ctx->uid, entry->d_name);
+					ctx->is_sway = 1;
 					break;
 				}
 			}
 			closedir(dir);
 		}
 
-		if (strlen(sway_sock) == 0)
-		{
-			snprintf(path, sizeof(path), "/run/user/%d/hypr", uid);
+		if (!ctx->is_sway) {
+			snprintf(path, sizeof(path), "/run/user/%d/hypr", ctx->uid);
 			DIR *dir2 = opendir(path);
-			if (!dir2)
-			{
+			if (!dir2) {
 				snprintf(path, sizeof(path), "/tmp/hypr");
 				dir2 = opendir(path);
 			}
-			if (dir2)
-			{
+			if (dir2) {
 				struct dirent *entry;
-				while ((entry = readdir(dir2)))
-				{
-					if (strlen(entry->d_name) > 10)
-					{
-						snprintf(hypr_sig, sizeof(hypr_sig), "%s", entry->d_name);
+				while ((entry = readdir(dir2))) {
+					if (strlen(entry->d_name) > 10) {
+						snprintf(ctx->hypr_sig, sizeof(ctx->hypr_sig), "%s", entry->d_name);
+						ctx->is_hypr = 1;
 						break;
 					}
 				}
@@ -372,169 +386,104 @@ ActiveWindowInfo *get_wayland_active_window_info(void)
 			}
 		}
 	}
-	else
-	{
-		uid = getuid();
-		if (uid > 0)
-		{
-			struct passwd *pw = getpwuid(uid);
-			if (pw) username = strdup(pw->pw_name);
 
-			char path[512];
-			snprintf(path, sizeof(path), "/run/user/%d", uid);
-			DIR *dir = opendir(path);
-			if (dir)
-			{
-				struct dirent *entry;
-				while ((entry = readdir(dir)))
-				{
-					if (strncmp(entry->d_name, "sway-ipc.", 9) == 0 &&
-						strstr(entry->d_name, ".sock"))
-					{
-						snprintf(sway_sock, sizeof(sway_sock), "/run/user/%d/%s", uid, entry->d_name);
-						break;
-					}
-				}
-				closedir(dir);
-			}
-
-			if (strlen(sway_sock) == 0)
-			{
-				snprintf(path, sizeof(path), "/run/user/%d/hypr", uid);
-				DIR *dir2 = opendir(path);
-				if (!dir2)
-				{
-					snprintf(path, sizeof(path), "/tmp/hypr");
-					dir2 = opendir(path);
-				}
-				if (dir2)
-				{
-					struct dirent *entry;
-					while ((entry = readdir(dir2)))
-					{
-						if (strlen(entry->d_name) > 10)
-						{
-							snprintf(hypr_sig, sizeof(hypr_sig), "%s", entry->d_name);
-							break;
+	if (ctx->uid == 0 || (!ctx->is_sway && !ctx->is_hypr)) {
+		DIR *dir = opendir("/run/user");
+		if (dir) {
+			struct dirent *entry;
+			while ((entry = readdir(dir))) {
+				uid_t d_uid = atoi(entry->d_name);
+				if (d_uid >= 1000) {
+					char path[512];
+					snprintf(path, sizeof(path), "/run/user/%d", d_uid);
+					DIR *sub_dir = opendir(path);
+					if (sub_dir) {
+						struct dirent *sub_entry;
+						while ((sub_entry = readdir(sub_dir))) {
+							if (strncmp(sub_entry->d_name, "sway-ipc.", 9) == 0 && strstr(sub_entry->d_name, ".sock")) {
+								snprintf(ctx->sway_sock, sizeof(ctx->sway_sock), "/run/user/%d/%s", d_uid, sub_entry->d_name);
+								ctx->is_sway = 1;
+								break;
+							}
 						}
+						closedir(sub_dir);
 					}
-					closedir(dir2);
-				}
-			}
-		}
 
-		if (uid == 0 || (strlen(sway_sock) == 0 && strlen(hypr_sig) == 0))
-		{
-			DIR *dir = opendir("/run/user");
-			if (dir)
-			{
-				struct dirent *entry;
-				while ((entry = readdir(dir)))
-				{
-					uid_t d_uid = atoi(entry->d_name);
-					if (d_uid >= 1000)
-					{
-						char path[512];
-						snprintf(path, sizeof(path), "/run/user/%d", d_uid);
-						DIR *sub_dir = opendir(path);
-						if (sub_dir)
-						{
+					if (!ctx->is_sway) {
+						snprintf(path, sizeof(path), "/run/user/%d/hypr", d_uid);
+						DIR *sub_dir2 = opendir(path);
+						if (!sub_dir2) {
+							snprintf(path, sizeof(path), "/tmp/hypr");
+							sub_dir2 = opendir(path);
+						}
+						if (sub_dir2) {
 							struct dirent *sub_entry;
-							while ((sub_entry = readdir(sub_dir)))
-							{
-								if (strncmp(sub_entry->d_name, "sway-ipc.", 9) == 0 &&
-									strstr(sub_entry->d_name, ".sock"))
-								{
-									snprintf(sway_sock, sizeof(sway_sock), "/run/user/%d/%s", d_uid, sub_entry->d_name);
+							while ((sub_entry = readdir(sub_dir2))) {
+								if (strlen(sub_entry->d_name) > 10) {
+									snprintf(ctx->hypr_sig, sizeof(ctx->hypr_sig), "%s", sub_entry->d_name);
+									ctx->is_hypr = 1;
 									break;
 								}
 							}
-							closedir(sub_dir);
-						}
-
-						if (strlen(sway_sock) == 0)
-						{
-							snprintf(path, sizeof(path), "/run/user/%d/hypr", d_uid);
-							DIR *sub_dir2 = opendir(path);
-							if (!sub_dir2)
-							{
-								snprintf(path, sizeof(path), "/tmp/hypr");
-								sub_dir2 = opendir(path);
-							}
-							if (sub_dir2)
-							{
-								struct dirent *sub_entry;
-								while ((sub_entry = readdir(sub_dir2)))
-								{
-									if (strlen(sub_entry->d_name) > 10)
-									{
-										snprintf(hypr_sig, sizeof(hypr_sig), "%s", sub_entry->d_name);
-										break;
-									}
-								}
-								closedir(sub_dir2);
-							}
-						}
-
-						if (strlen(sway_sock) > 0 || strlen(hypr_sig) > 0)
-						{
-							uid = d_uid;
-							struct passwd *pw = getpwuid(uid);
-							if (username) free(username);
-							username = pw ? strdup(pw->pw_name) : NULL;
-							break;
+							closedir(sub_dir2);
 						}
 					}
+
+					if (ctx->is_sway || ctx->is_hypr) {
+						ctx->uid = d_uid;
+						struct passwd *pw = getpwuid(ctx->uid);
+						if (ctx->username) free(ctx->username);
+						ctx->username = pw ? strdup(pw->pw_name) : NULL;
+						break;
+					}
 				}
-				closedir(dir);
 			}
+			closedir(dir);
 		}
 	}
+}
+
+ActiveWindowInfo *get_wayland_active_window_info(void)
+{
+	ActiveWindowInfo *ans = malloc(sizeof(ActiveWindowInfo));
+	bzero(ans, sizeof(ActiveWindowInfo));
+	ans->class = strdup("");
+	ans->title = strdup("");
+
+	WaylandContext ctx;
+	discover_wayland_context(&ctx);
 
 	char cmd[2048] = "";
-	int is_sway = 0;
 
-	if (getenv("SWAYSOCK"))
+	if (ctx.is_sway)
 	{
-		snprintf(cmd, sizeof(cmd), "swaymsg -t get_tree 2>/dev/null");
-		is_sway = 1;
-	}
-	else if (getenv("HYPRLAND_INSTANCE_SIGNATURE"))
-	{
-		snprintf(cmd, sizeof(cmd), "hyprctl activewindow 2>/dev/null");
-		is_sway = 0;
-	}
-	else if (strlen(sway_sock) > 0)
-	{
-		if (getuid() == 0 && username)
+		if (getuid() == 0 && ctx.username)
 		{
 			snprintf(cmd, sizeof(cmd),
 				"sudo -u %s env SWAYSOCK=%s XDG_RUNTIME_DIR=/run/user/%d swaymsg -t get_tree 2>/dev/null",
-				username, sway_sock, uid);
+				ctx.username, ctx.sway_sock, ctx.uid);
 		}
 		else
 		{
 			snprintf(cmd, sizeof(cmd),
 				"env SWAYSOCK=%s XDG_RUNTIME_DIR=/run/user/%d swaymsg -t get_tree 2>/dev/null",
-				sway_sock, uid);
+				ctx.sway_sock, ctx.uid);
 		}
-		is_sway = 1;
 	}
-	else if (strlen(hypr_sig) > 0)
+	else if (ctx.is_hypr)
 	{
-		if (getuid() == 0 && username)
+		if (getuid() == 0 && ctx.username)
 		{
 			snprintf(cmd, sizeof(cmd),
 				"sudo -u %s env HYPRLAND_INSTANCE_SIGNATURE=%s XDG_RUNTIME_DIR=/run/user/%d hyprctl activewindow 2>/dev/null",
-				username, hypr_sig, uid);
+				ctx.username, ctx.hypr_sig, ctx.uid);
 		}
 		else
 		{
 			snprintf(cmd, sizeof(cmd),
 				"env HYPRLAND_INSTANCE_SIGNATURE=%s XDG_RUNTIME_DIR=/run/user/%d hyprctl activewindow 2>/dev/null",
-				hypr_sig, uid);
+				ctx.hypr_sig, ctx.uid);
 		}
-		is_sway = 0;
 	}
 
 	if (strlen(cmd) > 0)
@@ -542,7 +491,7 @@ ActiveWindowInfo *get_wayland_active_window_info(void)
 		FILE *fp = popen(cmd, "r");
 		if (fp)
 		{
-			if (is_sway)
+			if (ctx.is_sway)
 			{
 				size_t len = 0;
 				char *json_str = read_all_from_pipe(fp, &len);
@@ -596,114 +545,113 @@ ActiveWindowInfo *get_wayland_active_window_info(void)
 		}
 	}
 
-	if (username) free(username);
+	if (ctx.username) free(ctx.username);
 	return ans;
 }
 
 void execute_wayland_action(Action *action) {
-	const char *swaysock = getenv("SWAYSOCK");
-	const char *hyprland_sig = getenv("HYPRLAND_INSTANCE_SIGNATURE");
+	WaylandContext ctx;
+	discover_wayland_context(&ctx);
 
-	if (swaysock) {
+	char cmd_prefix[1024] = "";
+	if (ctx.is_sway) {
+		if (getuid() == 0 && ctx.username) {
+			snprintf(cmd_prefix, sizeof(cmd_prefix), "sudo -u %s env SWAYSOCK=%s XDG_RUNTIME_DIR=/run/user/%d swaymsg ",
+				ctx.username, ctx.sway_sock, ctx.uid);
+		} else {
+			snprintf(cmd_prefix, sizeof(cmd_prefix), "env SWAYSOCK=%s XDG_RUNTIME_DIR=/run/user/%d swaymsg ",
+				ctx.sway_sock, ctx.uid);
+		}
+	} else if (ctx.is_hypr) {
+		if (getuid() == 0 && ctx.username) {
+			snprintf(cmd_prefix, sizeof(cmd_prefix), "sudo -u %s env HYPRLAND_INSTANCE_SIGNATURE=%s XDG_RUNTIME_DIR=/run/user/%d hyprctl ",
+				ctx.username, ctx.hypr_sig, ctx.uid);
+		} else {
+			snprintf(cmd_prefix, sizeof(cmd_prefix), "env HYPRLAND_INSTANCE_SIGNATURE=%s XDG_RUNTIME_DIR=/run/user/%d hyprctl ",
+				ctx.hypr_sig, ctx.uid);
+		}
+	}
+
+	if (ctx.is_sway) {
+		char full_cmd[2048];
 		switch (action->type) {
 			case ACTION_ICONIFY:
-				{
-					int r = system("swaymsg move scratchpad");
-					(void)r;
-				}
+				snprintf(full_cmd, sizeof(full_cmd), "%smove scratchpad", cmd_prefix);
+				system(full_cmd);
 				break;
 			case ACTION_KILL:
-				{
-					int r = system("swaymsg kill");
-					(void)r;
-				}
+				snprintf(full_cmd, sizeof(full_cmd), "%skill", cmd_prefix);
+				system(full_cmd);
 				break;
 			case ACTION_RAISE:
-				{
-					int r = system("swaymsg focus");
-					(void)r;
-				}
+				snprintf(full_cmd, sizeof(full_cmd), "%sfocus", cmd_prefix);
+				system(full_cmd);
 				break;
 			case ACTION_LOWER:
 				LOG_WARN("Lower action is not natively supported under Sway tiling layout.\n");
 				break;
 			case ACTION_MAXIMIZE:
-				{
-					int r = system("swaymsg fullscreen enable");
-					(void)r;
-				}
+				snprintf(full_cmd, sizeof(full_cmd), "%sfullscreen enable", cmd_prefix);
+				system(full_cmd);
 				break;
 			case ACTION_RESTORE:
-				{
-					int r = system("swaymsg fullscreen disable");
-					(void)r;
-				}
+				snprintf(full_cmd, sizeof(full_cmd), "%sfullscreen disable", cmd_prefix);
+				system(full_cmd);
 				break;
 			case ACTION_TOGGLE_MAXIMIZED:
-				{
-					int r = system("swaymsg fullscreen toggle");
-					(void)r;
-				}
+				snprintf(full_cmd, sizeof(full_cmd), "%sfullscreen toggle", cmd_prefix);
+				system(full_cmd);
 				break;
 			default:
 				LOG_WARN("Wayland action %s is not implemented or supported under Sway.\n",
 						get_action_name(action->type));
 				break;
 		}
+		if (ctx.username) free(ctx.username);
 		return;
 	}
 
-	if (hyprland_sig) {
+	if (ctx.is_hypr) {
+		char full_cmd[2048];
 		switch (action->type) {
 			case ACTION_ICONIFY:
-				{
-					int r = system("hyprctl dispatch movetoworkspacesilent special:minimized");
-					(void)r;
-				}
+				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch movetoworkspacesilent special:minimized", cmd_prefix);
+				system(full_cmd);
 				break;
 			case ACTION_KILL:
-				{
-					int r = system("hyprctl dispatch killactive");
-					(void)r;
-				}
+				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch killactive", cmd_prefix);
+				system(full_cmd);
 				break;
 			case ACTION_RAISE:
-				{
-					int r = system("hyprctl dispatch alterzorder top");
-					(void)r;
-				}
+				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch alterzorder top", cmd_prefix);
+				system(full_cmd);
 				break;
 			case ACTION_LOWER:
-				{
-					int r = system("hyprctl dispatch alterzorder bottom");
-					(void)r;
-				}
+				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch alterzorder bottom", cmd_prefix);
+				system(full_cmd);
 				break;
 			case ACTION_MAXIMIZE:
-				{
-					int r = system("hyprctl dispatch fullscreen 1");
-					(void)r;
-				}
+				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch fullscreen 1", cmd_prefix);
+				system(full_cmd);
 				break;
 			case ACTION_RESTORE:
-				{
-					int r = system("hyprctl dispatch fullscreen 1"); // Toggles maximize back to normal
-					(void)r;
-				}
+				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch fullscreen 1", cmd_prefix);
+				system(full_cmd);
 				break;
 			case ACTION_TOGGLE_MAXIMIZED:
-				{
-					int r = system("hyprctl dispatch fullscreen 1");
-					(void)r;
-				}
+				snprintf(full_cmd, sizeof(full_cmd), "%sdispatch fullscreen 1", cmd_prefix);
+				system(full_cmd);
 				break;
 			default:
 				LOG_WARN("Wayland action %s is not implemented or supported under Hyprland.\n",
 						get_action_name(action->type));
 				break;
 		}
+		if (ctx.username) free(ctx.username);
 		return;
 	}
+
+	if (ctx.username) free(ctx.username);
 
 	// Fallback to simulating standard shortcuts via uinput virtual keyboard
 	const char *desktop = getenv("XDG_CURRENT_DESKTOP");
