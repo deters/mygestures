@@ -661,30 +661,6 @@ static void on_editor_dialog_destroy(GtkWidget *widget, gpointer user_data) {
     g_free(editor);
 }
 
-typedef struct {
-    double rel_pos;  // -0.5 to 0.5
-    double opacity_mult;
-    double start_frac; // 0.0 to 0.2
-    double end_frac;   // 0.8 to 1.0
-    double width_mult;
-} Bristle;
-
-static const Bristle bristles[] = {
-    { -0.42, 0.6, 0.05, 0.82, 0.8 },
-    { -0.31, 0.8, 0.00, 0.95, 1.0 },
-    { -0.20, 0.9, 0.02, 0.88, 1.1 },
-    { -0.11, 0.95, 0.00, 1.00, 1.2 },
-    { -0.02, 1.0, 0.00, 0.97, 1.3 },
-    {  0.07, 1.0, 0.01, 1.00, 1.2 },
-    {  0.18, 0.9, 0.00, 0.92, 1.1 },
-    {  0.29, 0.85, 0.04, 0.85, 1.0 },
-    {  0.38, 0.7, 0.02, 0.90, 0.9 },
-    { -0.25, 0.5, 0.08, 0.80, 0.7 },
-    {  0.00, 0.9, 0.00, 0.98, 1.0 },
-    {  0.22, 0.6, 0.06, 0.83, 0.8 }
-};
-#define N_BRISTLES 12
-
 static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width, int height, gpointer user_data) {
     GestureEditor *editor = (GestureEditor *)user_data;
     
@@ -714,65 +690,27 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
     cairo_set_dash(cr, NULL, 0, 0); // Clear dash
     
     if (editor->is_drawing && editor->drawn_count > 1) {
-        // Active drawing color: Neon Cyan/Blue
-        double draw_r = 0.06, draw_g = 0.65, draw_b = 0.95;
-        
+        // Neon glow effect for active drawing
         cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
         cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
         
-        Point2D *drawn_normals = malloc(sizeof(Point2D) * editor->drawn_count);
-        for (int i = 0; i < editor->drawn_count; i++) {
-            double dx = 0, dy = 0;
-            if (i < editor->drawn_count - 1) {
-                dx = editor->drawn_points[i+1].x - editor->drawn_points[i].x;
-                dy = editor->drawn_points[i+1].y - editor->drawn_points[i].y;
-            } else {
-                dx = editor->drawn_points[i].x - editor->drawn_points[i-1].x;
-                dy = editor->drawn_points[i].y - editor->drawn_points[i-1].y;
-            }
-            double len = sqrt(dx*dx + dy*dy);
-            if (len > 1e-4) {
-                drawn_normals[i].x = -dy / len;
-                drawn_normals[i].y = dx / len;
-            } else {
-                drawn_normals[i].x = 0.0;
-                drawn_normals[i].y = 0.0;
-            }
+        // Outer glow
+        cairo_set_source_rgba(cr, 0.06, 0.65, 0.95, 0.25);
+        cairo_set_line_width(cr, 12.0);
+        cairo_move_to(cr, editor->drawn_points[0].x, editor->drawn_points[0].y);
+        for (int i = 1; i < editor->drawn_count; i++) {
+            cairo_line_to(cr, editor->drawn_points[i].x, editor->drawn_points[i].y);
         }
+        cairo_stroke(cr);
         
-        // Draw 12 bristles in real time
-        for (int j = 0; j < N_BRISTLES; j++) {
-            const Bristle *b_info = &bristles[j];
-            gboolean in_stroke = FALSE;
-            double last_px = 0.0, last_py = 0.0;
-            
-            for (int i = 0; i < editor->drawn_count; i++) {
-                double frac = (double)i / (editor->drawn_count - 1);
-                if (frac >= b_info->start_frac && frac <= b_info->end_frac) {
-                    double w_i = 16.0 * (1.0 - frac) + 3.0; // Brush thickness
-                    double px = editor->drawn_points[i].x + drawn_normals[i].x * (b_info->rel_pos * w_i);
-                    double py = editor->drawn_points[i].y + drawn_normals[i].y * (b_info->rel_pos * w_i);
-                    
-                    if (in_stroke) {
-                        double opacity = 0.65 * b_info->opacity_mult * (1.0 - frac * 0.4);
-                        cairo_set_source_rgba(cr, draw_r, draw_g, draw_b, opacity);
-                        double bristle_w = 1.0 * b_info->width_mult;
-                        cairo_set_line_width(cr, bristle_w);
-                        
-                        cairo_move_to(cr, last_px, last_py);
-                        cairo_line_to(cr, px, py);
-                        cairo_stroke(cr);
-                    }
-                    
-                    last_px = px;
-                    last_py = py;
-                    in_stroke = TRUE;
-                } else {
-                    in_stroke = FALSE;
-                }
-            }
+        // Inner core
+        cairo_set_source_rgb(cr, 0.06, 0.65, 0.95);
+        cairo_set_line_width(cr, 4.0);
+        cairo_move_to(cr, editor->drawn_points[0].x, editor->drawn_points[0].y);
+        for (int i = 1; i < editor->drawn_count; i++) {
+            cairo_line_to(cr, editor->drawn_points[i].x, editor->drawn_points[i].y);
         }
-        free(drawn_normals);
+        cairo_stroke(cr);
     } else {
         guint move_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->move_combo));
         if (move_idx != GTK_INVALID_LIST_POSITION) {
@@ -844,81 +782,52 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
                     cairo_arc(cr, pts[0].x + offset_x, pts[0].y + offset_y, 8.0, 0, 2 * G_PI);
                     cairo_fill(cr);
                 } else {
-                    Point2D *normals = malloc(sizeof(Point2D) * pt_count);
-                    for (int i = 0; i < pt_count; i++) {
-                        double dx = 0, dy = 0;
-                        if (i < pt_count - 1) {
-                            dx = pts[i+1].x - pts[i].x;
-                            dy = pts[i+1].y - pts[i].y;
-                        } else if (pt_count > 1) {
-                            dx = pts[i].x - pts[i-1].x;
-                            dy = pts[i].y - pts[i-1].y;
-                        }
-                        double len = sqrt(dx*dx + dy*dy);
-                        if (len > 1e-4) {
-                            normals[i].x = -dy / len;
-                            normals[i].y = dx / len;
-                        } else {
-                            normals[i].x = 0.0;
-                            normals[i].y = 0.0;
-                        }
+                    // Draw outer glowing shadow for template
+                    for (int i = 1; i < pt_count; i++) {
+                        double fraction = (double)(i - 1) / (pt_count - 1);
+                        double w = 18.0 * (1.0 - fraction) + 4.0; // Glow width
+                        double r = start_r * (1.0 - fraction) + end_r * fraction;
+                        double g = start_g * (1.0 - fraction) + end_g * fraction;
+                        double b = start_b * (1.0 - fraction) + end_b * fraction;
+                        
+                        cairo_set_source_rgba(cr, r, g, b, 0.15); // Glow transparency
+                        cairo_set_line_width(cr, w);
+                        cairo_move_to(cr, pts[i-1].x + offset_x, pts[i-1].y + offset_y);
+                        cairo_line_to(cr, pts[i].x + offset_x, pts[i].y + offset_y);
+                        cairo_stroke(cr);
                     }
                     
-                    // Draw 12 bristles to emulate a real brush
-                    for (int j = 0; j < N_BRISTLES; j++) {
-                        const Bristle *b_info = &bristles[j];
-                        gboolean in_stroke = FALSE;
-                        double last_px = 0.0, last_py = 0.0;
+                    // Draw solid core with color gradient
+                    for (int i = 1; i < pt_count; i++) {
+                        double fraction = (double)(i - 1) / (pt_count - 1);
+                        double w = 10.0 * (1.0 - fraction) + 2.0; // Core width
+                        double r = start_r * (1.0 - fraction) + end_r * fraction;
+                        double g = start_g * (1.0 - fraction) + end_g * fraction;
+                        double b = start_b * (1.0 - fraction) + end_b * fraction;
                         
-                        for (int i = 0; i < pt_count; i++) {
-                            double frac = (double)i / (pt_count > 1 ? (pt_count - 1) : 1);
-                            if (frac >= b_info->start_frac && frac <= b_info->end_frac) {
-                                double w_i = 16.0 * (1.0 - frac) + 3.0; // Brush thickness at point i
-                                double px = pts[i].x + offset_x + normals[i].x * (b_info->rel_pos * w_i);
-                                double py = pts[i].y + offset_y + normals[i].y * (b_info->rel_pos * w_i);
-                                
-                                if (in_stroke) {
-                                    double r = start_r * (1.0 - frac) + end_r * frac;
-                                    double g = start_g * (1.0 - frac) + end_g * frac;
-                                    double b = start_b * (1.0 - frac) + end_b * frac;
-                                    double opacity = 0.65 * b_info->opacity_mult * (1.0 - frac * 0.5); // Fades slightly at the end
-                                    
-                                    cairo_set_source_rgba(cr, r, g, b, opacity);
-                                    double bristle_w = 1.0 * b_info->width_mult;
-                                    cairo_set_line_width(cr, bristle_w);
-                                    
-                                    cairo_move_to(cr, last_px, last_py);
-                                    cairo_line_to(cr, px, py);
-                                    cairo_stroke(cr);
-                                }
-                                
-                                last_px = px;
-                                last_py = py;
-                                in_stroke = TRUE;
-                            } else {
-                                in_stroke = FALSE;
-                            }
-                        }
+                        cairo_set_source_rgb(cr, r, g, b);
+                        cairo_set_line_width(cr, w);
+                        cairo_move_to(cr, pts[i-1].x + offset_x, pts[i-1].y + offset_y);
+                        cairo_line_to(cr, pts[i].x + offset_x, pts[i].y + offset_y);
+                        cairo_stroke(cr);
                     }
-                    free(normals);
                 }
                 
-                // Draw glowing dots at key vertices
-                for (int i = 0; i < pt_count; i++) {
-                    double fraction = (double)i / (pt_count > 1 ? (pt_count - 1) : 1);
-                    double dot_radius = 5.0 * (1.0 - fraction) + 2.0;
-                    double r = start_r * (1.0 - fraction) + end_r * fraction;
-                    double g = start_g * (1.0 - fraction) + end_g * fraction;
-                    double b = start_b * (1.0 - fraction) + end_b * fraction;
+                // Draw glowing dot at the start vertex ONLY
+                if (pt_count > 0) {
+                    double dot_radius = 6.0;
+                    double r = start_r;
+                    double g = start_g;
+                    double b = start_b;
                     
                     // Outer glow ring
                     cairo_set_source_rgba(cr, r, g, b, 0.4);
-                    cairo_arc(cr, pts[i].x + offset_x, pts[i].y + offset_y, dot_radius + 4.0, 0, 2 * G_PI);
+                    cairo_arc(cr, pts[0].x + offset_x, pts[0].y + offset_y, dot_radius + 4.0, 0, 2 * G_PI);
                     cairo_fill(cr);
                     
                     // Inner solid white core
                     cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
-                    cairo_arc(cr, pts[i].x + offset_x, pts[i].y + offset_y, fmax(2.0, dot_radius - 1.5), 0, 2 * G_PI);
+                    cairo_arc(cr, pts[0].x + offset_x, pts[0].y + offset_y, fmax(2.0, dot_radius - 1.5), 0, 2 * G_PI);
                     cairo_fill(cr);
                 }
             }
