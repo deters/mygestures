@@ -408,7 +408,8 @@ static const char* get_action_class(int id) {
     }
 }
 
-static void on_action_type_changed(GtkDropDown *combo, gpointer user_data) {
+static void on_action_type_changed(GObject *gobject, GParamSpec *pspec, gpointer user_data) {
+    GtkDropDown *combo = GTK_DROP_DOWN(gobject);
     GestureEditor *editor = (GestureEditor *)user_data;
     guint index = gtk_drop_down_get_selected(combo);
     if (index == GTK_INVALID_LIST_POSITION) return;
@@ -516,6 +517,34 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
     gtk_window_destroy(GTK_WINDOW(editor->dialog));
 }
 
+static void on_dropdown_setup(GtkSignalListItemFactory *factory, GtkListItem *list_item, gpointer user_data) {
+    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    GtkWidget *icon = gtk_image_new();
+    gtk_widget_add_css_class(icon, "drop-icon");
+    gtk_box_append(GTK_BOX(box), icon);
+    GtkWidget *label = gtk_label_new(NULL);
+    gtk_widget_set_halign(label, GTK_ALIGN_START);
+    gtk_box_append(GTK_BOX(box), label);
+    gtk_list_item_set_child(list_item, box);
+}
+
+static void on_dropdown_bind(GtkSignalListItemFactory *factory, GtkListItem *list_item, gpointer user_data) {
+    GtkWidget *box = gtk_list_item_get_child(list_item);
+    GtkWidget *icon = gtk_widget_get_first_child(box);
+    GtkWidget *label = gtk_widget_get_next_sibling(icon);
+    GtkStringObject *string_obj = GTK_STRING_OBJECT(gtk_list_item_get_item(list_item));
+    const char *text = gtk_string_object_get_string(string_obj);
+    gtk_label_set_text(GTK_LABEL(label), text);
+    const char *icon_name = "system-run-symbolic";
+    for (int i = 0; action_types[i].name; i++) {
+        if (strcmp(action_types[i].name, text) == 0) {
+            icon_name = action_types[i].icon;
+            break;
+        }
+    }
+    gtk_image_set_from_icon_name(GTK_IMAGE(icon), icon_name);
+}
+
 static void on_editor_dialog_destroy(GtkWidget *widget, gpointer user_data) {
     GestureEditor *editor = (GestureEditor *)user_data;
     if (editor->browser_dialog) {
@@ -618,8 +647,18 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
             gtk_editable_set_text(GTK_EDITABLE(editor->action_val_entry), g->action_list[0]->original_str);
     }
     
+    GtkListItemFactory *factory = gtk_signal_list_item_factory_new();
+    g_signal_connect(factory, "setup", G_CALLBACK(on_dropdown_setup), NULL);
+    g_signal_connect(factory, "bind", G_CALLBACK(on_dropdown_bind), NULL);
+    gtk_drop_down_set_factory(GTK_DROP_DOWN(editor->action_type_combo), factory);
+
+    GtkListItemFactory *list_factory = gtk_signal_list_item_factory_new();
+    g_signal_connect(list_factory, "setup", G_CALLBACK(on_dropdown_setup), NULL);
+    g_signal_connect(list_factory, "bind", G_CALLBACK(on_dropdown_bind), NULL);
+    gtk_drop_down_set_list_factory(GTK_DROP_DOWN(editor->action_type_combo), list_factory);
+
     g_signal_connect(editor->action_type_combo, "notify::selected", G_CALLBACK(on_action_type_changed), editor);
-    on_action_type_changed(GTK_DROP_DOWN(editor->action_type_combo), editor);
+    on_action_type_changed(G_OBJECT(editor->action_type_combo), NULL, editor);
 
     GtkEventController *key_controller = gtk_event_controller_key_new();
     g_signal_connect(key_controller, "key-pressed", G_CALLBACK(on_record_key_pressed), editor);
