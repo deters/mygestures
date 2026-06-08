@@ -149,8 +149,10 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 				if (ev.value == 1) {
 					virtual_x = 0;
 					virtual_y = 0;
+					printf("DEBUG: Button %d Pressed. Starting movement capture.\n", self->button);
 					grabbing_start_movement(self, virtual_x, virtual_y);
 				} else if (ev.value == 0) {
+					printf("DEBUG: Button %d Released. Ending movement capture.\n", self->button);
 					grabbing_end_movement(self, virtual_x, virtual_y, (char*)libevdev_get_name(dev), conf);
 				}
 			} else {

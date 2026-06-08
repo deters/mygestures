@@ -741,7 +741,7 @@ void grabber_loop(Grabber *self, Configuration *conf)
 
 	grabber_init_drawing(self);
 
-	action_backend_init(self->evdev ? NULL : self->dpy);
+	action_backend_init(self->dpy);
 
 	if (self->synaptics)
 	{
