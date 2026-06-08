@@ -96,10 +96,10 @@ static void sway_restore(void) { system("swaymsg fullscreen disable >/dev/null 2
 static void sway_toggle_maximized(void) { system("swaymsg fullscreen toggle >/dev/null 2>&1"); }
 static void sway_workspace_left(void) { system("swaymsg workspace prev_on_output >/dev/null 2>&1"); }
 static void sway_workspace_right(void) { system("swaymsg workspace next_on_output >/dev/null 2>&1"); }
-static void sway_workspace_up(void) { LOG_WARN("Not supported under Sway.\n"); }
-static void sway_workspace_down(void) { LOG_WARN("Not supported under Sway.\n"); }
-static void sway_show_overview(void) { LOG_WARN("Not supported under Sway.\n"); }
-static void sway_show_app_grid(void) { LOG_WARN("Not supported under Sway.\n"); }
+static void sway_workspace_up(void) { system("swaymsg workspace prev >/dev/null 2>&1"); }
+static void sway_workspace_down(void) { system("swaymsg workspace next >/dev/null 2>&1"); }
+static void sway_show_overview(void) { wayland_keypress("Super_L"); }
+static void sway_show_app_grid(void) { wayland_keypress("Super_L+d"); }
 
 // Hyprland actions
 static void hypr_iconify(void) { system("hyprctl dispatch movetoworkspacesilent special:minimized >/dev/null 2>&1"); }
@@ -111,10 +111,10 @@ static void hypr_restore(void) { system("hyprctl dispatch fullscreen 1 >/dev/nul
 static void hypr_toggle_maximized(void) { system("hyprctl dispatch fullscreen 1 >/dev/null 2>&1"); }
 static void hypr_workspace_left(void) { system("hyprctl dispatch workspace e-1 >/dev/null 2>&1"); }
 static void hypr_workspace_right(void) { system("hyprctl dispatch workspace e+1 >/dev/null 2>&1"); }
-static void hypr_workspace_up(void) { LOG_WARN("Not supported under Hyprland.\n"); }
-static void hypr_workspace_down(void) { LOG_WARN("Not supported under Hyprland.\n"); }
-static void hypr_show_overview(void) { LOG_WARN("Not supported under Hyprland.\n"); }
-static void hypr_show_app_grid(void) { LOG_WARN("Not supported under Hyprland.\n"); }
+static void hypr_workspace_up(void) { system("hyprctl dispatch workspace m-1 >/dev/null 2>&1"); }
+static void hypr_workspace_down(void) { system("hyprctl dispatch workspace m+1 >/dev/null 2>&1"); }
+static void hypr_show_overview(void) { system("hyprctl dispatch togglespecialworkspace >/dev/null 2>&1"); }
+static void hypr_show_app_grid(void) { wayland_keypress("Super_L+a"); }
 
 // GNOME actions
 static void gnome_iconify(void) { wayland_execute_desktop_shortcut("minimize", "Super_L+h"); }
