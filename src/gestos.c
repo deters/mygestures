@@ -866,10 +866,153 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
                 }
             }
             
-            if (free_pts && pts) {
-                free(pts);
+        }
+    }
+}
+
+static void on_preview_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width, int height, gpointer user_data) {
+    Movement *m = (Movement *)user_data;
+    
+    // 1. Radial background vignette
+    cairo_pattern_t *bg_pat = cairo_pattern_create_radial(width / 2.0, height / 2.0, width / 10.0,
+                                                          width / 2.0, height / 2.0, width * 0.8);
+    cairo_pattern_add_color_stop_rgb(bg_pat, 0.0, 0.98, 0.99, 1.0);
+    cairo_pattern_add_color_stop_rgb(bg_pat, 1.0, 0.92, 0.93, 0.95);
+    cairo_set_source(cr, bg_pat);
+    cairo_paint(cr);
+    cairo_pattern_destroy(bg_pat);
+
+    if (!m || m->point_count == 0 || !m->points) {
+        return;
+    }
+
+    // 2. Subtle dashed crosshair grid
+    cairo_set_source_rgba(cr, 0.82, 0.85, 0.88, 0.3);
+    cairo_set_line_width(cr, 0.7);
+    double dash[] = {2.0, 2.0};
+    cairo_set_dash(cr, dash, 2, 0);
+    cairo_move_to(cr, width / 2.0, 0);
+    cairo_line_to(cr, width / 2.0, height);
+    cairo_move_to(cr, 0, height / 2.0);
+    cairo_line_to(cr, width, height / 2.0);
+    cairo_stroke(cr);
+    cairo_set_dash(cr, NULL, 0, 0);
+
+    int pt_count = m->point_count;
+    Point2D *pts = m->points;
+
+    // Find bounding box to scale and center the path
+    double min_x = pts[0].x, max_x = pts[0].x;
+    double min_y = pts[0].y, max_y = pts[0].y;
+    for (int i = 1; i < pt_count; i++) {
+        if (pts[i].x < min_x) min_x = pts[i].x;
+        if (pts[i].x > max_x) max_x = pts[i].x;
+        if (pts[i].y < min_y) min_y = pts[i].y;
+        if (pts[i].y > max_y) max_y = pts[i].y;
+    }
+
+    double path_w = max_x - min_x;
+    double path_h = max_y - min_y;
+    double path_center_x = (min_x + max_x) / 2.0;
+    double path_center_y = (min_y + max_y) / 2.0;
+
+    double margin = 6.0;
+    double target_w = width - 2.0 * margin;
+    double target_h = height - 2.0 * margin;
+
+    double scale = 1.0;
+    if (path_w > 0 || path_h > 0) {
+        double scale_x = (path_w > 0) ? (target_w / path_w) : 1e9;
+        double scale_y = (path_h > 0) ? (target_h / path_h) : 1e9;
+        scale = fmin(scale_x, scale_y);
+        if (scale > 1.5) scale = 1.5;
+    }
+
+    cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
+    cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+
+    double start_r = 0.49, start_g = 0.27, start_b = 0.90; // #7c3aed
+    double end_r = 0.96, end_g = 0.29, end_b = 0.48;     // #f43f5e
+
+    if (pt_count == 1) {
+        cairo_set_source_rgb(cr, start_r, start_g, start_b);
+        cairo_arc(cr, width / 2.0, height / 2.0, 4.0, 0, 2 * G_PI);
+        cairo_fill(cr);
+    } else {
+        int M = 8;
+        
+        // Draw shadow/glow
+        for (int i = 1; i < pt_count; i++) {
+            double f_start = (double)(i - 1) / (pt_count - 1);
+            double f_end = (double)i / (pt_count - 1);
+            
+            for (int s = 0; s < M; s++) {
+                double t1 = (double)s / M;
+                double t2 = (double)(s + 1) / M;
+                double f_global = f_start + (f_end - f_start) * t1;
+                
+                double w = 8.0 * (1.0 - f_global) + 2.0;
+                double r = start_r * (1.0 - f_global) + end_r * f_global;
+                double g = start_g * (1.0 - f_global) + end_g * f_global;
+                double b = start_b * (1.0 - f_global) + end_b * f_global;
+                
+                double px1 = width / 2.0 + (pts[i-1].x + (pts[i].x - pts[i-1].x) * t1 - path_center_x) * scale;
+                double py1 = height / 2.0 + (pts[i-1].y + (pts[i].y - pts[i-1].y) * t1 - path_center_y) * scale;
+                double px2 = width / 2.0 + (pts[i-1].x + (pts[i].x - pts[i-1].x) * t2 - path_center_x) * scale;
+                double py2 = height / 2.0 + (pts[i-1].y + (pts[i].y - pts[i-1].y) * t2 - path_center_y) * scale;
+                
+                cairo_set_source_rgba(cr, r, g, b, 0.15);
+                cairo_set_line_width(cr, w);
+                cairo_move_to(cr, px1, py1);
+                cairo_line_to(cr, px2, py2);
+                cairo_stroke(cr);
             }
         }
+        
+        // Draw solid core
+        for (int i = 1; i < pt_count; i++) {
+            double f_start = (double)(i - 1) / (pt_count - 1);
+            double f_end = (double)i / (pt_count - 1);
+            
+            for (int s = 0; s < M; s++) {
+                double t1 = (double)s / M;
+                double t2 = (double)(s + 1) / M;
+                double f_global = f_start + (f_end - f_start) * t1;
+                
+                double w = 4.0 * (1.0 - f_global) + 1.0;
+                double r = start_r * (1.0 - f_global) + end_r * f_global;
+                double g = start_g * (1.0 - f_global) + end_g * f_global;
+                double b = start_b * (1.0 - f_global) + end_b * f_global;
+                
+                double px1 = width / 2.0 + (pts[i-1].x + (pts[i].x - pts[i-1].x) * t1 - path_center_x) * scale;
+                double py1 = height / 2.0 + (pts[i-1].y + (pts[i].y - pts[i-1].y) * t1 - path_center_y) * scale;
+                double px2 = width / 2.0 + (pts[i-1].x + (pts[i].x - pts[i-1].x) * t2 - path_center_x) * scale;
+                double py2 = height / 2.0 + (pts[i-1].y + (pts[i].y - pts[i-1].y) * t2 - path_center_y) * scale;
+                
+                cairo_set_source_rgb(cr, r, g, b);
+                cairo_set_line_width(cr, w);
+                cairo_move_to(cr, px1, py1);
+                cairo_line_to(cr, px2, py2);
+                cairo_stroke(cr);
+            }
+        }
+    }
+    
+    // Draw glowing dots at key vertices
+    for (int i = 0; i < pt_count; i++) {
+        double fraction = (double)i / (pt_count > 1 ? (pt_count - 1) : 1);
+        double dot_radius = 2.5 * (1.0 - fraction) + 1.0;
+        
+        double px = width / 2.0 + (pts[i].x - path_center_x) * scale;
+        double py = height / 2.0 + (pts[i].y - path_center_y) * scale;
+        
+        cairo_set_source_rgba(cr, 0.92, 0.35, 0.25, 0.4);
+        cairo_arc(cr, px, py, dot_radius + 2.0, 0, 2 * G_PI);
+        cairo_fill(cr);
+        
+        cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+        cairo_arc(cr, px, py, fmax(1.0, dot_radius - 0.5), 0, 2 * G_PI);
+        cairo_fill(cr);
     }
 }
 
@@ -1374,10 +1517,23 @@ static void add_gesture_row(GestosApp *gestos, Gesture *gesture) {
             }
         }
     }
-    GtkWidget *label_move = gtk_label_new(gesture->movement ? (is_global_move ? gesture->movement->name : "custom") : "Unknown");
-    gtk_widget_add_css_class(label_move, "move-badge");
-    gtk_widget_set_valign(label_move, GTK_ALIGN_CENTER);
-    gtk_box_append(GTK_BOX(main_hbox), label_move);
+    GtkWidget *preview_frame = gtk_frame_new(NULL);
+    gtk_widget_set_size_request(preview_frame, 46, 46);
+    gtk_widget_set_valign(preview_frame, GTK_ALIGN_CENTER);
+    gtk_widget_add_css_class(preview_frame, "gesture-preview-frame");
+
+    GtkWidget *preview_canvas = gtk_drawing_area_new();
+    gtk_widget_set_size_request(preview_canvas, 44, 44);
+    gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(preview_canvas), on_preview_draw, gesture->movement, NULL);
+    gtk_frame_set_child(GTK_FRAME(preview_frame), preview_canvas);
+
+    if (gesture->movement) {
+        gtk_widget_set_tooltip_text(preview_frame, is_global_move ? gesture->movement->name : "custom");
+    } else {
+        gtk_widget_set_tooltip_text(preview_frame, "Unknown");
+    }
+
+    gtk_box_append(GTK_BOX(main_hbox), preview_frame);
 
     GtkWidget *del_btn = gtk_button_new_from_icon_name("user-trash-symbolic");
     gtk_widget_add_css_class(del_btn, "flat");
@@ -1603,6 +1759,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
         ".icon-bg-blue { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }\n"
         ".icon-bg-green { background: rgba(16, 185, 129, 0.12); color: #10b981; }\n"
         ".move-badge { background: rgba(99, 102, 241, 0.08); color: #6366f1; padding: 4px 12px; border-radius: 12px; font-weight: 700; font-size: 0.8em; border: 1px solid rgba(99, 102, 241, 0.15); }\n"
+        ".gesture-preview-frame { border: 1px solid alpha(currentColor, 0.08); border-radius: 8px; overflow: hidden; background: transparent; }\n"
         ".accel-badge { background: alpha(currentColor, 0.05); color: alpha(currentColor, 0.8); padding: 4px 8px; border-radius: 8px; font-family: monospace, Courier, monospace; font-weight: 600; font-size: 0.8em; border: 1px solid alpha(currentColor, 0.1); }\n"
         ".action-label { font-size: 0.82em; opacity: 0.6; }\n"
         ".dim-label { font-size: 0.82em; opacity: 0.5; font-style: italic; }\n"
