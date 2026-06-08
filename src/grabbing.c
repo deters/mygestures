@@ -480,6 +480,7 @@ void grabbing_update_movement(Grabber *self, int new_x, int new_y)
 	{
 
 		char stroke = get_fine_direction_from_deltas(x_delta, y_delta);
+		LOG_INFO(1, "DEBUG: Stroke detected: %c (dx=%d, dy=%d)\n", stroke, x_delta, y_delta);
 
 		movement_add_direction(self->fine_direction_sequence, &self->fine_len, stroke);
 
@@ -579,6 +580,9 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 		grab->expression_count = expression_count;
 		grab->expression_list = expression_list;
 		grab->active_window_info = window_info;
+
+		LOG_INFO(1, "DEBUG: Captured sequences: Fine='%s', Rough='%s'\n", 
+				 self->fine_direction_sequence, self->rought_direction_sequence);
 	}
 
 	if (grab)

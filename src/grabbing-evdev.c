@@ -162,14 +162,27 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 			   rc == LIBEVDEV_READ_STATUS_SYNC) {
 			
 			if (rc == LIBEVDEV_READ_STATUS_SYNC) {
-				while (libevdev_next_event(dev, LIBEVDEV_READ_FLAG_SYNC, &ev) == LIBEVDEV_READ_STATUS_SYNC);
+				/* Buffer overflow, we need to sync state.
+				 * Process sync events to stay up to date. */
+				while (libevdev_next_event(dev, LIBEVDEV_READ_FLAG_SYNC, &ev) == LIBEVDEV_READ_STATUS_SYNC) {
+					/* We could process these, but for now we just want to get back in sync.
+					 * Most important is that the next NORMAL event will be correct. */
+				}
 				continue;
 			}
 
 			if (ev.type == EV_KEY && ev.code == target_button) {
 				if (ev.value == 1) {
-					virtual_x = 0;
-					virtual_y = 0;
+					/* Initialize virtual coordinates. 
+					 * For REL devices, start at 0. 
+					 * For ABS devices (touchpads), start at current position. */
+					if (libevdev_has_event_type(dev, EV_ABS)) {
+						virtual_x = libevdev_get_event_value(dev, EV_ABS, ABS_X);
+						virtual_y = libevdev_get_event_value(dev, EV_ABS, ABS_Y);
+					} else {
+						virtual_x = 0;
+						virtual_y = 0;
+					}
 					grabbing_start_movement(self, virtual_x, virtual_y);
 				} else if (ev.value == 0) {
 					grabbing_end_movement(self, virtual_x, virtual_y, (char*)libevdev_get_name(dev), conf);
