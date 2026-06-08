@@ -24,6 +24,7 @@
 #include <wait.h>
 #include <unistd.h>
 #include <signal.h>
+#include <limits.h>
 
 #include <sys/types.h>
 #include <grp.h>
@@ -72,17 +73,33 @@ static void mygestures_usage(Mygestures *self)
 }
 
 static int is_user_in_input_group() {
-    gid_t groups[NGROUPS_MAX];
-    int ngroups = getgroups(NGROUPS_MAX, groups);
-    if (ngroups < 0) return 0;
+    int ngroups = getgroups(0, NULL);
+    if (ngroups <= 0) return 0;
+
+    gid_t *groups = malloc(sizeof(gid_t) * ngroups);
+    if (!groups) return 0;
+
+    ngroups = getgroups(ngroups, groups);
+    if (ngroups < 0) {
+        free(groups);
+        return 0;
+    }
 
     struct group *input_grp = getgrnam("input");
-    if (!input_grp) return 0;
-
-    for (int i = 0; i < ngroups; i++) {
-        if (groups[i] == input_grp->gr_gid) return 1;
+    if (!input_grp) {
+        free(groups);
+        return 0;
     }
-    return 0;
+
+    int found = 0;
+    for (int i = 0; i < ngroups; i++) {
+        if (groups[i] == input_grp->gr_gid) {
+            found = 1;
+            break;
+        }
+    }
+    free(groups);
+    return found;
 }
 
 static int check_permissions_and_guide(Mygestures *self)
