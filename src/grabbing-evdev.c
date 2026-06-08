@@ -53,19 +53,17 @@ int find_mouse_device(char *path, size_t len) {
 
 static int get_evdev_button_code(int button) {
 	switch (button) {
-		case 1:
-			return BTN_LEFT;
-		case 2:
-			return BTN_MIDDLE;
-		case 3:
-			return BTN_RIGHT;
-		case 4:
-			return BTN_SIDE;
-		case 5:
-			return BTN_EXTRA;
+		case 1: return BTN_LEFT;
+		case 2: return BTN_MIDDLE;
+		case 3: return BTN_RIGHT;
+		case 8: return BTN_SIDE;
+		case 9: return BTN_EXTRA;
+		case 10: return BTN_FORWARD;
+		case 11: return BTN_BACK;
+		case 12: return BTN_TASK;
 		default:
-			if (button > 3) return button;
-			return BTN_LEFT;
+			if (button >= 0x100) return button; // Direct evdev code
+			return BTN_RIGHT;
 	}
 }
 
