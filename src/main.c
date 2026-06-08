@@ -17,7 +17,7 @@
 static void process_arguments(Mygestures *self, int argc, char *const *argv)
 {
 
-	char opt;
+	int opt;
 	static struct option opts[] = {
 		{"device", required_argument, 0, 'd'},
 		{"button", required_argument, 0, 'b'},
@@ -101,22 +101,13 @@ static void process_arguments(Mygestures *self, int argc, char *const *argv)
 
 int main(int argc, char *const *argv)
 {
-	/* Disable buffering for immediate output */
-	setvbuf(stdout, NULL, _IONBF, 0);
-	setvbuf(stderr, NULL, _IONBF, 0);
-
-	fprintf(stderr, "Debug: MyGestures main entry point reached.\n");
-
 	Mygestures *self = mygestures_new();
 	if (!self) {
-		fprintf(stderr, "Fatal: Failed to initialize MyGestures object.\n");
 		return 1;
 	}
 
-	fprintf(stderr, "Debug: Processing arguments...\n");
 	process_arguments(self, argc, argv);
 
-	fprintf(stderr, "Debug: Entering mygestures_run...\n");
 	mygestures_run(self);
 
 	return 0;
