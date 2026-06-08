@@ -188,7 +188,7 @@ static void on_gnome_action_row_activated(GtkListBox *list, GtkListBoxRow *row, 
     if (action) {
         if (action->command) {
             /* If it's a custom command, use EXECUTE instead of faking keys */
-            gtk_combo_box_set_active(GTK_COMBO_BOX(browser->editor->action_type_combo), 1); /* Execute */
+            gtk_drop_down_set_selected(GTK_DROP_DOWN(browser->editor->action_type_combo), 1); /* Execute */
             gtk_editable_set_text(GTK_EDITABLE(browser->editor->action_val_entry), action->command);
         } else {
             /* Try to map common actions to native types first */
@@ -201,12 +201,12 @@ static void on_gnome_action_row_activated(GtkListBox *list, GtkListBoxRow *row, 
             if (native_id != -1) {
                 for (int i = 0; action_types[i].name; i++) {
                     if (action_types[i].id == native_id) {
-                        gtk_combo_box_set_active(GTK_COMBO_BOX(browser->editor->action_type_combo), i);
+                        gtk_drop_down_set_selected(GTK_DROP_DOWN(browser->editor->action_type_combo), i);
                         break;
                     }
                 }
             } else {
-                gtk_combo_box_set_active(GTK_COMBO_BOX(browser->editor->action_type_combo), 0); /* Keypress */
+                gtk_drop_down_set_selected(GTK_DROP_DOWN(browser->editor->action_type_combo), 0); /* Keypress */
                 char *translated = translate_gnome_accel(action->accelerator);
                 gtk_editable_set_text(GTK_EDITABLE(browser->editor->action_val_entry), translated);
                 free(translated);
@@ -320,10 +320,10 @@ static const char* get_action_icon(int id) {
     return "system-run-symbolic";
 }
 
-static void on_action_type_changed(GtkComboBox *combo, gpointer user_data) {
+static void on_action_type_changed(GtkDropDown *combo, gpointer user_data) {
     GestureEditor *editor = (GestureEditor *)user_data;
-    int index = gtk_combo_box_get_active(combo);
-    if (index < 0) return;
+    guint index = gtk_drop_down_get_selected(combo);
+    if (index == GTK_INVALID_LIST_POSITION) return;
     
     int id = action_types[index].id;
     
@@ -388,9 +388,11 @@ static void on_gesture_editor_response(GtkDialog *dialog, int response, gpointer
     GestureEditor *editor = (GestureEditor *)user_data;
     if (response == GTK_RESPONSE_ACCEPT) {
         const char *name = gtk_editable_get_text(GTK_EDITABLE(editor->name_entry));
-        const char *move_name = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(editor->move_combo));
         
-        int type_idx = gtk_combo_box_get_active(GTK_COMBO_BOX(editor->action_type_combo));
+        GtkStringList *move_list = GTK_STRING_LIST(gtk_drop_down_get_model(GTK_DROP_DOWN(editor->move_combo)));
+        const char *move_name = gtk_string_list_get_string(move_list, gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->move_combo)));
+        
+        guint type_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->action_type_combo));
         ActionType *type = &action_types[type_idx];
         const char *val = gtk_editable_get_text(GTK_EDITABLE(editor->action_val_entry));
         
@@ -447,26 +449,30 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     gtk_grid_attach(GTK_GRID(grid), editor->name_entry, 1, 0, 1, 1);
     
     gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Movement:"), 0, 1, 1, 1);
-    editor->move_combo = gtk_combo_box_text_new();
+    GtkStringList *move_sl = gtk_string_list_new(NULL);
     for (int i = 0; i < gestos->config->movement_count; i++) {
-        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(editor->move_combo), gestos->config->movement_list[i]->name);
+        gtk_string_list_append(move_sl, gestos->config->movement_list[i]->name);
+    }
+    editor->move_combo = gtk_drop_down_new(G_LIST_MODEL(move_sl), NULL);
+    for (int i = 0; i < gestos->config->movement_count; i++) {
         if (g && g->movement && strcmp(g->movement->name, gestos->config->movement_list[i]->name) == 0) {
-            gtk_combo_box_set_active(GTK_COMBO_BOX(editor->move_combo), i);
+            gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->move_combo), i);
         }
     }
-    if (!g) gtk_combo_box_set_active(GTK_COMBO_BOX(editor->move_combo), 0);
+    if (!g) gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->move_combo), 0);
     gtk_grid_attach(GTK_GRID(grid), editor->move_combo, 1, 1, 1, 1);
     
     gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Action Type:"), 0, 2, 1, 1);
-    editor->action_type_combo = gtk_combo_box_text_new();
+    GtkStringList *type_sl = gtk_string_list_new(NULL);
     int active_type = 0;
     for (int i = 0; action_types[i].name; i++) {
-        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(editor->action_type_combo), action_types[i].name);
+        gtk_string_list_append(type_sl, action_types[i].name);
         if (g && g->action_count > 0 && g->action_list[0]->type == action_types[i].id) {
             active_type = i;
         }
     }
-    gtk_combo_box_set_active(GTK_COMBO_BOX(editor->action_type_combo), active_type);
+    editor->action_type_combo = gtk_drop_down_new(G_LIST_MODEL(type_sl), NULL);
+    gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->action_type_combo), active_type);
     gtk_grid_attach(GTK_GRID(grid), editor->action_type_combo, 1, 2, 1, 1);
     
     editor->action_val_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
@@ -492,8 +498,8 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
             gtk_editable_set_text(GTK_EDITABLE(editor->action_val_entry), g->action_list[0]->original_str);
     }
     
-    g_signal_connect(editor->action_type_combo, "changed", G_CALLBACK(on_action_type_changed), editor);
-    on_action_type_changed(GTK_COMBO_BOX(editor->action_type_combo), editor);
+    g_signal_connect(editor->action_type_combo, "notify::selected", G_CALLBACK(on_action_type_changed), editor);
+    on_action_type_changed(GTK_DROP_DOWN(editor->action_type_combo), editor);
 
     GtkEventController *key_controller = gtk_event_controller_key_new();
     g_signal_connect(key_controller, "key-pressed", G_CALLBACK(on_record_key_pressed), editor);
