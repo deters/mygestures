@@ -661,27 +661,68 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
     cairo_set_dash(cr, NULL, 0, 0); // Clear dash
     
     if (editor->is_drawing && editor->drawn_count > 1) {
-        // Neon glow effect for active drawing
         cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
         cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
         
-        // Outer glow
-        cairo_set_source_rgba(cr, 0.06, 0.65, 0.95, 0.25);
-        cairo_set_line_width(cr, 12.0);
-        cairo_move_to(cr, editor->drawn_points[0].x, editor->drawn_points[0].y);
-        for (int i = 1; i < editor->drawn_count; i++) {
-            cairo_line_to(cr, editor->drawn_points[i].x, editor->drawn_points[i].y);
-        }
-        cairo_stroke(cr);
+        int M = 4; // Sub-segment division for active drawing
+        double start_r = 0.20, start_g = 0.22, start_b = 0.25; // Dark charcoal grey
+        double end_r = 0.85, end_g = 0.86, end_b = 0.88;       // Lighter grey
         
-        // Inner core
-        cairo_set_source_rgb(cr, 0.06, 0.65, 0.95);
-        cairo_set_line_width(cr, 4.0);
-        cairo_move_to(cr, editor->drawn_points[0].x, editor->drawn_points[0].y);
+        // Glow layer
         for (int i = 1; i < editor->drawn_count; i++) {
-            cairo_line_to(cr, editor->drawn_points[i].x, editor->drawn_points[i].y);
+            double f_start = (double)(i - 1) / (editor->drawn_count - 1);
+            double f_end = (double)i / (editor->drawn_count - 1);
+            
+            for (int s = 0; s < M; s++) {
+                double t1 = (double)s / M;
+                double t2 = (double)(s + 1) / M;
+                double f_global = f_start + (f_end - f_start) * t1;
+                
+                double w = 12.0 * (1.0 - f_global * 0.5);
+                double r = start_r * (1.0 - f_global) + end_r * f_global;
+                double g = start_g * (1.0 - f_global) + end_g * f_global;
+                double b = start_b * (1.0 - f_global) + end_b * f_global;
+                
+                double x1 = editor->drawn_points[i-1].x + (editor->drawn_points[i].x - editor->drawn_points[i-1].x) * t1;
+                double y1 = editor->drawn_points[i-1].y + (editor->drawn_points[i].y - editor->drawn_points[i-1].y) * t1;
+                double x2 = editor->drawn_points[i-1].x + (editor->drawn_points[i].x - editor->drawn_points[i-1].x) * t2;
+                double y2 = editor->drawn_points[i-1].y + (editor->drawn_points[i].y - editor->drawn_points[i-1].y) * t2;
+                
+                cairo_set_source_rgba(cr, r, g, b, 0.2);
+                cairo_set_line_width(cr, w);
+                cairo_move_to(cr, x1, y1);
+                cairo_line_to(cr, x2, y2);
+                cairo_stroke(cr);
+            }
         }
-        cairo_stroke(cr);
+        
+        // Solid core layer
+        for (int i = 1; i < editor->drawn_count; i++) {
+            double f_start = (double)(i - 1) / (editor->drawn_count - 1);
+            double f_end = (double)i / (editor->drawn_count - 1);
+            
+            for (int s = 0; s < M; s++) {
+                double t1 = (double)s / M;
+                double t2 = (double)(s + 1) / M;
+                double f_global = f_start + (f_end - f_start) * t1;
+                
+                double w = 4.0;
+                double r = start_r * (1.0 - f_global) + end_r * f_global;
+                double g = start_g * (1.0 - f_global) + end_g * f_global;
+                double b = start_b * (1.0 - f_global) + end_b * f_global;
+                
+                double x1 = editor->drawn_points[i-1].x + (editor->drawn_points[i].x - editor->drawn_points[i-1].x) * t1;
+                double y1 = editor->drawn_points[i-1].y + (editor->drawn_points[i].y - editor->drawn_points[i-1].y) * t1;
+                double x2 = editor->drawn_points[i-1].x + (editor->drawn_points[i].x - editor->drawn_points[i-1].x) * t2;
+                double y2 = editor->drawn_points[i-1].y + (editor->drawn_points[i].y - editor->drawn_points[i-1].y) * t2;
+                
+                cairo_set_source_rgb(cr, r, g, b);
+                cairo_set_line_width(cr, w);
+                cairo_move_to(cr, x1, y1);
+                cairo_line_to(cr, x2, y2);
+                cairo_stroke(cr);
+            }
+        }
     } else if (editor->custom_expression) {
         Point2D *pts = NULL;
         int pt_count = 0;
