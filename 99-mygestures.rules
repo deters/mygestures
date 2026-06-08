@@ -1,14 +1,12 @@
 # MyGestures udev rules
+# This file is designed to ensure MyGestures can access the mouse and simulate keystrokes.
 
-# Allow all users to access uinput (for virtual keyboard/mouse emulation)
-# We use a broad rule here because uinput is often outside the standard seat/session logic.
-KERNEL=="uinput", SUBSYSTEM=="misc", OPTIONS+="static_node=uinput", MODE="0666"
+# Force /dev/uinput to be accessible by all users (required for keyboard emulation).
+KERNEL=="uinput", SUBSYSTEM=="misc", MODE:="0666", OPTIONS+="static_node=uinput", TAG+="uaccess"
 
-# Allow the currently logged-in user to access input devices (for evdev capture)
-# This uses 'uaccess' which is session-aware and safer for actual hardware devices.
-SUBSYSTEM=="input", KERNEL=="event*", TAG+="uaccess"
-SUBSYSTEM=="input", KERNEL=="mouse*", TAG+="uaccess"
+# Broad fallback: Grant access to ALL input event nodes
+SUBSYSTEM=="input", KERNEL=="event*", MODE:="0666", TAG+="uaccess"
+SUBSYSTEM=="input", KERNEL=="mouse*", MODE:="0666", TAG+="uaccess"
 
-# Ensure touchpads and touchscreens are also accessible
-SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_TOUCHPAD}=="1", TAG+="uaccess"
-SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_TOUCHSCREEN}=="1", TAG+="uaccess"
+# Specific matches for modern input devices based on ID_INPUT
+SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT}=="1", TAG+="uaccess", MODE:="0666"
