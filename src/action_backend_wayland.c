@@ -18,6 +18,7 @@ static void ensure_ctx(void) {
 }
 
 static void wayland_keypress(const char *data) {
+    LOG_INFO(1, "  [Action] Emulating keypress: %s\n", data);
     uinput_keypress_string(data);
 }
 
@@ -35,6 +36,9 @@ static char *get_gnome_shortcut(const char *schema, const char *key) {
     if (fgets(line, sizeof(line), fp)) {
         pclose(fp);
         
+        /* Modern gsettings returns ['<Alt>F10'] or @as [] */
+        if (strstr(line, "@as []") || strstr(line, "[]")) return NULL;
+
         char *start = strchr(line, '\'');
         if (!start) start = strchr(line, '"');
         if (start) {
@@ -70,6 +74,7 @@ static char *get_gnome_shortcut(const char *schema, const char *key) {
                     translated[final_len - 1] = '\0';
                 }
                 
+                LOG_INFO(1, "  [GNOME] Found shortcut for %s: %s (translated to %s)\n", key, start, translated);
                 return translated;
             }
         }
@@ -80,6 +85,7 @@ static char *get_gnome_shortcut(const char *schema, const char *key) {
 }
 
 static void wayland_execute_desktop_shortcut(const char *gnome_key, const char *fallback_keys) {
+    LOG_INFO(1, "  [Action] Executing desktop shortcut: %s\n", gnome_key);
     const char *schemas[] = {
         "org.gnome.desktop.wm.keybindings",
         "org.gnome.settings-daemon.plugins.media-keys",
@@ -97,8 +103,14 @@ static void wayland_execute_desktop_shortcut(const char *gnome_key, const char *
     }
 
     if (fallback_keys) {
+        LOG_INFO(1, "  [Action] No GSettings found for %s, using fallback: %s\n", gnome_key, fallback_keys);
         wayland_keypress(fallback_keys);
     }
+}
+
+static void run_command(const char *cmd) {
+    LOG_INFO(1, "  [Action] Running command: %s\n", cmd);
+    system(cmd);
 }
 
 // Sway actions
@@ -108,7 +120,7 @@ static void sway_iconify(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%sswaymsg move scratchpad >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void sway_kill_window(void) { 
     ensure_ctx();
@@ -116,7 +128,7 @@ static void sway_kill_window(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%sswaymsg kill >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void sway_raise(void) { 
     ensure_ctx();
@@ -124,7 +136,7 @@ static void sway_raise(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%sswaymsg focus >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void sway_lower(void) { LOG_WARN("Lower action is not natively supported under Sway tiling layout.\n"); }
 static void sway_maximize(void) { 
@@ -133,7 +145,7 @@ static void sway_maximize(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%sswaymsg fullscreen enable >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void sway_restore(void) { 
     ensure_ctx();
@@ -141,7 +153,7 @@ static void sway_restore(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%sswaymsg fullscreen disable >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void sway_toggle_maximized(void) { 
     ensure_ctx();
@@ -149,7 +161,7 @@ static void sway_toggle_maximized(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%sswaymsg fullscreen toggle >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void sway_workspace_left(void) { 
     ensure_ctx();
@@ -157,7 +169,7 @@ static void sway_workspace_left(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%sswaymsg workspace prev_on_output >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void sway_workspace_right(void) { 
     ensure_ctx();
@@ -165,7 +177,7 @@ static void sway_workspace_right(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%sswaymsg workspace next_on_output >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void sway_workspace_up(void) { 
     ensure_ctx();
@@ -173,7 +185,7 @@ static void sway_workspace_up(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%sswaymsg workspace prev >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void sway_workspace_down(void) { 
     ensure_ctx();
@@ -181,7 +193,7 @@ static void sway_workspace_down(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%sswaymsg workspace next >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void sway_show_overview(void) { wayland_keypress("Super_L"); }
 static void sway_show_app_grid(void) { wayland_keypress("Super_L+d"); }
@@ -193,7 +205,7 @@ static void hypr_iconify(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%shyprctl dispatch movetoworkspacesilent special:minimized >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void hypr_kill_window(void) { 
     ensure_ctx();
@@ -201,7 +213,7 @@ static void hypr_kill_window(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%shyprctl dispatch killactive >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void hypr_raise(void) { 
     ensure_ctx();
@@ -209,7 +221,7 @@ static void hypr_raise(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%shyprctl dispatch alterzorder top >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void hypr_lower(void) { 
     ensure_ctx();
@@ -217,7 +229,7 @@ static void hypr_lower(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%shyprctl dispatch alterzorder bottom >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void hypr_maximize(void) { 
     ensure_ctx();
@@ -225,7 +237,7 @@ static void hypr_maximize(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%shyprctl dispatch fullscreen 1 >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void hypr_restore(void) { 
     ensure_ctx();
@@ -233,7 +245,7 @@ static void hypr_restore(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%shyprctl dispatch fullscreen 1 >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void hypr_toggle_maximized(void) { 
     ensure_ctx();
@@ -241,7 +253,7 @@ static void hypr_toggle_maximized(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%shyprctl dispatch fullscreen 1 >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void hypr_workspace_left(void) { 
     ensure_ctx();
@@ -249,7 +261,7 @@ static void hypr_workspace_left(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%shyprctl dispatch workspace e-1 >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void hypr_workspace_right(void) { 
     ensure_ctx();
@@ -257,7 +269,7 @@ static void hypr_workspace_right(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%shyprctl dispatch workspace e+1 >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void hypr_workspace_up(void) { 
     ensure_ctx();
@@ -265,7 +277,7 @@ static void hypr_workspace_up(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%shyprctl dispatch workspace m-1 >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void hypr_workspace_down(void) { 
     ensure_ctx();
@@ -273,7 +285,7 @@ static void hypr_workspace_down(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%shyprctl dispatch workspace m+1 >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void hypr_show_overview(void) { 
     ensure_ctx();
@@ -281,7 +293,7 @@ static void hypr_show_overview(void) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
     char cmd[2048];
     snprintf(cmd, sizeof(cmd), "%shyprctl dispatch togglespecialworkspace >/dev/null 2>&1", prefix);
-    system(cmd); 
+    run_command(cmd); 
 }
 static void hypr_show_app_grid(void) { wayland_keypress("Super_L+a"); }
 
