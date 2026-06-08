@@ -782,52 +782,79 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
                     cairo_arc(cr, pts[0].x + offset_x, pts[0].y + offset_y, 8.0, 0, 2 * G_PI);
                     cairo_fill(cr);
                 } else {
+                    int M = 16; // Number of sub-segments for perfectly gradual tapering
+                    
                     // Draw outer glowing shadow for template
                     for (int i = 1; i < pt_count; i++) {
-                        double fraction = (double)(i - 1) / (pt_count - 1);
-                        double w = 18.0 * (1.0 - fraction) + 4.0; // Glow width
-                        double r = start_r * (1.0 - fraction) + end_r * fraction;
-                        double g = start_g * (1.0 - fraction) + end_g * fraction;
-                        double b = start_b * (1.0 - fraction) + end_b * fraction;
+                        double f_start = (double)(i - 1) / (pt_count - 1);
+                        double f_end = (double)i / (pt_count - 1);
                         
-                        cairo_set_source_rgba(cr, r, g, b, 0.15); // Glow transparency
-                        cairo_set_line_width(cr, w);
-                        cairo_move_to(cr, pts[i-1].x + offset_x, pts[i-1].y + offset_y);
-                        cairo_line_to(cr, pts[i].x + offset_x, pts[i].y + offset_y);
-                        cairo_stroke(cr);
+                        for (int s = 0; s < M; s++) {
+                            double t1 = (double)s / M;
+                            double t2 = (double)(s + 1) / M;
+                            double f_global = f_start + (f_end - f_start) * t1;
+                            
+                            double w = 18.0 * (1.0 - f_global) + 4.0; // Glow width
+                            double r = start_r * (1.0 - f_global) + end_r * f_global;
+                            double g = start_g * (1.0 - f_global) + end_g * f_global;
+                            double b = start_b * (1.0 - f_global) + end_b * f_global;
+                            
+                            double x1 = pts[i-1].x + (pts[i].x - pts[i-1].x) * t1;
+                            double y1 = pts[i-1].y + (pts[i].y - pts[i-1].y) * t1;
+                            double x2 = pts[i-1].x + (pts[i].x - pts[i-1].x) * t2;
+                            double y2 = pts[i-1].y + (pts[i].y - pts[i-1].y) * t2;
+                            
+                            cairo_set_source_rgba(cr, r, g, b, 0.15); // Glow transparency
+                            cairo_set_line_width(cr, w);
+                            cairo_move_to(cr, x1 + offset_x, y1 + offset_y);
+                            cairo_line_to(cr, x2 + offset_x, y2 + offset_y);
+                            cairo_stroke(cr);
+                        }
                     }
                     
                     // Draw solid core with color gradient
                     for (int i = 1; i < pt_count; i++) {
-                        double fraction = (double)(i - 1) / (pt_count - 1);
-                        double w = 10.0 * (1.0 - fraction) + 2.0; // Core width
-                        double r = start_r * (1.0 - fraction) + end_r * fraction;
-                        double g = start_g * (1.0 - fraction) + end_g * fraction;
-                        double b = start_b * (1.0 - fraction) + end_b * fraction;
+                        double f_start = (double)(i - 1) / (pt_count - 1);
+                        double f_end = (double)i / (pt_count - 1);
                         
-                        cairo_set_source_rgb(cr, r, g, b);
-                        cairo_set_line_width(cr, w);
-                        cairo_move_to(cr, pts[i-1].x + offset_x, pts[i-1].y + offset_y);
-                        cairo_line_to(cr, pts[i].x + offset_x, pts[i].y + offset_y);
-                        cairo_stroke(cr);
+                        for (int s = 0; s < M; s++) {
+                            double t1 = (double)s / M;
+                            double t2 = (double)(s + 1) / M;
+                            double f_global = f_start + (f_end - f_start) * t1;
+                            
+                            double w = 10.0 * (1.0 - f_global) + 2.0; // Core width
+                            double r = start_r * (1.0 - f_global) + end_r * f_global;
+                            double g = start_g * (1.0 - f_global) + end_g * f_global;
+                            double b = start_b * (1.0 - f_global) + end_b * f_global;
+                            
+                            double x1 = pts[i-1].x + (pts[i].x - pts[i-1].x) * t1;
+                            double y1 = pts[i-1].y + (pts[i].y - pts[i-1].y) * t1;
+                            double x2 = pts[i-1].x + (pts[i].x - pts[i-1].x) * t2;
+                            double y2 = pts[i-1].y + (pts[i].y - pts[i-1].y) * t2;
+                            
+                            cairo_set_source_rgb(cr, r, g, b);
+                            cairo_set_line_width(cr, w);
+                            cairo_move_to(cr, x1 + offset_x, y1 + offset_y);
+                            cairo_line_to(cr, x2 + offset_x, y2 + offset_y);
+                            cairo_stroke(cr);
+                        }
                     }
                 }
                 
-                // Draw glowing dot at the start vertex ONLY
-                if (pt_count > 0) {
-                    double dot_radius = 6.0;
-                    double r = start_r;
-                    double g = start_g;
-                    double b = start_b;
+                // Draw glowing dots at key vertices
+                cairo_set_source_rgb(cr, 0.92, 0.35, 0.25);
+                for (int i = 0; i < pt_count; i++) {
+                    double fraction = (double)i / (pt_count > 1 ? (pt_count - 1) : 1);
+                    double dot_radius = 5.0 * (1.0 - fraction) + 2.0;
                     
                     // Outer glow ring
-                    cairo_set_source_rgba(cr, r, g, b, 0.4);
-                    cairo_arc(cr, pts[0].x + offset_x, pts[0].y + offset_y, dot_radius + 4.0, 0, 2 * G_PI);
+                    cairo_set_source_rgba(cr, 0.92, 0.35, 0.25, 0.4);
+                    cairo_arc(cr, pts[i].x + offset_x, pts[i].y + offset_y, dot_radius + 4.0, 0, 2 * G_PI);
                     cairo_fill(cr);
                     
                     // Inner solid white core
                     cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
-                    cairo_arc(cr, pts[0].x + offset_x, pts[0].y + offset_y, fmax(2.0, dot_radius - 1.5), 0, 2 * G_PI);
+                    cairo_arc(cr, pts[i].x + offset_x, pts[i].y + offset_y, fmax(2.0, dot_radius - 1.5), 0, 2 * G_PI);
                     cairo_fill(cr);
                 }
             }
