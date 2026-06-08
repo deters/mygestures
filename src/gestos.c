@@ -43,6 +43,12 @@ typedef struct {
 } GestureEditor;
 
 static void refresh_gesture_list(GestosApp *gestos);
+static gboolean is_daemon_running(void);
+static void start_daemon(void);
+static void stop_daemon(void);
+static gboolean check_daemon_status_timer(gpointer user_data);
+static gboolean on_daemon_switch_state_set(GtkSwitch *sw, gboolean state, gpointer user_data);
+static void reload_daemon_if_running(void);
 
 typedef struct {
     int id;
