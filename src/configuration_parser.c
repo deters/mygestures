@@ -361,6 +361,10 @@ void configuration_save_to_file(Configuration *conf, char *filename) {
 void configuration_load_from_defaults(Configuration * configuration, int create_config) {
 
 	char *config_file = configuration_get_default_filename();
+	if (!config_file) {
+		LOG_ERROR("Could not determine default configuration filename.\n");
+		return;
+	}
 	FILE *f = fopen(config_file, "r");
 
 	if (!f) {
