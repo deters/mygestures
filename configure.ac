@@ -40,10 +40,10 @@ AC_ARG_WITH([udevrulesdir],
     [udevrulesdir=$withval],
     [udevrulesdir=$($PKG_CONFIG --variable=udevdir udev)/rules.d])
 
-if test "x$udevrulesdir" = "x/rules.d"; then
-    # Fallback if pkg-config udev fails
-    if test "x$prefix" = "xNONE"; then
-        udevrulesdir="/lib/udev/rules.d"
+if test "x$udevrulesdir" = "x/rules.d" || test "x$udevrulesdir" = "x"; then
+    # Fallback if pkg-config udev fails or directory is empty
+    if test "x$prefix" = "xNONE" || test "x$prefix" = "x/usr/local"; then
+        udevrulesdir="/etc/udev/rules.d"
     else
         udevrulesdir="$prefix/lib/udev/rules.d"
     fi

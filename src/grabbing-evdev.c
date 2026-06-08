@@ -19,6 +19,7 @@ int find_mouse_device(char *path, size_t len) {
     DIR *dir;
     struct dirent *entry;
     const char *input_dir = "/dev/input/by-path/";
+    char fallback[256] = "";
 
     dir = opendir(input_dir);
     if (!dir) {
@@ -27,15 +28,25 @@ int find_mouse_device(char *path, size_t len) {
     }
 
     while ((entry = readdir(dir)) != NULL) {
-        // Look for entries that indicate a mouse (e.g., '-mouse').
-        if (strstr(entry->d_name, "-mouse")) {
+        // Look for entries that indicate a mouse.
+        // Favor 'event-mouse' over legacy 'mouse' entries.
+        if (strstr(entry->d_name, "event-mouse")) {
             snprintf(path, len, "/dev/input/by-path/%s", entry->d_name);
             closedir(dir);
             return 0;
         }
+        if (strstr(entry->d_name, "-mouse") && strlen(fallback) == 0) {
+            snprintf(fallback, sizeof(fallback), "/dev/input/by-path/%s", entry->d_name);
+        }
     }
 
     closedir(dir);
+
+    if (strlen(fallback) > 0) {
+        strncpy(path, fallback, len);
+        return 0;
+    }
+
     fprintf(stderr, "No mouse device found in %s\n", input_dir);
     return -1;
 }
