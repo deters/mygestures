@@ -37,6 +37,7 @@
 #include "grabbing-evdev.h"
 #include "uinput_device.h"
 #include "actions.h"
+#include "action_backend.h"
 #include "wayland.h"
 #include "x11_window.h"
 #include "logging.h"
@@ -608,7 +609,7 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 				Action *a = gest->action_list[j];
 				LOG_INFO(1, "     Executing action: %s %s\n",
 					   get_action_name(a->type), a->original_str);
-				execute_action(self->evdev ? NULL : self->dpy, target_window, a);
+				execute_action_agnostic(a);
 			}
 		}
 		else
@@ -748,6 +749,8 @@ void grabber_loop(Grabber *self, Configuration *conf)
 	grabber_open_display(self);
 
 	grabber_init_drawing(self);
+
+	action_backend_init(self->evdev ? NULL : self->dpy);
 
 	if (self->synaptics)
 	{

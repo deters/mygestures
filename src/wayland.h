@@ -20,6 +20,5 @@
 
 ActiveWindowInfo *get_wayland_active_window_info(void);
 void free_active_window_info(ActiveWindowInfo *info);
-void execute_wayland_action(Action *action);
 
 #endif /* MYGESTURES_WAYLAND_H_ */

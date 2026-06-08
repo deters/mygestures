@@ -150,6 +150,7 @@ static int check_permissions_and_guide(Mygestures *self)
 	if (!uinput_ok || !devices_ok) {
 		fprintf(stderr, "\n=========================================================================\n");
 		fprintf(stderr, "ERROR: Missing permissions to run mygestures in evdev mode.\n");
+		fprintf(stderr, "Diagnostic Info: UID=%d, EUID=%d\n", getuid(), geteuid());
 		if (!devices_ok) {
 			fprintf(stderr, " - Cannot read mouse input device: %s\n", failed_device);
 		}

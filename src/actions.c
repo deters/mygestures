@@ -19,429 +19,104 @@
 #include <config.h>
 #endif
 
-#include <X11/Xlib.h>
-#include <X11/extensions/XTest.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-
-#include "actions.h"
-#include "configuration.h"
-#include "uinput_device.h"
-#include "wayland.h"
-#include "logging.h"
 #include <unistd.h>
 
-/* Actions */
-const char * action_name[ACTION_COUNT + 1] = {
-		"ERROR", "EXIT_GEST", "EXECUTE", "ICONIFY", "KILL", "RECONF", "RAISE", "LOWER", "MAXIMIZE",
-		"RESTORE", "TOGGLE_MAXIMIZED", "KEYPRESS", "ABORT", "GNOME", "LAST" };
+#include "actions.h"
+#include "action_backend.h"
+#include "logging.h"
 
-const char * get_action_name(int action) {
+/* Actions */
+const char *action_name[ACTION_COUNT + 1] = {
+		"ERROR", "EXIT_GEST", "EXECUTE", "ICONIFY", "KILL", "RECONF", "RAISE", "LOWER", "MAXIMIZE",
+		"RESTORE", "TOGGLE_MAXIMIZED", "KEYPRESS", "ABORT", 
+		"WORKSPACE_LEFT", "WORKSPACE_RIGHT", "WORKSPACE_UP", "WORKSPACE_DOWN", 
+		"SHOW_OVERVIEW", "SHOW_APP_GRID", "LAST" };
+
+const char *get_action_name(int action) {
 	return action_name[action];
 }
-;
 
-enum {
-	_NET_WM_STATE_REMOVE = 0, _NET_WM_STATE_ADD = 1, _NET_WM_STATE_TOGGLE = 2
-};
+static ActionBackend *current_backend = NULL;
 
-/*
- * Iconify the focused window at given display.
- *
- * PUBLIC
- */
-void action_iconify(Display *dpy, Window w) {
-	if (w != None)
-		XIconifyWindow(dpy, w, 0);
-
-	return;
+void action_backend_init(void *context) {
+    if (context) {
+        current_backend = action_backend_x11_get(context);
+    } else {
+        current_backend = action_backend_wayland_get();
+    }
 }
 
-/**
- * Kill focused window at the given Display.
- *
- * PUBLIC
- */
-void action_kill(Display *dpy, Window w) {
+void execute_action_agnostic(Action *action) {
+    int id;
 
-	/* dont kill root window */
-	if (w == RootWindow(dpy, DefaultScreen(dpy)))
-		return;
+    assert(action);
 
-	XSync(dpy, 0);
-	XKillClient(dpy, w);
-	XSync(dpy, 0);
-	return;
+    if (action->type == ACTION_EXECUTE) {
+        id = fork();
+        if (id == 0) {
+            int i = system(action->original_str);
+            exit(i);
+        }
+        if (id < 0) {
+            LOG_ERROR("Error forking.\n");
+        }
+        return;
+    }
+
+    if (!current_backend) {
+        LOG_ERROR("Action backend not initialized. Cannot execute %s\n", get_action_name(action->type));
+        return;
+    }
+
+    switch (action->type) {
+        case ACTION_ICONIFY:
+            if (current_backend->iconify) current_backend->iconify();
+            break;
+        case ACTION_KILL:
+            if (current_backend->kill_window) current_backend->kill_window();
+            break;
+        case ACTION_RAISE:
+            if (current_backend->raise) current_backend->raise();
+            break;
+        case ACTION_LOWER:
+            if (current_backend->lower) current_backend->lower();
+            break;
+        case ACTION_MAXIMIZE:
+            if (current_backend->maximize) current_backend->maximize();
+            break;
+        case ACTION_RESTORE:
+            if (current_backend->restore) current_backend->restore();
+            break;
+        case ACTION_TOGGLE_MAXIMIZED:
+            if (current_backend->toggle_maximized) current_backend->toggle_maximized();
+            break;
+        case ACTION_KEYPRESS:
+            if (current_backend->keypress) current_backend->keypress(action->original_str);
+            break;
+        case ACTION_WORKSPACE_LEFT:
+            if (current_backend->workspace_left) current_backend->workspace_left();
+            break;
+        case ACTION_WORKSPACE_RIGHT:
+            if (current_backend->workspace_right) current_backend->workspace_right();
+            break;
+        case ACTION_WORKSPACE_UP:
+            if (current_backend->workspace_up) current_backend->workspace_up();
+            break;
+        case ACTION_WORKSPACE_DOWN:
+            if (current_backend->workspace_down) current_backend->workspace_down();
+            break;
+        case ACTION_SHOW_OVERVIEW:
+            if (current_backend->show_overview) current_backend->show_overview();
+            break;
+        case ACTION_SHOW_APP_GRID:
+            if (current_backend->show_app_grid) current_backend->show_app_grid();
+            break;
+        default:
+            LOG_ERROR("found an unknown gesture \n");
+            break;
+    }
 }
-
-/**
- * Raise the focused window at the given Display.
- *
- * PUBLIC
- */
-void action_raise(Display *dpy, Window w) {
-	XRaiseWindow(dpy, w);
-	return;
-}
-
-/**
- * Lower the focused window at the given Display.
- *
- * PUBLIC
- */
-void action_lower(Display *dpy, Window w) {
-	XLowerWindow(dpy, w);
-	return;
-}
-
-/*
- * Taken from wmctrl
- */
-static int client_msg(	Display *disp,
-						Window win,
-						char *msg,
-						unsigned long data0,
-						unsigned long data1,
-						unsigned long data2,
-						unsigned long data3,
-						unsigned long data4) {
-	XEvent event;
-	long mask = SubstructureRedirectMask | SubstructureNotifyMask;
-
-	event.xclient.type = ClientMessage;
-	event.xclient.serial = 0;
-	event.xclient.send_event = True;
-	event.xclient.message_type = XInternAtom(disp, msg, False);
-	event.xclient.window = win;
-	event.xclient.format = 32;
-	event.xclient.data.l[0] = data0;
-	event.xclient.data.l[1] = data1;
-	event.xclient.data.l[2] = data2;
-	event.xclient.data.l[3] = data3;
-	event.xclient.data.l[4] = data4;
-
-	if (XSendEvent(disp, DefaultRootWindow(disp), False, mask, &event)) {
-		return EXIT_SUCCESS;
-	} else {
-		fprintf(stderr, "Cannot send %s event.\n", msg);
-		return EXIT_FAILURE;
-	}
-
-	XFlush(disp);
-
-}
-
-/**
- * Maximize the focused window at the given Display.
- *
- * PUBLIC
- */
-void action_toggle_maximized(Display *dpy, Window w) {
-
-	unsigned long action;
-	Atom prop1 = 0;
-	Atom prop2 = 0;
-
-	action = _NET_WM_STATE_TOGGLE;
-
-	char *tmp_prop2, *tmp2;
-	tmp_prop2 = "_NET_WM_STATE_MAXIMIZED_HORZ";
-	prop2 = XInternAtom(dpy, tmp_prop2, False);
-	char * tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
-
-	prop1 = XInternAtom(dpy, tmp_prop1, False);
-
-	client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long) prop1, (unsigned long) prop2, 0, 0);
-
-}
-
-/**
- * Maximize the focused window at the given Display.
- *
- * PUBLIC
- */
-void action_restore(Display *dpy, Window w) {
-
-	unsigned long action;
-	Atom prop1 = 0;
-	Atom prop2 = 0;
-
-	action = _NET_WM_STATE_REMOVE;
-
-	char *tmp_prop2, *tmp2;
-	tmp_prop2 = "_NET_WM_STATE_MAXIMIZED_HORZ";
-	prop2 = XInternAtom(dpy, tmp_prop2, False);
-	char * tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
-
-	prop1 = XInternAtom(dpy, tmp_prop1, False);
-
-	client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long) prop1, (unsigned long) prop2, 0, 0);
-
-}
-
-/**
- * Maximize the focused window at the given Display.
- *
- * PUBLIC
- */
-void action_maximize(Display *dpy, Window w) {
-
-	unsigned long action;
-	Atom prop1 = 0;
-	Atom prop2 = 0;
-
-	action = _NET_WM_STATE_ADD;
-
-	char *tmp_prop2, *tmp2;
-	tmp_prop2 = "_NET_WM_STATE_MAXIMIZED_HORZ";
-	prop2 = XInternAtom(dpy, tmp_prop2, False);
-	char * tmp_prop1 = "_NET_WM_STATE_MAXIMIZED_VERT";
-
-	prop1 = XInternAtom(dpy, tmp_prop1, False);
-
-	client_msg(dpy, w, "_NET_WM_STATE", action, (unsigned long) prop1, (unsigned long) prop2, 0, 0);
-
-}
-
-/**
- * Fake key event
- */
-void press_key(Display *dpy, KeySym key, Bool is_press) {
-	if (dpy == NULL) {
-		uinput_keypress(NULL, key, is_press);
-	} else {
-		XTestFakeKeyEvent(dpy, XKeysymToKeycode(dpy, key), is_press, CurrentTime);
-	}
-	return;
-}
-
-/* alloc a key_press struct ???? */
-struct key_press * alloc_key_press(void) {
-	struct key_press *ans = malloc(sizeof(struct key_press));
-	bzero(ans, sizeof(struct key_press));
-	return ans;
-}
-
-/**
- * Creates a Keysym from a char sequence
- *
- * PRIVATE
- */
-struct key_press * string_to_keypress(char *str_ptr) {
-
-	char * copy = strdup(str_ptr);
-
-	struct key_press base;
-	struct key_press *key;
-	KeySym k;
-	char *str = copy;
-	char *token = str;
-	char *str_dup;
-
-	if (str == NULL)
-		return NULL;
-
-	key = &base;
-	token = strsep(&copy, "+\n ");
-	while (token != NULL) {
-		/* printf("found : %s\n", token); */
-		k = XStringToKeysym(token);
-		if (k == NoSymbol) {
-			fprintf(stderr, "error converting %s to keysym\n", token);
-			// Do not exit, just skip or return what we have so far
-			continue;
-		}
-		key->next = alloc_key_press();
-		key = key->next;
-		key->key = k;
-		token = strsep(&copy, "+\n ");
-	}
-
-	base.next->original_str = str_ptr;
-	free(str);
-	return base.next;
-}
-
-static void release_keys_reverse(Display *dpy, struct key_press *key) {
-	if (key == NULL)
-		return;
-	release_keys_reverse(dpy, key->next);
-	press_key(dpy, key->key, False);
-}
-
-/**
- * Fake sequence key events
- */
-void action_keypress(Display *dpy, char *data) {
-
-	struct key_press * keys = string_to_keypress(data);
-
-	struct key_press *first_key;
-	struct key_press *tmp;
-
-	first_key = (struct key_press *) keys;
-
-	if (first_key == NULL) {
-		fprintf(stderr, " internal error in %s, key is null\n", __func__);
-		return;
-	}
-
-	for (tmp = first_key; tmp != NULL; tmp = tmp->next) {
-		press_key(dpy, tmp->key, True);
-		usleep(10000); // 10ms delay between each key press in a sequence
-	}
-
-	usleep(50000); // 50ms delay to ensure combination is registered
-
-	release_keys_reverse(dpy, first_key);
-
-	while (first_key != NULL) {
-		struct key_press *next = first_key->next;
-		free(first_key);
-		first_key = next;
-	}
-
-	return;
-}
-
-void action_gnome_shortcut(Display *dpy, const char *shortcut_name) {
-	const char *schemas[] = {
-		"org.gnome.desktop.wm.keybindings",
-		"org.gnome.settings-daemon.plugins.media-keys",
-		"org.gnome.shell.keybindings",
-		NULL
-	};
-	char cmd[512];
-	for (int i = 0; schemas[i] != NULL; i++) {
-		snprintf(cmd, sizeof(cmd), "gsettings get %s %s 2>/dev/null", schemas[i], shortcut_name);
-		FILE *fp = popen(cmd, "r");
-		if (!fp) continue;
-
-		char line[512];
-		if (fgets(line, sizeof(line), fp)) {
-			pclose(fp);
-			
-			if (strstr(line, "@as []") || strstr(line, "''") || strstr(line, "No such key")) {
-				continue;
-			}
-
-			char *start = strchr(line, '\'');
-			if (!start) start = strchr(line, '"');
-			if (start) {
-				start++;
-				char *end = strchr(start, '\'');
-				if (!end) end = strchr(start, '"');
-				if (end) {
-					*end = '\0';
-					
-					char *translated = malloc(strlen(start) * 2 + 1);
-					translated[0] = '\0';
-					char *p = start;
-					while (*p) {
-						if (strncmp(p, "<Alt>", 5) == 0) { strcat(translated, "Alt_L+"); p += 5; }
-						else if (strncmp(p, "<Super>", 7) == 0) { strcat(translated, "Super_L+"); p += 7; }
-						else if (strncmp(p, "<Shift>", 7) == 0) { strcat(translated, "Shift_L+"); p += 7; }
-						else if (strncmp(p, "<Control>", 9) == 0) { strcat(translated, "Control_L+"); p += 9; }
-						else if (strncmp(p, "<Ctrl>", 6) == 0) { strcat(translated, "Control_L+"); p += 6; }
-						else if (*p == '>') { p++; }
-						else {
-							size_t len = strlen(translated);
-							translated[len] = *p;
-							translated[len+1] = '\0';
-							p++;
-						}
-					}
-					size_t final_len = strlen(translated);
-					if (final_len > 0 && translated[final_len - 1] == '+') {
-						translated[final_len - 1] = '\0';
-					}
-					
-					if (strlen(translated) > 0) {
-						LOG_INFO(1, "Executing GNOME shortcut '%s' as %s\n", shortcut_name, translated);
-						action_keypress(dpy, translated);
-					}
-					free(translated);
-					return;
-				}
-			}
-		} else {
-			pclose(fp);
-		}
-	}
-	LOG_WARN("Could not find or parse GNOME shortcut '%s'\n", shortcut_name);
-}
-
-/**
- * Executes an action in a system-agnostic way.
- *
- * PUBLIC
- */
-void execute_action(Display *dpy, Window focused_window, Action *action) {
-	int id;
-
-	assert(action);
-
-	if (action->type == ACTION_EXECUTE) {
-		id = fork();
-		if (id == 0) {
-			int i = system(action->original_str);
-			exit(i);
-		}
-		if (id < 0) {
-			LOG_ERROR("Error forking.\n");
-		}
-		return;
-	}
-
-	if (!dpy) {
-		if (action->type == ACTION_KEYPRESS) {
-			action_keypress(dpy, action->original_str);
-		} else {
-			execute_wayland_action(action);
-		}
-		return;
-	}
-
-	switch (action->type) {
-	case ACTION_ICONIFY:
-		action_iconify(dpy, focused_window);
-		break;
-	case ACTION_KILL:
-		action_kill(dpy, focused_window);
-		break;
-	case ACTION_RAISE:
-		action_raise(dpy, focused_window);
-		break;
-	case ACTION_LOWER:
-		action_lower(dpy, focused_window);
-		break;
-	case ACTION_MAXIMIZE:
-		action_maximize(dpy, focused_window);
-		break;
-	case ACTION_RESTORE:
-		action_restore(dpy, focused_window);
-		break;
-	case ACTION_TOGGLE_MAXIMIZED:
-		action_toggle_maximized(dpy, focused_window);
-		break;
-	case ACTION_KEYPRESS:
-		action_keypress(dpy, action->original_str);
-		break;
-	case ACTION_GNOME:
-		action_gnome_shortcut(dpy, action->original_str);
-		break;
-	default:
-		LOG_ERROR("found an unknown gesture \n");
-	}
-
-	if (dpy) {
-		XAllowEvents(dpy, 0, CurrentTime);
-	}
-
-	return;
-}
-
-
-

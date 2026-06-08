@@ -14,6 +14,7 @@ mygestures_SOURCES = \
 	configuration.c configuration.h \
         configuration_parser.c configuration_parser.h \
 	    actions.c actions.h \
+	    action_backend.h action_backend_x11.c action_backend_wayland.c \
 	    grabbing.c grabbing.h \
 	    wayland.c wayland.h \
 	    x11_window.c x11_window.h \
@@ -36,6 +37,7 @@ gestos_SOURCES = \
 	configuration.c configuration.h \
 	configuration_parser.c configuration_parser.h \
 	actions.c actions.h \
+	action_backend.h action_backend_x11.c action_backend_wayland.c \
 	mygestures.c mygestures.h \
 	grabbing.c grabbing.h \
 	wayland.c wayland.h \
