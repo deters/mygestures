@@ -26,6 +26,7 @@ typedef struct {
     GtkWidget *action_val_box;
     GtkWidget *record_btn;
     gboolean recording;
+    GtkWidget *browser_dialog;
 } GestureEditor;
 
 static void refresh_gesture_list(GestosApp *gestos);
@@ -261,12 +262,41 @@ static void on_gnome_browser_search_changed(GtkSearchEntry *entry, gpointer user
     gtk_list_box_set_filter_func(GTK_LIST_BOX(browser->list), gnome_action_filter_func, (gpointer)text, NULL);
 }
 
+static void on_browser_dialog_destroy(GtkWidget *widget, gpointer user_data) {
+    GnomeActionBrowser *browser = (GnomeActionBrowser *)user_data;
+    if (browser) {
+        if (browser->editor) {
+            browser->editor->browser_dialog = NULL;
+        }
+        for (GList *l = browser->actions; l; l = l->next) {
+            GnomeAction *a = (GnomeAction *)l->data;
+            if (a) {
+                g_free(a->name);
+                g_free(a->accelerator);
+                g_free(a->description);
+                g_free(a->command);
+                g_free(a);
+            }
+        }
+        g_list_free(browser->actions);
+        g_free(browser);
+    }
+}
+
 static void open_gnome_action_browser(GtkWidget *btn, gpointer user_data) {
     GestureEditor *editor = (GestureEditor *)user_data;
+    if (editor->browser_dialog) {
+        gtk_window_present(GTK_WINDOW(editor->browser_dialog));
+        return;
+    }
+
     GnomeActionBrowser *browser = g_new0(GnomeActionBrowser, 1);
     browser->editor = editor;
 
     browser->dialog = gtk_window_new();
+    editor->browser_dialog = browser->dialog;
+    g_signal_connect(browser->dialog, "destroy", G_CALLBACK(on_browser_dialog_destroy), browser);
+
     gtk_window_set_title(GTK_WINDOW(browser->dialog), "Browse GNOME Actions");
     gtk_window_set_transient_for(GTK_WINDOW(browser->dialog), GTK_WINDOW(editor->dialog));
     gtk_window_set_modal(GTK_WINDOW(browser->dialog), TRUE);
@@ -447,9 +477,20 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
     const char *name = gtk_editable_get_text(GTK_EDITABLE(editor->name_entry));
     
     GtkStringList *move_list = GTK_STRING_LIST(gtk_drop_down_get_model(GTK_DROP_DOWN(editor->move_combo)));
-    const char *move_name = gtk_string_list_get_string(move_list, gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->move_combo)));
+    guint move_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->move_combo));
+    const char *move_name = (move_idx != GTK_INVALID_LIST_POSITION) ? 
+        gtk_string_list_get_string(move_list, move_idx) : NULL;
+    
+    if (!move_name) {
+        if (editor->app->config->movement_count > 0) {
+            move_name = editor->app->config->movement_list[0]->name;
+        } else {
+            move_name = "anonymous";
+        }
+    }
     
     guint type_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->action_type_combo));
+    if (type_idx == GTK_INVALID_LIST_POSITION) type_idx = 0;
     ActionType *type = &action_types[type_idx];
     const char *val = gtk_editable_get_text(GTK_EDITABLE(editor->action_val_entry));
     
@@ -473,6 +514,13 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
     refresh_gesture_list(editor->app);
 
     gtk_window_destroy(GTK_WINDOW(editor->dialog));
+}
+
+static void on_editor_dialog_destroy(GtkWidget *widget, gpointer user_data) {
+    GestureEditor *editor = (GestureEditor *)user_data;
+    if (editor->browser_dialog) {
+        gtk_window_destroy(GTK_WINDOW(editor->browser_dialog));
+    }
     g_free(editor);
 }
 
@@ -482,6 +530,8 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     editor->gesture = g;
     
     editor->dialog = gtk_window_new();
+    g_signal_connect(editor->dialog, "destroy", G_CALLBACK(on_editor_dialog_destroy), editor);
+
     gtk_window_set_title(GTK_WINDOW(editor->dialog), g ? "Edit Gesture" : "New Gesture");
     gtk_window_set_transient_for(GTK_WINDOW(editor->dialog), GTK_WINDOW(gestos->window));
     gtk_window_set_modal(GTK_WINDOW(editor->dialog), TRUE);
