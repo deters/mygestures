@@ -54,6 +54,13 @@ static unsigned int name_to_keycode(const char *name) {
 int uinput_init_from_device(struct libevdev *source_dev) {
     if (uinput_dev) return 0;
 
+    /* Enable all keyboard keys on the virtual clone so we can send shortcuts,
+     * even if the physical device is just a mouse/touchpad. */
+    for (int i = 1; i < KEY_MAX; i++) {
+        if (i >= BTN_MISC && i <= BTN_GEAR_UP) continue; /* Skip mouse button range to keep source bits */
+        libevdev_enable_event_code(source_dev, EV_KEY, i, NULL);
+    }
+
     int rc = libevdev_uinput_create_from_device(source_dev, 
                                                LIBEVDEV_UINPUT_OPEN_MANAGED,
                                                &uinput_dev);
