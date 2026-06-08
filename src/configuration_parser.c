@@ -326,7 +326,20 @@ void configuration_save_to_file(Configuration *conf, char *filename) {
         for (int j = 0; j < conf->gesture_count; j++) {
             Gesture *g = conf->gesture_list[j];
             fprintf(f, "  \"%s\":\n", g->name);
-            fprintf(f, "    move: %s\n", g->movement ? g->movement->name : "");
+            int is_global = 0;
+            if (g->movement) {
+                for (int k = 0; k < conf->movement_count; k++) {
+                    if (conf->movement_list[k] == g->movement) {
+                        is_global = 1;
+                        break;
+                    }
+                }
+            }
+            if (is_global) {
+                fprintf(f, "    move: \"%s\"\n", g->movement->name);
+            } else {
+                fprintf(f, "    move: \"%s\"\n", (g->movement && g->movement->expression) ? g->movement->expression : "");
+            }
             if (g->action_count > 0) {
                 fprintf(f, "    do: %s\n", g->action_list[0]->original_str);
             }

@@ -40,6 +40,7 @@ typedef struct {
     int drawn_count;
     int drawn_capacity;
     gboolean is_drawing;
+    char *custom_expression;
 } GestureEditor;
 
 static void refresh_gesture_list(GestosApp *gestos);
@@ -541,7 +542,7 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
         if (editor->app->config->movement_count > 0) {
             move_name = editor->app->config->movement_list[0]->name;
         } else {
-            move_name = "anonymous";
+            move_name = "custom";
         }
     }
     
@@ -557,10 +558,40 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
         full_action = strdup(type->prefix);
     }
 
+    Movement *final_move = NULL;
+    if (move_name && strcmp(move_name, "custom") == 0) {
+        final_move = malloc(sizeof(Movement));
+        bzero(final_move, sizeof(Movement));
+        final_move->name = strdup("custom");
+        final_move->points = NULL;
+        final_move->point_count = 0;
+        movement_set_expression(final_move, strdup(editor->custom_expression ? editor->custom_expression : "0,0 0,0"));
+    } else {
+        final_move = configuration_find_movement_by_name(editor->app->config, (char*)move_name);
+    }
+
     if (editor->gesture) {
         if (editor->gesture->name) free(editor->gesture->name);
         editor->gesture->name = strdup(name);
-        editor->gesture->movement = configuration_find_movement_by_name(editor->app->config, (char*)move_name);
+        
+        if (editor->gesture->movement) {
+            int is_global = 0;
+            for (int k = 0; k < editor->app->config->movement_count; k++) {
+                if (editor->app->config->movement_list[k] == editor->gesture->movement) {
+                    is_global = 1;
+                    break;
+                }
+            }
+            if (!is_global) {
+                if (editor->gesture->movement->name) free(editor->gesture->movement->name);
+                if (editor->gesture->movement->expression) free(editor->gesture->movement->expression);
+                if (editor->gesture->movement->points) free(editor->gesture->movement->points);
+                free(editor->gesture->movement);
+            }
+        }
+        
+        editor->gesture->movement = final_move;
+        
         for (int i = 0; i < editor->gesture->action_count; i++) {
             if (editor->gesture->action_list[i]->original_str) {
                 free(editor->gesture->action_list[i]->original_str);
@@ -571,6 +602,15 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
         configuration_add_action_from_string(editor->gesture, full_action);
     } else {
         Gesture *new_g = configuration_create_gesture(editor->app->config, (char*)name, (char*)move_name);
+        if (move_name && strcmp(move_name, "custom") == 0) {
+            if (new_g->movement) {
+                if (new_g->movement->name) free(new_g->movement->name);
+                if (new_g->movement->expression) free(new_g->movement->expression);
+                if (new_g->movement->points) free(new_g->movement->points);
+                free(new_g->movement);
+            }
+            new_g->movement = final_move;
+        }
         configuration_add_action_from_string(new_g, full_action);
     }
     free(full_action);
@@ -615,6 +655,9 @@ static void on_editor_dialog_destroy(GtkWidget *widget, gpointer user_data) {
     if (editor->drawn_points) {
         free(editor->drawn_points);
     }
+    if (editor->custom_expression) {
+        free(editor->custom_expression);
+    }
     g_free(editor);
 }
 
@@ -649,25 +692,68 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
         cairo_stroke(cr);
     } else {
         guint move_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->move_combo));
-        if (move_idx != GTK_INVALID_LIST_POSITION && move_idx < (guint)editor->app->config->movement_count) {
-            Movement *m = editor->app->config->movement_list[move_idx];
-            if (m && m->point_count > 0) {
+        if (move_idx != GTK_INVALID_LIST_POSITION) {
+            Point2D *pts = NULL;
+            int pt_count = 0;
+            gboolean free_pts = FALSE;
+            
+            if (move_idx < (guint)editor->app->config->movement_count) {
+                Movement *m = editor->app->config->movement_list[move_idx];
+                if (m) {
+                    pts = m->points;
+                    pt_count = m->point_count;
+                }
+            } else if (editor->custom_expression) {
+                int count = 0;
+                char *expr_copy = strdup(editor->custom_expression);
+                char *token = strtok(expr_copy, " ");
+                while (token) {
+                    count++;
+                    token = strtok(NULL, " ");
+                }
+                free(expr_copy);
+                
+                if (count > 0) {
+                    pts = malloc(sizeof(Point2D) * count);
+                    expr_copy = strdup(editor->custom_expression);
+                    token = strtok(expr_copy, " ");
+                    int idx = 0;
+                    while (token) {
+                        double x = 0, y = 0;
+                        if (sscanf(token, "%lf,%lf", &x, &y) == 2) {
+                            pts[idx].x = x;
+                            pts[idx].y = y;
+                            idx++;
+                        }
+                        token = strtok(NULL, " ");
+                    }
+                    free(expr_copy);
+                    pt_count = idx;
+                    free_pts = TRUE;
+                }
+            }
+            
+            if (pts && pt_count > 0) {
                 cairo_set_source_rgb(cr, 0.15, 0.65, 0.35);
                 cairo_set_line_width(cr, 4.0);
                 cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
                 cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
                 
-                cairo_move_to(cr, m->points[0].x, m->points[0].y);
-                for (int i = 1; i < m->point_count; i++) {
-                    cairo_line_to(cr, m->points[i].x, m->points[i].y);
+                cairo_move_to(cr, pts[0].x, pts[0].y);
+                for (int i = 1; i < pt_count; i++) {
+                    cairo_line_to(cr, pts[i].x, pts[i].y);
                 }
                 cairo_stroke(cr);
                 
                 cairo_set_source_rgb(cr, 0.92, 0.35, 0.25);
-                for (int i = 0; i < m->point_count; i++) {
-                    cairo_arc(cr, m->points[i].x, m->points[i].y, 4.0, 0, 2 * G_PI);
+                for (int i = 0; i < pt_count; i++) {
+                    cairo_arc(cr, pts[i].x, pts[i].y, 4.0, 0, 2 * G_PI);
                     cairo_fill(cr);
                 }
+            }
+            
+            if (free_pts && pts) {
+                free(pts);
             }
         }
     }
@@ -748,24 +834,44 @@ static void on_canvas_drag_end(GtkGestureDrag *gesture, double offset_x, double 
         int simplified_count = 0;
         Point2D *simplified = grabbing_simplify_points(editor->drawn_points, editor->drawn_count, 6.0, &simplified_count);
         
-        guint move_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->move_combo));
-        if (move_idx != GTK_INVALID_LIST_POSITION && move_idx < (guint)editor->app->config->movement_count) {
-            Movement *m = editor->app->config->movement_list[move_idx];
-            
-            int buf_size = simplified_count * 40 + 1;
-            char *buf = malloc(buf_size);
-            buf[0] = '\0';
-            for (int i = 0; i < simplified_count; i++) {
-                char pt_buf[40];
-                snprintf(pt_buf, sizeof(pt_buf), "%.1f,%.1f", simplified[i].x, simplified[i].y);
-                strcat(buf, pt_buf);
-                if (i < simplified_count - 1) {
-                    strcat(buf, " ");
-                }
+        int buf_size = simplified_count * 40 + 1;
+        char *buf = malloc(buf_size);
+        buf[0] = '\0';
+        for (int i = 0; i < simplified_count; i++) {
+            char pt_buf[40];
+            snprintf(pt_buf, sizeof(pt_buf), "%.1f,%.1f", simplified[i].x, simplified[i].y);
+            strcat(buf, pt_buf);
+            if (i < simplified_count - 1) {
+                strcat(buf, " ");
             }
-            
-            movement_set_expression(m, buf);
         }
+        
+        if (editor->custom_expression) {
+            free(editor->custom_expression);
+        }
+        editor->custom_expression = buf;
+        
+        GtkStringList *move_list = GTK_STRING_LIST(gtk_drop_down_get_model(GTK_DROP_DOWN(editor->move_combo)));
+        guint n_items = g_list_model_get_n_items(G_LIST_MODEL(move_list));
+        gboolean has_custom = FALSE;
+        for (guint i = 0; i < n_items; i++) {
+            if (strcmp(gtk_string_list_get_string(move_list, i), "custom") == 0) {
+                has_custom = TRUE;
+                break;
+            }
+        }
+        if (!has_custom) {
+            gtk_string_list_append(move_list, "custom");
+        }
+        
+        n_items = g_list_model_get_n_items(G_LIST_MODEL(move_list));
+        for (guint i = 0; i < n_items; i++) {
+            if (strcmp(gtk_string_list_get_string(move_list, i), "custom") == 0) {
+                gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->move_combo), i);
+                break;
+            }
+        }
+        
         free(simplified);
     }
     
@@ -892,17 +998,47 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     gtk_grid_attach(GTK_GRID(grid), editor->name_entry, 1, 0, 1, 1);
     
     gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Movement:"), 0, 1, 1, 1);
+    int is_global = 0;
+    if (g && g->movement) {
+        for (int i = 0; i < gestos->config->movement_count; i++) {
+            if (gestos->config->movement_list[i] == g->movement) {
+                is_global = 1;
+                break;
+            }
+        }
+    }
+    
     GtkStringList *move_sl = gtk_string_list_new(NULL);
     for (int i = 0; i < gestos->config->movement_count; i++) {
         gtk_string_list_append(move_sl, gestos->config->movement_list[i]->name);
     }
+    
+    if (g && g->movement && !is_global) {
+        gtk_string_list_append(move_sl, "custom");
+        editor->custom_expression = strdup(g->movement->expression);
+    }
+    
     editor->move_combo = gtk_drop_down_new(G_LIST_MODEL(move_sl), NULL);
-    for (int i = 0; i < gestos->config->movement_count; i++) {
-        if (g && g->movement && strcmp(g->movement->name, gestos->config->movement_list[i]->name) == 0) {
-            gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->move_combo), i);
+    
+    int selected_idx = -1;
+    if (g && g->movement) {
+        if (is_global) {
+            for (int i = 0; i < gestos->config->movement_count; i++) {
+                if (gestos->config->movement_list[i] == g->movement) {
+                    selected_idx = i;
+                    break;
+                }
+            }
+        } else {
+            selected_idx = gestos->config->movement_count;
         }
     }
-    if (!g) gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->move_combo), 0);
+    
+    if (selected_idx != -1) {
+        gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->move_combo), selected_idx);
+    } else {
+        gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->move_combo), 0);
+    }
     
     GtkWidget *move_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     gtk_widget_set_hexpand(editor->move_combo, TRUE);
@@ -1026,7 +1162,16 @@ static void on_gesture_delete_clicked(GtkWidget *widget, gpointer user_data) {
             free(del_g->action_list[j]);
         }
         free(del_g->action_list);
-        if (del_g->movement && strcmp(del_g->movement->name, "anonymous") == 0) {
+        int is_global_move = 0;
+        if (del_g->movement) {
+            for (int k = 0; k < conf->movement_count; k++) {
+                if (conf->movement_list[k] == del_g->movement) {
+                    is_global_move = 1;
+                    break;
+                }
+            }
+        }
+        if (del_g->movement && !is_global_move) {
             if (del_g->movement->name) free(del_g->movement->name);
             if (del_g->movement->expression) free(del_g->movement->expression);
             if (del_g->movement->points) free(del_g->movement->points);
@@ -1106,7 +1251,16 @@ static void add_gesture_row(GestosApp *gestos, Gesture *gesture) {
     
     gtk_box_append(GTK_BOX(main_hbox), vbox);
 
-    GtkWidget *label_move = gtk_label_new(gesture->movement ? gesture->movement->name : "Unknown");
+    int is_global_move = 0;
+    if (gesture->movement) {
+        for (int k = 0; k < gestos->config->movement_count; k++) {
+            if (gestos->config->movement_list[k] == gesture->movement) {
+                is_global_move = 1;
+                break;
+            }
+        }
+    }
+    GtkWidget *label_move = gtk_label_new(gesture->movement ? (is_global_move ? gesture->movement->name : "custom") : "Unknown");
     gtk_widget_add_css_class(label_move, "move-badge");
     gtk_widget_set_valign(label_move, GTK_ALIGN_CENTER);
     gtk_box_append(GTK_BOX(main_hbox), label_move);

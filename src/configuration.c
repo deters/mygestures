@@ -113,14 +113,54 @@ static void normalize_path(Point2D *points, int count, double size) {
 	}
 }
 
-static double path_distance(const Point2D *p1, const Point2D *p2, int n) {
-	double dist = 0;
-	for (int i = 0; i < n; i++) {
-		double dx = p1[i].x - p2[i].x;
-		double dy = p1[i].y - p2[i].y;
-		dist += sqrt(dx*dx + dy*dy);
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+static void vectorize_path(Point2D *points, int count) {
+	if (count == 0) return;
+	
+	// Translate to centroid
+	double sum_x = 0, sum_y = 0;
+	for (int i = 0; i < count; i++) {
+		sum_x += points[i].x;
+		sum_y += points[i].y;
 	}
-	return dist / n;
+	double centroid_x = sum_x / count;
+	double centroid_y = sum_y / count;
+	for (int i = 0; i < count; i++) {
+		points[i].x -= centroid_x;
+		points[i].y -= centroid_y;
+	}
+	
+	// Scale magnitude to 1.0
+	double sum_squares = 0;
+	for (int i = 0; i < count; i++) {
+		sum_squares += points[i].x * points[i].x + points[i].y * points[i].y;
+	}
+	double magnitude = sqrt(sum_squares);
+	if (magnitude < 1e-6) magnitude = 1e-6;
+	for (int i = 0; i < count; i++) {
+		points[i].x /= magnitude;
+		points[i].y /= magnitude;
+	}
+}
+
+static double compute_protractor_similarity(const Point2D *u, const Point2D *w, int n, double max_angle_rad) {
+	double a = 0;
+	double b = 0;
+	for (int i = 0; i < n; i++) {
+		a += u[i].x * w[i].x + u[i].y * w[i].y;
+		b += u[i].x * w[i].y - u[i].y * w[i].x;
+	}
+	
+	double theta = atan2(b, a);
+	if (fabs(theta) <= max_angle_rad) {
+		return sqrt(a*a + b*b);
+	} else {
+		double phi = (theta > 0) ? max_angle_rad : -max_angle_rad;
+		return a * cos(phi) + b * sin(phi);
+	}
 }
 
 void movement_set_expression(Movement* movement, char* movement_expression) {
@@ -205,7 +245,7 @@ Gesture * configuration_create_gesture(Configuration * self, char * gesture_name
 		// Treat as a raw stroke and create an anonymous movement
 		ans->movement = malloc(sizeof(Movement));
 		bzero(ans->movement, sizeof(Movement));
-		ans->movement->name = strdup("anonymous");
+		ans->movement->name = strdup("custom");
 		movement_set_expression(ans->movement, strdup(gesture_movement_or_stroke));
 	}
 
@@ -349,37 +389,42 @@ Gesture * match_gesture(Configuration * self, const Point2D * captured_points, i
 	if (!captured_points || point_count < 2) return NULL;
 	
 	int N = 64;
-	double BOX_SIZE = 250.0;
-	double THRESHOLD = 55.0; // Distance threshold for gesture matching
+	double THRESHOLD_SCORE = 0.80; // Minimum similarity score (80%) for matching
+	double MAX_ANGLE = 45.0 * (M_PI / 180.0); // Allow up to 45 degrees of rotation
 	
-	// Normalize the input path
-	Point2D *input_resampled = resample_path(captured_points, point_count, N);
-	if (!input_resampled) return NULL;
-	normalize_path(input_resampled, N, BOX_SIZE);
+	// Vectorize the input path
+	Point2D *input_vector = resample_path(captured_points, point_count, N);
+	if (!input_vector) return NULL;
+	vectorize_path(input_vector, N);
 	
 	Gesture *best_gesture = NULL;
-	double min_dist = THRESHOLD;
+	double max_score = -1.0;
 	
 	for (int g = 0; g < self->gesture_count; g++) {
 		Gesture *gest = self->gesture_list[g];
 		if (!gest || !gest->movement || gest->movement->point_count < 2) continue;
 		
-		// Normalize the template path
-		Point2D *temp_resampled = resample_path(gest->movement->points, gest->movement->point_count, N);
-		if (!temp_resampled) continue;
-		normalize_path(temp_resampled, N, BOX_SIZE);
+		// Vectorize the template path
+		Point2D *temp_vector = resample_path(gest->movement->points, gest->movement->point_count, N);
+		if (!temp_vector) continue;
+		vectorize_path(temp_vector, N);
 		
-		double dist = path_distance(input_resampled, temp_resampled, N);
-		free(temp_resampled);
+		double score = compute_protractor_similarity(input_vector, temp_vector, N, MAX_ANGLE);
+		free(temp_vector);
 		
-		if (dist < min_dist) {
-			min_dist = dist;
+		if (score > max_score) {
+			max_score = score;
 			best_gesture = gest;
 		}
 	}
 	
-	free(input_resampled);
-	return best_gesture;
+	free(input_vector);
+	
+	if (max_score >= THRESHOLD_SCORE) {
+		return best_gesture;
+	}
+	
+	return NULL;
 }
 
 Gesture * configuration_process_gesture(Configuration * self, const Point2D * points, int point_count) {

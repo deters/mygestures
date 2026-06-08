@@ -122,7 +122,7 @@ global:
 
   "Run default browser":
     move: W
-    do: exec x-www-browser
+    do: www
 
   "Run gedit":
     move: G

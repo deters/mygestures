@@ -156,7 +156,7 @@
         {
           "name": "Run default browser",
           "movement": "W",
-          "actions": [{"action": "exec", "value": "x-www-browser"}]
+          "actions": [{"action": "www", "value": ""}]
         },
         {
           "name": "Run gedit",
