@@ -1,0 +1,28 @@
+# MyGestures Hardware Remapping Template
+#
+# Use this file to remap your mouse buttons at the kernel level.
+# This is the recommended way to use MyGestures in Wayland/Evdev mode
+# without using "exclusive grabs", while still preventing the context
+# menu from appearing during gestures.
+#
+# 1. Identify your mouse's vendor/product IDs or name:
+#    grep -E "Name|Vendor|Product" /proc/bus/input/devices
+#
+# 2. Edit the match line below (evdev:input:b<bus_id>v<vendor_id>p<product_id>*)
+#    Commonly: evdev:name:<Your Mouse Name>:*
+#
+# 3. Copy this file to /etc/udev/hwdb.d/99-mygestures.hwdb
+#
+# 4. Update the hardware database:
+#    sudo systemd-hwdb update && sudo udevadm trigger
+#
+
+# Example: Remap Right Button (BTN_RIGHT) to Side Button (BTN_SIDE)
+# This prevents the OS from seeing a "Right Click" immediately.
+# You then run MyGestures with '-b 8' and use 'action: click 3' in your config.
+
+evdev:name:*Mouse*:*
+evdev:name:*Touchpad*:*
+ KEYBOARD_KEY_90003=btn_side   # 90003 is the scan code for BTN_RIGHT (usually)
+
+# Note: Finding the exact scan code can be done using 'evtest' or 'showkey --scancodes'

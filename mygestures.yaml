@@ -49,17 +49,21 @@ movements:
 
 # Default gestures available in all windows
 global:
+  "Right Click (Remapping Workflow)":
+    move: ""
+    do: click 3
+
   "Close window":
     move: DownRight
-    do: gnome close
+    do: kill
 
   "Maximize window":
     move: Up
-    do: gnome toggle-maximized
+    do: toggle-maximized
 
   "Minimize window":
     move: Down
-    do: gnome minimize
+    do: iconify
 
   "Previous page":
     move: Left
@@ -71,16 +75,19 @@ global:
 
   "Workspace Left":
     move: UpLeft
-    do: gnome switch-to-workspace-left
+    do: workspace-left
 
   "Workspace Right":
     move: UpRight
-    do: gnome switch-to-workspace-right
+    do: workspace-right
 
   "Show Overview":
     move: NorthEast
-    do: gnome toggle-overview
+    do: show-overview
 
+  "Show App Grid":
+    move: NorthWest
+    do: show-app-grid
   "Copy":
     move: C
     do: keypress Control_L+C
