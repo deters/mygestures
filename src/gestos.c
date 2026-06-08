@@ -546,8 +546,15 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
     }
 
     if (editor->gesture) {
+        if (editor->gesture->name) free(editor->gesture->name);
         editor->gesture->name = strdup(name);
         editor->gesture->movement = configuration_find_movement_by_name(editor->app->config, (char*)move_name);
+        for (int i = 0; i < editor->gesture->action_count; i++) {
+            if (editor->gesture->action_list[i]->original_str) {
+                free(editor->gesture->action_list[i]->original_str);
+            }
+            free(editor->gesture->action_list[i]);
+        }
         editor->gesture->action_count = 0;
         configuration_add_action_from_string(editor->gesture, full_action);
     } else {
@@ -1000,6 +1007,21 @@ static void on_gesture_delete_clicked(GtkWidget *widget, gpointer user_data) {
         }
     }
     if (found != -1) {
+        Gesture *del_g = conf->gesture_list[found];
+        if (del_g->name) free(del_g->name);
+        for (int j = 0; j < del_g->action_count; j++) {
+            if (del_g->action_list[j]->original_str) free(del_g->action_list[j]->original_str);
+            free(del_g->action_list[j]);
+        }
+        free(del_g->action_list);
+        if (del_g->movement && strcmp(del_g->movement->name, "anonymous") == 0) {
+            if (del_g->movement->name) free(del_g->movement->name);
+            if (del_g->movement->expression) free(del_g->movement->expression);
+            if (del_g->movement->points) free(del_g->movement->points);
+            free(del_g->movement);
+        }
+        free(del_g);
+
         for (int i = found; i < conf->gesture_count - 1; i++) {
             conf->gesture_list[i] = conf->gesture_list[i+1];
         }
