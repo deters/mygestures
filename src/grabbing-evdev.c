@@ -96,6 +96,30 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 		return;
 	}
 
+	/* Adjust sensitivity based on device hardware attributes. */
+	if (libevdev_has_event_type(dev, EV_ABS)) {
+		const struct input_absinfo *abs_x = libevdev_get_abs_info(dev, ABS_X);
+		if (abs_x && self->delta_min <= 30) { /* Only if not manually overridden */
+			int range = abs_x->maximum - abs_x->minimum;
+			int resolution = abs_x->resolution; /* units per mm */
+
+			if (resolution > 0) {
+				/* Aim for a threshold of approx 3-5mm of movement */
+				self->delta_min = resolution * 4;
+				printf("mygestures: High-res device detected (%d units/mm). Setting threshold to %d.\n", 
+					   resolution, self->delta_min);
+			} else if (range > 0) {
+				/* Fallback: use a percentage of the total range (approx 4%) */
+				self->delta_min = range / 25;
+				printf("mygestures: Absolute device detected (range %d). Setting threshold to %d.\n", 
+					   range, self->delta_min);
+			}
+		}
+	} else {
+		/* Relative device (Mouse). Standard sensitivity is usually fine. */
+		if (self->delta_min <= 0) self->delta_min = 30;
+	}
+
 	if (self->button == 0) {
 		self->button = 3;
 	}

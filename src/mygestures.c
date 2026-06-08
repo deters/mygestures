@@ -167,6 +167,9 @@ static void mygestures_grab_device(Mygestures *self, char *device_name)
 
                 Grabber *grabber = grabber_new(device_name, trigger_button);
                 grabber->evdev = 1;
+                if (self->sensitivity > 0) {
+                    grabber->delta_min = self->sensitivity;
+                }
 
                 signal(SIGINT, on_interrupt);
                 signal(SIGKILL, on_kill);

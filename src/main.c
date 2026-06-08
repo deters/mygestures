@@ -21,6 +21,7 @@ static void process_arguments(Mygestures *self, int argc, char *const *argv)
 	static struct option opts[] = {
 		{"device", required_argument, 0, 'd'},
 		{"button", required_argument, 0, 'b'},
+		{"sensitivity", required_argument, 0, 's'},
 		{"help", no_argument, 0, 'h'},
 		{0, 0, 0, 0}};
 
@@ -37,6 +38,10 @@ static void process_arguments(Mygestures *self, int argc, char *const *argv)
 
 		case 'b':
 			self->trigger_button = atoi(optarg);
+			break;
+
+		case 's':
+			self->sensitivity = atoi(optarg);
 			break;
 
 		case 'd':

@@ -10,6 +10,7 @@ typedef struct mygestures_
 {
 	int help_flag;
 	int trigger_button;
+	int sensitivity;
 	int evdev;
 
 	char *custom_config_file;
