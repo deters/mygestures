@@ -5,14 +5,29 @@
 #include "logging.h"
 #include "uinput_device.h"
 #include <unistd.h>
+#include "wayland_context.h"
+
+static WaylandContext ctx;
+static int ctx_discovered = 0;
+
+static void ensure_ctx(void) {
+    if (!ctx_discovered) {
+        discover_wayland_context(&ctx);
+        ctx_discovered = 1;
+    }
+}
 
 static void wayland_keypress(const char *data) {
     uinput_keypress_string(data);
 }
 
 static char *get_gnome_shortcut(const char *schema, const char *key) {
-    char cmd[512];
-    snprintf(cmd, sizeof(cmd), "gsettings get %s %s 2>/dev/null", schema, key);
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%sgsettings get %s %s 2>/dev/null", prefix, schema, key);
     FILE *fp = popen(cmd, "r");
     if (!fp) return NULL;
 
@@ -87,33 +102,187 @@ static void wayland_execute_desktop_shortcut(const char *gnome_key, const char *
 }
 
 // Sway actions
-static void sway_iconify(void) { system("swaymsg move scratchpad >/dev/null 2>&1"); }
-static void sway_kill_window(void) { system("swaymsg kill >/dev/null 2>&1"); }
-static void sway_raise(void) { system("swaymsg focus >/dev/null 2>&1"); }
+static void sway_iconify(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%sswaymsg move scratchpad >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void sway_kill_window(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%sswaymsg kill >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void sway_raise(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%sswaymsg focus >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
 static void sway_lower(void) { LOG_WARN("Lower action is not natively supported under Sway tiling layout.\n"); }
-static void sway_maximize(void) { system("swaymsg fullscreen enable >/dev/null 2>&1"); }
-static void sway_restore(void) { system("swaymsg fullscreen disable >/dev/null 2>&1"); }
-static void sway_toggle_maximized(void) { system("swaymsg fullscreen toggle >/dev/null 2>&1"); }
-static void sway_workspace_left(void) { system("swaymsg workspace prev_on_output >/dev/null 2>&1"); }
-static void sway_workspace_right(void) { system("swaymsg workspace next_on_output >/dev/null 2>&1"); }
-static void sway_workspace_up(void) { system("swaymsg workspace prev >/dev/null 2>&1"); }
-static void sway_workspace_down(void) { system("swaymsg workspace next >/dev/null 2>&1"); }
+static void sway_maximize(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%sswaymsg fullscreen enable >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void sway_restore(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%sswaymsg fullscreen disable >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void sway_toggle_maximized(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%sswaymsg fullscreen toggle >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void sway_workspace_left(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%sswaymsg workspace prev_on_output >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void sway_workspace_right(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%sswaymsg workspace next_on_output >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void sway_workspace_up(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%sswaymsg workspace prev >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void sway_workspace_down(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%sswaymsg workspace next >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
 static void sway_show_overview(void) { wayland_keypress("Super_L"); }
 static void sway_show_app_grid(void) { wayland_keypress("Super_L+d"); }
 
 // Hyprland actions
-static void hypr_iconify(void) { system("hyprctl dispatch movetoworkspacesilent special:minimized >/dev/null 2>&1"); }
-static void hypr_kill_window(void) { system("hyprctl dispatch killactive >/dev/null 2>&1"); }
-static void hypr_raise(void) { system("hyprctl dispatch alterzorder top >/dev/null 2>&1"); }
-static void hypr_lower(void) { system("hyprctl dispatch alterzorder bottom >/dev/null 2>&1"); }
-static void hypr_maximize(void) { system("hyprctl dispatch fullscreen 1 >/dev/null 2>&1"); }
-static void hypr_restore(void) { system("hyprctl dispatch fullscreen 1 >/dev/null 2>&1"); }
-static void hypr_toggle_maximized(void) { system("hyprctl dispatch fullscreen 1 >/dev/null 2>&1"); }
-static void hypr_workspace_left(void) { system("hyprctl dispatch workspace e-1 >/dev/null 2>&1"); }
-static void hypr_workspace_right(void) { system("hyprctl dispatch workspace e+1 >/dev/null 2>&1"); }
-static void hypr_workspace_up(void) { system("hyprctl dispatch workspace m-1 >/dev/null 2>&1"); }
-static void hypr_workspace_down(void) { system("hyprctl dispatch workspace m+1 >/dev/null 2>&1"); }
-static void hypr_show_overview(void) { system("hyprctl dispatch togglespecialworkspace >/dev/null 2>&1"); }
+static void hypr_iconify(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%shyprctl dispatch movetoworkspacesilent special:minimized >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void hypr_kill_window(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%shyprctl dispatch killactive >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void hypr_raise(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%shyprctl dispatch alterzorder top >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void hypr_lower(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%shyprctl dispatch alterzorder bottom >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void hypr_maximize(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%shyprctl dispatch fullscreen 1 >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void hypr_restore(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%shyprctl dispatch fullscreen 1 >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void hypr_toggle_maximized(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%shyprctl dispatch fullscreen 1 >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void hypr_workspace_left(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%shyprctl dispatch workspace e-1 >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void hypr_workspace_right(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%shyprctl dispatch workspace e+1 >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void hypr_workspace_up(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%shyprctl dispatch workspace m-1 >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void hypr_workspace_down(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%shyprctl dispatch workspace m+1 >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
+static void hypr_show_overview(void) { 
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%shyprctl dispatch togglespecialworkspace >/dev/null 2>&1", prefix);
+    system(cmd); 
+}
 static void hypr_show_app_grid(void) { wayland_keypress("Super_L+a"); }
 
 // GNOME actions
@@ -168,12 +337,11 @@ static void wl_click(int button) {
 static ActionBackend wayland_backend;
 
 ActionBackend *action_backend_wayland_get(void) {
-    const char *swaysock = getenv("SWAYSOCK");
-    const char *hyprland_sig = getenv("HYPRLAND_INSTANCE_SIGNATURE");
+    ensure_ctx();
 
     wayland_backend.click = wl_click;
 
-    if (swaysock) {
+    if (ctx.is_sway) {
         wayland_backend.iconify = sway_iconify;
         wayland_backend.kill_window = sway_kill_window;
         wayland_backend.raise = sway_raise;
@@ -191,7 +359,7 @@ ActionBackend *action_backend_wayland_get(void) {
         return &wayland_backend;
     }
 
-    if (hyprland_sig) {
+    if (ctx.is_hypr) {
         wayland_backend.iconify = hypr_iconify;
         wayland_backend.kill_window = hypr_kill_window;
         wayland_backend.raise = hypr_raise;
@@ -209,19 +377,7 @@ ActionBackend *action_backend_wayland_get(void) {
         return &wayland_backend;
     }
 
-    const char *desktop = getenv("XDG_CURRENT_DESKTOP");
-    int is_gnome = 0;
-    int is_kde = 0;
-    if (desktop) {
-        if (strstr(desktop, "GNOME") != NULL || strstr(desktop, "gnome") != NULL || strstr(desktop, "Ubuntu") != NULL) {
-            is_gnome = 1;
-        }
-        if (strstr(desktop, "KDE") != NULL || strstr(desktop, "kde") != NULL) {
-            is_kde = 1;
-        }
-    }
-
-    if (is_gnome) {
+    if (ctx.is_gnome) {
         wayland_backend.iconify = gnome_iconify;
         wayland_backend.kill_window = gnome_kill_window;
         wayland_backend.raise = gnome_raise;
@@ -236,7 +392,7 @@ ActionBackend *action_backend_wayland_get(void) {
         wayland_backend.workspace_down = gnome_workspace_down;
         wayland_backend.show_overview = gnome_show_overview;
         wayland_backend.show_app_grid = gnome_show_app_grid;
-    } else if (is_kde) {
+    } else if (ctx.is_kde) {
         wayland_backend.iconify = kde_iconify;
         wayland_backend.kill_window = kde_kill_window;
         wayland_backend.raise = kde_raise;
