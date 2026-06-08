@@ -144,7 +144,14 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 		if (ret == 0) continue; // Timeout
 
 		struct input_event ev;
-		while ((rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL, &ev)) == LIBEVDEV_READ_STATUS_SUCCESS) {
+		while ((rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL, &ev)) == LIBEVDEV_READ_STATUS_SUCCESS ||
+			   rc == LIBEVDEV_READ_STATUS_SYNC) {
+			
+			if (rc == LIBEVDEV_READ_STATUS_SYNC) {
+				while (libevdev_next_event(dev, LIBEVDEV_READ_FLAG_SYNC, &ev) == LIBEVDEV_READ_STATUS_SYNC);
+				continue;
+			}
+
 			if (ev.type == EV_KEY && ev.code == target_button) {
 				if (ev.value == 1) {
 					virtual_x = 0;
