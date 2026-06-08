@@ -35,29 +35,13 @@ typedef struct movement_ {
 	regex_t * expression_compiled;
 } Movement;
 
-typedef struct context_ {
-	char *name;
-	char *title;
-	char *class;
-
-	struct user_configuration_ * parent_user_configuration;
-
-	struct gesture_ ** gesture_list;
-	int gesture_count;
-
-	int abort;
-	regex_t * title_compiled;
-	regex_t * class_compiled;
-
-} Context;
-
 typedef struct user_configuration_ {
 
 	Movement** movement_list;
 	int movement_count;
 
-	Context ** context_list;
-	int context_count;
+	struct gesture_ ** gesture_list;
+	int gesture_count;
 } Configuration;
 
 typedef struct action_ {
@@ -67,31 +51,19 @@ typedef struct action_ {
 
 typedef struct gesture_ {
 	char * name;
-	Context *context;
 	Movement *movement;
 	Action ** action_list;
 	int action_count;
 } Gesture;
 
-typedef struct active_window_info_ {
-	char *title;
-	char *class;
-} ActiveWindowInfo;
-
 typedef struct capture_ {
 	int expression_count;
 	char ** expression_list;
-	ActiveWindowInfo * active_window_info;
 } Capture;
 
 Configuration * configuration_new();
 
-Context * configuration_create_context(	Configuration * self,
-										char * context_name,
-										char *window_title,
-										char *window_class);
-
-Gesture * configuration_create_gesture(Context * self, char * gesture_name, char * gesture_movement_or_stroke);
+Gesture * configuration_create_gesture(Configuration * self, char * gesture_name, char * gesture_movement_or_stroke);
 
 Movement * configuration_create_movement(	Configuration * self,
 											char *movement_name,

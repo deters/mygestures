@@ -17,7 +17,6 @@ mygestures_SOURCES = \
 	wayland_context.c wayland_context.h \
 	action_backend.h action_backend_wayland.c \
 	grabbing.c grabbing.h \
-	wayland.c wayland.h \
 	grabbing-evdev.c grabbing-evdev.h \
 	uinput_device.c uinput_device.h \
 	logging.h \
@@ -33,7 +32,6 @@ gestos_SOURCES = \
 	action_backend.h action_backend_wayland.c \
 	mygestures.c mygestures.h \
 	grabbing.c grabbing.h \
-	wayland.c wayland.h \
 	grabbing-evdev.c grabbing-evdev.h \
 	uinput_device.c uinput_device.h \
 	logging.h \

@@ -126,7 +126,7 @@ static void parse_yaml_actions(yaml_parser_t *parser, Gesture *gest) {
 	yaml_event_delete(&event);
 }
 
-static void parse_yaml_gesture(yaml_parser_t *parser, Context *ctx, char *name) {
+static void parse_yaml_gesture(yaml_parser_t *parser, Configuration *conf, char *name) {
 	yaml_event_t event;
 	char *move = NULL;
 	Gesture *gest = NULL;
@@ -143,7 +143,7 @@ static void parse_yaml_gesture(yaml_parser_t *parser, Context *ctx, char *name) 
 				yaml_event_delete(&event);
 				if (!yaml_parser_parse(parser, &event)) break;
 				move = strdup((char *)event.data.scalar.value);
-				gest = configuration_create_gesture(ctx, strdup(name), move);
+				gest = configuration_create_gesture(conf, strdup(name), move);
 			} else if (strcmp(key, "do") == 0) {
 				if (gest) parse_yaml_actions(parser, gest);
 				else {
@@ -157,7 +157,7 @@ static void parse_yaml_gesture(yaml_parser_t *parser, Context *ctx, char *name) 
 	}
 }
 
-static void parse_yaml_gestures_block(yaml_parser_t *parser, Context *ctx) {
+static void parse_yaml_gestures_block(yaml_parser_t *parser, Configuration *conf) {
 	yaml_event_t event;
 	while (1) {
 		if (!yaml_parser_parse(parser, &event)) break;
@@ -169,7 +169,7 @@ static void parse_yaml_gestures_block(yaml_parser_t *parser, Context *ctx) {
 			char *name = strdup((char *)event.data.scalar.value);
 			yaml_event_delete(&event);
 			if (!yaml_parser_parse(parser, &event)) { free(name); break; }
-			parse_yaml_gesture(parser, ctx, name);
+			parse_yaml_gesture(parser, conf, name);
 			free(name);
 		}
 		yaml_event_delete(&event);
@@ -188,7 +188,6 @@ static void parse_yaml_apps(yaml_parser_t *parser, Configuration *conf) {
 			char *name = NULL;
 			char *class = strdup(".*");
 			char *title = strdup(".*");
-			Context *ctx = NULL;
 
 			while (1) {
 				yaml_event_delete(&event);
@@ -217,8 +216,7 @@ static void parse_yaml_apps(yaml_parser_t *parser, Configuration *conf) {
 						}
 					}
 				} else if (strcmp(key, "gestures") == 0) {
-					if (!ctx) ctx = configuration_create_context(conf, name ? name : strdup("app"), title, class);
-					parse_yaml_gestures_block(parser, ctx);
+					parse_yaml_gestures_block(parser, conf);
 				}
 			}
 		}
@@ -269,8 +267,7 @@ static int configuration_parse_file(Configuration *conf, char *filename) {
 			} else if (strcmp(key, "global") == 0) {
 				yaml_event_delete(&event);
 				if (yaml_parser_parse(&parser, &event)) {
-					Context *ctx = configuration_create_context(conf, strdup("global"), strdup(".*"), strdup(".*"));
-					parse_yaml_gestures_block(&parser, ctx);
+					parse_yaml_gestures_block(&parser, conf);
 				}
 			} else if (strcmp(key, "apps") == 0) {
 				yaml_event_delete(&event);
@@ -323,12 +320,11 @@ void configuration_save_to_file(Configuration *conf, char *filename) {
     }
     fprintf(f, "\n");
 
-    /* Global Context */
-    if (conf->context_count > 0 && strcmp(conf->context_list[0]->name, "global") == 0) {
+    /* Global Gestures */
+    if (conf->gesture_count > 0) {
         fprintf(f, "global:\n");
-        Context *c = conf->context_list[0];
-        for (int j = 0; j < c->gesture_count; j++) {
-            Gesture *g = c->gesture_list[j];
+        for (int j = 0; j < conf->gesture_count; j++) {
+            Gesture *g = conf->gesture_list[j];
             fprintf(f, "  \"%s\":\n", g->name);
             fprintf(f, "    move: %s\n", g->movement ? g->movement->name : "");
             if (g->action_count > 0) {
@@ -336,23 +332,6 @@ void configuration_save_to_file(Configuration *conf, char *filename) {
             }
         }
         fprintf(f, "\n");
-    }
-
-    /* Apps Contexts */
-    fprintf(f, "apps:\n");
-    for (int i = 1; i < conf->context_count; i++) {
-        Context *c = conf->context_list[i];
-        fprintf(f, "  - name: %s\n", c->name);
-        fprintf(f, "    match: { class: \"%s\" }\n", c->class ? c->class : "");
-        fprintf(f, "    gestures:\n");
-        for (int j = 0; j < c->gesture_count; j++) {
-            Gesture *g = c->gesture_list[j];
-            fprintf(f, "      \"%s\":\n", g->name);
-            fprintf(f, "        move: %s\n", g->movement ? g->movement->name : "");
-            if (g->action_count > 0) {
-                fprintf(f, "        do: %s\n", g->action_list[0]->original_str);
-            }
-        }
     }
 
     fclose(f);

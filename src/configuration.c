@@ -28,72 +28,6 @@
 #include "configuration.h"
 #include "actions.h"
 
-void context_set_title(Context* context, char* window_title) {
-
-	assert(context);
-	assert(window_title);
-
-	context->title = window_title;
-
-	regex_t* title_compiled = NULL;
-	if (context->title) {
-		title_compiled = malloc(sizeof(regex_t));
-		if (regcomp(title_compiled, window_title, REG_EXTENDED | REG_NOSUB)) {
-			fprintf(stderr, "Error compiling regexp: %s\n", window_title);
-			free(title_compiled);
-			title_compiled = NULL;
-		}
-	}
-	context->title_compiled = title_compiled;
-}
-
-void context_set_class(Context* context, char* window_class) {
-
-	assert(context);
-	assert(window_class);
-
-	context->class = window_class;
-	regex_t* class_compiled = NULL;
-	if (context->class) {
-		class_compiled = malloc(sizeof(regex_t));
-		if (regcomp(class_compiled, window_class, REG_EXTENDED | REG_NOSUB)) {
-			fprintf(stderr, "Error compiling regexp: %s\n", window_class);
-			class_compiled = NULL;
-		}
-	}
-	context->class_compiled = class_compiled;
-}
-
-/* alloc a window struct */
-Context *configuration_create_context(Configuration * self, char * context_name,
-		char *window_title, char *window_class) {
-
-	assert(self);
-	assert(context_name);
-	assert(window_title);
-	assert(window_class);
-
-	Context *context = malloc(sizeof(Context));
-	bzero(context, sizeof(Context));
-
-	context->name = context_name;
-	context->parent_user_configuration = self;
-
-	context_set_title(context, window_title);
-	context_set_class(context, window_class);
-
-	context->gesture_list = malloc(sizeof(Gesture *) * 255);
-	context->gesture_count = 0;
-
-	if (self->context_count < 254) {
-		self->context_list[self->context_count++] = context;
-	} else {
-		fprintf(stderr, "Warning: Maximum contexts (254) reached. Ignoring context '%s'.\n", context_name);
-	}
-
-	return context;
-}
-
 void movement_set_expression(Movement* movement, char* movement_expression) {
 	movement->expression = movement_expression;
 	char* regex_str = malloc(sizeof(char) * (strlen(movement_expression) + 5));
@@ -135,7 +69,7 @@ Movement *configuration_create_movement(Configuration * self,
 	return movement;
 }
 
-Gesture * configuration_create_gesture(Context * self, char * gesture_name,
+Gesture * configuration_create_gesture(Configuration * self, char * gesture_name,
 		char * gesture_movement_or_stroke) {
 
 	assert(self);
@@ -147,7 +81,7 @@ Gesture * configuration_create_gesture(Context * self, char * gesture_name,
 
 	ans->name = strdup(gesture_name);
 	ans->movement = configuration_find_movement_by_name(
-			self->parent_user_configuration, gesture_movement_or_stroke);
+			self, gesture_movement_or_stroke);
 
 	if (!ans->movement) {
 		// Treat as a raw stroke and create an anonymous movement
@@ -157,14 +91,13 @@ Gesture * configuration_create_gesture(Context * self, char * gesture_name,
 		movement_set_expression(ans->movement, strdup(gesture_movement_or_stroke));
 	}
 
-	ans->context = self;
 	ans->action_count = 0;
 	ans->action_list = malloc(sizeof(Action *) * 20);
 
 	if (self->gesture_count < 255) {
 		self->gesture_list[self->gesture_count++] = ans;
 	} else {
-		fprintf(stderr, "Warning: Maximum gestures (255) reached for context '%s'. Ignoring gesture '%s'.\n", self->name, gesture_name);
+		fprintf(stderr, "Warning: Maximum gestures (255) reached. Ignoring gesture '%s'.\n", gesture_name);
 	}
 
 	return ans;
@@ -253,53 +186,28 @@ Action *configuration_create_action(Gesture * self, int action_type,
 	return ans;
 }
 
-Gesture * match_gesture(Configuration * self, char * captured_sequence,
-		ActiveWindowInfo * window) {
+Gesture * match_gesture(Configuration * self, char * captured_sequence) {
 
 	assert(self);
 	assert(captured_sequence);
-	assert(window);
 
 	Gesture * matched_gesture = NULL;
 
-	int c = 0;
+	int g = 0;
 
-	for (c = self->context_count - 1; c >= 0; --c) {
+	for (g = 0; g < self->gesture_count; ++g) {
 
-		Context * context = self->context_list[c];
+		Gesture * gest = self->gesture_list[g];
 
-		assert(context->class);
-		assert(context->title);
+		assert(gest);
+		assert(gest->movement);
+		assert(gest->movement->expression_compiled);
 
-		if (regexec(context->class_compiled, window->class, 0,
-				(regmatch_t *) NULL, 0) != 0) {
-			continue;
-		}
+		if (regexec(gest->movement->expression_compiled, captured_sequence,
+				0, (regmatch_t *) NULL, 0) == 0) {
 
-		if (regexec(context->title_compiled, window->title, 0,
-				(regmatch_t *) NULL, 0) != 0) {
-			continue;
-		}
-
-		assert(context->gesture_count);
-
-		int g = 0;
-
-		for (g = 0; g < context->gesture_count; ++g) {
-
-			Gesture * gest = context->gesture_list[g];
-
-			assert(gest);
-			assert(gest->movement);
-			assert(gest->movement->expression_compiled);
-
-			if (regexec(gest->movement->expression_compiled, captured_sequence,
-					0, (regmatch_t *) NULL, 0) == 0) {
-
-				matched_gesture = gest;
-				break;
-
-			}
+			matched_gesture = gest;
+			break;
 
 		}
 
@@ -320,7 +228,7 @@ Gesture * configuration_process_gesture(Configuration * self, Capture * grab) {
 	for (i = 0; i < grab->expression_count; ++i) {
 
 		char * sequence = grab->expression_list[i];
-		gest = match_gesture(self, sequence, grab->active_window_info);
+		gest = match_gesture(self, sequence);
 
 		if (gest) {
 			return gest;
@@ -337,8 +245,6 @@ Movement * configuration_find_movement_by_name(Configuration * self,
 
 	assert(self);
 	assert(movement_name);
-
-	Context * ctx;
 
 	if (!movement_name) {
 		return NULL;
@@ -363,13 +269,7 @@ int configuration_get_gestures_count(Configuration * self) {
 
 	assert(self);
 
-	int count = 0;
-
-	for (int c = 0; c < self->context_count; ++c) {
-		count += self->context_list[c]->gesture_count;
-	}
-
-	return count;
+	return self->gesture_count;
 
 }
 
@@ -381,8 +281,8 @@ Configuration * configuration_new() {
 	self->movement_count = 0;
 	self->movement_list = malloc(sizeof(Movement *) * 254);
 
-	self->context_count = 0;
-	self->context_list = malloc(sizeof(Context *) * 254);
+	self->gesture_count = 0;
+	self->gesture_list = malloc(sizeof(Gesture *) * 254);
 
 	return self;
 

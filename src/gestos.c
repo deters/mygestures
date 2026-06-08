@@ -10,11 +10,8 @@ typedef struct {
     GtkApplication *app;
     Configuration *config;
     GtkWidget *window;
-    GtkWidget *sidebar_list;
     GtkWidget *main_list;
     GtkWidget *search_entry;
-    GtkWidget *context_title;
-    Context *current_context;
 } GestosApp;
 
 typedef struct {
@@ -31,152 +28,7 @@ typedef struct {
     gboolean recording;
 } GestureEditor;
 
-typedef struct {
-    GestosApp *app;
-    Context *context;
-    GtkWidget *dialog;
-    GtkWidget *name_entry;
-    GtkWidget *title_entry;
-    GtkWidget *class_entry;
-} AppEditor;
-
-typedef struct {
-    int id;
-    const char *name;
-    const char *prefix;
-    const char *icon;
-} ActionType;
-
-static ActionType action_types[] = {
-    { ACTION_KEYPRESS, "Key Combination", "keypress", "input-keyboard-symbolic" },
-    { ACTION_EXECUTE, "Execute Command", "exec", "system-run-symbolic" },
-    { ACTION_KILL, "Close Window", "kill", "window-close-symbolic" },
-    { ACTION_TOGGLE_MAXIMIZED, "Toggle Maximized", "toggle-maximized", "window-maximize-symbolic" },
-    { ACTION_MAXIMIZE, "Maximize Window", "maximize", "window-maximize-symbolic" },
-    { ACTION_RESTORE, "Restore Window", "restore", "window-restore-symbolic" },
-    { ACTION_ICONIFY, "Minimize Window", "iconify", "window-minimize-symbolic" },
-    { ACTION_RAISE, "Raise Window", "raise", "go-up-symbolic" },
-    { ACTION_LOWER, "Lower Window", "lower", "go-down-symbolic" },
-    { ACTION_WORKSPACE_LEFT, "Workspace Left", "workspace-left", "go-previous-symbolic" },
-    { ACTION_WORKSPACE_RIGHT, "Workspace Right", "workspace-right", "go-next-symbolic" },
-    { ACTION_WORKSPACE_UP, "Workspace Up", "workspace-up", "go-up-symbolic" },
-    { ACTION_WORKSPACE_DOWN, "Workspace Down", "workspace-down", "go-down-symbolic" },
-    { ACTION_SHOW_OVERVIEW, "Show Overview", "show-overview", "view-fullscreen-symbolic" },
-    { ACTION_SHOW_APP_GRID, "Show App Grid", "show-app-grid", "view-grid-symbolic" },
-    { ACTION_CLICK, "Mouse Click", "click", "input-mouse-symbolic" },
-    { 0, NULL, NULL, NULL }
-};
-
 static void refresh_gesture_list(GestosApp *gestos);
-static void refresh_sidebar(GestosApp *gestos);
-
-/* --- APP (CONTEXT) EDITOR --- */
-
-static void on_app_editor_response(GtkDialog *dialog, int response, gpointer user_data) {
-    AppEditor *editor = (AppEditor *)user_data;
-    if (response == GTK_RESPONSE_ACCEPT) {
-        const char *name = gtk_editable_get_text(GTK_EDITABLE(editor->name_entry));
-        const char *title = gtk_editable_get_text(GTK_EDITABLE(editor->title_entry));
-        const char *class = gtk_editable_get_text(GTK_EDITABLE(editor->class_entry));
-        
-        if (editor->context) {
-            /* Editing existing */
-            editor->context->name = strdup(name);
-            editor->context->title = strdup(title);
-            editor->context->class = strdup(class);
-        } else {
-            /* Creating new */
-            configuration_create_context(editor->app->config, strdup(name), strdup(title), strdup(class));
-        }
-        refresh_sidebar(editor->app);
-    }
-    gtk_window_destroy(GTK_WINDOW(dialog));
-    g_free(editor);
-}
-
-static void open_app_editor(GestosApp *gestos, Context *ctx) {
-    AppEditor *editor = g_new0(AppEditor, 1);
-    editor->app = gestos;
-    editor->context = ctx;
-    
-    editor->dialog = gtk_dialog_new_with_buttons(ctx ? "Edit Application" : "New Application",
-                                               GTK_WINDOW(gestos->window),
-                                               GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-                                               "_Cancel", GTK_RESPONSE_CANCEL,
-                                               "_Save", GTK_RESPONSE_ACCEPT,
-                                               NULL);
-    
-    GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(editor->dialog));
-    gtk_widget_set_margin_top(content, 18);
-    gtk_widget_set_margin_bottom(content, 18);
-    gtk_widget_set_margin_start(content, 18);
-    gtk_widget_set_margin_end(content, 18);
-    
-    GtkWidget *grid = gtk_grid_new();
-    gtk_grid_set_row_spacing(GTK_GRID(grid), 12);
-    gtk_grid_set_column_spacing(GTK_GRID(grid), 12);
-    gtk_box_append(GTK_BOX(content), grid);
-    
-    GtkWidget *helper = gtk_label_new("Use Regular Expressions (Regex) to match Title and Class.");
-    gtk_widget_add_css_class(helper, "dim-label");
-    gtk_grid_attach(GTK_GRID(grid), helper, 0, 0, 2, 1);
-
-    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Name:"), 0, 1, 1, 1);
-    editor->name_entry = gtk_entry_new();
-    gtk_widget_set_hexpand(editor->name_entry, TRUE);
-    if (ctx) gtk_editable_set_text(GTK_EDITABLE(editor->name_entry), ctx->name);
-    gtk_grid_attach(GTK_GRID(grid), editor->name_entry, 1, 1, 1, 1);
-    
-    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Window Title:"), 0, 2, 1, 1);
-    editor->title_entry = gtk_entry_new();
-    gtk_widget_set_hexpand(editor->title_entry, TRUE);
-    if (ctx) gtk_editable_set_text(GTK_EDITABLE(editor->title_entry), ctx->title ? ctx->title : "");
-    gtk_grid_attach(GTK_GRID(grid), editor->title_entry, 1, 2, 1, 1);
-    
-    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Window Class:"), 0, 3, 1, 1);
-    editor->class_entry = gtk_entry_new();
-    gtk_widget_set_hexpand(editor->class_entry, TRUE);
-    if (ctx) gtk_editable_set_text(GTK_EDITABLE(editor->class_entry), ctx->class ? ctx->class : "");
-    gtk_grid_attach(GTK_GRID(grid), editor->class_entry, 1, 3, 1, 1);
-    
-    g_signal_connect(editor->dialog, "response", G_CALLBACK(on_app_editor_response), editor);
-    gtk_window_present(GTK_WINDOW(editor->dialog));
-}
-
-static void on_add_app_clicked(GtkWidget *widget, gpointer user_data) {
-    open_app_editor((GestosApp *)user_data, NULL);
-}
-
-static void on_delete_app_clicked(GtkWidget *widget, gpointer user_data) {
-    GestosApp *gestos = (GestosApp *)user_data;
-    if (!gestos->current_context || strcmp(gestos->current_context->name, "global") == 0) return;
-
-    /* Find and remove from config */
-    int found = -1;
-    for (int i = 0; i < gestos->config->context_count; i++) {
-        if (gestos->config->context_list[i] == gestos->current_context) {
-            found = i;
-            break;
-        }
-    }
-    
-    if (found != -1) {
-        for (int i = found; i < gestos->config->context_count - 1; i++) {
-            gestos->config->context_list[i] = gestos->config->context_list[i+1];
-        }
-        gestos->config->context_count--;
-        gestos->current_context = (gestos->config->context_count > 0) ? gestos->config->context_list[0] : NULL;
-        refresh_sidebar(gestos);
-    }
-}
-
-static void on_sidebar_row_activated(GtkListBox *list, GtkListBoxRow *row, gpointer user_data) {
-    GestosApp *gestos = (GestosApp *)user_data;
-    Context *ctx = g_object_get_data(G_OBJECT(row), "context-ptr");
-    if (ctx && strcmp(ctx->name, "global") != 0) {
-        open_app_editor(gestos, ctx);
-    }
-}
 
 /* --- GNOME ACTION BROWSER --- */
 
@@ -528,7 +380,7 @@ static void on_gesture_editor_response(GtkDialog *dialog, int response, gpointer
             editor->gesture->action_count = 0;
             configuration_add_action_from_string(editor->gesture, full_action);
         } else {
-            Gesture *new_g = configuration_create_gesture(editor->app->current_context, (char*)name, (char*)move_name);
+            Gesture *new_g = configuration_create_gesture(editor->app->config, (char*)name, (char*)move_name);
             configuration_add_action_from_string(new_g, full_action);
         }
         free(full_action);
@@ -636,22 +488,23 @@ static void on_add_gesture_clicked(GtkWidget *widget, gpointer user_data) {
 
 static void on_gesture_delete_clicked(GtkWidget *widget, gpointer user_data) {
     Gesture *g = (Gesture *)user_data;
-    Context *ctx = g->context;
+    GtkWidget *list = gtk_widget_get_ancestor(widget, GTK_TYPE_LIST_BOX);
+    GestosApp *gestos = g_object_get_data(G_OBJECT(list), "gestos-app");
+    Configuration *conf = gestos->config;
+
     int found = -1;
-    for (int i = 0; i < ctx->gesture_count; i++) {
-        if (ctx->gesture_list[i] == g) {
+    for (int i = 0; i < conf->gesture_count; i++) {
+        if (conf->gesture_list[i] == g) {
             found = i;
             break;
         }
     }
     if (found != -1) {
-        for (int i = found; i < ctx->gesture_count - 1; i++) {
-            ctx->gesture_list[i] = ctx->gesture_list[i+1];
+        for (int i = found; i < conf->gesture_count - 1; i++) {
+            conf->gesture_list[i] = conf->gesture_list[i+1];
         }
-        ctx->gesture_count--;
+        conf->gesture_count--;
     }
-    GtkWidget *list = gtk_widget_get_ancestor(widget, GTK_TYPE_LIST_BOX);
-    GestosApp *gestos = g_object_get_data(G_OBJECT(list), "gestos-app");
     refresh_gesture_list(gestos);
 }
 
@@ -737,52 +590,15 @@ static void refresh_gesture_list(GestosApp *gestos) {
         child = next;
     }
 
-    if (!gestos->current_context) return;
-
-    gtk_label_set_text(GTK_LABEL(gestos->context_title), gestos->current_context->name);
     const char *search_text = gtk_editable_get_text(GTK_EDITABLE(gestos->search_entry));
 
-    for (int i = 0; i < gestos->current_context->gesture_count; i++) {
-        Gesture *g = gestos->current_context->gesture_list[i];
+    for (int i = 0; i < gestos->config->gesture_count; i++) {
+        Gesture *g = gestos->config->gesture_list[i];
         if (search_text && strlen(search_text) > 0) {
             if (!g_strrstr(g->name, search_text)) continue;
         }
         add_gesture_row(gestos, g);
     }
-}
-
-static void refresh_sidebar(GestosApp *gestos) {
-    GtkWidget *child = gtk_widget_get_first_child(gestos->sidebar_list);
-    while (child) {
-        GtkWidget *next = gtk_widget_get_next_sibling(child);
-        gtk_list_box_remove(GTK_LIST_BOX(gestos->sidebar_list), child);
-        child = next;
-    }
-
-    for (int i = 0; i < gestos->config->context_count; i++) {
-        Context *ctx = gestos->config->context_list[i];
-        GtkWidget *row = gtk_list_box_row_new();
-        g_object_set_data(G_OBJECT(row), "context-ptr", ctx);
-        GtkWidget *label = gtk_label_new(ctx->name);
-        gtk_widget_set_halign(label, GTK_ALIGN_START);
-        gtk_widget_set_margin_start(label, 16);
-        gtk_widget_set_margin_top(label, 10);
-        gtk_widget_set_margin_bottom(label, 10);
-        gtk_list_box_row_set_child(GTK_LIST_BOX_ROW(row), label);
-        gtk_list_box_append(GTK_LIST_BOX(gestos->sidebar_list), row);
-        
-        if (ctx == gestos->current_context) {
-            gtk_list_box_select_row(GTK_LIST_BOX(gestos->sidebar_list), GTK_LIST_BOX_ROW(row));
-        }
-    }
-}
-
-static void on_sidebar_row_selected(GtkListBox *list, GtkListBoxRow *row, gpointer user_data) {
-    if (!row) return;
-    GestosApp *gestos = (GestosApp *)user_data;
-    Context *ctx = g_object_get_data(G_OBJECT(row), "context-ptr");
-    gestos->current_context = ctx;
-    refresh_gesture_list(gestos);
 }
 
 static void on_search_changed(GtkSearchEntry *entry, gpointer user_data) {
@@ -811,7 +627,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
     gestos->window = gtk_application_window_new(app);
     gtk_window_set_title(GTK_WINDOW(gestos->window), "Gestos");
-    gtk_window_set_default_size(GTK_WINDOW(gestos->window), 950, 700);
+    gtk_window_set_default_size(GTK_WINDOW(gestos->window), 650, 700);
 
     GtkWidget *header = gtk_header_bar_new();
     gtk_window_set_titlebar(GTK_WINDOW(gestos->window), header);
@@ -830,55 +646,9 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_header_bar_pack_end(GTK_HEADER_BAR(header), about_btn);
     g_signal_connect(about_btn, "clicked", G_CALLBACK(on_about_clicked), gestos->window);
 
-    GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
-    gtk_window_set_child(GTK_WINDOW(gestos->window), paned);
-    gtk_paned_set_position(GTK_PANED(paned), 240);
-
-    /* SIDEBAR */
-    GtkWidget *sidebar_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_widget_add_css_class(sidebar_box, "sidebar");
-    gtk_paned_set_start_child(GTK_PANED(paned), sidebar_box);
-
-    GtkWidget *sidebar_top = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_widget_set_margin_top(sidebar_top, 16);
-    gtk_widget_set_margin_bottom(sidebar_top, 16);
-    gtk_widget_set_margin_start(sidebar_top, 16);
-    gtk_widget_set_margin_end(sidebar_top, 16);
-    gtk_box_append(GTK_BOX(sidebar_box), sidebar_top);
-
-    GtkWidget *sidebar_title = gtk_label_new("Applications");
-    gtk_widget_set_halign(sidebar_title, GTK_ALIGN_START);
-    gtk_widget_set_hexpand(sidebar_title, TRUE);
-    gtk_widget_add_css_class(sidebar_title, "sidebar-header");
-    gtk_box_append(GTK_BOX(sidebar_top), sidebar_title);
-
-    GtkWidget *add_app_btn = gtk_button_new_from_icon_name("list-add-symbolic");
-    gtk_widget_add_css_class(add_app_btn, "flat");
-    gtk_box_append(GTK_BOX(sidebar_top), add_app_btn);
-    g_signal_connect(add_app_btn, "clicked", G_CALLBACK(on_add_app_clicked), gestos);
-
-    gestos->sidebar_list = gtk_list_box_new();
-    gtk_widget_add_css_class(gestos->sidebar_list, "sidebar-list");
-    gtk_box_append(GTK_BOX(sidebar_box), gestos->sidebar_list);
-    g_signal_connect(gestos->sidebar_list, "row-selected", G_CALLBACK(on_sidebar_row_selected), gestos);
-    g_signal_connect(gestos->sidebar_list, "row-activated", G_CALLBACK(on_sidebar_row_activated), gestos);
-
-    GtkWidget *sidebar_bottom = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_widget_set_margin_top(sidebar_bottom, 8);
-    gtk_widget_set_margin_bottom(sidebar_bottom, 8);
-    gtk_widget_set_margin_start(sidebar_bottom, 8);
-    gtk_widget_set_margin_end(sidebar_bottom, 8);
-    gtk_box_append(GTK_BOX(sidebar_box), sidebar_bottom);
-
-    GtkWidget *del_app_btn = gtk_button_new_from_icon_name("user-trash-symbolic");
-    gtk_widget_add_css_class(del_app_btn, "flat");
-    gtk_widget_add_css_class(del_app_btn, "destructive-action");
-    gtk_box_append(GTK_BOX(sidebar_bottom), del_app_btn);
-    g_signal_connect(del_app_btn, "clicked", G_CALLBACK(on_delete_app_clicked), gestos);
-
     /* CONTENT */
     GtkWidget *content_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_paned_set_end_child(GTK_PANED(paned), content_vbox);
+    gtk_window_set_child(GTK_WINDOW(gestos->window), content_vbox);
 
     GtkWidget *content_header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
     gtk_widget_set_margin_top(content_header, 24);
@@ -887,11 +657,11 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_widget_set_margin_end(content_header, 24);
     gtk_box_append(GTK_BOX(content_vbox), content_header);
 
-    gestos->context_title = gtk_label_new("Global");
-    gtk_widget_add_css_class(gestos->context_title, "context-title");
-    gtk_widget_set_hexpand(gestos->context_title, TRUE);
-    gtk_widget_set_halign(gestos->context_title, GTK_ALIGN_START);
-    gtk_box_append(GTK_BOX(content_header), gestos->context_title);
+    GtkWidget *gestos_title = gtk_label_new("Gestures");
+    gtk_widget_add_css_class(gestos_title, "context-title");
+    gtk_widget_set_hexpand(gestos_title, TRUE);
+    gtk_widget_set_halign(gestos_title, GTK_ALIGN_START);
+    gtk_box_append(GTK_BOX(content_header), gestos_title);
 
     gestos->search_entry = gtk_search_entry_new();
     gtk_box_append(GTK_BOX(content_header), gestos->search_entry);
@@ -912,16 +682,10 @@ static void activate(GtkApplication *app, gpointer user_data) {
     /* LOAD */
     gestos->config = configuration_new();
     configuration_load_from_defaults(gestos->config, 0);
-    refresh_sidebar(gestos);
-    if (gestos->config->context_count > 0) {
-        gestos->current_context = gestos->config->context_list[0];
-        refresh_gesture_list(gestos);
-    }
+    refresh_gesture_list(gestos);
 
     GtkCssProvider *provider = gtk_css_provider_new();
     gtk_css_provider_load_from_string(provider,
-        ".sidebar-header { font-weight: bold; font-size: 0.75em; text-transform: uppercase; }\n"
-        ".sidebar-list row { border-radius: 8px; margin: 2px 12px; padding: 2px; }\n"
         ".context-title { font-size: 2.2em; font-weight: 800; }\n"
         ".boxed-list { border-radius: 12px; }\n"
         ".move-badge { background: alpha(currentColor, 0.1); padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 0.8em; }\n"

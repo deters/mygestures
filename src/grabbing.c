@@ -32,7 +32,6 @@
 #include "uinput_device.h"
 #include "actions.h"
 #include "action_backend.h"
-#include "wayland.h"
 #include "logging.h"
 
 #ifndef MAX_STROKES_PER_CAPTURE
@@ -50,7 +49,6 @@ static void mouse_click(Grabber *self, int button, int x, int y)
 static void free_grabbed(Capture *free_me)
 {
 	assert(free_me);
-	free_active_window_info(free_me->active_window_info);
 	if (free_me->expression_list)
 	{
 		free(free_me->expression_list);
@@ -274,21 +272,10 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 		expression_list[0] = self->fine_direction_sequence;
 		expression_list[1] = self->rought_direction_sequence;
 
-		ActiveWindowInfo *window_info = get_wayland_active_window_info();
-
-		if (!window_info)
-		{
-			window_info = malloc(sizeof(ActiveWindowInfo));
-			bzero(window_info, sizeof(ActiveWindowInfo));
-			window_info->class = strdup("");
-			window_info->title = strdup("");
-		}
-
 		grab = malloc(sizeof(Capture));
 
 		grab->expression_count = expression_count;
 		grab->expression_list = expression_list;
-		grab->active_window_info = window_info;
 
 		LOG_INFO(1, "DEBUG: Captured sequences: Fine='%s', Rough='%s'\n", 
 				 self->fine_direction_sequence, self->rought_direction_sequence);
@@ -298,16 +285,14 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 	{
 
 		LOG_INFO(1, "\n");
-		LOG_INFO(1, "     Window title: \"%s\"\n", grab->active_window_info->title);
-		LOG_INFO(1, "     Window class: \"%s\"\n", grab->active_window_info->class);
 		LOG_INFO(1, "     Device      : \"%s\"\n", device_name);
 
 		Gesture *gest = configuration_process_gesture(conf, grab);
 
 		if (gest)
 		{
-			LOG_INFO(1, "     Movement '%s' matched gesture '%s' on context '%s'\n",
-				   gest->movement->name, gest->name, gest->context->name);
+			LOG_INFO(1, "     Movement '%s' matched gesture '%s'\n",
+				   gest->movement->name, gest->name);
 
 			int j = 0;
 
