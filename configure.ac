@@ -38,14 +38,16 @@ AC_SEARCH_LIBS([shm_open], [rt], [])
 AC_ARG_WITH([udevrulesdir],
     [AS_HELP_STRING([--with-udevrulesdir=DIR], [Directory for udev rules])],
     [udevrulesdir=$withval],
-    [udevrulesdir=$($PKG_CONFIG --variable=udevdir udev)/rules.d])
+    [udevrulesdir=""])
 
-if test "x$udevrulesdir" = "x/rules.d" || test "x$udevrulesdir" = "x"; then
-    # Fallback if pkg-config udev fails or directory is empty
+if test "x$udevrulesdir" = "x"; then
     if test "x$prefix" = "xNONE" || test "x$prefix" = "x/usr/local"; then
         udevrulesdir="/etc/udev/rules.d"
     else
-        udevrulesdir="$prefix/lib/udev/rules.d"
+        udevrulesdir=$($PKG_CONFIG --variable=udevdir udev)/rules.d
+        if test "x$udevrulesdir" = "x/rules.d" || test "x$udevrulesdir" = "x"; then
+            udevrulesdir="$prefix/lib/udev/rules.d"
+        fi
     fi
 fi
 
