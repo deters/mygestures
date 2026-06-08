@@ -26,6 +26,7 @@
 #include <signal.h>
 
 #include <sys/types.h>
+#include <grp.h>
 
 #include "assert.h"
 #include "string.h"
@@ -38,6 +39,7 @@
 #include "grabbing-evdev.h"
 #include "configuration.h"
 #include "configuration_parser.h"
+#include "logging.h"
 
 static void mygestures_usage(Mygestures *self)
 {
@@ -46,8 +48,8 @@ static void mygestures_usage(Mygestures *self)
 	printf("CONFIG_FILE:\n");
 
 	char *default_file = configuration_get_default_filename();
-	printf(" Default: %s\n", default_file);
-	free(default_file);
+	printf(" Default: %s\n", default_file ? default_file : "Unknown");
+	if (default_file) free(default_file);
 
 	printf("\n");
 	printf("OPTIONS:\n");
@@ -66,6 +68,21 @@ static void mygestures_usage(Mygestures *self)
 	printf("                              It depends on this patched synaptics driver to work:\n");
 	printf("                               https://github.com/Chosko/xserver-xorg-input-synaptics\n");
 	printf(" -e, --evdev                : Read events directly using libevdev (requires sudo).\n");
+	fflush(stdout);
+}
+
+static int is_user_in_input_group() {
+    gid_t groups[NGROUPS_MAX];
+    int ngroups = getgroups(NGROUPS_MAX, groups);
+    if (ngroups < 0) return 0;
+
+    struct group *input_grp = getgrnam("input");
+    if (!input_grp) return 0;
+
+    for (int i = 0; i < ngroups; i++) {
+        if (groups[i] == input_grp->gr_gid) return 1;
+    }
+    return 0;
 }
 
 static int check_permissions_and_guide(Mygestures *self)
@@ -84,6 +101,8 @@ static int check_permissions_and_guide(Mygestures *self)
 	}
 
 	int devices_ok = 1;
+	char failed_device[256] = "";
+
 	if (self->device_count) {
 		for (int i = 0; i < self->device_count; ++i) {
 			int dev_fd = open(self->device_list[i], O_RDONLY | O_NONBLOCK);
@@ -91,6 +110,7 @@ static int check_permissions_and_guide(Mygestures *self)
 				close(dev_fd);
 			} else {
 				devices_ok = 0;
+				strncpy(failed_device, self->device_list[i], sizeof(failed_device)-1);
 				break;
 			}
 		}
@@ -102,9 +122,11 @@ static int check_permissions_and_guide(Mygestures *self)
 				close(dev_fd);
 			} else {
 				devices_ok = 0;
+				strncpy(failed_device, device_path, sizeof(failed_device)-1);
 			}
 		} else {
 			devices_ok = 0;
+			strcpy(failed_device, "default mouse device");
 		}
 	}
 
@@ -112,21 +134,36 @@ static int check_permissions_and_guide(Mygestures *self)
 		fprintf(stderr, "\n=========================================================================\n");
 		fprintf(stderr, "ERROR: Missing permissions to run mygestures in evdev mode.\n");
 		if (!devices_ok) {
-			fprintf(stderr, " - Cannot read mouse input device(s).\n");
+			fprintf(stderr, " - Cannot read mouse input device: %s\n", failed_device);
 		}
 		if (!uinput_ok) {
 			fprintf(stderr, " - Cannot write to /dev/uinput virtual device creator.\n");
 		}
-		fprintf(stderr, "\nTo resolve this without running as root (via sudo), perform the following:\n\n");
-		fprintf(stderr, "1. Add your user to the 'input' group:\n");
-		fprintf(stderr, "   sudo usermod -aG input $USER\n");
-		fprintf(stderr, "   (Note: You will need to log out and log back in for this to take effect)\n\n");
-		fprintf(stderr, "2. Ensure the mygestures udev rules are installed to allow non-root uinput device creation:\n");
-		fprintf(stderr, "   - If you installed via package (e.g. deb), the rules are already installed.\n");
-		fprintf(stderr, "   - If you built from source, copy the rules file manually:\n");
-		fprintf(stderr, "     sudo cp 99-mygestures.rules /etc/udev/rules.d/\n");
-		fprintf(stderr, "     sudo udevadm control --reload-rules && sudo udevadm trigger\n");
+
+		if (getuid() != 0) {
+			fprintf(stderr, "\nTo resolve this without running as root (via sudo), perform the following:\n\n");
+			
+			if (!is_user_in_input_group()) {
+				fprintf(stderr, "1. Add your user to the 'input' group:\n");
+				fprintf(stderr, "   sudo usermod -aG input $USER\n");
+				fprintf(stderr, "   (Note: You MUST log out and log back in for this to take effect)\n\n");
+			} else {
+				fprintf(stderr, "1. Your user IS in the 'input' group, but device access is still failing.\n");
+				fprintf(stderr, "   If you just added yourself to the group, please log out and log back in.\n\n");
+			}
+
+			fprintf(stderr, "2. Ensure the mygestures udev rules are installed to allow non-root uinput access:\n");
+			fprintf(stderr, "   sudo cp 99-mygestures.rules /etc/udev/rules.d/\n");
+			fprintf(stderr, "   sudo udevadm control --reload-rules && sudo udevadm trigger\n\n");
+
+			fprintf(stderr, "3. If you are on Fedora, check if SELinux is blocking access:\n");
+			fprintf(stderr, "   sudo ausearch -m avc -ts recent\n");
+		} else {
+			fprintf(stderr, "\nYou are running as root, but still encountering errors. This is unexpected.\n");
+			fprintf(stderr, "Check if the devices exist and are not already grabbed by another process.\n");
+		}
 		fprintf(stderr, "=========================================================================\n\n");
+		fflush(stderr);
 		return 0;
 	}
 	return 1;
@@ -223,6 +260,7 @@ void mygestures_run(Mygestures *self)
 {
 
 	printf("%s\n\n", PACKAGE_STRING);
+	fflush(stdout);
 
 	if (self->help_flag)
 	{
@@ -243,15 +281,19 @@ void mygestures_run(Mygestures *self)
 		if (is_wayland || !has_x11)
 		{
 			printf("Wayland or no X11 display environment detected. Automatically enabling evdev capture mode.\n");
-			if (getuid() != 0)
-			{
-				printf("Running as non-root user. If device opening fails, ensure your user has input/uinput permissions.\n");
-			}
+			fflush(stdout);
 			self->evdev = 1;
 		}
 		else
 		{
 			self->evdev = 0;
+		}
+	}
+
+	/* Perform early permission checks if using evdev */
+	if (self->evdev && !self->list_devices_flag) {
+		if (!check_permissions_and_guide(self)) {
+			exit(1);
 		}
 	}
 
@@ -328,10 +370,6 @@ void mygestures_run(Mygestures *self)
 	}
 	else if (self->evdev)
 	{
-		if (!check_permissions_and_guide(self))
-		{
-			exit(1);
-		}
 		printf("Starting in evdev mode.\n");
 		if (self->device_count)
 		{
