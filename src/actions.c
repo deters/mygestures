@@ -34,9 +34,9 @@
 #include <unistd.h>
 
 /* Actions */
-const char * action_name[ACTION_COUNT] = {
+const char * action_name[ACTION_COUNT + 1] = {
 		"ERROR", "EXIT_GEST", "EXECUTE", "ICONIFY", "KILL", "RECONF", "RAISE", "LOWER", "MAXIMIZE",
-		"RESTORE", "TOGGLE_MAXIMIZED", "KEYPRESS", "ABORT", "LAST" };
+		"RESTORE", "TOGGLE_MAXIMIZED", "KEYPRESS", "ABORT", "GNOME", "LAST" };
 
 const char * get_action_name(int action) {
 	return action_name[action];
@@ -306,6 +306,73 @@ void action_keypress(Display *dpy, char *data) {
 	return;
 }
 
+void action_gnome_shortcut(Display *dpy, const char *shortcut_name) {
+	const char *schemas[] = {
+		"org.gnome.desktop.wm.keybindings",
+		"org.gnome.settings-daemon.plugins.media-keys",
+		"org.gnome.shell.keybindings",
+		NULL
+	};
+	char cmd[512];
+	for (int i = 0; schemas[i] != NULL; i++) {
+		snprintf(cmd, sizeof(cmd), "gsettings get %s %s 2>/dev/null", schemas[i], shortcut_name);
+		FILE *fp = popen(cmd, "r");
+		if (!fp) continue;
+
+		char line[512];
+		if (fgets(line, sizeof(line), fp)) {
+			pclose(fp);
+			
+			if (strstr(line, "@as []") || strstr(line, "''") || strstr(line, "No such key")) {
+				continue;
+			}
+
+			char *start = strchr(line, '\'');
+			if (!start) start = strchr(line, '"');
+			if (start) {
+				start++;
+				char *end = strchr(start, '\'');
+				if (!end) end = strchr(start, '"');
+				if (end) {
+					*end = '\0';
+					
+					char *translated = malloc(strlen(start) * 2 + 1);
+					translated[0] = '\0';
+					char *p = start;
+					while (*p) {
+						if (strncmp(p, "<Alt>", 5) == 0) { strcat(translated, "Alt_L+"); p += 5; }
+						else if (strncmp(p, "<Super>", 7) == 0) { strcat(translated, "Super_L+"); p += 7; }
+						else if (strncmp(p, "<Shift>", 7) == 0) { strcat(translated, "Shift_L+"); p += 7; }
+						else if (strncmp(p, "<Control>", 9) == 0) { strcat(translated, "Control_L+"); p += 9; }
+						else if (strncmp(p, "<Ctrl>", 6) == 0) { strcat(translated, "Control_L+"); p += 6; }
+						else if (*p == '>') { p++; }
+						else {
+							size_t len = strlen(translated);
+							translated[len] = *p;
+							translated[len+1] = '\0';
+							p++;
+						}
+					}
+					size_t final_len = strlen(translated);
+					if (final_len > 0 && translated[final_len - 1] == '+') {
+						translated[final_len - 1] = '\0';
+					}
+					
+					if (strlen(translated) > 0) {
+						LOG_INFO(1, "Executing GNOME shortcut '%s' as %s\n", shortcut_name, translated);
+						action_keypress(dpy, translated);
+					}
+					free(translated);
+					return;
+				}
+			}
+		} else {
+			pclose(fp);
+		}
+	}
+	LOG_WARN("Could not find or parse GNOME shortcut '%s'\n", shortcut_name);
+}
+
 /**
  * Executes an action in a system-agnostic way.
  *
@@ -361,6 +428,9 @@ void execute_action(Display *dpy, Window focused_window, Action *action) {
 		break;
 	case ACTION_KEYPRESS:
 		action_keypress(dpy, action->original_str);
+		break;
+	case ACTION_GNOME:
+		action_gnome_shortcut(dpy, action->original_str);
 		break;
 	default:
 		LOG_ERROR("found an unknown gesture \n");

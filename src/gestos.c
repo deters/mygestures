@@ -57,6 +57,7 @@ static ActionType action_types[] = {
     { ACTION_ICONIFY, "Minimize Window", "iconify", "window-minimize-symbolic" },
     { ACTION_RAISE, "Raise Window", "raise", "go-up-symbolic" },
     { ACTION_LOWER, "Lower Window", "lower", "go-down-symbolic" },
+    { ACTION_GNOME, "GNOME Shortcut", "gnome", "preferences-desktop-keyboard-shortcuts-symbolic" },
     { 0, NULL, NULL, NULL }
 };
 

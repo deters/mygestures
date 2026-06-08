@@ -39,6 +39,7 @@ enum {
 	ACTION_TOGGLE_MAXIMIZED,
 	ACTION_KEYPRESS,
 	ACTION_ABORT,
+	ACTION_GNOME,
 	ACTION_LAST
 };
 
@@ -58,6 +59,7 @@ void action_maximize(Display *dpy, Window w);
 void action_restore(Display *dpy, Window w);
 void action_toggle_maximized(Display *dpy, Window w);
 void action_keypress(Display *dpy, char *data);
+void action_gnome_shortcut(Display *dpy, const char *shortcut_name);
 
 void execute_action(Display *dpy, Window focused_window, Action *action);
 #endif

@@ -178,4 +178,8 @@ Gestures configuration:
 
     do: keypress Alt_L+Left # send key sequence
 
+ __GNOME Shortcuts__
+ 
+    do: gnome switch-to-workspace-left # triggers standard GNOME keybindings dynamically
+
    More key names can be found on the file /usr/include/X11/keysymdef.h

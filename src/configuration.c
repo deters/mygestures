@@ -206,6 +206,8 @@ void configuration_add_action_from_string(Gesture * self, const char * action_st
 		id = ACTION_KEYPRESS;
 	} else if (strcasecmp(action_name, "exec") == 0) {
 		id = ACTION_EXECUTE;
+	} else if (strcasecmp(action_name, "gnome") == 0 || strcasecmp(action_name, "gnome-shortcut") == 0) {
+		id = ACTION_GNOME;
 	} else {
 		fprintf(stderr, "Warning: unknown action '%s' in gesture '%s'\n", action_name, self->name);
 		free(copy);
