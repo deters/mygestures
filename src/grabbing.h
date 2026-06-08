@@ -18,9 +18,6 @@
 #ifndef MYGESTURES_GRABBING_H_
 #define MYGESTURES_GRABBING_H_
 
-#include <X11/Xlib.h>
-#include "drawing/drawing-backing.h"
-#include "drawing/drawing-brush.h"
 #include "configuration.h"
 
 /* modifier keys */
@@ -44,9 +41,6 @@ extern const char _STROKE_CHARS[];
 
 typedef struct
 {
-
-	Display *dpy;
-
 	char *devicename;
 	int deviceid;
 	int is_direct_touch;
@@ -59,16 +53,11 @@ typedef struct
 	int started;
 	int verbose;
 
-	int opcode;
-	int event;
-	int error;
-
 	int old_x;
 	int old_y;
 
 	int delta_min;
 
-	int synaptics;
 	int evdev;
 	int is_exclusive;
 
@@ -80,12 +69,7 @@ typedef struct
 	int fine_len;
 	int rought_len;
 
-	backing_t backing;
-	brush_t brush;
-
 	int shut_down;
-
-	struct brush_image_t *brush_image;
 
 } Grabber;
 
@@ -98,7 +82,6 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 
 void grabber_finalize(Grabber *self);
 void grabber_print_devices(Grabber *self);
-void grabber_set_brush_color(Grabber *self, char *brush_color);
 void grabber_any_modifier(Grabber *self, int enable);
 void grabber_list_devices(Grabber *self);
 void grabber_follow_pointer(Grabber *self, int enable);

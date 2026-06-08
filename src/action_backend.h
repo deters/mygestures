@@ -21,14 +21,13 @@ typedef struct ActionBackend {
     void (*click)(int button);
 } ActionBackend;
 
-/* Initialize the appropriate backend based on context (e.g. Display pointer for X11) */
-void action_backend_init(void *context);
+/* Initialize the appropriate backend */
+void action_backend_init(void);
 
 /* Execute an action using the initialized backend */
 void execute_action_agnostic(Action *action);
 
 /* Get instances of specific backends */
-ActionBackend *action_backend_x11_get(void *context);
 ActionBackend *action_backend_wayland_get(void);
 
 #endif /* ACTION_BACKEND_H_ */

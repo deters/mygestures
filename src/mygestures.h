@@ -10,16 +10,12 @@ typedef struct mygestures_
 {
 	int help_flag;
 	int trigger_button;
-	int multitouch;
 	int evdev;
-	int list_devices_flag;
-	int create_config_flag;
 
 	char *custom_config_file;
 
 	int device_count;
 	char **device_list;
-	char *brush_color;
 
 	Configuration *gestures_configuration;
 

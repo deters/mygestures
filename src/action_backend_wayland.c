@@ -5,135 +5,9 @@
 #include "logging.h"
 #include "uinput_device.h"
 #include <unistd.h>
-#include <X11/Xlib.h> // KeySym definitions
-
-// Fallback uinput keypress logic adapted from old actions.c
-struct key_press {
-    KeySym key;
-    struct key_press *next;
-};
-
-static void wl_press_key(KeySym key, int is_press) {
-    uinput_keypress(NULL, key, is_press);
-}
-
-static struct key_press* wl_string_to_keypress(const char *str_ptr) {
-    if (!str_ptr) return NULL;
-    char *copy = strdup(str_ptr);
-    struct key_press base;
-    base.next = NULL;
-    struct key_press *key = &base;
-    KeySym k;
-    char *token;
-    char *str_iter = copy;
-
-    while ((token = strsep(&str_iter, "+\n ")) != NULL) {
-        if (*token == '\0') continue;
-        k = XStringToKeysym(token);
-        if (k == NoSymbol) {
-            fprintf(stderr, "error converting %s to keysym\n", token);
-            continue;
-        }
-        key->next = malloc(sizeof(struct key_press));
-        key = key->next;
-        key->key = k;
-        key->next = NULL;
-    }
-    free(copy);
-    return base.next;
-}
-
-static void wl_release_keys_reverse(struct key_press *key) {
-    if (key == NULL) return;
-    wl_release_keys_reverse(key->next);
-    wl_press_key(key->key, 0);
-}
 
 static void wayland_keypress(const char *data) {
-    if (!data) return;
-    struct key_press *keys = wl_string_to_keypress(data);
-    if (!keys) return;
-
-    for (struct key_press *tmp = keys; tmp != NULL; tmp = tmp->next) {
-        wl_press_key(tmp->key, 1);
-        usleep(10000);
-    }
-
-    usleep(50000);
-
-    wl_release_keys_reverse(keys);
-
-    while (keys != NULL) {
-        struct key_press *next = keys->next;
-        free(keys);
-        keys = next;
-    }
-}
-
-static char *get_gnome_shortcut(const char *schema, const char *key) {
-    char cmd[512];
-    snprintf(cmd, sizeof(cmd), "gsettings get %s %s 2>/dev/null", schema, key);
-    FILE *fp = popen(cmd, "r");
-    if (!fp) return NULL;
-
-    char line[512];
-    if (fgets(line, sizeof(line), fp)) {
-        pclose(fp);
-        LOG_INFO(1, "Wayland: gsettings output for %s %s: %s", schema, key, line);
-        
-        char *start = strchr(line, '\'');
-        if (!start) start = strchr(line, '"');
-        if (start) {
-            start++;
-            char *end = strchr(start, '\'');
-            if (!end) end = strchr(start, '"');
-            if (end) {
-                *end = '\0';
-                
-                char *translated = malloc(strlen(start) * 2 + 1);
-                translated[0] = '\0';
-                
-                char *p = start;
-                while (*p) {
-                    if (strncmp(p, "<Alt>", 5) == 0) { strcat(translated, "Alt_L+"); p += 5; }
-                    else if (strncmp(p, "<Super>", 7) == 0) { strcat(translated, "Super_L+"); p += 7; }
-                    else if (strncmp(p, "<Shift>", 7) == 0) { strcat(translated, "Shift_L+"); p += 7; }
-                    else if (strncmp(p, "<Control>", 9) == 0) { strcat(translated, "Control_L+"); p += 9; }
-                    else if (strncmp(p, "<Ctrl>", 6) == 0) { strcat(translated, "Control_L+"); p += 6; }
-                    else if (*p == '>') { p++; }
-                    else {
-                        size_t len = strlen(translated);
-                        translated[len] = *p;
-                        translated[len+1] = '\0';
-                        p++;
-                    }
-                }
-                
-                size_t final_len = strlen(translated);
-                if (final_len > 0 && translated[final_len - 1] == '+') {
-                    translated[final_len - 1] = '\0';
-                }
-                
-                return translated;
-            }
-        }
-    } else {
-        pclose(fp);
-    }
-    return NULL;
-}
-
-static void wayland_execute_desktop_shortcut(const char *gnome_key, const char *fallback_keys) {
-    char *shortcut = get_gnome_shortcut("org.gnome.desktop.wm.keybindings", gnome_key);
-    if (!shortcut) shortcut = get_gnome_shortcut("org.gnome.settings-daemon.plugins.media-keys", gnome_key);
-    if (!shortcut) shortcut = get_gnome_shortcut("org.gnome.shell.keybindings", gnome_key);
-
-    if (shortcut) {
-        wayland_keypress(shortcut);
-        free(shortcut);
-    } else if (fallback_keys) {
-        wayland_keypress(fallback_keys);
-    }
+    uinput_keypress_string(data);
 }
 
 // Sway actions
@@ -167,19 +41,19 @@ static void hypr_show_overview(void) { LOG_WARN("Not supported under Hyprland.\n
 static void hypr_show_app_grid(void) { LOG_WARN("Not supported under Hyprland.\n"); }
 
 // GNOME actions
-static void gnome_iconify(void) { wayland_execute_desktop_shortcut("minimize", "Super_L+h"); }
-static void gnome_kill_window(void) { wayland_execute_desktop_shortcut("close", "Super_L+q"); }
+static void gnome_iconify(void) { wayland_keypress("Super_L+h"); }
+static void gnome_kill_window(void) { wayland_keypress("Super_L+q"); }
 static void gnome_raise(void) {}
 static void gnome_lower(void) { wayland_keypress("Alt_L+Escape"); }
-static void gnome_maximize(void) { wayland_execute_desktop_shortcut("maximize", "Super_L+Up"); }
+static void gnome_maximize(void) { wayland_keypress("Super_L+Up"); }
 static void gnome_restore(void) { wayland_keypress("Super_L+Down"); }
-static void gnome_toggle_maximized(void) { wayland_execute_desktop_shortcut("toggle-maximized", "Super_L+space"); }
-static void gnome_workspace_left(void) { wayland_execute_desktop_shortcut("switch-to-workspace-left", "Control_L+Alt_L+Left"); }
-static void gnome_workspace_right(void) { wayland_execute_desktop_shortcut("switch-to-workspace-right", "Control_L+Alt_L+Right"); }
-static void gnome_workspace_up(void) { wayland_execute_desktop_shortcut("switch-to-workspace-up", "Control_L+Alt_L+Up"); }
-static void gnome_workspace_down(void) { wayland_execute_desktop_shortcut("switch-to-workspace-down", "Control_L+Alt_L+Down"); }
-static void gnome_show_overview(void) { wayland_execute_desktop_shortcut("panel-main-menu", "Super_L"); }
-static void gnome_show_app_grid(void) { wayland_execute_desktop_shortcut("toggle-application-view", "Super_L+a"); }
+static void gnome_toggle_maximized(void) { wayland_keypress("Super_L+space"); }
+static void gnome_workspace_left(void) { wayland_keypress("Control_L+Alt_L+Left"); }
+static void gnome_workspace_right(void) { wayland_keypress("Control_L+Alt_L+Right"); }
+static void gnome_workspace_up(void) { wayland_keypress("Control_L+Alt_L+Up"); }
+static void gnome_workspace_down(void) { wayland_keypress("Control_L+Alt_L+Down"); }
+static void gnome_show_overview(void) { wayland_keypress("Super_L"); }
+static void gnome_show_app_grid(void) { wayland_keypress("Super_L+a"); }
 
 // KDE actions
 static void kde_iconify(void) { wayland_keypress("Alt_L+F9"); }

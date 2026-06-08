@@ -12,24 +12,15 @@ mygestures_SOURCES = \
 	ipc.c ipc.h \
 	mygestures.c mygestures.h \
 	configuration.c configuration.h \
-        configuration_parser.c configuration_parser.h \
-	    actions.c actions.h \
-	    action_backend.h action_backend_x11.c action_backend_wayland.c \
-	    grabbing.c grabbing.h \
-	    wayland.c wayland.h \
-	    x11_window.c x11_window.h \
-	    grabbing-synaptics.c grabbing-synaptics.h \
-	    grabbing-evdev.c grabbing-evdev.h \
-	    uinput_device.c uinput_device.h \
-        drawing/drawing-backing.c \
-        drawing/drawing-backing.h \
-        drawing/drawing-brush.c \
-        drawing/drawing-brush.h \
-        drawing/drawing-brush-image.h \
-        drawing/drawing-brush-shadow.h \
-        drawing/drawing-brush-image.c \
-        drawing/drawing-bresenham.c \
-        drawing/drawing-bresenham.h
+    configuration_parser.c configuration_parser.h \
+	actions.c actions.h \
+	action_backend.h action_backend_wayland.c \
+	grabbing.c grabbing.h \
+	wayland.c wayland.h \
+	grabbing-evdev.c grabbing-evdev.h \
+	uinput_device.c uinput_device.h \
+	logging.h \
+	main.h
 
 gestos_SOURCES = \
 	gestos.c \
@@ -37,27 +28,16 @@ gestos_SOURCES = \
 	configuration.c configuration.h \
 	configuration_parser.c configuration_parser.h \
 	actions.c actions.h \
-	action_backend.h action_backend_x11.c action_backend_wayland.c \
+	action_backend.h action_backend_wayland.c \
 	mygestures.c mygestures.h \
 	grabbing.c grabbing.h \
 	wayland.c wayland.h \
-	x11_window.c x11_window.h \
-	grabbing-synaptics.c grabbing-synaptics.h \
 	grabbing-evdev.c grabbing-evdev.h \
 	uinput_device.c uinput_device.h \
-	drawing/drawing-backing.c \
-	drawing/drawing-backing.h \
-	drawing/drawing-brush.c \
-	drawing/drawing-brush.h \
-	drawing/drawing-brush-image.h \
-	drawing/drawing-brush-shadow.h \
-	drawing/drawing-brush-image.c \
-	drawing/drawing-bresenham.c \
-	drawing/drawing-bresenham.h
+	logging.h \
+	main.h
 
 gestos_CFLAGS = $(AM_CFLAGS) $(GTK_CFLAGS)
 gestos_LDADD = $(mygestures_LDADD) $(GTK_LIBS)
 
-#SUBDIRS=drawing
-
-mygestures_LDADD=$(libyaml_LIBS) $(X11_LIBS) $(Xrender_LIBS) $(Xtst_LIBS) $(Xi_LIBS) $(libevdev_LIBS) -lm
+mygestures_LDADD=$(libyaml_LIBS) $(libevdev_LIBS) -lm

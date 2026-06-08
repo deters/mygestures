@@ -9,7 +9,6 @@
 #include <dirent.h>
 #include <linux/input-event-codes.h>
 #include <poll.h>
-#include <X11/Xlib.h>
 
 #include "grabbing.h"
 #include "grabbing-evdev.h"
@@ -87,22 +86,6 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 	fd = open(device_path, O_RDONLY | O_NONBLOCK);
 	if (fd < 0) {
 		fprintf(stderr, "Failed to open %s: %s\n", device_path, strerror(errno));
-		if (errno == EACCES || errno == EPERM) {
-			fprintf(stderr, "\n=========================================================================\n");
-			fprintf(stderr, "PERMISSIONS GUIDE FOR NON-ROOT EXECUTION:\n");
-			fprintf(stderr, "To capture input events without running as root (via sudo), do the following:\n\n");
-			fprintf(stderr, "1. Add your user to the 'input' group:\n");
-			fprintf(stderr, "   sudo usermod -aG input $USER\n");
-			fprintf(stderr, "   (Note: You will need to log out and log back in for this to take effect)\n\n");
-			fprintf(stderr, "2. Ensure the mygestures udev rules are installed to allow non-root uinput device creation:\n");
-			fprintf(stderr, "   - If you installed via package (e.g. deb), the rules are already installed.\n");
-			fprintf(stderr, "   - If you built from source, copy the rules file manually:\n");
-			fprintf(stderr, "     sudo cp 99-mygestures.rules /etc/udev/rules.d/\n");
-			fprintf(stderr, "     sudo udevadm control --reload-rules && sudo udevadm trigger\n");
-			fprintf(stderr, "=========================================================================\n\n");
-		} else {
-			fprintf(stderr, "Did you run the program with 'sudo'?\n");
-		}
 		return;
 	}
 
@@ -114,11 +97,7 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 	}
 
 	if (self->button == 0) {
-		if (self->synaptics) {
-			self->button = 1;
-		} else {
-			self->button = 3;
-		}
+		self->button = 3;
 	}
 
 	int grabbed = 0;
@@ -162,20 +141,12 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 			   rc == LIBEVDEV_READ_STATUS_SYNC) {
 			
 			if (rc == LIBEVDEV_READ_STATUS_SYNC) {
-				/* Buffer overflow, we need to sync state.
-				 * Process sync events to stay up to date. */
-				while (libevdev_next_event(dev, LIBEVDEV_READ_FLAG_SYNC, &ev) == LIBEVDEV_READ_STATUS_SYNC) {
-					/* We could process these, but for now we just want to get back in sync.
-					 * Most important is that the next NORMAL event will be correct. */
-				}
+				while (libevdev_next_event(dev, LIBEVDEV_READ_FLAG_SYNC, &ev) == LIBEVDEV_READ_STATUS_SYNC);
 				continue;
 			}
 
 			if (ev.type == EV_KEY && ev.code == target_button) {
 				if (ev.value == 1) {
-					/* Initialize virtual coordinates. 
-					 * For REL devices, start at 0. 
-					 * For ABS devices (touchpads), start at current position. */
 					if (libevdev_has_event_type(dev, EV_ABS)) {
 						virtual_x = libevdev_get_event_value(dev, EV_ABS, ABS_X);
 						virtual_y = libevdev_get_event_value(dev, EV_ABS, ABS_Y);

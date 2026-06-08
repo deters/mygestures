@@ -6,134 +6,48 @@
 #include <errno.h>
 #include <linux/uinput.h>
 #include <linux/input-event-codes.h>
-#include <X11/Xlib.h>
-#include <X11/keysym.h>
 
 #include "uinput_device.h"
 
 static int uinput_fd = -1;
 
-// Helper to convert X11 Keysym to Linux keycode as a fallback
-static unsigned int keysym_to_linux_keycode(KeySym keysym) {
-	// If it's alphanumeric ASCII
-	if (keysym >= 'a' && keysym <= 'z') {
-		switch (keysym) {
-			case 'a': return KEY_A;
-			case 'b': return KEY_B;
-			case 'c': return KEY_C;
-			case 'd': return KEY_D;
-			case 'e': return KEY_E;
-			case 'f': return KEY_F;
-			case 'g': return KEY_G;
-			case 'h': return KEY_H;
-			case 'i': return KEY_I;
-			case 'j': return KEY_J;
-			case 'k': return KEY_K;
-			case 'l': return KEY_L;
-			case 'm': return KEY_M;
-			case 'n': return KEY_N;
-			case 'o': return KEY_O;
-			case 'p': return KEY_P;
-			case 'q': return KEY_Q;
-			case 'r': return KEY_R;
-			case 's': return KEY_S;
-			case 't': return KEY_T;
-			case 'u': return KEY_U;
-			case 'v': return KEY_V;
-			case 'w': return KEY_W;
-			case 'x': return KEY_X;
-			case 'y': return KEY_Y;
-			case 'z': return KEY_Z;
-		}
-	}
-	if (keysym >= 'A' && keysym <= 'Z') {
-		switch (keysym) {
-			case 'A': return KEY_A;
-			case 'B': return KEY_B;
-			case 'C': return KEY_C;
-			case 'D': return KEY_D;
-			case 'E': return KEY_E;
-			case 'F': return KEY_F;
-			case 'G': return KEY_G;
-			case 'H': return KEY_H;
-			case 'I': return KEY_I;
-			case 'J': return KEY_J;
-			case 'K': return KEY_K;
-			case 'L': return KEY_L;
-			case 'M': return KEY_M;
-			case 'N': return KEY_N;
-			case 'O': return KEY_O;
-			case 'P': return KEY_P;
-			case 'Q': return KEY_Q;
-			case 'R': return KEY_R;
-			case 'S': return KEY_S;
-			case 'T': return KEY_T;
-			case 'U': return KEY_U;
-			case 'V': return KEY_V;
-			case 'W': return KEY_W;
-			case 'X': return KEY_X;
-			case 'Y': return KEY_Y;
-			case 'Z': return KEY_Z;
-		}
-	}
-	if (keysym >= '0' && keysym <= '9') {
-		switch (keysym) {
-			case '0': return KEY_0;
-			case '1': return KEY_1;
-			case '2': return KEY_2;
-			case '3': return KEY_3;
-			case '4': return KEY_4;
-			case '5': return KEY_5;
-			case '6': return KEY_6;
-			case '7': return KEY_7;
-			case '8': return KEY_8;
-			case '9': return KEY_9;
-		}
-	}
+typedef struct {
+    const char *name;
+    unsigned int code;
+} KeyMap;
 
-	// Special keys
-	switch (keysym) {
-		case XK_Return: return KEY_ENTER;
-		case XK_Escape: return KEY_ESC;
-		case XK_BackSpace: return KEY_BACKSPACE;
-		case XK_Tab: return KEY_TAB;
-		case XK_space: return KEY_SPACE;
-		case XK_Delete: return KEY_DELETE;
-		case XK_Home: return KEY_HOME;
-		case XK_End: return KEY_END;
-		case XK_Left: return KEY_LEFT;
-		case XK_Up: return KEY_UP;
-		case XK_Right: return KEY_RIGHT;
-		case XK_Down: return KEY_DOWN;
-		case XK_Page_Up: return KEY_PAGEUP;
-		case XK_Page_Down: return KEY_PAGEDOWN;
-		
-		// Modifiers
-		case XK_Control_L: return KEY_LEFTCTRL;
-		case XK_Control_R: return KEY_RIGHTCTRL;
-		case XK_Shift_L: return KEY_LEFTSHIFT;
-		case XK_Shift_R: return KEY_RIGHTSHIFT;
-		case XK_Alt_L: return KEY_LEFTALT;
-		case XK_Alt_R: return KEY_RIGHTALT;
-		case XK_Super_L: return KEY_LEFTMETA;
-		case XK_Super_R: return KEY_RIGHTMETA;
+static KeyMap key_map[] = {
+    {"a", KEY_A}, {"b", KEY_B}, {"c", KEY_C}, {"d", KEY_D}, {"e", KEY_E},
+    {"f", KEY_F}, {"g", KEY_G}, {"h", KEY_H}, {"i", KEY_I}, {"j", KEY_J},
+    {"k", KEY_K}, {"l", KEY_L}, {"m", KEY_M}, {"n", KEY_N}, {"o", KEY_O},
+    {"p", KEY_P}, {"q", KEY_Q}, {"r", KEY_R}, {"s", KEY_S}, {"t", KEY_T},
+    {"u", KEY_U}, {"v", KEY_V}, {"w", KEY_W}, {"x", KEY_X}, {"y", KEY_Y},
+    {"z", KEY_Z},
+    {"0", KEY_0}, {"1", KEY_1}, {"2", KEY_2}, {"3", KEY_3}, {"4", KEY_4},
+    {"5", KEY_5}, {"6", KEY_6}, {"7", KEY_7}, {"8", KEY_8}, {"9", KEY_9},
+    {"Return", KEY_ENTER}, {"Enter", KEY_ENTER}, {"Escape", KEY_ESC}, {"Esc", KEY_ESC},
+    {"BackSpace", KEY_BACKSPACE}, {"Tab", KEY_TAB}, {"space", KEY_SPACE}, {"Space", KEY_SPACE},
+    {"Delete", KEY_DELETE}, {"Home", KEY_HOME}, {"End", KEY_END},
+    {"Left", KEY_LEFT}, {"Up", KEY_UP}, {"Right", KEY_RIGHT}, {"Down", KEY_DOWN},
+    {"Page_Up", KEY_PAGEUP}, {"Page_Down", KEY_PAGEDOWN},
+    {"Control_L", KEY_LEFTCTRL}, {"Control_R", KEY_RIGHTCTRL}, {"Ctrl", KEY_LEFTCTRL},
+    {"Shift_L", KEY_LEFTSHIFT}, {"Shift_R", KEY_RIGHTSHIFT}, {"Shift", KEY_LEFTSHIFT},
+    {"Alt_L", KEY_LEFTALT}, {"Alt_R", KEY_RIGHTALT}, {"Alt", KEY_LEFTALT},
+    {"Super_L", KEY_LEFTMETA}, {"Super_R", KEY_RIGHTMETA}, {"Super", KEY_LEFTMETA}, {"Win", KEY_LEFTMETA},
+    {"F1", KEY_F1}, {"F2", KEY_F2}, {"F3", KEY_F3}, {"F4", KEY_F4}, {"F5", KEY_F5},
+    {"F6", KEY_F6}, {"F7", KEY_F7}, {"F8", KEY_F8}, {"F9", KEY_F9}, {"F10", KEY_F10},
+    {"F11", KEY_F11}, {"F12", KEY_F12},
+    {NULL, 0}
+};
 
-		// F-keys
-		case XK_F1: return KEY_F1;
-		case XK_F2: return KEY_F2;
-		case XK_F3: return KEY_F3;
-		case XK_F4: return KEY_F4;
-		case XK_F5: return KEY_F5;
-		case XK_F6: return KEY_F6;
-		case XK_F7: return KEY_F7;
-		case XK_F8: return KEY_F8;
-		case XK_F9: return KEY_F9;
-		case XK_F10: return KEY_F10;
-		case XK_F11: return KEY_F11;
-		case XK_F12: return KEY_F12;
-	}
-
-	return 0;
+static unsigned int name_to_keycode(const char *name) {
+    if (!name) return 0;
+    for (int i = 0; key_map[i].name != NULL; i++) {
+        if (strcasecmp(name, key_map[i].name) == 0) {
+            return key_map[i].code;
+        }
+    }
+    return 0;
 }
 
 static void emit(int fd, int type, int code, int val) {
@@ -148,7 +62,7 @@ static void emit(int fd, int type, int code, int val) {
 }
 
 int uinput_init(void) {
-	if (uinput_fd >= 0) return 0; // Already initialized
+	if (uinput_fd >= 0) return 0;
 
 	uinput_fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
 	if (uinput_fd < 0) {
@@ -156,59 +70,26 @@ int uinput_init(void) {
 	}
 
 	if (uinput_fd < 0) {
-		fprintf(stderr, "mygestures: Failed to open uinput device: %s\n", strerror(errno));
-		if (errno == EACCES || errno == EPERM) {
-			fprintf(stderr, "\n=========================================================================\n");
-			fprintf(stderr, "PERMISSIONS GUIDE FOR NON-ROOT EXECUTION (uinput):\n");
-			fprintf(stderr, "To simulate keyboard shortcuts and clicks without running as root, you must\n");
-			fprintf(stderr, "configure udev rules to make /dev/uinput accessible to the 'input' group.\n\n");
-			fprintf(stderr, "1. Ensure your user is in the 'input' group:\n");
-			fprintf(stderr, "   sudo usermod -aG input $USER\n");
-			fprintf(stderr, "   (Note: You will need to log out and log back in for this to take effect)\n\n");
-			fprintf(stderr, "2. Ensure the mygestures udev rules are installed to allow uinput device creation:\n");
-			fprintf(stderr, "   - If you installed via package (e.g. deb), the rules are already installed.\n");
-			fprintf(stderr, "   - If you built from source, copy the rules file manually:\n");
-			fprintf(stderr, "     sudo cp 99-mygestures.rules /etc/udev/rules.d/\n");
-			fprintf(stderr, "     sudo udevadm control --reload-rules && sudo udevadm trigger\n");
-			fprintf(stderr, "=========================================================================\n\n");
-		}
 		return -1;
 	}
 
-	// Enable key events
-	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_KEY) < 0) {
-		perror("mygestures: ioctl UI_SET_EVBIT EV_KEY failed");
-	}
-	
-	// Enable relative events (for mouse clicks and movements)
-	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_REL) < 0) {
-		perror("mygestures: ioctl UI_SET_EVBIT EV_REL failed");
-	}
-	
+	ioctl(uinput_fd, UI_SET_EVBIT, EV_KEY);
+	ioctl(uinput_fd, UI_SET_EVBIT, EV_REL);
 	ioctl(uinput_fd, UI_SET_RELBIT, REL_X);
 	ioctl(uinput_fd, UI_SET_RELBIT, REL_Y);
 	ioctl(uinput_fd, UI_SET_RELBIT, REL_WHEEL);
 	ioctl(uinput_fd, UI_SET_RELBIT, REL_HWHEEL);
-#ifdef REL_WHEEL_HI_RES
-	ioctl(uinput_fd, UI_SET_RELBIT, REL_WHEEL_HI_RES);
-#endif
-#ifdef REL_HWHEEL_HI_RES
-	ioctl(uinput_fd, UI_SET_RELBIT, REL_HWHEEL_HI_RES);
-#endif
-	
-	// Enable mouse buttons
-	ioctl(uinput_fd, UI_SET_KEYBIT, BTN_LEFT);
+    
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_LEFT);
 	ioctl(uinput_fd, UI_SET_KEYBIT, BTN_RIGHT);
 	ioctl(uinput_fd, UI_SET_KEYBIT, BTN_MIDDLE);
 	ioctl(uinput_fd, UI_SET_KEYBIT, BTN_SIDE);
 	ioctl(uinput_fd, UI_SET_KEYBIT, BTN_EXTRA);
 
-	// Enable keyboard keys we want to support
 	for (int i = 1; i < KEY_MAX; i++) {
 		ioctl(uinput_fd, UI_SET_KEYBIT, i);
 	}
 
-	// Setup virtual input device
 	struct uinput_user_dev uidev;
 	memset(&uidev, 0, sizeof(uidev));
 	snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "mygestures Virtual Device");
@@ -217,14 +98,12 @@ int uinput_init(void) {
 	uidev.id.product = 0x5678;
 
 	if (write(uinput_fd, &uidev, sizeof(uidev)) < 0) {
-		perror("mygestures: Failed to write uinput device description");
 		close(uinput_fd);
 		uinput_fd = -1;
 		return -1;
 	}
 
 	if (ioctl(uinput_fd, UI_DEV_CREATE) < 0) {
-		perror("mygestures: Failed to create uinput device");
 		close(uinput_fd);
 		uinput_fd = -1;
 		return -1;
@@ -249,40 +128,51 @@ void uinput_click(int button) {
 		case 1: ev_button = BTN_LEFT; break;
 		case 2: ev_button = BTN_MIDDLE; break;
 		case 3: ev_button = BTN_RIGHT; break;
-		case 4: ev_button = BTN_SIDE; break;
-		case 5: ev_button = BTN_EXTRA; break;
+		case 8: ev_button = BTN_SIDE; break;
+		case 9: ev_button = BTN_EXTRA; break;
 		default: ev_button = button; break;
 	}
 
 	emit(uinput_fd, EV_KEY, ev_button, 1);
 	emit(uinput_fd, EV_SYN, SYN_REPORT, 0);
-	usleep(50000); // 50ms hold
+	usleep(50000);
 	emit(uinput_fd, EV_KEY, ev_button, 0);
 	emit(uinput_fd, EV_SYN, SYN_REPORT, 0);
 }
 
-void uinput_keypress(Display *dpy, KeySym keysym, int is_press) {
-	if (uinput_fd < 0 && uinput_init() < 0) return;
+void uinput_keypress_string(const char *keys) {
+    if (uinput_fd < 0 && uinput_init() < 0) return;
+    if (!keys) return;
 
-	unsigned int keycode = 0;
-	if (dpy) {
-		KeyCode x_keycode = XKeysymToKeycode(dpy, keysym);
-		if (x_keycode >= 8) {
-			keycode = x_keycode - 8;
-		}
-	}
+    char *copy = strdup(keys);
+    char *token;
+    char *iter = copy;
+    unsigned int codes[16];
+    int count = 0;
 
-	if (keycode == 0) {
-		// Fallback to static mapping
-		keycode = keysym_to_linux_keycode(keysym);
-	}
+    while ((token = strsep(&iter, "+ ")) != NULL && count < 16) {
+        if (*token == '\0') continue;
+        unsigned int code = name_to_keycode(token);
+        if (code > 0) {
+            codes[count++] = code;
+        }
+    }
 
-	if (keycode > 0) {
-		emit(uinput_fd, EV_KEY, keycode, is_press ? 1 : 0);
-		emit(uinput_fd, EV_SYN, SYN_REPORT, 0);
-	} else {
-		fprintf(stderr, "mygestures: Could not map keysym %lu to uinput keycode\n", keysym);
-	}
+    for (int i = 0; i < count; i++) {
+        emit(uinput_fd, EV_KEY, codes[i], 1);
+        emit(uinput_fd, EV_SYN, SYN_REPORT, 0);
+        usleep(10000);
+    }
+
+    usleep(50000);
+
+    for (int i = count - 1; i >= 0; i--) {
+        emit(uinput_fd, EV_KEY, codes[i], 0);
+        emit(uinput_fd, EV_SYN, SYN_REPORT, 0);
+        usleep(10000);
+    }
+
+    free(copy);
 }
 
 void uinput_forward_event(int type, int code, int value) {

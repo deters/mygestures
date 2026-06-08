@@ -1,9 +1,9 @@
 
-MyGestures - mouse gestures for linux
-=====================================
+MyGestures - Pure Wayland/Evdev mouse gestures for linux
+========================================================
 
  Mouse gestures - "draw" commands using your mouse/touchscreen/touchpad.
- Now with multitouch gestures on synaptics touchpads (experimental).
+ Now completely independent of X11 and legacy drivers.
 
   
 Installing from source:
@@ -11,11 +11,11 @@ Installing from source:
 
 ### Ubuntu / Debian:
 
-    sudo apt install pkg-config autoconf automake libtool libx11-dev libxrender-dev libxtst-dev libxi-dev libyaml-dev libevdev-dev git make gcc libgtk-4-dev
+    sudo apt install pkg-config autoconf automake libtool libyaml-dev libevdev-dev git make gcc libgtk-4-dev
 
 ### Fedora:
 
-    sudo dnf install pkgconf-pkg-config autoconf automake libtool libX11-devel libXrender-devel libXtst-devel libXi-devel libyaml-devel libevdev-devel git make gcc gtk4-devel
+    sudo dnf install pkgconf-pkg-config autoconf automake libtool libyaml-devel libevdev-devel git make gcc gtk4-devel
 
 ### Build:
 
@@ -38,11 +38,9 @@ Generating a .deb package (optional)
 Usage:
 ------
 
-    mygestures                       # use default button (button 3) on default device (Virtual core pointer)
+    mygestures                       # use default button (button 3) on default device
     mygestures -l                    # list device names  
-    mygestures -d 'elan touchscreen' # mygestures running against an specific device
-    mygestures -m                    # experimental synaptics multitouch mode  *
-                                     # * see next section
+    mygestures -d '/dev/input/event0' # mygestures running against a specific device
 
 **To use gestures:** Hold the trigger button (default: right-click / button 3) and move the mouse to draw a gesture. Release the button to execute.
 
@@ -50,17 +48,10 @@ Troubleshooting:
 ----------------
 
 ### Gestures not working or no response:
-1. **Wrong device:** Run `mygestures -l` to see available devices. If you are on Wayland, it might be picking the wrong `/dev/input/eventX`. Specify the correct one with `-d`.
+1. **Wrong device:** Run `mygestures -l` to see available devices. Specify the correct one with `-d`.
 2. **Permissions:** Ensure you have installed the udev rules (see below). Modern MyGestures uses `uaccess` tagging, so you **do not need to be in the input group**.
-3. **Trigger Button:** If you are on a laptop with a touchpad (but not using multitouch mode), you might need to use button 1 (left-click) instead of 3. Try `mygestures -b 1`.
-4. **Wayland:** If you are on Wayland, MyGestures uses `evdev` mode. This requires access to `/dev/uinput` to simulate keys.
-5. **Configuration Format:** MyGestures recently switched from XML to YAML. If you have an old `~/.config/mygestures/mygestures.yaml` that is actually XML, it will fail to load. Check the output for error messages.
-
-### Mouse "dies" when MyGestures starts:
-This happens if MyGestures grabs the device exclusively (needed for right-click gestures) but fails to initialize the virtual `uinput` device to forward other mouse events.
-- Check if you have permissions for `/dev/uinput`.
-- Ensure `99-mygestures.rules` is installed in the correct udev directory (usually `/etc/udev/rules.d/` or `/usr/lib/udev/rules.d/`).
-- Run `sudo udevadm control --reload-rules && sudo udevadm trigger` after installing.
+3. **Trigger Button:** If you are on a laptop with a touchpad, you might need to use button 1 (left-click) instead of 3. Try `mygestures -b 1`.
+4. **Uinput:** MyGestures uses `evdev` mode and requires access to `/dev/uinput` to simulate keys.
 
 Installing udev rules manually:
 -------------------------------
@@ -69,48 +60,6 @@ If you built from source and `make install` didn't fix permissions, you can do i
 
     sudo cp 99-mygestures.rules /etc/udev/rules.d/
     sudo udevadm control --reload-rules && sudo udevadm trigger
-
-Optional: If you want multitouch gestures on your synaptics touchpad
---------------------------------------------------------------------
-
- Installing the custom synaptics driver:
-
-    # Ubuntu / Debian
-    sudo apt-get install -y git build-essential libevdev-dev autoconf automake libmtdev-dev xorg-dev xutils-dev libtool
-
-    # Fedora
-    sudo dnf install git @development-tools libevdev-devel autoconf automake mtdev-devel xorg-x11-server-devel xorg-x11-util-macros libtool
-
-    sudo apt-get remove -y xserver-xorg-input-synaptics # or dnf remove xorg-x11-drv-synaptics
-    git clone https://github.com/Chosko/xserver-xorg-input-synaptics.git
-    cd xserver-xorg-input-synaptics
-    ./autogen.sh
-    ./configure --exec_prefix=/usr
-    make
-    sudo make install
-
- Enable the option SHMConfig:
-
-    sudo mkdir -p /etc/X11/xorg.conf.d/
-
-    cat > /etc/X11/xorg.conf.d/50-synaptics.conf < EOL
-    Section "InputClass"
-    Identifier "evdev touchpad catchall"
-    Driver "synaptics"
-    MatchDevicePath "/dev/input/event*"
-    MatchIsTouchpad "on"
-    Option "Protocol" "event"
-    Option "SHMConfig" "on"
-    EndSection
-    EOL
-
- Reboot the computer and then test the new driver:
-
-    synclient -m 10
-
- And then in mygestures:
-
-    mygestures -m
 
 Gestures configuration:
 -----------------------
@@ -186,8 +135,7 @@ Gestures configuration:
     do: workspace-down     # switch to the workspace below
     do: show-overview      # show desktop overview (activities)
     do: show-app-grid      # show the application grid
-    More key names can be found on the file /usr/include/X11/keysymdef.h
-
+    do: click 3            # emulate a mouse button click (button 3 = right-click)
 
 License
 -------

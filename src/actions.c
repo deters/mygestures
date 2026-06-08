@@ -42,12 +42,8 @@ const char *get_action_name(int action) {
 
 static ActionBackend *current_backend = NULL;
 
-void action_backend_init(void *context) {
-    if (context) {
-        current_backend = action_backend_x11_get(context);
-    } else {
-        current_backend = action_backend_wayland_get();
-    }
+void action_backend_init(void) {
+    current_backend = action_backend_wayland_get();
 }
 
 void execute_action_agnostic(Action *action) {
