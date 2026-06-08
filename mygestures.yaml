@@ -51,15 +51,15 @@ movements:
 global:
   "Close window":
     move: DownRight
-    do: kill
+    do: gnome close
 
   "Maximize window":
     move: Up
-    do: toggle-maximized
+    do: gnome toggle-maximized
 
-  "Iconify window":
+  "Minimize window":
     move: Down
-    do: iconify
+    do: gnome minimize
 
   "Previous page":
     move: Left
@@ -68,6 +68,18 @@ global:
   "Next page":
     move: Right
     do: keypress Alt_L+Right
+
+  "Workspace Left":
+    move: UpLeft
+    do: gnome switch-to-workspace-left
+
+  "Workspace Right":
+    move: UpRight
+    do: gnome switch-to-workspace-right
+
+  "Show Overview":
+    move: NorthEast
+    do: gnome toggle-overview
 
   "Copy":
     move: C
