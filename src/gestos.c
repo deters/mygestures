@@ -57,7 +57,12 @@ static ActionType action_types[] = {
     { ACTION_ICONIFY, "Minimize Window", "iconify", "window-minimize-symbolic" },
     { ACTION_RAISE, "Raise Window", "raise", "go-up-symbolic" },
     { ACTION_LOWER, "Lower Window", "lower", "go-down-symbolic" },
-    { ACTION_GNOME, "GNOME Shortcut", "gnome", "preferences-desktop-keyboard-shortcuts-symbolic" },
+    { ACTION_WORKSPACE_LEFT, "Workspace Left", "workspace-left", "go-previous-symbolic" },
+    { ACTION_WORKSPACE_RIGHT, "Workspace Right", "workspace-right", "go-next-symbolic" },
+    { ACTION_WORKSPACE_UP, "Workspace Up", "workspace-up", "go-up-symbolic" },
+    { ACTION_WORKSPACE_DOWN, "Workspace Down", "workspace-down", "go-down-symbolic" },
+    { ACTION_SHOW_OVERVIEW, "Show Overview", "show-overview", "view-fullscreen-symbolic" },
+    { ACTION_SHOW_APP_GRID, "Show App Grid", "show-app-grid", "view-grid-symbolic" },
     { 0, NULL, NULL, NULL }
 };
 
