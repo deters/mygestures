@@ -1,50 +1,4 @@
 {
-  "movements": [
-    {"name": "Up", "value": "50,100 50,0"},
-    {"name": "Down", "value": "50,0 50,100"},
-    {"name": "Left", "value": "100,50 0,50"},
-    {"name": "Right", "value": "0,50 100,50"},
-    {"name": "NorthWest", "value": "100,100 0,0"},
-    {"name": "NorthEast", "value": "0,100 100,0"},
-    {"name": "SouthWest", "value": "100,0 0,100"},
-    {"name": "SouthEast", "value": "0,0 100,100"},
-    {"name": "B", "value": "0,0 0,100 0,0 50,0 50,50 0,50 50,50 50,100 0,100"},
-    {"name": "C", "value": "100,0 0,0 0,100 100,100"},
-    {"name": "D", "value": "0,0 0,100 0,0 100,0 100,100 0,100"},
-    {"name": "E", "value": "100,0 0,0 0,50 80,50 0,50 0,100 100,100"},
-    {"name": "F", "value": "100,0 0,0 0,100 0,50 70,50"},
-    {"name": "G", "value": "100,0 0,0 0,100 100,100 100,50 50,50"},
-    {"name": "H", "value": "0,0 0,100 0,50 100,50 100,0 100,100"},
-    {"name": "I", "value": "0,0 100,0 50,0 50,100 0,100 100,100"},
-    {"name": "J", "value": "100,0 100,100 0,100 0,70"},
-    {"name": "K", "value": "0,0 0,100 0,50 100,0 0,50 100,100"},
-    {"name": "L", "value": "0,0 0,100 100,100"},
-    {"name": "M", "value": "0,100 0,0 50,50 100,0 100,100"},
-    {"name": "N", "value": "0,100 0,0 100,100 100,0"},
-    {"name": "O", "value": "50,0 0,50 50,100 100,50 50,0"},
-    {"name": "O_REVERSE", "value": "50,0 100,50 50,100 0,50 50,0"},
-    {"name": "P", "value": "0,100 0,0 100,0 100,50 0,50"},
-    {"name": "Q", "value": "50,0 0,50 50,100 100,50 50,0 70,70 100,100"},
-    {"name": "R", "value": "0,100 0,0 100,0 100,50 0,50 100,100"},
-    {"name": "S", "value": "100,0 0,0 0,50 100,50 100,100 0,100"},
-    {"name": "T", "value": "0,0 100,0 50,0 50,100"},
-    {"name": "U", "value": "0,0 0,100 100,100 100,0"},
-    {"name": "V", "value": "0,0 50,100 100,0"},
-    {"name": "W", "value": "0,0 25,100 50,50 75,100 100,0"},
-    {"name": "X", "value": "0,0 100,100 50,50 100,0 0,100"},
-    {"name": "Y", "value": "0,0 50,50 100,0 50,50 50,100 0,100"},
-    {"name": "Z", "value": "0,0 100,0 0,100 100,100"},
-    {"name": "UpRight", "value": "0,100 100,0"},
-    {"name": "UpRightDown", "value": "0,100 100,0 100,100"},
-    {"name": "UpLeftDown", "value": "100,100 0,0 0,100"},
-    {"name": "UpLeft", "value": "100,100 0,0"},
-    {"name": "LeftUp", "value": "100,100 0,100 0,0"},
-    {"name": "LeftDown", "value": "100,0 0,0 0,100"},
-    {"name": "DownLeft", "value": "100,0 100,100 0,100"},
-    {"name": "DownRight", "value": "0,0 0,100 100,100"},
-    {"name": "RightDown", "value": "0,0 100,0 100,100"},
-    {"name": "RightUp", "value": "0,100 100,100 100,0"}
-  ],
   "contexts": [
     {
       "name": "Terminal windows",
@@ -53,27 +7,27 @@
       "gestures": [
         {
           "name": "Open new tab (Ctrl+Shift+T)",
-          "movement": "T",
+          "movement": "0,0 100,0 50,0 50,100",
           "actions": [{"action": "keypress", "value": "Control_L+Shift_L+T"}]
         },
         {
           "name": "Open new window (Ctrl+Shift+N)",
-          "movement": "N",
+          "movement": "0,100 0,0 100,100 100,0",
           "actions": [{"action": "keypress", "value": "Control_L+Shift_L+N"}]
         },
         {
           "name": "Copy (Ctrl+Shift+C)",
-          "movement": "C",
+          "movement": "100,0 0,0 0,100 100,100",
           "actions": [{"action": "keypress", "value": "Control_L+Shift_L+C"}]
         },
         {
           "name": "Paste (Ctrl+Shift+V)",
-          "movement": "V",
+          "movement": "0,0 50,100 100,0",
           "actions": [{"action": "keypress", "value": "Control_L+Shift_L+V"}]
         },
         {
           "name": "Close current tab (Ctrl+Shift+W)",
-          "movement": "RightDown",
+          "movement": "0,0 100,0 100,100",
           "actions": [{"action": "keypress", "value": "Control_L+Shift_L+W"}]
         }
       ]
@@ -85,92 +39,92 @@
       "gestures": [
         {
           "name": "Close window",
-          "movement": "DownRight",
+          "movement": "0,0 0,100 100,100",
           "actions": [{"action": "kill"}]
         },
         {
           "name": "Maximize window",
-          "movement": "Up",
+          "movement": "50,100 50,0",
           "actions": [{"action": "toggle-maximized"}]
         },
         {
           "name": "Iconify window",
-          "movement": "Down",
+          "movement": "50,0 50,100",
           "actions": [{"action": "iconify"}]
         },
         {
           "name": "Previous page (Alt+Left)",
-          "movement": "Left",
+          "movement": "100,50 0,50",
           "actions": [{"action": "keypress", "value": "Alt_L+Left"}]
         },
         {
           "name": "Next page (Alt+Right)",
-          "movement": "Right",
+          "movement": "0,50 100,50",
           "actions": [{"action": "keypress", "value": "Alt_L+Right"}]
         },
         {
           "name": "Copy (Ctrl+C)",
-          "movement": "C",
+          "movement": "100,0 0,0 0,100 100,100",
           "actions": [{"action": "keypress", "value": "Control_L+C"}]
         },
         {
           "name": "Paste (Ctrl+V)",
-          "movement": "V",
+          "movement": "0,0 50,100 100,0",
           "actions": [{"action": "keypress", "value": "Control_L+V"}]
         },
         {
           "name": "New (Ctrl+N)",
-          "movement": "N",
+          "movement": "0,100 0,0 100,100 100,0",
           "actions": [{"action": "keypress", "value": "Control_L+N"}]
         },
         {
           "name": "Open (Ctrl+O)",
-          "movement": "O",
+          "movement": "50,0 0,50 50,100 100,50 50,0",
           "actions": [{"action": "keypress", "value": "Control_L+O"}]
         },
         {
           "name": "Print (Ctrl+P)",
-          "movement": "P",
+          "movement": "0,100 0,0 100,0 100,50 0,50",
           "actions": [{"action": "keypress", "value": "Control_L+P"}]
         },
         {
           "name": "Save (Ctrl+S)",
-          "movement": "S",
+          "movement": "100,0 0,0 0,50 100,50 100,100 0,100",
           "actions": [{"action": "keypress", "value": "Control_L+S"}]
         },
         {
           "name": "Escape",
-          "movement": "Up",
+          "movement": "50,100 50,0",
           "actions": [{"action": "keypress", "value": "Escape"}]
         },
         {
           "name": "New tab (Ctrl+T)",
-          "movement": "T",
+          "movement": "0,0 100,0 50,0 50,100",
           "actions": [{"action": "keypress", "value": "Control_L+T"}]
         },
         {
           "name": "Close tab (Ctrl+W)",
-          "movement": "RightDown",
+          "movement": "0,0 100,0 100,100",
           "actions": [{"action": "keypress", "value": "Control_L+W"}]
         },
         {
           "name": "Run default browser",
-          "movement": "W",
+          "movement": "0,0 25,100 50,50 75,100 100,0",
           "actions": [{"action": "www", "value": ""}]
         },
         {
           "name": "Run gedit",
-          "movement": "G",
+          "movement": "100,0 0,0 0,100 100,100 100,50 50,50",
           "actions": [{"action": "exec", "value": "gedit"}]
         },
         {
           "name": "Previous Tab",
-          "movement": "UpLeftDown",
+          "movement": "100,100 0,0 0,100",
           "actions": [{"action": "keypress", "value": "Control_L+Shift_L+Tab"}]
         },
         {
           "name": "Next Tab",
-          "movement": "UpRightDown",
+          "movement": "0,100 100,0 100,100",
           "actions": [{"action": "keypress", "value": "Control_L+Tab"}]
         }
       ]
@@ -182,7 +136,7 @@
       "gestures": [
         {
           "name": "Close tab (Ctrl+F4)",
-          "movement": "RightDown",
+          "movement": "0,0 100,0 100,100",
           "actions": [{"action": "keypress", "value": "Control_L+F4"}]
         }
       ]

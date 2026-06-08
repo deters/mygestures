@@ -1,139 +1,93 @@
 # MyGestures - Modern YAML Configuration
 
-# Reusable movement definitions (Regex)
-movements:
-  Up: "50,100 50,0"
-  Down: "50,0 50,100"
-  Left: "100,50 0,50"
-  Right: "0,50 100,50"
-  NorthWest: "100,100 0,0"
-  NorthEast: "0,100 100,0"
-  SouthWest: "100,0 0,100"
-  SouthEast: "0,0 100,100"
-  B: "0,0 0,100 0,0 50,0 50,50 0,50 50,50 50,100 0,100"
-  C: "100,0 0,0 0,100 100,100"
-  D: "0,0 0,100 0,0 100,0 100,100 0,100"
-  E: "100,0 0,0 0,50 80,50 0,50 0,100 100,100"
-  F: "100,0 0,0 0,100 0,50 70,50"
-  G: "100,0 0,0 0,100 100,100 100,50 50,50"
-  H: "0,0 0,100 0,50 100,50 100,0 100,100"
-  I: "0,0 100,0 50,0 50,100 0,100 100,100"
-  J: "100,0 100,100 0,100 0,70"
-  K: "0,0 0,100 0,50 100,0 0,50 100,100"
-  L: "0,0 0,100 100,100"
-  M: "0,100 0,0 50,50 100,0 100,100"
-  N: "0,100 0,0 100,100 100,0"
-  O: "50,0 0,50 50,100 100,50 50,0"
-  O_REVERSE: "50,0 100,50 50,100 0,50 50,0"
-  P: "0,100 0,0 100,0 100,50 0,50"
-  Q: "50,0 0,50 50,100 100,50 50,0 70,70 100,100"
-  R: "0,100 0,0 100,0 100,50 0,50 100,100"
-  S: "100,0 0,0 0,50 100,50 100,100 0,100"
-  T: "0,0 100,0 50,0 50,100"
-  U: "0,0 0,100 100,100 100,0"
-  V: "0,0 50,100 100,0"
-  W: "0,0 25,100 50,50 75,100 100,0"
-  X: "0,0 100,100 50,50 100,0 0,100"
-  Y: "0,0 50,50 100,0 50,50 50,100 0,100"
-  Z: "0,0 100,0 0,100 100,100"
-  UpRight: "0,100 100,0"
-  UpRightDown: "0,100 100,0 100,100"
-  UpLeftDown: "100,100 0,0 0,100"
-  UpLeft: "100,100 0,0"
-  LeftUp: "100,100 0,100 0,0"
-  LeftDown: "100,0 0,0 0,100"
-  DownLeft: "100,0 100,100 0,100"
-  DownRight: "0,0 0,100 100,100"
-  RightDown: "0,0 100,0 100,100"
-  RightUp: "0,100 100,100 100,0"
-
 # Default gestures available in all windows
 global:
   "Close window":
-    move: DownRight
+    move: "0,0 0,100 100,100"
     do: kill
 
   "Maximize window":
-    move: Up
+    move: "50,100 50,0"
     do: toggle-maximized
 
   "Minimize window":
-    move: Down
+    move: "50,0 50,100"
     do: iconify
 
   "Previous page":
-    move: Left
+    move: "100,50 0,50"
     do: keypress Alt_L+Left
 
   "Next page":
-    move: Right
+    move: "0,50 100,50"
     do: keypress Alt_L+Right
 
   "Workspace Left":
-    move: UpLeft
+    move: "100,100 0,0"
     do: workspace-left
 
   "Workspace Right":
-    move: UpRight
+    move: "0,100 100,0"
     do: workspace-right
 
   "Show Overview":
-    move: NorthEast
+    move: "0,100 100,0"
     do: show-overview
 
   "Show App Grid":
-    move: NorthWest
+    move: "100,100 0,0"
     do: show-app-grid
+
   "Copy":
-    move: C
+    move: "100,0 0,0 0,100 100,100"
     do: keypress Control_L+C
 
   "Paste":
-    move: V
+    move: "0,0 50,100 100,0"
     do: keypress Control_L+V
 
   "New":
-    move: N
+    move: "0,100 0,0 100,100 100,0"
     do: keypress Control_L+N
 
   "Open":
-    move: O
+    move: "50,0 0,50 50,100 100,50 50,0"
     do: keypress Control_L+O
 
   "Print":
-    move: P
+    move: "0,100 0,0 100,0 100,50 0,50"
     do: keypress Control_L+P
 
   "Save":
-    move: S
+    move: "100,0 0,0 0,50 100,50 100,100 0,100"
     do: keypress Control_L+S
 
   "Escape":
-    move: Up
+    move: "50,100 50,0"
     do: keypress Escape
 
   "New tab":
-    move: T
+    move: "0,0 100,0 50,0 50,100"
     do: keypress Control_L+T
 
   "Close tab":
-    move: RightDown
+    move: "0,0 100,0 100,100"
     do: keypress Control_L+W
 
   "Run default browser":
-    move: W
+    move: "0,0 25,100 50,50 75,100 100,0"
     do: www
 
   "Run gedit":
-    move: G
+    move: "100,0 0,0 0,100 100,100 100,50 50,50"
     do: exec gedit
 
   "Previous Tab":
-    move: UpLeftDown
+    move: "100,100 0,0 0,100"
     do: keypress Control_L+Shift_L+Tab
 
   "Next Tab":
-    move: UpRightDown
+    move: "0,100 100,0 100,100"
     do: keypress Control_L+Tab
 
 # App-specific overrides
@@ -142,24 +96,24 @@ apps:
     match: { class: ".*(Term|term).*" }
     gestures:
       "New tab":
-        move: T
+        move: "0,0 100,0 50,0 50,100"
         do: keypress Control_L+Shift_L+T
       "New window":
-        move: N
+        move: "0,100 0,0 100,100 100,0"
         do: keypress Control_L+Shift_L+N
       "Copy":
-        move: C
+        move: "100,0 0,0 0,100 100,100"
         do: keypress Control_L+Shift_L+C
       "Paste":
-        move: V
+        move: "0,0 50,100 100,0"
         do: keypress Control_L+Shift_L+V
       "Close current tab":
-        move: RightDown
+        move: "0,0 100,0 100,100"
         do: keypress Control_L+Shift_L+W
 
   - name: Chrome
     match: { class: "Google-chrome" }
     gestures:
       "Close tab":
-        move: RightDown
+        move: "0,0 100,0 100,100"
         do: keypress Control_L+F4

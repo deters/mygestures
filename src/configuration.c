@@ -238,16 +238,10 @@ Gesture * configuration_create_gesture(Configuration * self, char * gesture_name
 	bzero(ans, sizeof(Gesture));
 
 	ans->name = strdup(gesture_name);
-	ans->movement = configuration_find_movement_by_name(
-			self, gesture_movement_or_stroke);
-
-	if (!ans->movement) {
-		// Treat as a raw stroke and create an anonymous movement
-		ans->movement = malloc(sizeof(Movement));
-		bzero(ans->movement, sizeof(Movement));
-		ans->movement->name = strdup("custom");
-		movement_set_expression(ans->movement, strdup(gesture_movement_or_stroke));
-	}
+	ans->movement = malloc(sizeof(Movement));
+	bzero(ans->movement, sizeof(Movement));
+	ans->movement->name = strdup("custom");
+	movement_set_expression(ans->movement, strdup(gesture_movement_or_stroke));
 
 	ans->action_count = 0;
 	ans->action_list = malloc(sizeof(Action *) * 20);

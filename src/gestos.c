@@ -533,19 +533,6 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
     GestureEditor *editor = (GestureEditor *)user_data;
     const char *name = gtk_editable_get_text(GTK_EDITABLE(editor->name_entry));
     
-    GtkStringList *move_list = GTK_STRING_LIST(gtk_drop_down_get_model(GTK_DROP_DOWN(editor->move_combo)));
-    guint move_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->move_combo));
-    const char *move_name = (move_idx != GTK_INVALID_LIST_POSITION) ? 
-        gtk_string_list_get_string(move_list, move_idx) : NULL;
-    
-    if (!move_name) {
-        if (editor->app->config->movement_count > 0) {
-            move_name = editor->app->config->movement_list[0]->name;
-        } else {
-            move_name = "custom";
-        }
-    }
-    
     guint type_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->action_type_combo));
     if (type_idx == GTK_INVALID_LIST_POSITION) type_idx = 0;
     ActionType *type = &action_types[type_idx];
@@ -558,36 +545,22 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
         full_action = strdup(type->prefix);
     }
 
-    Movement *final_move = NULL;
-    if (move_name && strcmp(move_name, "custom") == 0) {
-        final_move = malloc(sizeof(Movement));
+    if (editor->gesture) {
+        Movement *final_move = malloc(sizeof(Movement));
         bzero(final_move, sizeof(Movement));
         final_move->name = strdup("custom");
         final_move->points = NULL;
         final_move->point_count = 0;
         movement_set_expression(final_move, strdup(editor->custom_expression ? editor->custom_expression : "0,0 0,0"));
-    } else {
-        final_move = configuration_find_movement_by_name(editor->app->config, (char*)move_name);
-    }
 
-    if (editor->gesture) {
         if (editor->gesture->name) free(editor->gesture->name);
         editor->gesture->name = strdup(name);
         
         if (editor->gesture->movement) {
-            int is_global = 0;
-            for (int k = 0; k < editor->app->config->movement_count; k++) {
-                if (editor->app->config->movement_list[k] == editor->gesture->movement) {
-                    is_global = 1;
-                    break;
-                }
-            }
-            if (!is_global) {
-                if (editor->gesture->movement->name) free(editor->gesture->movement->name);
-                if (editor->gesture->movement->expression) free(editor->gesture->movement->expression);
-                if (editor->gesture->movement->points) free(editor->gesture->movement->points);
-                free(editor->gesture->movement);
-            }
+            if (editor->gesture->movement->name) free(editor->gesture->movement->name);
+            if (editor->gesture->movement->expression) free(editor->gesture->movement->expression);
+            if (editor->gesture->movement->points) free(editor->gesture->movement->points);
+            free(editor->gesture->movement);
         }
         
         editor->gesture->movement = final_move;
@@ -601,16 +574,7 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
         editor->gesture->action_count = 0;
         configuration_add_action_from_string(editor->gesture, full_action);
     } else {
-        Gesture *new_g = configuration_create_gesture(editor->app->config, (char*)name, (char*)move_name);
-        if (move_name && strcmp(move_name, "custom") == 0) {
-            if (new_g->movement) {
-                if (new_g->movement->name) free(new_g->movement->name);
-                if (new_g->movement->expression) free(new_g->movement->expression);
-                if (new_g->movement->points) free(new_g->movement->points);
-                free(new_g->movement);
-            }
-            new_g->movement = final_move;
-        }
+        Gesture *new_g = configuration_create_gesture(editor->app->config, (char*)name, editor->custom_expression ? editor->custom_expression : "0,0 0,0");
         configuration_add_action_from_string(new_g, full_action);
     }
     free(full_action);
@@ -1108,107 +1072,10 @@ static void on_canvas_drag_end(GtkGestureDrag *gesture, double offset_x, double 
         }
         editor->custom_expression = buf;
         
-        GtkStringList *move_list = GTK_STRING_LIST(gtk_drop_down_get_model(GTK_DROP_DOWN(editor->move_combo)));
-        guint n_items = g_list_model_get_n_items(G_LIST_MODEL(move_list));
-        gboolean has_custom = FALSE;
-        for (guint i = 0; i < n_items; i++) {
-            if (strcmp(gtk_string_list_get_string(move_list, i), "custom") == 0) {
-                has_custom = TRUE;
-                break;
-            }
-        }
-        if (!has_custom) {
-            gtk_string_list_append(move_list, "custom");
-        }
-        
-        n_items = g_list_model_get_n_items(G_LIST_MODEL(move_list));
-        for (guint i = 0; i < n_items; i++) {
-            if (strcmp(gtk_string_list_get_string(move_list, i), "custom") == 0) {
-                gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->move_combo), i);
-                break;
-            }
-        }
-        
         free(simplified);
     }
     
     gtk_widget_queue_draw(editor->canvas);
-}
-
-static void on_move_combo_changed(GObject *object, GParamSpec *pspec, gpointer user_data) {
-    GestureEditor *editor = (GestureEditor *)user_data;
-    gtk_widget_queue_draw(editor->canvas);
-}
-
-typedef struct {
-    GestureEditor *editor;
-    GtkWidget *dialog;
-    GtkWidget *entry;
-} NewMoveDialogData;
-
-static void on_new_move_ok(GtkWidget *btn, gpointer user_data) {
-    NewMoveDialogData *data = (NewMoveDialogData *)user_data;
-    const char *name = gtk_editable_get_text(GTK_EDITABLE(data->entry));
-    if (name && strlen(name) > 0) {
-        Movement *m = configuration_create_movement(data->editor->app->config, strdup(name), strdup("0,0 0,0"));
-        
-        GtkStringList *move_list = GTK_STRING_LIST(gtk_drop_down_get_model(GTK_DROP_DOWN(data->editor->move_combo)));
-        gtk_string_list_append(move_list, name);
-        
-        gtk_drop_down_set_selected(GTK_DROP_DOWN(data->editor->move_combo), data->editor->app->config->movement_count - 1);
-        
-        gtk_widget_queue_draw(data->editor->canvas);
-    }
-    gtk_window_destroy(GTK_WINDOW(data->dialog));
-    free(data);
-}
-
-static void on_new_move_cancel(GtkWidget *btn, gpointer user_data) {
-    NewMoveDialogData *data = (NewMoveDialogData *)user_data;
-    gtk_window_destroy(GTK_WINDOW(data->dialog));
-    free(data);
-}
-
-static void on_new_move_clicked(GtkWidget *btn, gpointer user_data) {
-    GestureEditor *editor = (GestureEditor *)user_data;
-    
-    NewMoveDialogData *data = malloc(sizeof(NewMoveDialogData));
-    data->editor = editor;
-    
-    data->dialog = gtk_window_new();
-    gtk_window_set_title(GTK_WINDOW(data->dialog), "New Movement Name");
-    gtk_window_set_transient_for(GTK_WINDOW(data->dialog), GTK_WINDOW(editor->dialog));
-    gtk_window_set_modal(GTK_WINDOW(data->dialog), TRUE);
-    gtk_window_set_default_size(GTK_WINDOW(data->dialog), 320, -1);
-    
-    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
-    gtk_widget_set_margin_top(box, 16);
-    gtk_widget_set_margin_bottom(box, 16);
-    gtk_widget_set_margin_start(box, 16);
-    gtk_widget_set_margin_end(box, 16);
-    
-    GtkWidget *label = gtk_label_new("Enter a name for the new custom movement:");
-    gtk_widget_set_halign(label, GTK_ALIGN_START);
-    gtk_box_append(GTK_BOX(box), label);
-    
-    data->entry = gtk_entry_new();
-    gtk_entry_set_placeholder_text(GTK_ENTRY(data->entry), "e.g. Spiral, Wave...");
-    gtk_box_append(GTK_BOX(box), data->entry);
-    
-    GtkWidget *btn_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-    gtk_widget_set_halign(btn_box, GTK_ALIGN_END);
-    
-    GtkWidget *cancel = gtk_button_new_with_label("Cancel");
-    g_signal_connect(cancel, "clicked", G_CALLBACK(on_new_move_cancel), data);
-    gtk_box_append(GTK_BOX(btn_box), cancel);
-    
-    GtkWidget *ok = gtk_button_new_with_label("OK");
-    g_signal_connect(ok, "clicked", G_CALLBACK(on_new_move_ok), data);
-    gtk_box_append(GTK_BOX(btn_box), ok);
-    
-    gtk_box_append(GTK_BOX(box), btn_box);
-    gtk_window_set_child(GTK_WINDOW(data->dialog), box);
-    gtk_window_present(GTK_WINDOW(data->dialog));
 }
 
 static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
@@ -1253,61 +1120,11 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     gtk_widget_set_hexpand(editor->name_entry, TRUE);
     if (g) gtk_editable_set_text(GTK_EDITABLE(editor->name_entry), g->name);
     gtk_grid_attach(GTK_GRID(grid), editor->name_entry, 1, 0, 1, 1);
-    
-    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Movement:"), 0, 1, 1, 1);
-    int is_global = 0;
     if (g && g->movement) {
-        for (int i = 0; i < gestos->config->movement_count; i++) {
-            if (gestos->config->movement_list[i] == g->movement) {
-                is_global = 1;
-                break;
-            }
-        }
-    }
-    
-    GtkStringList *move_sl = gtk_string_list_new(NULL);
-    for (int i = 0; i < gestos->config->movement_count; i++) {
-        gtk_string_list_append(move_sl, gestos->config->movement_list[i]->name);
-    }
-    
-    if (g && g->movement && !is_global) {
-        gtk_string_list_append(move_sl, "custom");
         editor->custom_expression = strdup(g->movement->expression);
     }
     
-    editor->move_combo = gtk_drop_down_new(G_LIST_MODEL(move_sl), NULL);
-    
-    int selected_idx = -1;
-    if (g && g->movement) {
-        if (is_global) {
-            for (int i = 0; i < gestos->config->movement_count; i++) {
-                if (gestos->config->movement_list[i] == g->movement) {
-                    selected_idx = i;
-                    break;
-                }
-            }
-        } else {
-            selected_idx = gestos->config->movement_count;
-        }
-    }
-    
-    if (selected_idx != -1) {
-        gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->move_combo), selected_idx);
-    } else {
-        gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->move_combo), 0);
-    }
-    
-    GtkWidget *move_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-    gtk_widget_set_hexpand(editor->move_combo, TRUE);
-    gtk_box_append(GTK_BOX(move_box), editor->move_combo);
-    
-    GtkWidget *new_move_btn = gtk_button_new_with_label("New...");
-    gtk_box_append(GTK_BOX(move_box), new_move_btn);
-    g_signal_connect(new_move_btn, "clicked", G_CALLBACK(on_new_move_clicked), editor);
-    
-    gtk_grid_attach(GTK_GRID(grid), move_box, 1, 1, 1, 1);
-    
-    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Action Type:"), 0, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Action Type:"), 0, 1, 1, 1);
     GtkStringList *type_sl = gtk_string_list_new(NULL);
     int active_type = 0;
     for (int i = 0; action_types[i].name; i++) {
@@ -1318,12 +1135,12 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     }
     editor->action_type_combo = gtk_drop_down_new(G_LIST_MODEL(type_sl), NULL);
     gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->action_type_combo), active_type);
-    gtk_grid_attach(GTK_GRID(grid), editor->action_type_combo, 1, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), editor->action_type_combo, 1, 1, 1, 1);
     
     editor->action_val_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     editor->action_val_label = gtk_label_new("Command:");
-    gtk_grid_attach(GTK_GRID(grid), editor->action_val_label, 0, 3, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), editor->action_val_box, 1, 3, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), editor->action_val_label, 0, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), editor->action_val_box, 1, 2, 1, 1);
     
     editor->action_val_entry = gtk_entry_new();
     gtk_widget_set_hexpand(editor->action_val_entry, TRUE);
@@ -1336,7 +1153,7 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
 
     GtkWidget *browse_btn = gtk_button_new_with_label("Browse GNOME Actions");
     gtk_widget_add_css_class(browse_btn, "browse-btn");
-    gtk_grid_attach(GTK_GRID(grid), browse_btn, 1, 4, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), browse_btn, 1, 3, 1, 1);
     g_signal_connect(browse_btn, "clicked", G_CALLBACK(open_gnome_action_browser), editor);
 
     if (g && g->action_count > 0) {
@@ -1360,8 +1177,6 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     GtkEventController *key_controller = gtk_event_controller_key_new();
     g_signal_connect(key_controller, "key-pressed", G_CALLBACK(on_record_key_pressed), editor);
     gtk_widget_add_controller(editor->dialog, key_controller);
-    
-    g_signal_connect(editor->move_combo, "notify::selected", G_CALLBACK(on_move_combo_changed), editor);
 
     GtkWidget *canvas_label = gtk_label_new("Draw Movement (drag to customize):");
     gtk_widget_set_halign(canvas_label, GTK_ALIGN_START);
@@ -1419,16 +1234,7 @@ static void on_gesture_delete_clicked(GtkWidget *widget, gpointer user_data) {
             free(del_g->action_list[j]);
         }
         free(del_g->action_list);
-        int is_global_move = 0;
         if (del_g->movement) {
-            for (int k = 0; k < conf->movement_count; k++) {
-                if (conf->movement_list[k] == del_g->movement) {
-                    is_global_move = 1;
-                    break;
-                }
-            }
-        }
-        if (del_g->movement && !is_global_move) {
             if (del_g->movement->name) free(del_g->movement->name);
             if (del_g->movement->expression) free(del_g->movement->expression);
             if (del_g->movement->points) free(del_g->movement->points);
@@ -1508,15 +1314,6 @@ static void add_gesture_row(GestosApp *gestos, Gesture *gesture) {
     
     gtk_box_append(GTK_BOX(main_hbox), vbox);
 
-    int is_global_move = 0;
-    if (gesture->movement) {
-        for (int k = 0; k < gestos->config->movement_count; k++) {
-            if (gestos->config->movement_list[k] == gesture->movement) {
-                is_global_move = 1;
-                break;
-            }
-        }
-    }
     GtkWidget *preview_frame = gtk_frame_new(NULL);
     gtk_widget_set_size_request(preview_frame, 46, 46);
     gtk_widget_set_valign(preview_frame, GTK_ALIGN_CENTER);
@@ -1527,11 +1324,7 @@ static void add_gesture_row(GestosApp *gestos, Gesture *gesture) {
     gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(preview_canvas), on_preview_draw, gesture->movement, NULL);
     gtk_frame_set_child(GTK_FRAME(preview_frame), preview_canvas);
 
-    if (gesture->movement) {
-        gtk_widget_set_tooltip_text(preview_frame, is_global_move ? gesture->movement->name : "custom");
-    } else {
-        gtk_widget_set_tooltip_text(preview_frame, "Unknown");
-    }
+    gtk_widget_set_tooltip_text(preview_frame, gesture->name);
 
     gtk_box_append(GTK_BOX(main_hbox), preview_frame);
 
