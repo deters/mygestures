@@ -9,8 +9,9 @@ dist_udevrules_DATA = 99-mygestures.rules
 install-data-hook:
 	-modprobe uinput 2>/dev/null
 	-udevadm control --reload-rules 2>/dev/null
-	-udevadm trigger --attr-match=name=uinput 2>/dev/null
+	-udevadm trigger --sysname-match=uinput 2>/dev/null
 	-udevadm trigger --subsystem-match=input 2>/dev/null
+	-udevadm trigger --subsystem-match=misc 2>/dev/null
 
 #CC=gcc
 #CC=clang
