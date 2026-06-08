@@ -236,6 +236,13 @@ static void x11_workspace_down(void) { x11_execute_desktop_shortcut("switch-to-w
 static void x11_show_overview(void) { x11_execute_desktop_shortcut("panel-main-menu", "Super_L"); }
 static void x11_show_app_grid(void) { x11_execute_desktop_shortcut("toggle-application-view", "Super_L+a"); }
 
+static void x11_click(int button) {
+    if (!x11_dpy) return;
+    XTestFakeButtonEvent(x11_dpy, button, True, CurrentTime);
+    XTestFakeButtonEvent(x11_dpy, button, False, CurrentTime);
+    XFlush(x11_dpy);
+}
+
 static ActionBackend x11_backend = {
     .iconify = x11_iconify,
     .kill_window = x11_kill_window,
@@ -250,7 +257,8 @@ static ActionBackend x11_backend = {
     .workspace_up = x11_workspace_up,
     .workspace_down = x11_workspace_down,
     .show_overview = x11_show_overview,
-    .show_app_grid = x11_show_app_grid
+    .show_app_grid = x11_show_app_grid,
+    .click = x11_click
 };
 
 ActionBackend *action_backend_x11_get(void *context) {

@@ -31,4 +31,6 @@ enum {
 
 const char *get_action_name(int action);
 
+void execute_click_agnostic(int button);
+
 #endif

@@ -120,3 +120,9 @@ void execute_action_agnostic(Action *action) {
             break;
     }
 }
+
+void execute_click_agnostic(int button) {
+    if (current_backend && current_backend->click) {
+        current_backend->click(button);
+    }
+}

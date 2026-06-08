@@ -228,16 +228,7 @@ void grabbing_xinput_grab_stop(Grabber *self)
 
 static void mouse_click(Grabber *self, int button, int x, int y)
 {
-	if (self->evdev || self->dpy == NULL)
-	{
-		uinput_click(button);
-	}
-	else
-	{
-		XTestFakeMotionEvent(self->dpy, DefaultScreen(self->dpy), x, y, 0);
-		XTestFakeButtonEvent(self->dpy, button, True, CurrentTime);
-		XTestFakeButtonEvent(self->dpy, button, False, CurrentTime);
-	}
+    execute_click_agnostic(button);
 }
 
 static void free_grabbed(Capture *free_me)

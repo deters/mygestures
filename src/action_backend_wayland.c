@@ -211,11 +211,17 @@ static void generic_workspace_down(void) { wayland_keypress("Control_L+Alt_L+Dow
 static void generic_show_overview(void) { wayland_keypress("Super_L"); }
 static void generic_show_app_grid(void) { wayland_keypress("Super_L+a"); }
 
+static void wl_click(int button) {
+    uinput_click(button);
+}
+
 static ActionBackend wayland_backend;
 
 ActionBackend *action_backend_wayland_get(void) {
     const char *swaysock = getenv("SWAYSOCK");
     const char *hyprland_sig = getenv("HYPRLAND_INSTANCE_SIGNATURE");
+
+    wayland_backend.click = wl_click;
 
     if (swaysock) {
         wayland_backend.iconify = sway_iconify;

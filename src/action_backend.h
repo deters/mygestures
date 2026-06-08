@@ -18,6 +18,7 @@ typedef struct ActionBackend {
     void (*workspace_down)(void);
     void (*show_overview)(void);
     void (*show_app_grid)(void);
+    void (*click)(int button);
 } ActionBackend;
 
 /* Initialize the appropriate backend based on context (e.g. Display pointer for X11) */
