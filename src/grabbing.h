@@ -70,6 +70,7 @@ typedef struct
 
 	int synaptics;
 	int evdev;
+	int is_exclusive;
 
 	int rought_old_x;
 	int rought_old_y;

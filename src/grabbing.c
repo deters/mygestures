@@ -193,6 +193,9 @@ void grabbing_xinput_grab_start(Grabber *self)
 			int res = XIGrabButton(self->dpy, self->deviceid, self->button,
 								   rootwindow, None,
 								   GrabModeAsync, GrabModeAsync, False, &mask, nmods, mods);
+			if (res == Success) {
+				self->is_exclusive = 1;
+			}
 		}
 	}
 }
@@ -533,7 +536,7 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 	if ((self->rought_len == 0) && (self->fine_len == 0))
 	{
 
-		if (!(self->synaptics) && (self->dpy || self->evdev))
+		if (self->is_exclusive)
 		{
 
 			LOG_INFO(1, "\nEmulating click\n");
