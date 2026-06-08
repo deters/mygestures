@@ -65,6 +65,19 @@ static ActionType action_types[] = {
     { ACTION_MEDIA_PLAY, "Play/Pause Media", "media-play", "media-playback-start-symbolic" },
     { ACTION_MEDIA_NEXT, "Next Track", "media-next", "media-skip-forward-symbolic" },
     { ACTION_MEDIA_PREV, "Previous Track", "media-prev", "media-skip-backward-symbolic" },
+    { ACTION_WWW, "Web Browser", "www", "web-browser-symbolic" },
+    { ACTION_HOME, "Home Folder", "home", "folder-home-symbolic" },
+    { ACTION_EMAIL, "Email Client", "email", "mail-unread-symbolic" },
+    { ACTION_SEARCH, "Search", "search", "system-search-symbolic" },
+    { ACTION_CALCULATOR, "Calculator", "calculator", "accessories-calculator-symbolic" },
+    { ACTION_CONTROL_CENTER, "System Settings", "control-center", "preferences-system-symbolic" },
+    { ACTION_LOGOUT, "Log Out", "logout", "system-log-out-symbolic" },
+    { ACTION_SCREENSHOT, "Take Screenshot", "screenshot", "camera-photo-symbolic" },
+    { ACTION_SCREENSHOT_WINDOW, "Screenshot Window", "screenshot-window", "camera-photo-symbolic" },
+    { ACTION_SCREENSHOT_AREA, "Screenshot Area", "screenshot-area", "camera-photo-symbolic" },
+    { ACTION_EXIT_GEST, "Exit MyGestures", "exit-gest", "application-exit-symbolic" },
+    { ACTION_RECONF, "Reload Configuration", "reconf", "view-refresh-symbolic" },
+    { ACTION_ABORT, "Abort Gesture", "abort", "dialog-cancel-symbolic" },
     { 0, NULL, NULL, NULL }
 };
 
@@ -224,6 +237,16 @@ static void on_gnome_action_row_activated(GtkListBox *list, GtkListBoxRow *row, 
             else if (strcmp(action->name, "switch-to-workspace-down") == 0) native_id = ACTION_WORKSPACE_DOWN;
             else if (strcmp(action->name, "panel-main-menu") == 0) native_id = ACTION_SHOW_OVERVIEW;
             else if (strcmp(action->name, "toggle-application-view") == 0) native_id = ACTION_SHOW_APP_GRID;
+            else if (strcmp(action->name, "www") == 0) native_id = ACTION_WWW;
+            else if (strcmp(action->name, "home") == 0) native_id = ACTION_HOME;
+            else if (strcmp(action->name, "email") == 0) native_id = ACTION_EMAIL;
+            else if (strcmp(action->name, "search") == 0) native_id = ACTION_SEARCH;
+            else if (strcmp(action->name, "calculator") == 0) native_id = ACTION_CALCULATOR;
+            else if (strcmp(action->name, "control-center") == 0) native_id = ACTION_CONTROL_CENTER;
+            else if (strcmp(action->name, "logout") == 0) native_id = ACTION_LOGOUT;
+            else if (strcmp(action->name, "screenshot") == 0 || strcmp(action->name, "screenshot-clip") == 0) native_id = ACTION_SCREENSHOT;
+            else if (strcmp(action->name, "window-screenshot") == 0 || strcmp(action->name, "window-screenshot-clip") == 0) native_id = ACTION_SCREENSHOT_WINDOW;
+            else if (strcmp(action->name, "area-screenshot") == 0 || strcmp(action->name, "area-screenshot-clip") == 0) native_id = ACTION_SCREENSHOT_AREA;
             
             if (native_id != -1) {
                 for (int i = 0; action_types[i].name; i++) {
@@ -403,6 +426,19 @@ static const char* get_action_class(int id) {
         case ACTION_SHOW_OVERVIEW:
         case ACTION_SHOW_APP_GRID:
             return "icon-bg-blue";
+        case ACTION_EXIT_GEST:
+        case ACTION_RECONF:
+        case ACTION_ABORT:
+        case ACTION_WWW:
+        case ACTION_HOME:
+        case ACTION_EMAIL:
+        case ACTION_SEARCH:
+        case ACTION_CALCULATOR:
+        case ACTION_CONTROL_CENTER:
+        case ACTION_LOGOUT:
+        case ACTION_SCREENSHOT:
+        case ACTION_SCREENSHOT_WINDOW:
+        case ACTION_SCREENSHOT_AREA:
         default:
             return "icon-bg-green";
     }

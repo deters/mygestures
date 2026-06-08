@@ -47,6 +47,12 @@ static KeyMap key_map[] = {
     {"Stop", KEY_STOPCD}, {"AudioStop", KEY_STOPCD}, {"XF86AudioStop", KEY_STOPCD},
     {"Next", KEY_NEXTSONG}, {"AudioNext", KEY_NEXTSONG}, {"XF86AudioNext", KEY_NEXTSONG},
     {"Prev", KEY_PREVIOUSSONG}, {"AudioPrev", KEY_PREVIOUSSONG}, {"XF86AudioPrev", KEY_PREVIOUSSONG},
+    {"WWW", KEY_WWW}, {"XF86WWW", KEY_WWW},
+    {"Explorer", KEY_HOMEPAGE}, {"XF86Explorer", KEY_HOMEPAGE}, {"HomePage", KEY_HOMEPAGE},
+    {"Mail", KEY_MAIL}, {"XF86Mail", KEY_MAIL},
+    {"Search", KEY_SEARCH}, {"XF86Search", KEY_SEARCH},
+    {"Calc", KEY_CALC}, {"XF86Calculator", KEY_CALC},
+    {"Print", KEY_SYSRQ}, {"PrintScreen", KEY_SYSRQ},
     {NULL, 0}
 };
 

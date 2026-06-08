@@ -221,6 +221,16 @@ static void sway_volume_mute(void) { wayland_keypress("XF86AudioMute"); }
 static void sway_media_play(void) { wayland_keypress("XF86AudioPlay"); }
 static void sway_media_next(void) { wayland_keypress("XF86AudioNext"); }
 static void sway_media_prev(void) { wayland_keypress("XF86AudioPrev"); }
+static void sway_www(void) { wayland_keypress("XF86WWW"); }
+static void sway_home(void) { wayland_keypress("XF86Explorer"); }
+static void sway_email(void) { wayland_keypress("XF86Mail"); }
+static void sway_search(void) { wayland_keypress("XF86Search"); }
+static void sway_calculator(void) { wayland_keypress("XF86Calculator"); }
+static void sway_control_center(void) { wayland_keypress("XF86ControlPanel"); }
+static void sway_logout(void) { wayland_keypress("Control_L+Alt_L+Delete"); }
+static void sway_screenshot(void) { wayland_keypress("Print"); }
+static void sway_screenshot_window(void) { wayland_keypress("Alt_L+Print"); }
+static void sway_screenshot_area(void) { wayland_keypress("Shift_L+Print"); }
 
 // Hyprland actions
 static void hypr_iconify(void) { 
@@ -344,6 +354,16 @@ static void hypr_volume_mute(void) { wayland_keypress("XF86AudioMute"); }
 static void hypr_media_play(void) { wayland_keypress("XF86AudioPlay"); }
 static void hypr_media_next(void) { wayland_keypress("XF86AudioNext"); }
 static void hypr_media_prev(void) { wayland_keypress("XF86AudioPrev"); }
+static void hypr_www(void) { wayland_keypress("XF86WWW"); }
+static void hypr_home(void) { wayland_keypress("XF86Explorer"); }
+static void hypr_email(void) { wayland_keypress("XF86Mail"); }
+static void hypr_search(void) { wayland_keypress("XF86Search"); }
+static void hypr_calculator(void) { wayland_keypress("XF86Calculator"); }
+static void hypr_control_center(void) { wayland_keypress("XF86ControlPanel"); }
+static void hypr_logout(void) { wayland_keypress("Control_L+Alt_L+Delete"); }
+static void hypr_screenshot(void) { wayland_keypress("Print"); }
+static void hypr_screenshot_window(void) { wayland_keypress("Alt_L+Print"); }
+static void hypr_screenshot_area(void) { wayland_keypress("Shift_L+Print"); }
 
 // GNOME actions
 static void gnome_iconify(void) { wayland_execute_desktop_shortcut("minimize", "Super_L+h"); }
@@ -369,6 +389,16 @@ static void gnome_volume_mute(void) { wayland_execute_desktop_shortcut("volume-m
 static void gnome_media_play(void) { wayland_execute_desktop_shortcut("play", "XF86AudioPlay"); }
 static void gnome_media_next(void) { wayland_execute_desktop_shortcut("next", "XF86AudioNext"); }
 static void gnome_media_prev(void) { wayland_execute_desktop_shortcut("previous", "XF86AudioPrev"); }
+static void gnome_www(void) { wayland_execute_desktop_shortcut("www", "XF86WWW"); }
+static void gnome_home(void) { wayland_execute_desktop_shortcut("home", "XF86Explorer"); }
+static void gnome_email(void) { wayland_execute_desktop_shortcut("email", "XF86Mail"); }
+static void gnome_search(void) { wayland_execute_desktop_shortcut("search", "XF86Search"); }
+static void gnome_calculator(void) { wayland_execute_desktop_shortcut("calculator", "XF86Calculator"); }
+static void gnome_control_center(void) { wayland_execute_desktop_shortcut("control-center", "XF86ControlPanel"); }
+static void gnome_logout(void) { wayland_execute_desktop_shortcut("logout", "Control_L+Alt_L+Delete"); }
+static void gnome_screenshot(void) { wayland_execute_desktop_shortcut("screenshot", "Print"); }
+static void gnome_screenshot_window(void) { wayland_execute_desktop_shortcut("window-screenshot", "Alt_L+Print"); }
+static void gnome_screenshot_area(void) { wayland_execute_desktop_shortcut("area-screenshot", "Shift_L+Print"); }
 
 // KDE actions
 static void kde_iconify(void) { wayland_keypress("Alt_L+F9"); }
@@ -394,6 +424,16 @@ static void kde_volume_mute(void) { wayland_keypress("XF86AudioMute"); }
 static void kde_media_play(void) { wayland_keypress("XF86AudioPlay"); }
 static void kde_media_next(void) { wayland_keypress("XF86AudioNext"); }
 static void kde_media_prev(void) { wayland_keypress("XF86AudioPrev"); }
+static void kde_www(void) { wayland_keypress("XF86WWW"); }
+static void kde_home(void) { wayland_keypress("XF86Explorer"); }
+static void kde_email(void) { wayland_keypress("XF86Mail"); }
+static void kde_search(void) { wayland_keypress("XF86Search"); }
+static void kde_calculator(void) { wayland_keypress("XF86Calculator"); }
+static void kde_control_center(void) { wayland_keypress("XF86ControlPanel"); }
+static void kde_logout(void) { wayland_keypress("Control_L+Alt_L+Delete"); }
+static void kde_screenshot(void) { wayland_keypress("Print"); }
+static void kde_screenshot_window(void) { wayland_keypress("Alt_L+Print"); }
+static void kde_screenshot_area(void) { wayland_keypress("Shift_L+Print"); }
 
 // Generic Wayland Fallback Actions
 static void generic_iconify(void) { wayland_keypress("Super_L+h"); }
@@ -419,6 +459,16 @@ static void generic_volume_mute(void) { wayland_keypress("XF86AudioMute"); }
 static void generic_media_play(void) { wayland_keypress("XF86AudioPlay"); }
 static void generic_media_next(void) { wayland_keypress("XF86AudioNext"); }
 static void generic_media_prev(void) { wayland_keypress("XF86AudioPrev"); }
+static void generic_www(void) { wayland_keypress("XF86WWW"); }
+static void generic_home(void) { wayland_keypress("XF86Explorer"); }
+static void generic_email(void) { wayland_keypress("XF86Mail"); }
+static void generic_search(void) { wayland_keypress("XF86Search"); }
+static void generic_calculator(void) { wayland_keypress("XF86Calculator"); }
+static void generic_control_center(void) { wayland_keypress("XF86ControlPanel"); }
+static void generic_logout(void) { wayland_keypress("Control_L+Alt_L+Delete"); }
+static void generic_screenshot(void) { wayland_keypress("Print"); }
+static void generic_screenshot_window(void) { wayland_keypress("Alt_L+Print"); }
+static void generic_screenshot_area(void) { wayland_keypress("Shift_L+Print"); }
 
 static void wl_click(int button) {
     uinput_click(button);
@@ -456,6 +506,16 @@ ActionBackend *action_backend_wayland_get(void) {
         wayland_backend.media_play = sway_media_play;
         wayland_backend.media_next = sway_media_next;
         wayland_backend.media_prev = sway_media_prev;
+        wayland_backend.www = sway_www;
+        wayland_backend.home = sway_home;
+        wayland_backend.email = sway_email;
+        wayland_backend.search = sway_search;
+        wayland_backend.calculator = sway_calculator;
+        wayland_backend.control_center = sway_control_center;
+        wayland_backend.logout = sway_logout;
+        wayland_backend.screenshot = sway_screenshot;
+        wayland_backend.screenshot_window = sway_screenshot_window;
+        wayland_backend.screenshot_area = sway_screenshot_area;
         return &wayland_backend;
     }
 
@@ -484,6 +544,16 @@ ActionBackend *action_backend_wayland_get(void) {
         wayland_backend.media_play = hypr_media_play;
         wayland_backend.media_next = hypr_media_next;
         wayland_backend.media_prev = hypr_media_prev;
+        wayland_backend.www = hypr_www;
+        wayland_backend.home = hypr_home;
+        wayland_backend.email = hypr_email;
+        wayland_backend.search = hypr_search;
+        wayland_backend.calculator = hypr_calculator;
+        wayland_backend.control_center = hypr_control_center;
+        wayland_backend.logout = hypr_logout;
+        wayland_backend.screenshot = hypr_screenshot;
+        wayland_backend.screenshot_window = hypr_screenshot_window;
+        wayland_backend.screenshot_area = hypr_screenshot_area;
         return &wayland_backend;
     }
 
@@ -512,6 +582,16 @@ ActionBackend *action_backend_wayland_get(void) {
         wayland_backend.media_play = gnome_media_play;
         wayland_backend.media_next = gnome_media_next;
         wayland_backend.media_prev = gnome_media_prev;
+        wayland_backend.www = gnome_www;
+        wayland_backend.home = gnome_home;
+        wayland_backend.email = gnome_email;
+        wayland_backend.search = gnome_search;
+        wayland_backend.calculator = gnome_calculator;
+        wayland_backend.control_center = gnome_control_center;
+        wayland_backend.logout = gnome_logout;
+        wayland_backend.screenshot = gnome_screenshot;
+        wayland_backend.screenshot_window = gnome_screenshot_window;
+        wayland_backend.screenshot_area = gnome_screenshot_area;
     } else if (ctx.is_kde) {
         wayland_backend.iconify = kde_iconify;
         wayland_backend.kill_window = kde_kill_window;
@@ -537,6 +617,16 @@ ActionBackend *action_backend_wayland_get(void) {
         wayland_backend.media_play = kde_media_play;
         wayland_backend.media_next = kde_media_next;
         wayland_backend.media_prev = kde_media_prev;
+        wayland_backend.www = kde_www;
+        wayland_backend.home = kde_home;
+        wayland_backend.email = kde_email;
+        wayland_backend.search = kde_search;
+        wayland_backend.calculator = kde_calculator;
+        wayland_backend.control_center = kde_control_center;
+        wayland_backend.logout = kde_logout;
+        wayland_backend.screenshot = kde_screenshot;
+        wayland_backend.screenshot_window = kde_screenshot_window;
+        wayland_backend.screenshot_area = kde_screenshot_area;
     } else {
         wayland_backend.iconify = generic_iconify;
         wayland_backend.kill_window = generic_kill_window;
@@ -562,6 +652,16 @@ ActionBackend *action_backend_wayland_get(void) {
         wayland_backend.media_play = generic_media_play;
         wayland_backend.media_next = generic_media_next;
         wayland_backend.media_prev = generic_media_prev;
+        wayland_backend.www = generic_www;
+        wayland_backend.home = generic_home;
+        wayland_backend.email = generic_email;
+        wayland_backend.search = generic_search;
+        wayland_backend.calculator = generic_calculator;
+        wayland_backend.control_center = generic_control_center;
+        wayland_backend.logout = generic_logout;
+        wayland_backend.screenshot = generic_screenshot;
+        wayland_backend.screenshot_window = generic_screenshot_window;
+        wayland_backend.screenshot_area = generic_screenshot_area;
     }
     
     return &wayland_backend;

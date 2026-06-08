@@ -173,6 +173,26 @@ void configuration_add_action_from_string(Gesture * self, const char * action_st
 		id = ACTION_MEDIA_NEXT;
 	} else if (strcasecmp(action_name, "media-prev") == 0) {
 		id = ACTION_MEDIA_PREV;
+	} else if (strcasecmp(action_name, "www") == 0) {
+		id = ACTION_WWW;
+	} else if (strcasecmp(action_name, "home") == 0) {
+		id = ACTION_HOME;
+	} else if (strcasecmp(action_name, "email") == 0) {
+		id = ACTION_EMAIL;
+	} else if (strcasecmp(action_name, "search") == 0) {
+		id = ACTION_SEARCH;
+	} else if (strcasecmp(action_name, "calculator") == 0) {
+		id = ACTION_CALCULATOR;
+	} else if (strcasecmp(action_name, "control-center") == 0) {
+		id = ACTION_CONTROL_CENTER;
+	} else if (strcasecmp(action_name, "logout") == 0) {
+		id = ACTION_LOGOUT;
+	} else if (strcasecmp(action_name, "screenshot") == 0) {
+		id = ACTION_SCREENSHOT;
+	} else if (strcasecmp(action_name, "screenshot-window") == 0) {
+		id = ACTION_SCREENSHOT_WINDOW;
+	} else if (strcasecmp(action_name, "screenshot-area") == 0) {
+		id = ACTION_SCREENSHOT_AREA;
 	} else {
 		fprintf(stderr, "Warning: unknown action '%s' in gesture '%s'\n", action_name, self->name);
 		free(copy);

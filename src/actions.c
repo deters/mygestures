@@ -37,7 +37,9 @@ const char *action_name[ACTION_COUNT + 1] = {
 		"SHOW_OVERVIEW", "SHOW_APP_GRID", "CLICK", 
 		"TOGGLE_FULLSCREEN", "SHOW_DESKTOP", "LOCK_SCREEN", "TERMINAL",
 		"VOLUME_UP", "VOLUME_DOWN", "VOLUME_MUTE",
-		"MEDIA_PLAY", "MEDIA_NEXT", "MEDIA_PREV", "LAST" };
+		"MEDIA_PLAY", "MEDIA_NEXT", "MEDIA_PREV",
+		"WWW", "HOME", "EMAIL", "SEARCH", "CALCULATOR", "CONTROL_CENTER", "LOGOUT",
+		"SCREENSHOT", "SCREENSHOT_WINDOW", "SCREENSHOT_AREA", "LAST" };
 
 const char *get_action_name(int action) {
 	return action_name[action];
@@ -149,6 +151,36 @@ void execute_action_agnostic(Action *action) {
             break;
         case ACTION_MEDIA_PREV:
             if (current_backend->media_prev) current_backend->media_prev();
+            break;
+        case ACTION_WWW:
+            if (current_backend->www) current_backend->www();
+            break;
+        case ACTION_HOME:
+            if (current_backend->home) current_backend->home();
+            break;
+        case ACTION_EMAIL:
+            if (current_backend->email) current_backend->email();
+            break;
+        case ACTION_SEARCH:
+            if (current_backend->search) current_backend->search();
+            break;
+        case ACTION_CALCULATOR:
+            if (current_backend->calculator) current_backend->calculator();
+            break;
+        case ACTION_CONTROL_CENTER:
+            if (current_backend->control_center) current_backend->control_center();
+            break;
+        case ACTION_LOGOUT:
+            if (current_backend->logout) current_backend->logout();
+            break;
+        case ACTION_SCREENSHOT:
+            if (current_backend->screenshot) current_backend->screenshot();
+            break;
+        case ACTION_SCREENSHOT_WINDOW:
+            if (current_backend->screenshot_window) current_backend->screenshot_window();
+            break;
+        case ACTION_SCREENSHOT_AREA:
+            if (current_backend->screenshot_area) current_backend->screenshot_area();
             break;
         default:
             LOG_ERROR("found an unknown gesture \n");

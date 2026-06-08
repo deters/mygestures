@@ -29,6 +29,16 @@ typedef struct ActionBackend {
     void (*media_play)(void);
     void (*media_next)(void);
     void (*media_prev)(void);
+    void (*www)(void);
+    void (*home)(void);
+    void (*email)(void);
+    void (*search)(void);
+    void (*calculator)(void);
+    void (*control_center)(void);
+    void (*logout)(void);
+    void (*screenshot)(void);
+    void (*screenshot_window)(void);
+    void (*screenshot_area)(void);
 } ActionBackend;
 
 /* Initialize the appropriate backend */
