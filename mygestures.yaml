@@ -49,10 +49,6 @@ movements:
 
 # Default gestures available in all windows
 global:
-  "Right Click (Remapping Workflow)":
-    move: ""
-    do: click 3
-
   "Close window":
     move: DownRight
     do: kill

@@ -186,25 +186,8 @@ Gestures configuration:
     do: workspace-down     # switch to the workspace below
     do: show-overview      # show desktop overview (activities)
     do: show-app-grid      # show the application grid
-    do: click 3            # emulate a mouse button click (button 3 = right-click)
+    More key names can be found on the file /usr/include/X11/keysymdef.h
 
-   More key names can be found on the file /usr/include/X11/keysymdef.h
 
-Avoiding Context Menus in Wayland/Evdev
----------------------------------------
-
-When using `evdev` mode without exclusive grabs, the OS receives the mouse events at the same time as MyGestures. This causes the context menu to appear immediately when you press the right button.
-
-The recommended solution is **Kernel-level Remapping**:
-
-1. **Remap the Button**: Use a `udev` hwdb rule (see `mygestures.hwdb`) to remap your physical right button to an unused code (e.g., `BTN_SIDE` / button 8).
-2. **Configure MyGestures**:
-   - Run with `-b 8` (to listen for the remapped button).
-   - In your config, add an "empty" gesture to restore the right-click:
-     ```yaml
-     - name: "Right Click"
-       movement: ""
-       action: "click 3"
-     ```
-
-This way, the context menu only appears if you click without performing a gesture.
+License
+-------
