@@ -10,6 +10,82 @@ static void wayland_keypress(const char *data) {
     uinput_keypress_string(data);
 }
 
+static char *get_gnome_shortcut(const char *schema, const char *key) {
+    char cmd[512];
+    snprintf(cmd, sizeof(cmd), "gsettings get %s %s 2>/dev/null", schema, key);
+    FILE *fp = popen(cmd, "r");
+    if (!fp) return NULL;
+
+    char line[512];
+    if (fgets(line, sizeof(line), fp)) {
+        pclose(fp);
+        
+        char *start = strchr(line, '\'');
+        if (!start) start = strchr(line, '"');
+        if (start) {
+            start++;
+            char *end = strchr(start, '\'');
+            if (!end) end = strchr(start, '"');
+            if (end) {
+                *end = '\0';
+                
+                if (strcmp(start, "disabled") == 0) return NULL;
+
+                char *translated = malloc(strlen(start) * 2 + 1);
+                translated[0] = '\0';
+                
+                char *p = start;
+                while (*p) {
+                    if (strncmp(p, "<Alt>", 5) == 0) { strcat(translated, "Alt_L+"); p += 5; }
+                    else if (strncmp(p, "<Super>", 7) == 0) { strcat(translated, "Super_L+"); p += 7; }
+                    else if (strncmp(p, "<Shift>", 7) == 0) { strcat(translated, "Shift_L+"); p += 7; }
+                    else if (strncmp(p, "<Control>", 9) == 0) { strcat(translated, "Control_L+"); p += 9; }
+                    else if (strncmp(p, "<Ctrl>", 6) == 0) { strcat(translated, "Control_L+"); p += 6; }
+                    else if (*p == '>') { p++; }
+                    else {
+                        size_t len = strlen(translated);
+                        translated[len] = *p;
+                        translated[len+1] = '\0';
+                        p++;
+                    }
+                }
+                
+                size_t final_len = strlen(translated);
+                if (final_len > 0 && translated[final_len - 1] == '+') {
+                    translated[final_len - 1] = '\0';
+                }
+                
+                return translated;
+            }
+        }
+    } else {
+        pclose(fp);
+    }
+    return NULL;
+}
+
+static void wayland_execute_desktop_shortcut(const char *gnome_key, const char *fallback_keys) {
+    const char *schemas[] = {
+        "org.gnome.desktop.wm.keybindings",
+        "org.gnome.settings-daemon.plugins.media-keys",
+        "org.gnome.shell.keybindings",
+        NULL
+    };
+
+    for (int i = 0; schemas[i] != NULL; i++) {
+        char *shortcut = get_gnome_shortcut(schemas[i], gnome_key);
+        if (shortcut) {
+            wayland_keypress(shortcut);
+            free(shortcut);
+            return;
+        }
+    }
+
+    if (fallback_keys) {
+        wayland_keypress(fallback_keys);
+    }
+}
+
 // Sway actions
 static void sway_iconify(void) { system("swaymsg move scratchpad >/dev/null 2>&1"); }
 static void sway_kill_window(void) { system("swaymsg kill >/dev/null 2>&1"); }
@@ -41,19 +117,19 @@ static void hypr_show_overview(void) { LOG_WARN("Not supported under Hyprland.\n
 static void hypr_show_app_grid(void) { LOG_WARN("Not supported under Hyprland.\n"); }
 
 // GNOME actions
-static void gnome_iconify(void) { wayland_keypress("Super_L+h"); }
-static void gnome_kill_window(void) { wayland_keypress("Super_L+q"); }
+static void gnome_iconify(void) { wayland_execute_desktop_shortcut("minimize", "Super_L+h"); }
+static void gnome_kill_window(void) { wayland_execute_desktop_shortcut("close", "Alt_L+F4"); }
 static void gnome_raise(void) {}
 static void gnome_lower(void) { wayland_keypress("Alt_L+Escape"); }
-static void gnome_maximize(void) { wayland_keypress("Super_L+Up"); }
-static void gnome_restore(void) { wayland_keypress("Super_L+Down"); }
-static void gnome_toggle_maximized(void) { wayland_keypress("Super_L+space"); }
-static void gnome_workspace_left(void) { wayland_keypress("Control_L+Alt_L+Left"); }
-static void gnome_workspace_right(void) { wayland_keypress("Control_L+Alt_L+Right"); }
-static void gnome_workspace_up(void) { wayland_keypress("Control_L+Alt_L+Up"); }
-static void gnome_workspace_down(void) { wayland_keypress("Control_L+Alt_L+Down"); }
-static void gnome_show_overview(void) { wayland_keypress("Super_L"); }
-static void gnome_show_app_grid(void) { wayland_keypress("Super_L+a"); }
+static void gnome_maximize(void) { wayland_execute_desktop_shortcut("maximize", "Super_L+Up"); }
+static void gnome_restore(void) { wayland_execute_desktop_shortcut("unmaximize", "Super_L+Down"); }
+static void gnome_toggle_maximized(void) { wayland_execute_desktop_shortcut("toggle-maximized", "Alt_L+F10"); }
+static void gnome_workspace_left(void) { wayland_execute_desktop_shortcut("switch-to-workspace-left", "Control_L+Alt_L+Left"); }
+static void gnome_workspace_right(void) { wayland_execute_desktop_shortcut("switch-to-workspace-right", "Control_L+Alt_L+Right"); }
+static void gnome_workspace_up(void) { wayland_execute_desktop_shortcut("switch-to-workspace-up", "Control_L+Alt_L+Up"); }
+static void gnome_workspace_down(void) { wayland_execute_desktop_shortcut("switch-to-workspace-down", "Control_L+Alt_L+Down"); }
+static void gnome_show_overview(void) { wayland_execute_desktop_shortcut("panel-main-menu", "Super_L"); }
+static void gnome_show_app_grid(void) { wayland_execute_desktop_shortcut("toggle-application-view", "Super_L+a"); }
 
 // KDE actions
 static void kde_iconify(void) { wayland_keypress("Alt_L+F9"); }
