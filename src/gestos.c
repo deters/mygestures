@@ -682,154 +682,144 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
             cairo_line_to(cr, editor->drawn_points[i].x, editor->drawn_points[i].y);
         }
         cairo_stroke(cr);
-    } else {
-        guint move_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->move_combo));
-        if (move_idx != GTK_INVALID_LIST_POSITION) {
-            Point2D *pts = NULL;
-            int pt_count = 0;
-            gboolean free_pts = FALSE;
-            
-            if (move_idx < (guint)editor->app->config->movement_count) {
-                Movement *m = editor->app->config->movement_list[move_idx];
-                if (m) {
-                    pts = m->points;
-                    pt_count = m->point_count;
+    } else if (editor->custom_expression) {
+        Point2D *pts = NULL;
+        int pt_count = 0;
+        gboolean free_pts = FALSE;
+        
+        int count = 0;
+        char *expr_copy = strdup(editor->custom_expression);
+        char *token = strtok(expr_copy, " ");
+        while (token) {
+            count++;
+            token = strtok(NULL, " ");
+        }
+        free(expr_copy);
+        
+        if (count > 0) {
+            pts = malloc(sizeof(Point2D) * count);
+            expr_copy = strdup(editor->custom_expression);
+            token = strtok(expr_copy, " ");
+            int idx = 0;
+            while (token) {
+                double x = 0, y = 0;
+                if (sscanf(token, "%lf,%lf", &x, &y) == 2) {
+                    pts[idx].x = x;
+                    pts[idx].y = y;
+                    idx++;
                 }
-            } else if (editor->custom_expression) {
-                int count = 0;
-                char *expr_copy = strdup(editor->custom_expression);
-                char *token = strtok(expr_copy, " ");
-                while (token) {
-                    count++;
-                    token = strtok(NULL, " ");
-                }
-                free(expr_copy);
-                
-                if (count > 0) {
-                    pts = malloc(sizeof(Point2D) * count);
-                    expr_copy = strdup(editor->custom_expression);
-                    token = strtok(expr_copy, " ");
-                    int idx = 0;
-                    while (token) {
-                        double x = 0, y = 0;
-                        if (sscanf(token, "%lf,%lf", &x, &y) == 2) {
-                            pts[idx].x = x;
-                            pts[idx].y = y;
-                            idx++;
-                        }
-                        token = strtok(NULL, " ");
-                    }
-                    free(expr_copy);
-                    pt_count = idx;
-                    free_pts = TRUE;
-                }
+                token = strtok(NULL, " ");
             }
+            free(expr_copy);
+            pt_count = idx;
+            free_pts = TRUE;
+        }
+        
+        if (pts && pt_count > 0) {
+            // Find bounding box to center the path
+            double min_x = pts[0].x, max_x = pts[0].x;
+            double min_y = pts[0].y, max_y = pts[0].y;
+            for (int i = 1; i < pt_count; i++) {
+                if (pts[i].x < min_x) min_x = pts[i].x;
+                if (pts[i].x > max_x) max_x = pts[i].x;
+                if (pts[i].y < min_y) min_y = pts[i].y;
+                if (pts[i].y > max_y) max_y = pts[i].y;
+            }
+            double path_center_x = (min_x + max_x) / 2.0;
+            double path_center_y = (min_y + max_y) / 2.0;
             
-            if (pts && pt_count > 0) {
-                // Find bounding box to center the path
-                double min_x = pts[0].x, max_x = pts[0].x;
-                double min_y = pts[0].y, max_y = pts[0].y;
-                for (int i = 1; i < pt_count; i++) {
-                    if (pts[i].x < min_x) min_x = pts[i].x;
-                    if (pts[i].x > max_x) max_x = pts[i].x;
-                    if (pts[i].y < min_y) min_y = pts[i].y;
-                    if (pts[i].y > max_y) max_y = pts[i].y;
-                }
-                double path_center_x = (min_x + max_x) / 2.0;
-                double path_center_y = (min_y + max_y) / 2.0;
-                
-                double offset_x = (width / 2.0) - path_center_x;
-                double offset_y = (height / 2.0) - path_center_y;
+            double offset_x = (width / 2.0) - path_center_x;
+            double offset_y = (height / 2.0) - path_center_y;
 
-                cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
-                cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+            cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
+            cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+            
+            // Color Gradient Definition: Sunset Violet to Coral Pink
+            double start_r = 0.49, start_g = 0.27, start_b = 0.90; // #7c3aed
+            double end_r = 0.96, end_g = 0.29, end_b = 0.48;     // #f43f5e
+            
+            if (pt_count == 1) {
+                cairo_set_source_rgb(cr, start_r, start_g, start_b);
+                cairo_arc(cr, pts[0].x + offset_x, pts[0].y + offset_y, 8.0, 0, 2 * G_PI);
+                cairo_fill(cr);
+            } else {
+                int M = 16;
                 
-                // Color Gradient Definition: Sunset Violet to Coral Pink
-                double start_r = 0.49, start_g = 0.27, start_b = 0.90; // #7c3aed
-                double end_r = 0.96, end_g = 0.29, end_b = 0.48;     // #f43f5e
-                
-                if (pt_count == 1) {
-                    cairo_set_source_rgb(cr, start_r, start_g, start_b);
-                    cairo_arc(cr, pts[0].x + offset_x, pts[0].y + offset_y, 8.0, 0, 2 * G_PI);
-                    cairo_fill(cr);
-                } else {
-                    int M = 16; // Number of sub-segments for perfectly gradual tapering
+                // Draw outer glowing shadow
+                for (int i = 1; i < pt_count; i++) {
+                    double f_start = (double)(i - 1) / (pt_count - 1);
+                    double f_end = (double)i / (pt_count - 1);
                     
-                    // Draw outer glowing shadow for template
-                    for (int i = 1; i < pt_count; i++) {
-                        double f_start = (double)(i - 1) / (pt_count - 1);
-                        double f_end = (double)i / (pt_count - 1);
+                    for (int s = 0; s < M; s++) {
+                        double t1 = (double)s / M;
+                        double t2 = (double)(s + 1) / M;
+                        double f_global = f_start + (f_end - f_start) * t1;
                         
-                        for (int s = 0; s < M; s++) {
-                            double t1 = (double)s / M;
-                            double t2 = (double)(s + 1) / M;
-                            double f_global = f_start + (f_end - f_start) * t1;
-                            
-                            double w = 18.0 * (1.0 - f_global) + 4.0; // Glow width
-                            double r = start_r * (1.0 - f_global) + end_r * f_global;
-                            double g = start_g * (1.0 - f_global) + end_g * f_global;
-                            double b = start_b * (1.0 - f_global) + end_b * f_global;
-                            
-                            double x1 = pts[i-1].x + (pts[i].x - pts[i-1].x) * t1;
-                            double y1 = pts[i-1].y + (pts[i].y - pts[i-1].y) * t1;
-                            double x2 = pts[i-1].x + (pts[i].x - pts[i-1].x) * t2;
-                            double y2 = pts[i-1].y + (pts[i].y - pts[i-1].y) * t2;
-                            
-                            cairo_set_source_rgba(cr, r, g, b, 0.15); // Glow transparency
-                            cairo_set_line_width(cr, w);
-                            cairo_move_to(cr, x1 + offset_x, y1 + offset_y);
-                            cairo_line_to(cr, x2 + offset_x, y2 + offset_y);
-                            cairo_stroke(cr);
-                        }
-                    }
-                    
-                    // Draw solid core with color gradient
-                    for (int i = 1; i < pt_count; i++) {
-                        double f_start = (double)(i - 1) / (pt_count - 1);
-                        double f_end = (double)i / (pt_count - 1);
+                        double w = 18.0 * (1.0 - f_global) + 4.0;
+                        double r = start_r * (1.0 - f_global) + end_r * f_global;
+                        double g = start_g * (1.0 - f_global) + end_g * f_global;
+                        double b = start_b * (1.0 - f_global) + end_b * f_global;
                         
-                        for (int s = 0; s < M; s++) {
-                            double t1 = (double)s / M;
-                            double t2 = (double)(s + 1) / M;
-                            double f_global = f_start + (f_end - f_start) * t1;
-                            
-                            double w = 10.0 * (1.0 - f_global) + 2.0; // Core width
-                            double r = start_r * (1.0 - f_global) + end_r * f_global;
-                            double g = start_g * (1.0 - f_global) + end_g * f_global;
-                            double b = start_b * (1.0 - f_global) + end_b * f_global;
-                            
-                            double x1 = pts[i-1].x + (pts[i].x - pts[i-1].x) * t1;
-                            double y1 = pts[i-1].y + (pts[i].y - pts[i-1].y) * t1;
-                            double x2 = pts[i-1].x + (pts[i].x - pts[i-1].x) * t2;
-                            double y2 = pts[i-1].y + (pts[i].y - pts[i-1].y) * t2;
-                            
-                            cairo_set_source_rgb(cr, r, g, b);
-                            cairo_set_line_width(cr, w);
-                            cairo_move_to(cr, x1 + offset_x, y1 + offset_y);
-                            cairo_line_to(cr, x2 + offset_x, y2 + offset_y);
-                            cairo_stroke(cr);
-                        }
+                        double x1 = pts[i-1].x + (pts[i].x - pts[i-1].x) * t1;
+                        double y1 = pts[i-1].y + (pts[i].y - pts[i-1].y) * t1;
+                        double x2 = pts[i-1].x + (pts[i].x - pts[i-1].x) * t2;
+                        double y2 = pts[i-1].y + (pts[i].y - pts[i-1].y) * t2;
+                        
+                        cairo_set_source_rgba(cr, r, g, b, 0.15);
+                        cairo_set_line_width(cr, w);
+                        cairo_move_to(cr, x1 + offset_x, y1 + offset_y);
+                        cairo_line_to(cr, x2 + offset_x, y2 + offset_y);
+                        cairo_stroke(cr);
                     }
                 }
                 
-                // Draw glowing dots at key vertices
-                cairo_set_source_rgb(cr, 0.92, 0.35, 0.25);
-                for (int i = 0; i < pt_count; i++) {
-                    double fraction = (double)i / (pt_count > 1 ? (pt_count - 1) : 1);
-                    double dot_radius = 5.0 * (1.0 - fraction) + 2.0;
+                // Draw solid core
+                for (int i = 1; i < pt_count; i++) {
+                    double f_start = (double)(i - 1) / (pt_count - 1);
+                    double f_end = (double)i / (pt_count - 1);
                     
-                    // Outer glow ring
-                    cairo_set_source_rgba(cr, 0.92, 0.35, 0.25, 0.4);
-                    cairo_arc(cr, pts[i].x + offset_x, pts[i].y + offset_y, dot_radius + 4.0, 0, 2 * G_PI);
-                    cairo_fill(cr);
-                    
-                    // Inner solid white core
-                    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
-                    cairo_arc(cr, pts[i].x + offset_x, pts[i].y + offset_y, fmax(2.0, dot_radius - 1.5), 0, 2 * G_PI);
-                    cairo_fill(cr);
+                    for (int s = 0; s < M; s++) {
+                        double t1 = (double)s / M;
+                        double t2 = (double)(s + 1) / M;
+                        double f_global = f_start + (f_end - f_start) * t1;
+                        
+                        double w = 10.0 * (1.0 - f_global) + 2.0;
+                        double r = start_r * (1.0 - f_global) + end_r * f_global;
+                        double g = start_g * (1.0 - f_global) + end_g * f_global;
+                        double b = start_b * (1.0 - f_global) + end_b * f_global;
+                        
+                        double x1 = pts[i-1].x + (pts[i].x - pts[i-1].x) * t1;
+                        double y1 = pts[i-1].y + (pts[i].y - pts[i-1].y) * t1;
+                        double x2 = pts[i-1].x + (pts[i].x - pts[i-1].x) * t2;
+                        double y2 = pts[i-1].y + (pts[i].y - pts[i-1].y) * t2;
+                        
+                        cairo_set_source_rgb(cr, r, g, b);
+                        cairo_set_line_width(cr, w);
+                        cairo_move_to(cr, x1 + offset_x, y1 + offset_y);
+                        cairo_line_to(cr, x2 + offset_x, y2 + offset_y);
+                        cairo_stroke(cr);
+                    }
                 }
             }
             
+            // Draw glowing dots at key vertices
+            cairo_set_source_rgb(cr, 0.92, 0.35, 0.25);
+            for (int i = 0; i < pt_count; i++) {
+                double fraction = (double)i / (pt_count > 1 ? (pt_count - 1) : 1);
+                double dot_radius = 5.0 * (1.0 - fraction) + 2.0;
+                
+                cairo_set_source_rgba(cr, 0.92, 0.35, 0.25, 0.4);
+                cairo_arc(cr, pts[i].x + offset_x, pts[i].y + offset_y, dot_radius + 4.0, 0, 2 * G_PI);
+                cairo_fill(cr);
+                
+                cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+                cairo_arc(cr, pts[i].x + offset_x, pts[i].y + offset_y, fmax(2.0, dot_radius - 1.5), 0, 2 * G_PI);
+                cairo_fill(cr);
+            }
+        }
+        
+        if (free_pts && pts) {
+            free(pts);
         }
     }
 }
