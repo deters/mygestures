@@ -23,6 +23,12 @@ void discover_wayland_context(WaylandContext *ctx) {
         }
     }
 
+    /* Fallback desktop discovery if environment variables are missing (e.g. running as root) */
+    if (!ctx->is_gnome && !ctx->is_kde) {
+        if (system("pgrep -x gnome-shell >/dev/null 2>&1") == 0) ctx->is_gnome = 1;
+        else if (system("pgrep -x kwin_wayland >/dev/null 2>&1") == 0) ctx->is_kde = 1;
+    }
+
     if (env_sway) {
         snprintf(ctx->sway_sock, sizeof(ctx->sway_sock), "%s", env_sway);
         ctx->is_sway = 1;
@@ -135,15 +141,23 @@ void discover_wayland_context(WaylandContext *ctx) {
 
 const char *get_user_command_prefix(WaylandContext *ctx, char *out_buf, size_t len) {
     if (getuid() == 0 && ctx->username) {
+        char bus_path[1024];
+        snprintf(bus_path, sizeof(bus_path), "/run/user/%d/bus", ctx->uid);
+        
+        const char *dbus_env = "";
+        if (access(bus_path, F_OK) == 0) {
+            dbus_env = "DBUS_SESSION_BUS_ADDRESS=unix:path=";
+        }
+
         if (ctx->is_sway) {
-            snprintf(out_buf, len, "sudo -u %s env SWAYSOCK=%s XDG_RUNTIME_DIR=/run/user/%d ", 
-                     ctx->username, ctx->sway_sock, ctx->uid);
+            snprintf(out_buf, len, "sudo -u %s env %s%s XDG_RUNTIME_DIR=/run/user/%d SWAYSOCK=%s ", 
+                     ctx->username, dbus_env, (strlen(dbus_env) > 0 ? bus_path : ""), ctx->uid, ctx->sway_sock);
         } else if (ctx->is_hypr) {
-            snprintf(out_buf, len, "sudo -u %s env HYPRLAND_INSTANCE_SIGNATURE=%s XDG_RUNTIME_DIR=/run/user/%d ", 
-                     ctx->username, ctx->hypr_sig, ctx->uid);
+            snprintf(out_buf, len, "sudo -u %s env %s%s XDG_RUNTIME_DIR=/run/user/%d HYPRLAND_INSTANCE_SIGNATURE=%s ", 
+                     ctx->username, dbus_env, (strlen(dbus_env) > 0 ? bus_path : ""), ctx->uid, ctx->hypr_sig);
         } else {
-            snprintf(out_buf, len, "sudo -u %s env XDG_RUNTIME_DIR=/run/user/%d ", 
-                     ctx->username, ctx->uid);
+            snprintf(out_buf, len, "sudo -u %s env %s%s XDG_RUNTIME_DIR=/run/user/%d ", 
+                     ctx->username, dbus_env, (strlen(dbus_env) > 0 ? bus_path : ""), ctx->uid);
         }
         return out_buf;
     }
