@@ -734,20 +734,44 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
             }
             
             if (pts && pt_count > 0) {
+                // Find bounding box to center the path
+                double min_x = pts[0].x, max_x = pts[0].x;
+                double min_y = pts[0].y, max_y = pts[0].y;
+                for (int i = 1; i < pt_count; i++) {
+                    if (pts[i].x < min_x) min_x = pts[i].x;
+                    if (pts[i].x > max_x) max_x = pts[i].x;
+                    if (pts[i].y < min_y) min_y = pts[i].y;
+                    if (pts[i].y > max_y) max_y = pts[i].y;
+                }
+                double path_center_x = (min_x + max_x) / 2.0;
+                double path_center_y = (min_y + max_y) / 2.0;
+                
+                double offset_x = (width / 2.0) - path_center_x;
+                double offset_y = (height / 2.0) - path_center_y;
+
                 cairo_set_source_rgb(cr, 0.15, 0.65, 0.35);
-                cairo_set_line_width(cr, 4.0);
                 cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
                 cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
                 
-                cairo_move_to(cr, pts[0].x, pts[0].y);
-                for (int i = 1; i < pt_count; i++) {
-                    cairo_line_to(cr, pts[i].x, pts[i].y);
+                if (pt_count == 1) {
+                    cairo_arc(cr, pts[0].x + offset_x, pts[0].y + offset_y, 7.0, 0, 2 * G_PI);
+                    cairo_fill(cr);
+                } else {
+                    for (int i = 1; i < pt_count; i++) {
+                        double fraction = (double)(i - 1) / (pt_count - 1);
+                        double w = 12.0 * (1.0 - fraction) + 2.0; // Taper from 14.0 down to 2.0
+                        cairo_set_line_width(cr, w);
+                        cairo_move_to(cr, pts[i-1].x + offset_x, pts[i-1].y + offset_y);
+                        cairo_line_to(cr, pts[i].x + offset_x, pts[i].y + offset_y);
+                        cairo_stroke(cr);
+                    }
                 }
-                cairo_stroke(cr);
                 
                 cairo_set_source_rgb(cr, 0.92, 0.35, 0.25);
                 for (int i = 0; i < pt_count; i++) {
-                    cairo_arc(cr, pts[i].x, pts[i].y, 4.0, 0, 2 * G_PI);
+                    double fraction = (double)i / (pt_count > 1 ? (pt_count - 1) : 1);
+                    double dot_radius = 5.0 * (1.0 - fraction) + 2.0; // Taper from 7.0 down to 2.0
+                    cairo_arc(cr, pts[i].x + offset_x, pts[i].y + offset_y, dot_radius, 0, 2 * G_PI);
                     cairo_fill(cr);
                 }
             }
