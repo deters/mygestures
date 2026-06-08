@@ -38,8 +38,6 @@
 #include "configuration.h"
 #include "configuration_parser.h"
 
-uint MAX_GRABBED_DEVICES = 10;
-
 static void mygestures_usage(Mygestures *self)
 {
         printf("Usage: mygestures [OPTIONS] [CONFIG_FILE]\n");
@@ -145,7 +143,7 @@ static void mygestures_load_configuration(Mygestures *self)
         }
         else
         {
-                configuration_load_from_defaults(self->gestures_configuration);
+                configuration_load_from_defaults(self->gestures_configuration, 0);
         }
 }
 
