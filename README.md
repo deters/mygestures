@@ -9,7 +9,16 @@ MyGestures - mouse gestures for linux
 Installing from source:
 -----------------------
 
-    sudo apt install pkg-config autoconf libtool libx11-dev libxrender-dev libxtst-dev libxml2-dev git make
+### Ubuntu / Debian:
+
+    sudo apt install pkg-config autoconf automake libtool libx11-dev libxrender-dev libxtst-dev libxi-dev libyaml-dev libevdev-dev git make gcc libgtk-4-dev
+
+### Fedora:
+
+    sudo dnf install pkgconf-pkg-config autoconf automake libtool libX11-devel libXrender-devel libXtst-devel libXi-devel libyaml-devel libevdev-devel git make gcc gtk4-devel
+
+### Build:
+
     git clone https://github.com/deters/mygestures.git
     cd mygestures/
     sh autogen.sh
@@ -40,8 +49,13 @@ Optional: If you want multitouch gestures on your synaptics touchpad
 
  Installing the custom synaptics driver:
 
+    # Ubuntu / Debian
     sudo apt-get install -y git build-essential libevdev-dev autoconf automake libmtdev-dev xorg-dev xutils-dev libtool
-    sudo apt-get remove -y xserver-xorg-input-synaptics
+
+    # Fedora
+    sudo dnf install git @development-tools libevdev-devel autoconf automake mtdev-devel xorg-x11-server-devel xorg-x11-util-macros libtool
+
+    sudo apt-get remove -y xserver-xorg-input-synaptics # or dnf remove xorg-x11-drv-synaptics
     git clone https://github.com/Chosko/xserver-xorg-input-synaptics.git
     cd xserver-xorg-input-synaptics
     ./autogen.sh
@@ -90,50 +104,52 @@ Gestures configuration:
                1 - (Bottom left corner)
                3 - (Bottom right corner)
 
-  A "movement" can be defined by composing this directions under a name.
+  A "movement" can be defined by composing this directions under a name using Regex:
   
-    <movement name="T" value="RLD" />      <!-- T is a sequence of right+left+down -->
-    <movement name="V" value="39" />       <!-- V needs more precision to be defined.-->
-    <movement name="C" value="U?LDRU?" />  <!-- C (notice the use of regex) -->
+    movements:
+      T: RLD          # T is a sequence of right+left+down
+      V: "39"         # V needs more precision to be defined.
+      C: "U?LDRU?"    # C (notice the use of regex)
 
   Then you should define some contexts (used to filter applications):
     
-    <context name="Terminal windows" windowclass=".*(Term|term).*" windowtitle=".*">
-       <!-- some gestures here -->
-    </context>
+    apps:
+      - name: "Terminal windows"
+        match: { class: ".*(Term|term).*" }
+        gestures:
+          # some gestures here
     
-    <context name="All applications" windowclass=".*" windowtitle=".*">
-       <!-- some gestures here -->
-    </context>
+    global:
+       # gestures for all applications
 
    Inside each context you can define the gestures:
 
-    <gesture name="Run gedit" movement="G">
-      <do action="exec" value="gedit" />
-    </gesture>
+    "Run gedit":
+      move: G
+      do: exec gedit
     
-    <gesture name="Copy (Ctrl+C)" movement="C">
-      <do action="keypress" value="Control_L+C" />
-    </gesture>
+    "Copy (Ctrl+C)":
+      move: C
+      do: keypress Control_L+C
         
    Example of actions can be:
         
  __Window management__
            
-    <do action="maximize" /> <!-- put focused window to the maximized state -->
-    <do action="restore" /> <!-- restore window from maximized state -->
-    <do action="iconify" /> <!-- iconify window -->
-    <do action="toggle-maximized" /> <!-- toggle focused window from/to the maximized state -->
-    <do action="raise" /> <!-- raise current window -->
-    <do action="lower" /> <!-- lower current window -->
+    do: maximize           # put focused window to the maximized state
+    do: restore            # restore window from maximized state
+    do: iconify            # iconify window
+    do: toggle-maximized   # toggle focused window from/to the maximized state
+    do: raise              # raise current window
+    do: lower              # lower current window
             
  __Program operation__
            
-    <do action="kill" /> <!-- kill the current application -->
-    <do action="exec" value="gedit" /> <!-- launch some program -->
+    do: kill               # kill the current application
+    do: exec gedit         # launch some program
     
  __KeyPress__
 
-    <do action="keypress" value="Alt_L+Left" /> <!-- send key sequence -->
+    do: keypress Alt_L+Left # send key sequence
 
    More key names can be found on the file /usr/include/X11/keysymdef.h
