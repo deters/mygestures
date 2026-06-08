@@ -125,7 +125,14 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 
 	int target_button = get_evdev_button_code(self->button);
 	printf("Listening for events from %s using libevdev (button %d)\n", libevdev_get_name(dev), self->button);
-	printf("Note: In evdev mode, MyGestures listens passively. The trigger button event (e.g., right-click) will also be sent to the OS.\n");
+
+	/* Grab the device exclusively to suppress events from reaching other applications */
+	rc = libevdev_grab(dev, LIBEVDEV_GRAB);
+	if (rc < 0) {
+		fprintf(stderr, "Warning: Failed to grab device exclusively (%s). Clicks will not be suppressed.\n", strerror(-rc));
+	} else {
+		printf("Device grabbed exclusively. Physical events will be suppressed and forwarded via uinput.\n");
+	}
 
 	int moved = 0;
 	int virtual_x = 0;
@@ -163,6 +170,9 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 					grabbing_end_movement(self, virtual_x, virtual_y, (char*)libevdev_get_name(dev), conf);
 				}
 			} else {
+				/* Forward all other events to uinput to keep the mouse working */
+				uinput_forward_event(ev.type, ev.code, ev.value);
+
 				if (ev.type == EV_REL) {
 					if (ev.code == REL_X) {
 						virtual_x += ev.value;
