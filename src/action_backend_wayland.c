@@ -197,6 +197,30 @@ static void sway_workspace_down(void) {
 }
 static void sway_show_overview(void) { wayland_keypress("Super_L"); }
 static void sway_show_app_grid(void) { wayland_keypress("Super_L+d"); }
+static void sway_toggle_fullscreen(void) {
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%sswaymsg fullscreen toggle >/dev/null 2>&1", prefix);
+    run_command(cmd); 
+}
+static void sway_show_desktop(void) { wayland_keypress("Super_L+d"); }
+static void sway_lock_screen(void) {
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%sswaylock >/dev/null 2>&1 &", prefix);
+    run_command(cmd); 
+}
+static void sway_terminal(void) { wayland_keypress("Control_L+Alt_L+t"); }
+static void sway_volume_up(void) { wayland_keypress("XF86AudioRaiseVolume"); }
+static void sway_volume_down(void) { wayland_keypress("XF86AudioLowerVolume"); }
+static void sway_volume_mute(void) { wayland_keypress("XF86AudioMute"); }
+static void sway_media_play(void) { wayland_keypress("XF86AudioPlay"); }
+static void sway_media_next(void) { wayland_keypress("XF86AudioNext"); }
+static void sway_media_prev(void) { wayland_keypress("XF86AudioPrev"); }
 
 // Hyprland actions
 static void hypr_iconify(void) { 
@@ -296,6 +320,30 @@ static void hypr_show_overview(void) {
     run_command(cmd); 
 }
 static void hypr_show_app_grid(void) { wayland_keypress("Super_L+a"); }
+static void hypr_toggle_fullscreen(void) {
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%shyprctl dispatch fullscreen 0 >/dev/null 2>&1", prefix);
+    run_command(cmd); 
+}
+static void hypr_show_desktop(void) { wayland_keypress("Super_L+d"); }
+static void hypr_lock_screen(void) {
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%shyprlock >/dev/null 2>&1 &", prefix);
+    run_command(cmd); 
+}
+static void hypr_terminal(void) { wayland_keypress("Control_L+Alt_L+t"); }
+static void hypr_volume_up(void) { wayland_keypress("XF86AudioRaiseVolume"); }
+static void hypr_volume_down(void) { wayland_keypress("XF86AudioLowerVolume"); }
+static void hypr_volume_mute(void) { wayland_keypress("XF86AudioMute"); }
+static void hypr_media_play(void) { wayland_keypress("XF86AudioPlay"); }
+static void hypr_media_next(void) { wayland_keypress("XF86AudioNext"); }
+static void hypr_media_prev(void) { wayland_keypress("XF86AudioPrev"); }
 
 // GNOME actions
 static void gnome_iconify(void) { wayland_execute_desktop_shortcut("minimize", "Super_L+h"); }
@@ -311,6 +359,16 @@ static void gnome_workspace_up(void) { wayland_execute_desktop_shortcut("switch-
 static void gnome_workspace_down(void) { wayland_execute_desktop_shortcut("switch-to-workspace-down", "Control_L+Alt_L+Down"); }
 static void gnome_show_overview(void) { wayland_execute_desktop_shortcut("panel-main-menu", "Super_L"); }
 static void gnome_show_app_grid(void) { wayland_execute_desktop_shortcut("toggle-application-view", "Super_L+a"); }
+static void gnome_toggle_fullscreen(void) { wayland_execute_desktop_shortcut("toggle-fullscreen", "F11"); }
+static void gnome_show_desktop(void) { wayland_execute_desktop_shortcut("show-desktop", "Super_L+d"); }
+static void gnome_lock_screen(void) { wayland_execute_desktop_shortcut("screensaver", "Super_L+l"); }
+static void gnome_terminal(void) { wayland_execute_desktop_shortcut("terminal", "Control_L+Alt_L+t"); }
+static void gnome_volume_up(void) { wayland_execute_desktop_shortcut("volume-up", "XF86AudioRaiseVolume"); }
+static void gnome_volume_down(void) { wayland_execute_desktop_shortcut("volume-down", "XF86AudioLowerVolume"); }
+static void gnome_volume_mute(void) { wayland_execute_desktop_shortcut("volume-mute", "XF86AudioMute"); }
+static void gnome_media_play(void) { wayland_execute_desktop_shortcut("play", "XF86AudioPlay"); }
+static void gnome_media_next(void) { wayland_execute_desktop_shortcut("next", "XF86AudioNext"); }
+static void gnome_media_prev(void) { wayland_execute_desktop_shortcut("previous", "XF86AudioPrev"); }
 
 // KDE actions
 static void kde_iconify(void) { wayland_keypress("Alt_L+F9"); }
@@ -326,6 +384,16 @@ static void kde_workspace_up(void) { wayland_keypress("Control_L+Alt_L+Up"); }
 static void kde_workspace_down(void) { wayland_keypress("Control_L+Alt_L+Down"); }
 static void kde_show_overview(void) { wayland_keypress("Super_L+w"); }
 static void kde_show_app_grid(void) { wayland_keypress("Alt_L+F1"); }
+static void kde_toggle_fullscreen(void) { wayland_keypress("F11"); }
+static void kde_show_desktop(void) { wayland_keypress("Super_L+d"); }
+static void kde_lock_screen(void) { wayland_keypress("Super_L+l"); }
+static void kde_terminal(void) { wayland_keypress("Control_L+Alt_L+t"); }
+static void kde_volume_up(void) { wayland_keypress("XF86AudioRaiseVolume"); }
+static void kde_volume_down(void) { wayland_keypress("XF86AudioLowerVolume"); }
+static void kde_volume_mute(void) { wayland_keypress("XF86AudioMute"); }
+static void kde_media_play(void) { wayland_keypress("XF86AudioPlay"); }
+static void kde_media_next(void) { wayland_keypress("XF86AudioNext"); }
+static void kde_media_prev(void) { wayland_keypress("XF86AudioPrev"); }
 
 // Generic Wayland Fallback Actions
 static void generic_iconify(void) { wayland_keypress("Super_L+h"); }
@@ -341,6 +409,16 @@ static void generic_workspace_up(void) { wayland_keypress("Control_L+Alt_L+Up");
 static void generic_workspace_down(void) { wayland_keypress("Control_L+Alt_L+Down"); }
 static void generic_show_overview(void) { wayland_keypress("Super_L"); }
 static void generic_show_app_grid(void) { wayland_keypress("Super_L+a"); }
+static void generic_toggle_fullscreen(void) { wayland_keypress("F11"); }
+static void generic_show_desktop(void) { wayland_keypress("Super_L+d"); }
+static void generic_lock_screen(void) { wayland_keypress("Super_L+l"); }
+static void generic_terminal(void) { wayland_keypress("Control_L+Alt_L+t"); }
+static void generic_volume_up(void) { wayland_keypress("XF86AudioRaiseVolume"); }
+static void generic_volume_down(void) { wayland_keypress("XF86AudioLowerVolume"); }
+static void generic_volume_mute(void) { wayland_keypress("XF86AudioMute"); }
+static void generic_media_play(void) { wayland_keypress("XF86AudioPlay"); }
+static void generic_media_next(void) { wayland_keypress("XF86AudioNext"); }
+static void generic_media_prev(void) { wayland_keypress("XF86AudioPrev"); }
 
 static void wl_click(int button) {
     uinput_click(button);
@@ -368,6 +446,16 @@ ActionBackend *action_backend_wayland_get(void) {
         wayland_backend.workspace_down = sway_workspace_down;
         wayland_backend.show_overview = sway_show_overview;
         wayland_backend.show_app_grid = sway_show_app_grid;
+        wayland_backend.toggle_fullscreen = sway_toggle_fullscreen;
+        wayland_backend.show_desktop = sway_show_desktop;
+        wayland_backend.lock_screen = sway_lock_screen;
+        wayland_backend.terminal = sway_terminal;
+        wayland_backend.volume_up = sway_volume_up;
+        wayland_backend.volume_down = sway_volume_down;
+        wayland_backend.volume_mute = sway_volume_mute;
+        wayland_backend.media_play = sway_media_play;
+        wayland_backend.media_next = sway_media_next;
+        wayland_backend.media_prev = sway_media_prev;
         return &wayland_backend;
     }
 
@@ -386,6 +474,16 @@ ActionBackend *action_backend_wayland_get(void) {
         wayland_backend.workspace_down = hypr_workspace_down;
         wayland_backend.show_overview = hypr_show_overview;
         wayland_backend.show_app_grid = hypr_show_app_grid;
+        wayland_backend.toggle_fullscreen = hypr_toggle_fullscreen;
+        wayland_backend.show_desktop = hypr_show_desktop;
+        wayland_backend.lock_screen = hypr_lock_screen;
+        wayland_backend.terminal = hypr_terminal;
+        wayland_backend.volume_up = hypr_volume_up;
+        wayland_backend.volume_down = hypr_volume_down;
+        wayland_backend.volume_mute = hypr_volume_mute;
+        wayland_backend.media_play = hypr_media_play;
+        wayland_backend.media_next = hypr_media_next;
+        wayland_backend.media_prev = hypr_media_prev;
         return &wayland_backend;
     }
 
@@ -404,6 +502,16 @@ ActionBackend *action_backend_wayland_get(void) {
         wayland_backend.workspace_down = gnome_workspace_down;
         wayland_backend.show_overview = gnome_show_overview;
         wayland_backend.show_app_grid = gnome_show_app_grid;
+        wayland_backend.toggle_fullscreen = gnome_toggle_fullscreen;
+        wayland_backend.show_desktop = gnome_show_desktop;
+        wayland_backend.lock_screen = gnome_lock_screen;
+        wayland_backend.terminal = gnome_terminal;
+        wayland_backend.volume_up = gnome_volume_up;
+        wayland_backend.volume_down = gnome_volume_down;
+        wayland_backend.volume_mute = gnome_volume_mute;
+        wayland_backend.media_play = gnome_media_play;
+        wayland_backend.media_next = gnome_media_next;
+        wayland_backend.media_prev = gnome_media_prev;
     } else if (ctx.is_kde) {
         wayland_backend.iconify = kde_iconify;
         wayland_backend.kill_window = kde_kill_window;
@@ -419,6 +527,16 @@ ActionBackend *action_backend_wayland_get(void) {
         wayland_backend.workspace_down = kde_workspace_down;
         wayland_backend.show_overview = kde_show_overview;
         wayland_backend.show_app_grid = kde_show_app_grid;
+        wayland_backend.toggle_fullscreen = kde_toggle_fullscreen;
+        wayland_backend.show_desktop = kde_show_desktop;
+        wayland_backend.lock_screen = kde_lock_screen;
+        wayland_backend.terminal = kde_terminal;
+        wayland_backend.volume_up = kde_volume_up;
+        wayland_backend.volume_down = kde_volume_down;
+        wayland_backend.volume_mute = kde_volume_mute;
+        wayland_backend.media_play = kde_media_play;
+        wayland_backend.media_next = kde_media_next;
+        wayland_backend.media_prev = kde_media_prev;
     } else {
         wayland_backend.iconify = generic_iconify;
         wayland_backend.kill_window = generic_kill_window;
@@ -434,6 +552,16 @@ ActionBackend *action_backend_wayland_get(void) {
         wayland_backend.workspace_down = generic_workspace_down;
         wayland_backend.show_overview = generic_show_overview;
         wayland_backend.show_app_grid = generic_show_app_grid;
+        wayland_backend.toggle_fullscreen = generic_toggle_fullscreen;
+        wayland_backend.show_desktop = generic_show_desktop;
+        wayland_backend.lock_screen = generic_lock_screen;
+        wayland_backend.terminal = generic_terminal;
+        wayland_backend.volume_up = generic_volume_up;
+        wayland_backend.volume_down = generic_volume_down;
+        wayland_backend.volume_mute = generic_volume_mute;
+        wayland_backend.media_play = generic_media_play;
+        wayland_backend.media_next = generic_media_next;
+        wayland_backend.media_prev = generic_media_prev;
     }
     
     return &wayland_backend;

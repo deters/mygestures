@@ -34,7 +34,10 @@ const char *action_name[ACTION_COUNT + 1] = {
 		"ERROR", "EXIT_GEST", "EXECUTE", "ICONIFY", "KILL", "RECONF", "RAISE", "LOWER", "MAXIMIZE",
 		"RESTORE", "TOGGLE_MAXIMIZED", "KEYPRESS", "ABORT", 
 		"WORKSPACE_LEFT", "WORKSPACE_RIGHT", "WORKSPACE_UP", "WORKSPACE_DOWN", 
-		"SHOW_OVERVIEW", "SHOW_APP_GRID", "CLICK", "LAST" };
+		"SHOW_OVERVIEW", "SHOW_APP_GRID", "CLICK", 
+		"TOGGLE_FULLSCREEN", "SHOW_DESKTOP", "LOCK_SCREEN", "TERMINAL",
+		"VOLUME_UP", "VOLUME_DOWN", "VOLUME_MUTE",
+		"MEDIA_PLAY", "MEDIA_NEXT", "MEDIA_PREV", "LAST" };
 
 const char *get_action_name(int action) {
 	return action_name[action];
@@ -116,6 +119,36 @@ void execute_action_agnostic(Action *action) {
                 int btn = action->original_str ? atoi(action->original_str) : 3;
                 current_backend->click(btn);
             }
+            break;
+        case ACTION_TOGGLE_FULLSCREEN:
+            if (current_backend->toggle_fullscreen) current_backend->toggle_fullscreen();
+            break;
+        case ACTION_SHOW_DESKTOP:
+            if (current_backend->show_desktop) current_backend->show_desktop();
+            break;
+        case ACTION_LOCK_SCREEN:
+            if (current_backend->lock_screen) current_backend->lock_screen();
+            break;
+        case ACTION_TERMINAL:
+            if (current_backend->terminal) current_backend->terminal();
+            break;
+        case ACTION_VOLUME_UP:
+            if (current_backend->volume_up) current_backend->volume_up();
+            break;
+        case ACTION_VOLUME_DOWN:
+            if (current_backend->volume_down) current_backend->volume_down();
+            break;
+        case ACTION_VOLUME_MUTE:
+            if (current_backend->volume_mute) current_backend->volume_mute();
+            break;
+        case ACTION_MEDIA_PLAY:
+            if (current_backend->media_play) current_backend->media_play();
+            break;
+        case ACTION_MEDIA_NEXT:
+            if (current_backend->media_next) current_backend->media_next();
+            break;
+        case ACTION_MEDIA_PREV:
+            if (current_backend->media_prev) current_backend->media_prev();
             break;
         default:
             LOG_ERROR("found an unknown gesture \n");

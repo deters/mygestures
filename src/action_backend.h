@@ -19,6 +19,16 @@ typedef struct ActionBackend {
     void (*show_overview)(void);
     void (*show_app_grid)(void);
     void (*click)(int button);
+    void (*toggle_fullscreen)(void);
+    void (*show_desktop)(void);
+    void (*lock_screen)(void);
+    void (*terminal)(void);
+    void (*volume_up)(void);
+    void (*volume_down)(void);
+    void (*volume_mute)(void);
+    void (*media_play)(void);
+    void (*media_next)(void);
+    void (*media_prev)(void);
 } ActionBackend;
 
 /* Initialize the appropriate backend */

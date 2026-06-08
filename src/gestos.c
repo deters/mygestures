@@ -54,6 +54,16 @@ static ActionType action_types[] = {
     { ACTION_SHOW_OVERVIEW, "Show Overview", "show-overview", "view-fullscreen-symbolic" },
     { ACTION_SHOW_APP_GRID, "Show App Grid", "show-app-grid", "view-grid-symbolic" },
     { ACTION_CLICK, "Mouse Click", "click", "input-mouse-symbolic" },
+    { ACTION_TOGGLE_FULLSCREEN, "Toggle Fullscreen", "toggle-fullscreen", "view-fullscreen-symbolic" },
+    { ACTION_SHOW_DESKTOP, "Show Desktop", "show-desktop", "user-desktop-symbolic" },
+    { ACTION_LOCK_SCREEN, "Lock Screen", "lock-screen", "system-lock-screen-symbolic" },
+    { ACTION_TERMINAL, "Open Terminal", "terminal", "utilities-terminal-symbolic" },
+    { ACTION_VOLUME_UP, "Volume Up", "volume-up", "audio-volume-high-symbolic" },
+    { ACTION_VOLUME_DOWN, "Volume Down", "volume-down", "audio-volume-low-symbolic" },
+    { ACTION_VOLUME_MUTE, "Volume Mute", "volume-mute", "audio-volume-muted-symbolic" },
+    { ACTION_MEDIA_PLAY, "Play/Pause Media", "media-play", "media-playback-start-symbolic" },
+    { ACTION_MEDIA_NEXT, "Next Track", "media-next", "media-skip-forward-symbolic" },
+    { ACTION_MEDIA_PREV, "Previous Track", "media-prev", "media-skip-backward-symbolic" },
     { 0, NULL, NULL, NULL }
 };
 
@@ -197,6 +207,22 @@ static void on_gnome_action_row_activated(GtkListBox *list, GtkListBoxRow *row, 
             else if (strcmp(action->name, "maximize") == 0) native_id = ACTION_MAXIMIZE;
             else if (strcmp(action->name, "unmaximize") == 0) native_id = ACTION_RESTORE;
             else if (strcmp(action->name, "minimize") == 0) native_id = ACTION_ICONIFY;
+            else if (strcmp(action->name, "toggle-fullscreen") == 0) native_id = ACTION_TOGGLE_FULLSCREEN;
+            else if (strcmp(action->name, "show-desktop") == 0) native_id = ACTION_SHOW_DESKTOP;
+            else if (strcmp(action->name, "screensaver") == 0) native_id = ACTION_LOCK_SCREEN;
+            else if (strcmp(action->name, "terminal") == 0) native_id = ACTION_TERMINAL;
+            else if (strcmp(action->name, "volume-up") == 0) native_id = ACTION_VOLUME_UP;
+            else if (strcmp(action->name, "volume-down") == 0) native_id = ACTION_VOLUME_DOWN;
+            else if (strcmp(action->name, "volume-mute") == 0) native_id = ACTION_VOLUME_MUTE;
+            else if (strcmp(action->name, "play") == 0) native_id = ACTION_MEDIA_PLAY;
+            else if (strcmp(action->name, "next") == 0) native_id = ACTION_MEDIA_NEXT;
+            else if (strcmp(action->name, "previous") == 0) native_id = ACTION_MEDIA_PREV;
+            else if (strcmp(action->name, "switch-to-workspace-left") == 0) native_id = ACTION_WORKSPACE_LEFT;
+            else if (strcmp(action->name, "switch-to-workspace-right") == 0) native_id = ACTION_WORKSPACE_RIGHT;
+            else if (strcmp(action->name, "switch-to-workspace-up") == 0) native_id = ACTION_WORKSPACE_UP;
+            else if (strcmp(action->name, "switch-to-workspace-down") == 0) native_id = ACTION_WORKSPACE_DOWN;
+            else if (strcmp(action->name, "panel-main-menu") == 0) native_id = ACTION_SHOW_OVERVIEW;
+            else if (strcmp(action->name, "toggle-application-view") == 0) native_id = ACTION_SHOW_APP_GRID;
             
             if (native_id != -1) {
                 for (int i = 0; action_types[i].name; i++) {

@@ -153,6 +153,26 @@ void configuration_add_action_from_string(Gesture * self, const char * action_st
 		id = ACTION_SHOW_APP_GRID;
 	} else if (strcasecmp(action_name, "click") == 0) {
 		id = ACTION_CLICK;
+	} else if (strcasecmp(action_name, "toggle-fullscreen") == 0) {
+		id = ACTION_TOGGLE_FULLSCREEN;
+	} else if (strcasecmp(action_name, "show-desktop") == 0) {
+		id = ACTION_SHOW_DESKTOP;
+	} else if (strcasecmp(action_name, "lock-screen") == 0) {
+		id = ACTION_LOCK_SCREEN;
+	} else if (strcasecmp(action_name, "terminal") == 0) {
+		id = ACTION_TERMINAL;
+	} else if (strcasecmp(action_name, "volume-up") == 0) {
+		id = ACTION_VOLUME_UP;
+	} else if (strcasecmp(action_name, "volume-down") == 0) {
+		id = ACTION_VOLUME_DOWN;
+	} else if (strcasecmp(action_name, "volume-mute") == 0) {
+		id = ACTION_VOLUME_MUTE;
+	} else if (strcasecmp(action_name, "media-play") == 0) {
+		id = ACTION_MEDIA_PLAY;
+	} else if (strcasecmp(action_name, "media-next") == 0) {
+		id = ACTION_MEDIA_NEXT;
+	} else if (strcasecmp(action_name, "media-prev") == 0) {
+		id = ACTION_MEDIA_PREV;
 	} else {
 		fprintf(stderr, "Warning: unknown action '%s' in gesture '%s'\n", action_name, self->name);
 		free(copy);
