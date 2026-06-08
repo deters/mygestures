@@ -70,3 +70,11 @@ AC_CONFIG_FILES([Makefile
 
 
 AC_OUTPUT
+
+AC_MSG_NOTICE([
+  Configuration Summary:
+  ----------------------
+  Prefix:         ${prefix}
+  Udev rules dir: ${udevrulesdir}
+  Enable UI:      ${enable_ui}
+])
