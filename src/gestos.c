@@ -664,11 +664,20 @@ static void on_editor_dialog_destroy(GtkWidget *widget, gpointer user_data) {
 static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width, int height, gpointer user_data) {
     GestureEditor *editor = (GestureEditor *)user_data;
     
-    cairo_set_source_rgb(cr, 0.96, 0.97, 0.98);
+    // 1. Radial background vignette
+    cairo_pattern_t *bg_pat = cairo_pattern_create_radial(width / 2.0, height / 2.0, width / 10.0,
+                                                          width / 2.0, height / 2.0, width * 0.8);
+    cairo_pattern_add_color_stop_rgb(bg_pat, 0.0, 0.98, 0.99, 1.0);
+    cairo_pattern_add_color_stop_rgb(bg_pat, 1.0, 0.92, 0.93, 0.95);
+    cairo_set_source(cr, bg_pat);
     cairo_paint(cr);
+    cairo_pattern_destroy(bg_pat);
     
-    cairo_set_source_rgba(cr, 0.88, 0.90, 0.92, 0.5);
+    // 2. Subtle dashed grid
+    cairo_set_source_rgba(cr, 0.82, 0.85, 0.88, 0.35);
     cairo_set_line_width(cr, 1.0);
+    double dash[] = {4.0, 4.0};
+    cairo_set_dash(cr, dash, 2, 0);
     for (int i = 25; i < width; i += 25) {
         cairo_move_to(cr, i, 0);
         cairo_line_to(cr, i, height);
@@ -678,13 +687,25 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
         cairo_line_to(cr, width, j);
     }
     cairo_stroke(cr);
+    cairo_set_dash(cr, NULL, 0, 0); // Clear dash
     
     if (editor->is_drawing && editor->drawn_count > 1) {
-        cairo_set_source_rgb(cr, 0.25, 0.55, 0.95);
-        cairo_set_line_width(cr, 3.5);
+        // Neon glow effect for active drawing
         cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
         cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
         
+        // Outer glow
+        cairo_set_source_rgba(cr, 0.06, 0.65, 0.95, 0.25);
+        cairo_set_line_width(cr, 12.0);
+        cairo_move_to(cr, editor->drawn_points[0].x, editor->drawn_points[0].y);
+        for (int i = 1; i < editor->drawn_count; i++) {
+            cairo_line_to(cr, editor->drawn_points[i].x, editor->drawn_points[i].y);
+        }
+        cairo_stroke(cr);
+        
+        // Inner core
+        cairo_set_source_rgb(cr, 0.06, 0.65, 0.95);
+        cairo_set_line_width(cr, 4.0);
         cairo_move_to(cr, editor->drawn_points[0].x, editor->drawn_points[0].y);
         for (int i = 1; i < editor->drawn_count; i++) {
             cairo_line_to(cr, editor->drawn_points[i].x, editor->drawn_points[i].y);
@@ -749,17 +770,42 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
                 double offset_x = (width / 2.0) - path_center_x;
                 double offset_y = (height / 2.0) - path_center_y;
 
-                cairo_set_source_rgb(cr, 0.15, 0.65, 0.35);
                 cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
                 cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
                 
+                // Color Gradient Definition: Sunset Violet to Coral Pink
+                double start_r = 0.49, start_g = 0.27, start_b = 0.90; // #7c3aed
+                double end_r = 0.96, end_g = 0.29, end_b = 0.48;     // #f43f5e
+                
                 if (pt_count == 1) {
-                    cairo_arc(cr, pts[0].x + offset_x, pts[0].y + offset_y, 7.0, 0, 2 * G_PI);
+                    cairo_set_source_rgb(cr, start_r, start_g, start_b);
+                    cairo_arc(cr, pts[0].x + offset_x, pts[0].y + offset_y, 8.0, 0, 2 * G_PI);
                     cairo_fill(cr);
                 } else {
+                    // Draw outer glowing shadow for template
                     for (int i = 1; i < pt_count; i++) {
                         double fraction = (double)(i - 1) / (pt_count - 1);
-                        double w = 12.0 * (1.0 - fraction) + 2.0; // Taper from 14.0 down to 2.0
+                        double w = 18.0 * (1.0 - fraction) + 4.0; // Glow width
+                        double r = start_r * (1.0 - fraction) + end_r * fraction;
+                        double g = start_g * (1.0 - fraction) + end_g * fraction;
+                        double b = start_b * (1.0 - fraction) + end_b * fraction;
+                        
+                        cairo_set_source_rgba(cr, r, g, b, 0.15); // Glow transparency
+                        cairo_set_line_width(cr, w);
+                        cairo_move_to(cr, pts[i-1].x + offset_x, pts[i-1].y + offset_y);
+                        cairo_line_to(cr, pts[i].x + offset_x, pts[i].y + offset_y);
+                        cairo_stroke(cr);
+                    }
+                    
+                    // Draw solid core with color gradient
+                    for (int i = 1; i < pt_count; i++) {
+                        double fraction = (double)(i - 1) / (pt_count - 1);
+                        double w = 10.0 * (1.0 - fraction) + 2.0; // Core width
+                        double r = start_r * (1.0 - fraction) + end_r * fraction;
+                        double g = start_g * (1.0 - fraction) + end_g * fraction;
+                        double b = start_b * (1.0 - fraction) + end_b * fraction;
+                        
+                        cairo_set_source_rgb(cr, r, g, b);
                         cairo_set_line_width(cr, w);
                         cairo_move_to(cr, pts[i-1].x + offset_x, pts[i-1].y + offset_y);
                         cairo_line_to(cr, pts[i].x + offset_x, pts[i].y + offset_y);
@@ -767,11 +813,22 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
                     }
                 }
                 
-                cairo_set_source_rgb(cr, 0.92, 0.35, 0.25);
+                // Draw glowing dots at key vertices
                 for (int i = 0; i < pt_count; i++) {
                     double fraction = (double)i / (pt_count > 1 ? (pt_count - 1) : 1);
-                    double dot_radius = 5.0 * (1.0 - fraction) + 2.0; // Taper from 7.0 down to 2.0
-                    cairo_arc(cr, pts[i].x + offset_x, pts[i].y + offset_y, dot_radius, 0, 2 * G_PI);
+                    double dot_radius = 5.0 * (1.0 - fraction) + 2.0;
+                    double r = start_r * (1.0 - fraction) + end_r * fraction;
+                    double g = start_g * (1.0 - fraction) + end_g * fraction;
+                    double b = start_b * (1.0 - fraction) + end_b * fraction;
+                    
+                    // Outer glow ring
+                    cairo_set_source_rgba(cr, r, g, b, 0.4);
+                    cairo_arc(cr, pts[i].x + offset_x, pts[i].y + offset_y, dot_radius + 4.0, 0, 2 * G_PI);
+                    cairo_fill(cr);
+                    
+                    // Inner solid white core
+                    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+                    cairo_arc(cr, pts[i].x + offset_x, pts[i].y + offset_y, fmax(2.0, dot_radius - 1.5), 0, 2 * G_PI);
                     cairo_fill(cr);
                 }
             }
