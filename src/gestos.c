@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include <gtk/gtk.h>
 #include <string.h>
+#include <unistd.h>
 #include "configuration.h"
 #include "configuration_parser.h"
 #include "actions.h"
@@ -13,6 +14,11 @@ typedef struct {
     GtkWidget *window;
     GtkWidget *main_list;
     GtkWidget *search_entry;
+    
+    GtkWidget *status_dot;
+    GtkWidget *status_label;
+    GtkWidget *daemon_switch;
+    gulong switch_handler_id;
 } GestosApp;
 
 typedef struct {
@@ -1138,6 +1144,8 @@ static void on_save_config_clicked(GtkWidget *widget, gpointer user_data) {
     char *filename = configuration_get_default_filename();
     configuration_save_to_file(gestos->config, filename);
     
+    reload_daemon_if_running();
+    
     GtkWidget *toast = gtk_label_new("Configuration saved!");
     gtk_widget_add_css_class(toast, "toast");
     gtk_box_append(GTK_BOX(gtk_window_get_child(GTK_WINDOW(gestos->window))), toast);
@@ -1148,6 +1156,76 @@ static void on_save_config_clicked(GtkWidget *widget, gpointer user_data) {
 static void on_about_clicked(GtkWidget *widget, gpointer user_data) {
     GtkWindow *parent = GTK_WINDOW(user_data);
     gtk_show_about_dialog(parent, "program-name", "Gestos", "version", "1.3.0", "logo-icon-name", "input-mouse", NULL);
+}
+
+static gboolean is_daemon_running() {
+    char buf[64];
+    uid_t uid = getuid();
+    char cmd[128];
+    snprintf(cmd, sizeof(cmd), "pgrep -u %d -x mygestures", uid);
+    FILE *f = popen(cmd, "r");
+    if (!f) return FALSE;
+    gboolean running = FALSE;
+    if (fgets(buf, sizeof(buf), f) != NULL) {
+        running = TRUE;
+    }
+    pclose(f);
+    return running;
+}
+
+static void start_daemon() {
+    if (is_daemon_running()) return;
+    const char *cmd = (access("./mygestures", X_OK) == 0) ? "./mygestures &" : "mygestures &";
+    int ret = system(cmd);
+    (void)ret;
+}
+
+static void stop_daemon() {
+    uid_t uid = getuid();
+    char cmd[128];
+    snprintf(cmd, sizeof(cmd), "pkill -u %d -x mygestures", uid);
+    int ret = system(cmd);
+    (void)ret;
+}
+
+static gboolean check_daemon_status_timer(gpointer user_data) {
+    GestosApp *gestos = (GestosApp *)user_data;
+    gboolean running = is_daemon_running();
+    
+    g_signal_handler_block(gestos->daemon_switch, gestos->switch_handler_id);
+    gtk_switch_set_active(GTK_SWITCH(gestos->daemon_switch), running);
+    g_signal_handler_unblock(gestos->daemon_switch, gestos->switch_handler_id);
+    
+    if (running) {
+        gtk_label_set_text(GTK_LABEL(gestos->status_label), "Daemon Active");
+        gtk_widget_remove_css_class(gestos->status_dot, "status-dot-stopped");
+        gtk_widget_add_css_class(gestos->status_dot, "status-dot-running");
+    } else {
+        gtk_label_set_text(GTK_LABEL(gestos->status_label), "Daemon Off");
+        gtk_widget_remove_css_class(gestos->status_dot, "status-dot-running");
+        gtk_widget_add_css_class(gestos->status_dot, "status-dot-stopped");
+    }
+    
+    return TRUE;
+}
+
+static gboolean on_daemon_switch_state_set(GtkSwitch *sw, gboolean state, gpointer user_data) {
+    GestosApp *gestos = (GestosApp *)user_data;
+    if (state) {
+        start_daemon();
+    } else {
+        stop_daemon();
+    }
+    check_daemon_status_timer(gestos);
+    return FALSE;
+}
+
+static void reload_daemon_if_running() {
+    if (is_daemon_running()) {
+        stop_daemon();
+        usleep(150 * 1000);
+        start_daemon();
+    }
 }
 
 static void activate(GtkApplication *app, gpointer user_data) {
@@ -1169,6 +1247,25 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_header_bar_pack_end(GTK_HEADER_BAR(header), add_gest_btn);
     gtk_widget_set_tooltip_text(add_gest_btn, "Add Gesture");
     g_signal_connect(add_gest_btn, "clicked", G_CALLBACK(on_add_gesture_clicked), gestos);
+
+    GtkWidget *ctrl_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    gtk_widget_set_valign(ctrl_box, GTK_ALIGN_CENTER);
+    gtk_widget_set_margin_start(ctrl_box, 12);
+    gtk_widget_set_margin_end(ctrl_box, 12);
+    
+    gestos->status_dot = gtk_image_new_from_icon_name("media-record-symbolic");
+    gtk_widget_add_css_class(gestos->status_dot, "status-dot-stopped");
+    gtk_box_append(GTK_BOX(ctrl_box), gestos->status_dot);
+    
+    gestos->status_label = gtk_label_new("Daemon Off");
+    gtk_widget_add_css_class(gestos->status_label, "status-label");
+    gtk_box_append(GTK_BOX(ctrl_box), gestos->status_label);
+    
+    gestos->daemon_switch = gtk_switch_new();
+    gtk_box_append(GTK_BOX(ctrl_box), gestos->daemon_switch);
+    gestos->switch_handler_id = g_signal_connect(gestos->daemon_switch, "state-set", G_CALLBACK(on_daemon_switch_state_set), gestos);
+    
+    gtk_header_bar_pack_end(GTK_HEADER_BAR(header), ctrl_box);
 
     GtkWidget *about_btn = gtk_button_new_from_icon_name("help-about-symbolic");
     gtk_header_bar_pack_end(GTK_HEADER_BAR(header), about_btn);
@@ -1245,8 +1342,14 @@ static void activate(GtkApplication *app, gpointer user_data) {
         ".browse-btn { background: rgba(99, 102, 241, 0.06); color: #6366f1; border: 1px dashed rgba(99, 102, 241, 0.25); border-radius: 10px; padding: 10px; font-weight: 600; }\n"
         ".browse-btn:hover { background: rgba(99, 102, 241, 0.1); border-color: #6366f1; }\n"
         "searchentry { border-radius: 18px; padding-left: 6px; padding-right: 6px; }\n"
-        ".toast { background: alpha(@theme_text_color, 0.95); color: @theme_bg_color; padding: 8px 18px; border-radius: 20px; position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); font-weight: bold; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); }\n");
+        ".toast { background: alpha(@theme_text_color, 0.95); color: @theme_bg_color; padding: 8px 18px; border-radius: 20px; position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); font-weight: bold; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); }\n"
+        ".status-dot-running { color: #10b981 !important; }\n"
+        ".status-dot-stopped { color: #6b7280 !important; opacity: 0.6; }\n"
+        ".status-label { font-size: 0.85em; font-weight: 600; }\n");
     gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+
+    check_daemon_status_timer(gestos);
+    g_timeout_add_seconds(1, check_daemon_status_timer, gestos);
 
     gtk_window_present(GTK_WINDOW(gestos->window));
 }
