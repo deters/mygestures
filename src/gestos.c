@@ -63,6 +63,7 @@ static ActionType action_types[] = {
     { ACTION_WORKSPACE_DOWN, "Workspace Down", "workspace-down", "go-down-symbolic" },
     { ACTION_SHOW_OVERVIEW, "Show Overview", "show-overview", "view-fullscreen-symbolic" },
     { ACTION_SHOW_APP_GRID, "Show App Grid", "show-app-grid", "view-grid-symbolic" },
+    { ACTION_CLICK, "Mouse Click", "click", "input-mouse-symbolic" },
     { 0, NULL, NULL, NULL }
 };
 

@@ -218,6 +218,8 @@ void configuration_add_action_from_string(Gesture * self, const char * action_st
 		id = ACTION_SHOW_OVERVIEW;
 	} else if (strcasecmp(action_name, "show-app-grid") == 0) {
 		id = ACTION_SHOW_APP_GRID;
+	} else if (strcasecmp(action_name, "click") == 0) {
+		id = ACTION_CLICK;
 	} else {
 		fprintf(stderr, "Warning: unknown action '%s' in gesture '%s'\n", action_name, self->name);
 		free(copy);

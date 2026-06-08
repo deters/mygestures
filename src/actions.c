@@ -34,7 +34,7 @@ const char *action_name[ACTION_COUNT + 1] = {
 		"ERROR", "EXIT_GEST", "EXECUTE", "ICONIFY", "KILL", "RECONF", "RAISE", "LOWER", "MAXIMIZE",
 		"RESTORE", "TOGGLE_MAXIMIZED", "KEYPRESS", "ABORT", 
 		"WORKSPACE_LEFT", "WORKSPACE_RIGHT", "WORKSPACE_UP", "WORKSPACE_DOWN", 
-		"SHOW_OVERVIEW", "SHOW_APP_GRID", "LAST" };
+		"SHOW_OVERVIEW", "SHOW_APP_GRID", "CLICK", "LAST" };
 
 const char *get_action_name(int action) {
 	return action_name[action];
@@ -114,6 +114,12 @@ void execute_action_agnostic(Action *action) {
             break;
         case ACTION_SHOW_APP_GRID:
             if (current_backend->show_app_grid) current_backend->show_app_grid();
+            break;
+        case ACTION_CLICK:
+            if (current_backend->click) {
+                int btn = action->original_str ? atoi(action->original_str) : 3;
+                current_backend->click(btn);
+            }
             break;
         default:
             LOG_ERROR("found an unknown gesture \n");
