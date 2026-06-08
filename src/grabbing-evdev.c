@@ -133,7 +133,7 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 		} else {
 			printf("mygestures: Grabbed device %s exclusively.\n", libevdev_get_name(dev));
 			grabbed = 1;
-			if (uinput_init() < 0) {
+			if (uinput_init_from_device(dev) < 0) {
 				fprintf(stderr, "mygestures: Failed to initialize uinput for forwarding.\n");
 			}
 		}

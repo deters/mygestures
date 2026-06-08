@@ -4,12 +4,13 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <linux/uinput.h>
+#include <libevdev/libevdev.h>
+#include <libevdev/libevdev-uinput.h>
 #include <linux/input-event-codes.h>
 
 #include "uinput_device.h"
 
-static int uinput_fd = -1;
+static struct libevdev_uinput *uinput_dev = NULL;
 
 typedef struct {
     const char *name;
@@ -50,98 +51,50 @@ static unsigned int name_to_keycode(const char *name) {
     return 0;
 }
 
-static void emit(int fd, int type, int code, int val) {
-	struct input_event ie;
-	memset(&ie, 0, sizeof(ie));
-	ie.type = type;
-	ie.code = code;
-	ie.value = val;
-	if (write(fd, &ie, sizeof(ie)) < 0) {
-		perror("mygestures: Error writing event to uinput");
-	}
-}
+int uinput_init_from_device(struct libevdev *source_dev) {
+    if (uinput_dev) return 0;
 
-int uinput_init(void) {
-	if (uinput_fd >= 0) return 0;
+    int rc = libevdev_uinput_create_from_device(source_dev, 
+                                               LIBEVDEV_UINPUT_OPEN_MANAGED,
+                                               &uinput_dev);
+    if (rc < 0) {
+        fprintf(stderr, "mygestures: Failed to create uinput device: %s\n", strerror(-rc));
+        return -1;
+    }
 
-	uinput_fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
-	if (uinput_fd < 0) {
-		uinput_fd = open("/dev/misc/uinput", O_WRONLY | O_NONBLOCK);
-	}
-
-	if (uinput_fd < 0) {
-		return -1;
-	}
-
-	ioctl(uinput_fd, UI_SET_EVBIT, EV_KEY);
-	ioctl(uinput_fd, UI_SET_EVBIT, EV_REL);
-	ioctl(uinput_fd, UI_SET_RELBIT, REL_X);
-	ioctl(uinput_fd, UI_SET_RELBIT, REL_Y);
-	ioctl(uinput_fd, UI_SET_RELBIT, REL_WHEEL);
-	ioctl(uinput_fd, UI_SET_RELBIT, REL_HWHEEL);
-    
-    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_LEFT);
-	ioctl(uinput_fd, UI_SET_KEYBIT, BTN_RIGHT);
-	ioctl(uinput_fd, UI_SET_KEYBIT, BTN_MIDDLE);
-	ioctl(uinput_fd, UI_SET_KEYBIT, BTN_SIDE);
-	ioctl(uinput_fd, UI_SET_KEYBIT, BTN_EXTRA);
-
-	for (int i = 1; i < KEY_MAX; i++) {
-		ioctl(uinput_fd, UI_SET_KEYBIT, i);
-	}
-
-	struct uinput_user_dev uidev;
-	memset(&uidev, 0, sizeof(uidev));
-	snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "mygestures Virtual Device");
-	uidev.id.bustype = BUS_USB;
-	uidev.id.vendor  = 0x1234;
-	uidev.id.product = 0x5678;
-
-	if (write(uinput_fd, &uidev, sizeof(uidev)) < 0) {
-		close(uinput_fd);
-		uinput_fd = -1;
-		return -1;
-	}
-
-	if (ioctl(uinput_fd, UI_DEV_CREATE) < 0) {
-		close(uinput_fd);
-		uinput_fd = -1;
-		return -1;
-	}
-
-	return 0;
+    printf("mygestures: Created virtual clone of device: %s\n", libevdev_get_name(source_dev));
+    return 0;
 }
 
 void uinput_close(void) {
-	if (uinput_fd >= 0) {
-		ioctl(uinput_fd, UI_DEV_DESTROY);
-		close(uinput_fd);
-		uinput_fd = -1;
-	}
+    if (uinput_dev) {
+        libevdev_uinput_destroy(uinput_dev);
+        uinput_dev = NULL;
+    }
 }
 
 void uinput_click(int button) {
-	if (uinput_fd < 0 && uinput_init() < 0) return;
+    if (!uinput_dev) return;
 
-	int ev_button = BTN_LEFT;
-	switch (button) {
-		case 1: ev_button = BTN_LEFT; break;
-		case 2: ev_button = BTN_MIDDLE; break;
-		case 3: ev_button = BTN_RIGHT; break;
-		case 8: ev_button = BTN_SIDE; break;
-		case 9: ev_button = BTN_EXTRA; break;
-		default: ev_button = button; break;
-	}
+    int ev_button = BTN_LEFT;
+    switch (button) {
+        case 1: ev_button = BTN_LEFT; break;
+        case 2: ev_button = BTN_MIDDLE; break;
+        case 3: ev_button = BTN_RIGHT; break;
+        case 8: ev_button = BTN_SIDE; break;
+        case 9: ev_button = BTN_EXTRA; break;
+        default: ev_button = button; break;
+    }
 
-	emit(uinput_fd, EV_KEY, ev_button, 1);
-	emit(uinput_fd, EV_SYN, SYN_REPORT, 0);
-	usleep(50000);
-	emit(uinput_fd, EV_KEY, ev_button, 0);
-	emit(uinput_fd, EV_SYN, SYN_REPORT, 0);
+    libevdev_uinput_write_event(uinput_dev, EV_KEY, ev_button, 1);
+    libevdev_uinput_write_event(uinput_dev, EV_SYN, SYN_REPORT, 0);
+    usleep(50000);
+    libevdev_uinput_write_event(uinput_dev, EV_KEY, ev_button, 0);
+    libevdev_uinput_write_event(uinput_dev, EV_SYN, SYN_REPORT, 0);
 }
 
 void uinput_keypress_string(const char *keys) {
-    if (uinput_fd < 0 && uinput_init() < 0) return;
+    if (!uinput_dev) return;
     if (!keys) return;
 
     char *copy = strdup(keys);
@@ -159,16 +112,16 @@ void uinput_keypress_string(const char *keys) {
     }
 
     for (int i = 0; i < count; i++) {
-        emit(uinput_fd, EV_KEY, codes[i], 1);
-        emit(uinput_fd, EV_SYN, SYN_REPORT, 0);
+        libevdev_uinput_write_event(uinput_dev, EV_KEY, codes[i], 1);
+        libevdev_uinput_write_event(uinput_dev, EV_SYN, SYN_REPORT, 0);
         usleep(10000);
     }
 
     usleep(50000);
 
     for (int i = count - 1; i >= 0; i--) {
-        emit(uinput_fd, EV_KEY, codes[i], 0);
-        emit(uinput_fd, EV_SYN, SYN_REPORT, 0);
+        libevdev_uinput_write_event(uinput_dev, EV_KEY, codes[i], 0);
+        libevdev_uinput_write_event(uinput_dev, EV_SYN, SYN_REPORT, 0);
         usleep(10000);
     }
 
@@ -176,6 +129,6 @@ void uinput_keypress_string(const char *keys) {
 }
 
 void uinput_forward_event(int type, int code, int value) {
-	if (uinput_fd < 0 && uinput_init() < 0) return;
-	emit(uinput_fd, type, code, value);
+    if (!uinput_dev) return;
+    libevdev_uinput_write_event(uinput_dev, type, code, value);
 }

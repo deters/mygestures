@@ -1,7 +1,10 @@
 #ifndef MYGESTURES_UINPUT_DEVICE_H_
 #define MYGESTURES_UINPUT_DEVICE_H_
 
-int uinput_init(void);
+#include <libevdev/libevdev.h>
+#include <libevdev/libevdev-uinput.h>
+
+int uinput_init_from_device(struct libevdev *source_dev);
 void uinput_close(void);
 void uinput_click(int button);
 void uinput_keypress_string(const char *keys);
