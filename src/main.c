@@ -9,8 +9,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <errno.h>
-
-#include "assert.h"
+#include <assert.h>
 
 #include "mygestures.h"
 #include "ipc.h"
@@ -102,12 +101,23 @@ static void process_arguments(Mygestures *self, int argc, char *const *argv)
 
 int main(int argc, char *const *argv)
 {
+	/* Disable buffering for immediate output */
+	setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stderr, NULL, _IONBF, 0);
+
+	fprintf(stderr, "Debug: MyGestures main entry point reached.\n");
 
 	Mygestures *self = mygestures_new();
+	if (!self) {
+		fprintf(stderr, "Fatal: Failed to initialize MyGestures object.\n");
+		return 1;
+	}
 
+	fprintf(stderr, "Debug: Processing arguments...\n");
 	process_arguments(self, argc, argv);
 
+	fprintf(stderr, "Debug: Entering mygestures_run...\n");
 	mygestures_run(self);
 
-	exit(0);
+	return 0;
 }

@@ -29,8 +29,8 @@
 #include <sys/types.h>
 #include <grp.h>
 
-#include "assert.h"
-#include "string.h"
+#include <assert.h>
+#include <string.h>
 #include "config.h"
 
 #include "mygestures.h"
