@@ -51,15 +51,24 @@ Troubleshooting:
 
 ### Gestures not working or no response:
 1. **Wrong device:** Run `mygestures -l` to see available devices. If you are on Wayland, it might be picking the wrong `/dev/input/eventX`. Specify the correct one with `-d`.
-2. **Permissions:** Ensure your user is in the `input` group and you have installed the udev rules (see below). **You must log out and log back in** for group changes to take effect.
+2. **Permissions:** Ensure you have installed the udev rules (see below). Modern MyGestures uses `uaccess` tagging, so you **do not need to be in the input group**.
 3. **Trigger Button:** If you are on a laptop with a touchpad (but not using multitouch mode), you might need to use button 1 (left-click) instead of 3. Try `mygestures -b 1`.
-4. **Wayland:** If you are on Wayland, MyGestures uses `evdev` mode. This requires access to `/dev/uinput` to simulate keys. Check if `/dev/uinput` exists and has the right permissions.
+4. **Wayland:** If you are on Wayland, MyGestures uses `evdev` mode. This requires access to `/dev/uinput` to simulate keys.
 5. **Configuration Format:** MyGestures recently switched from XML to YAML. If you have an old `~/.config/mygestures/mygestures.yaml` that is actually XML, it will fail to load. Check the output for error messages.
 
 ### Mouse "dies" when MyGestures starts:
 This happens if MyGestures grabs the device exclusively (needed for right-click gestures) but fails to initialize the virtual `uinput` device to forward other mouse events.
 - Check if you have permissions for `/dev/uinput`.
-- Ensure `99-mygestures.rules` is installed in `/etc/udev/rules.d/`.
+- Ensure `99-mygestures.rules` is installed in the correct udev directory (usually `/etc/udev/rules.d/` or `/usr/lib/udev/rules.d/`).
+- Run `sudo udevadm control --reload-rules && sudo udevadm trigger` after installing.
+
+Installing udev rules manually:
+-------------------------------
+
+If you built from source and `make install` didn't fix permissions, you can do it manually:
+
+    sudo cp 99-mygestures.rules /etc/udev/rules.d/
+    sudo udevadm control --reload-rules && sudo udevadm trigger
 
 Optional: If you want multitouch gestures on your synaptics touchpad
 --------------------------------------------------------------------

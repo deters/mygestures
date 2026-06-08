@@ -1,1 +1,12 @@
-KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"
+# MyGestures udev rules
+# This file allows the currently logged-in user to access uinput and input devices
+# without needing to be in the 'input' group or running as root.
+
+# Allow the logged-in user to access uinput (for virtual keyboard/mouse)
+KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput"
+
+# Allow the logged-in user to access input devices (for evdev capture)
+# We target mice, touchpads, and touchscreens.
+SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_MOUSE}=="1", TAG+="uaccess"
+SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_TOUCHPAD}=="1", TAG+="uaccess"
+SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_TOUCHSCREEN}=="1", TAG+="uaccess"

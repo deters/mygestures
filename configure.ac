@@ -34,6 +34,23 @@ AM_CONDITIONAL([ENABLE_UI], [test "x$enable_ui" = "xyes"])
 
 AC_SEARCH_LIBS([shm_open], [rt], [])
 
+# Check for udev directory
+AC_ARG_WITH([udevrulesdir],
+    [AS_HELP_STRING([--with-udevrulesdir=DIR], [Directory for udev rules])],
+    [udevrulesdir=$withval],
+    [udevrulesdir=$($PKG_CONFIG --variable=udevdir udev)/rules.d])
+
+if test "x$udevrulesdir" = "x/rules.d"; then
+    # Fallback if pkg-config udev fails
+    if test "x$prefix" = "xNONE"; then
+        udevrulesdir="/lib/udev/rules.d"
+    else
+        udevrulesdir="$prefix/lib/udev/rules.d"
+    fi
+fi
+
+AC_SUBST(udevrulesdir)
+
 # Checks for header files.
 AC_PATH_X
 AC_CHECK_HEADERS([fcntl.h stdlib.h string.h strings.h unistd.h])
