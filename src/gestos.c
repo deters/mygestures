@@ -775,9 +775,9 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
             cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
             cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
             
-            // Color Gradient Definition: Sunset Violet to Coral Pink
-            double start_r = 0.49, start_g = 0.27, start_b = 0.90; // #7c3aed
-            double end_r = 0.96, end_g = 0.29, end_b = 0.48;     // #f43f5e
+            // Color Gradient Definition: Dark Charcoal Grey to Lighter Grey
+            double start_r = 0.20, start_g = 0.22, start_b = 0.25; // Dark charcoal grey
+            double end_r = 0.85, end_g = 0.86, end_b = 0.88;       // Lighter grey
             
             if (pt_count == 1) {
                 cairo_set_source_rgb(cr, start_r, start_g, start_b);
@@ -844,12 +844,15 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
             }
             
             // Draw glowing dots at key vertices
-            cairo_set_source_rgb(cr, 0.92, 0.35, 0.25);
             for (int i = 0; i < pt_count; i++) {
                 double fraction = (double)i / (pt_count > 1 ? (pt_count - 1) : 1);
                 double dot_radius = 5.0 * (1.0 - fraction) + 2.0;
                 
-                cairo_set_source_rgba(cr, 0.92, 0.35, 0.25, 0.4);
+                double r = start_r * (1.0 - fraction) + end_r * fraction;
+                double g = start_g * (1.0 - fraction) + end_g * fraction;
+                double b = start_b * (1.0 - fraction) + end_b * fraction;
+                
+                cairo_set_source_rgba(cr, r, g, b, 0.4);
                 cairo_arc(cr, pts[i].x + offset_x, pts[i].y + offset_y, dot_radius + 4.0, 0, 2 * G_PI);
                 cairo_fill(cr);
                 
@@ -926,8 +929,8 @@ static void on_preview_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width
     cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
     cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
 
-    double start_r = 0.49, start_g = 0.27, start_b = 0.90; // #7c3aed
-    double end_r = 0.96, end_g = 0.29, end_b = 0.48;     // #f43f5e
+    double start_r = 0.20, start_g = 0.22, start_b = 0.25; // Dark charcoal grey
+    double end_r = 0.85, end_g = 0.86, end_b = 0.88;       // Lighter grey
 
     if (pt_count == 1) {
         cairo_set_source_rgb(cr, start_r, start_g, start_b);
@@ -1001,7 +1004,11 @@ static void on_preview_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width
         double px = width / 2.0 + (pts[i].x - path_center_x) * scale;
         double py = height / 2.0 + (pts[i].y - path_center_y) * scale;
         
-        cairo_set_source_rgba(cr, 0.92, 0.35, 0.25, 0.4);
+        double r = start_r * (1.0 - fraction) + end_r * fraction;
+        double g = start_g * (1.0 - fraction) + end_g * fraction;
+        double b = start_b * (1.0 - fraction) + end_b * fraction;
+        
+        cairo_set_source_rgba(cr, r, g, b, 0.4);
         cairo_arc(cr, px, py, dot_radius + 2.0, 0, 2 * G_PI);
         cairo_fill(cr);
         
