@@ -35,9 +35,13 @@ static char *get_config_dir() {
 		dir = strdup(env);
 	} else {
 		char *home = getenv("HOME");
+		if (!home) {
+			LOG_ERROR("HOME environment variable not set. Cannot determine configuration directory.\n");
+			return NULL;
+		}
 		if (asprintf(&dir, "%s/.config/mygestures", home) == -1) dir = NULL;
 	}
-	assert(dir);
+	if (!dir) return NULL;
 	return dir;
 }
 
@@ -56,6 +60,7 @@ static const char *get_environment_suffix(void) {
 
 char *configuration_get_default_filename() {
 	char *dir = get_config_dir();
+	if (!dir) return NULL;
 	const char *suffix = get_environment_suffix();
 	char *filename = NULL;
 	if (suffix) {
@@ -64,7 +69,6 @@ char *configuration_get_default_filename() {
 		if (asprintf(&filename, "%s/mygestures.yaml", dir) == -1) filename = NULL;
 	}
 	free(dir);
-	assert(filename);
 	return filename;
 }
 
@@ -79,8 +83,15 @@ static void parse_yaml_movements(yaml_parser_t *parser, Configuration *conf) {
 	char *key = NULL;
 
 	while (1) {
-		yaml_parser_parse(parser, &event);
-		if (event.type == YAML_MAPPING_END_EVENT) break;
+		if (!yaml_parser_parse(parser, &event)) {
+			LOG_ERROR("YAML Parser Error: %s at line %lu, column %lu\n", 
+				parser->problem, parser->problem_mark.line + 1, parser->problem_mark.column + 1);
+			break;
+		}
+		if (event.type == YAML_MAPPING_END_EVENT) {
+			yaml_event_delete(&event);
+			break;
+		}
 		if (event.type == YAML_SCALAR_EVENT) {
 			if (!key) {
 				key = strdup((char *)event.data.scalar.value);
@@ -96,13 +107,16 @@ static void parse_yaml_movements(yaml_parser_t *parser, Configuration *conf) {
 
 static void parse_yaml_actions(yaml_parser_t *parser, Gesture *gest) {
 	yaml_event_t event;
-	yaml_parser_parse(parser, &event);
+	if (!yaml_parser_parse(parser, &event)) return;
 	if (event.type == YAML_SCALAR_EVENT) {
 		configuration_add_action_from_string(gest, (char *)event.data.scalar.value);
 	} else if (event.type == YAML_SEQUENCE_START_EVENT) {
 		while (1) {
-			yaml_parser_parse(parser, &event);
-			if (event.type == YAML_SEQUENCE_END_EVENT) break;
+			if (!yaml_parser_parse(parser, &event)) break;
+			if (event.type == YAML_SEQUENCE_END_EVENT) {
+				yaml_event_delete(&event);
+				break;
+			}
 			if (event.type == YAML_SCALAR_EVENT) {
 				configuration_add_action_from_string(gest, (char *)event.data.scalar.value);
 			}
@@ -118,13 +132,16 @@ static void parse_yaml_gesture(yaml_parser_t *parser, Context *ctx, char *name) 
 	Gesture *gest = NULL;
 
 	while (1) {
-		yaml_parser_parse(parser, &event);
-		if (event.type == YAML_MAPPING_END_EVENT) break;
+		if (!yaml_parser_parse(parser, &event)) break;
+		if (event.type == YAML_MAPPING_END_EVENT) {
+			yaml_event_delete(&event);
+			break;
+		}
 		if (event.type == YAML_SCALAR_EVENT) {
 			char *key = (char *)event.data.scalar.value;
 			if (strcmp(key, "move") == 0) {
 				yaml_event_delete(&event);
-				yaml_parser_parse(parser, &event);
+				if (!yaml_parser_parse(parser, &event)) break;
 				move = strdup((char *)event.data.scalar.value);
 				gest = configuration_create_gesture(ctx, strdup(name), move);
 			} else if (strcmp(key, "do") == 0) {
@@ -143,12 +160,15 @@ static void parse_yaml_gesture(yaml_parser_t *parser, Context *ctx, char *name) 
 static void parse_yaml_gestures_block(yaml_parser_t *parser, Context *ctx) {
 	yaml_event_t event;
 	while (1) {
-		yaml_parser_parse(parser, &event);
-		if (event.type == YAML_MAPPING_END_EVENT) break;
+		if (!yaml_parser_parse(parser, &event)) break;
+		if (event.type == YAML_MAPPING_END_EVENT) {
+			yaml_event_delete(&event);
+			break;
+		}
 		if (event.type == YAML_SCALAR_EVENT) {
 			char *name = strdup((char *)event.data.scalar.value);
 			yaml_event_delete(&event);
-			yaml_parser_parse(parser, &event); // Start of gesture mapping
+			if (!yaml_parser_parse(parser, &event)) { free(name); break; }
 			parse_yaml_gesture(parser, ctx, name);
 			free(name);
 		}
@@ -159,8 +179,11 @@ static void parse_yaml_gestures_block(yaml_parser_t *parser, Context *ctx) {
 static void parse_yaml_apps(yaml_parser_t *parser, Configuration *conf) {
 	yaml_event_t event;
 	while (1) {
-		yaml_parser_parse(parser, &event);
-		if (event.type == YAML_SEQUENCE_END_EVENT) break;
+		if (!yaml_parser_parse(parser, &event)) break;
+		if (event.type == YAML_SEQUENCE_END_EVENT) {
+			yaml_event_delete(&event);
+			break;
+		}
 		if (event.type == YAML_MAPPING_START_EVENT) {
 			char *name = NULL;
 			char *class = strdup(".*");
@@ -169,22 +192,22 @@ static void parse_yaml_apps(yaml_parser_t *parser, Configuration *conf) {
 
 			while (1) {
 				yaml_event_delete(&event);
-				yaml_parser_parse(parser, &event);
+				if (!yaml_parser_parse(parser, &event)) break;
 				if (event.type == YAML_MAPPING_END_EVENT) break;
 				char *key = (char *)event.data.scalar.value;
 				yaml_event_delete(&event);
-				yaml_parser_parse(parser, &event);
+				if (!yaml_parser_parse(parser, &event)) break;
 				if (strcmp(key, "name") == 0) {
 					name = strdup((char *)event.data.scalar.value);
 				} else if (strcmp(key, "match") == 0) {
 					// Parse match map { class: ..., title: ... }
 					while (1) {
 						yaml_event_delete(&event);
-						yaml_parser_parse(parser, &event);
+						if (!yaml_parser_parse(parser, &event)) break;
 						if (event.type == YAML_MAPPING_END_EVENT) break;
 						char *mkey = (char *)event.data.scalar.value;
 						yaml_event_delete(&event);
-						yaml_parser_parse(parser, &event);
+						if (!yaml_parser_parse(parser, &event)) break;
 						if (strcmp(mkey, "class") == 0) {
 							free(class);
 							class = strdup((char *)event.data.scalar.value);
@@ -207,30 +230,51 @@ static int configuration_parse_file(Configuration *conf, char *filename) {
 	FILE *fh = fopen(filename, "r");
 	if (!fh) return 1;
 
+	// Quick check for XML format
+	char head[10];
+	if (fread(head, 1, 5, fh) == 5) {
+		if (strncmp(head, "<?xml", 5) == 0 || strncmp(head, "<conf", 5) == 0) {
+			LOG_ERROR("File '%s' seems to be in XML format. MyGestures now uses YAML. Please migrate your configuration.\n", filename);
+			fclose(fh);
+			return 1;
+		}
+	}
+	fseek(fh, 0, SEEK_SET);
+
 	yaml_parser_t parser;
 	yaml_event_t event;
 
-	yaml_parser_initialize(&parser);
+	if (!yaml_parser_initialize(&parser)) {
+		LOG_ERROR("Failed to initialize YAML parser.\n");
+		fclose(fh);
+		return 1;
+	}
 	yaml_parser_set_input_file(&parser, fh);
 
 	while (1) {
-		yaml_parser_parse(&parser, &event);
-		if (event.type == YAML_STREAM_END_EVENT) break;
+		if (!yaml_parser_parse(&parser, &event)) {
+			LOG_ERROR("YAML Parser Error in '%s': %s at line %lu, column %lu\n", 
+				filename, parser.problem, parser.problem_mark.line + 1, parser.problem_mark.column + 1);
+			break;
+		}
+		if (event.type == YAML_STREAM_END_EVENT) {
+			yaml_event_delete(&event);
+			break;
+		}
 		if (event.type == YAML_SCALAR_EVENT) {
 			char *key = (char *)event.data.scalar.value;
 			if (strcmp(key, "movements") == 0) {
 				yaml_event_delete(&event);
-				yaml_parser_parse(&parser, &event);
-				parse_yaml_movements(&parser, conf);
+				if (yaml_parser_parse(&parser, &event)) parse_yaml_movements(&parser, conf);
 			} else if (strcmp(key, "global") == 0) {
 				yaml_event_delete(&event);
-				yaml_parser_parse(&parser, &event);
-				Context *ctx = configuration_create_context(conf, strdup("global"), strdup(".*"), strdup(".*"));
-				parse_yaml_gestures_block(&parser, ctx);
+				if (yaml_parser_parse(&parser, &event)) {
+					Context *ctx = configuration_create_context(conf, strdup("global"), strdup(".*"), strdup(".*"));
+					parse_yaml_gestures_block(&parser, ctx);
+				}
 			} else if (strcmp(key, "apps") == 0) {
 				yaml_event_delete(&event);
-				yaml_parser_parse(&parser, &event);
-				parse_yaml_apps(&parser, conf);
+				if (yaml_parser_parse(&parser, &event)) parse_yaml_apps(&parser, conf);
 			}
 		}
 		yaml_event_delete(&event);

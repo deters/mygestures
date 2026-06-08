@@ -250,7 +250,7 @@ Gesture * match_gesture(Configuration * self, char * captured_sequence,
 
 	int c = 0;
 
-	for (c = 0; c < self->context_count; ++c) {
+	for (c = self->context_count - 1; c >= 0; --c) {
 
 		Context * context = self->context_list[c];
 
