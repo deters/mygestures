@@ -665,8 +665,8 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
         cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
         
         int M = 4; // Sub-segment division for active drawing
-        double start_r = 0.20, start_g = 0.22, start_b = 0.25; // Dark charcoal grey
-        double end_r = 0.85, end_g = 0.86, end_b = 0.88;       // Lighter grey
+        double start_r = 0.49, start_g = 0.27, start_b = 0.90; // Sunset violet
+        double end_r = 0.98, end_g = 0.72, end_b = 0.80;       // Faded sunset pink
         
         // Glow layer
         for (int i = 1; i < editor->drawn_count; i++) {
@@ -775,9 +775,9 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
             cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
             cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
             
-            // Color Gradient Definition: Dark Charcoal Grey to Lighter Grey
-            double start_r = 0.20, start_g = 0.22, start_b = 0.25; // Dark charcoal grey
-            double end_r = 0.85, end_g = 0.86, end_b = 0.88;       // Lighter grey
+            // Color Gradient Definition: Sunset Violet to Faded Sunset Pink
+            double start_r = 0.49, start_g = 0.27, start_b = 0.90; // Sunset violet
+            double end_r = 0.98, end_g = 0.72, end_b = 0.80;       // Faded sunset pink
             
             if (pt_count == 1) {
                 cairo_set_source_rgb(cr, start_r, start_g, start_b);
@@ -929,8 +929,8 @@ static void on_preview_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width
     cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
     cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
 
-    double start_r = 0.20, start_g = 0.22, start_b = 0.25; // Dark charcoal grey
-    double end_r = 0.85, end_g = 0.86, end_b = 0.88;       // Lighter grey
+    double start_r = 0.49, start_g = 0.27, start_b = 0.90; // Sunset violet
+    double end_r = 0.98, end_g = 0.72, end_b = 0.80;       // Faded sunset pink
 
     if (pt_count == 1) {
         cairo_set_source_rgb(cr, start_r, start_g, start_b);
