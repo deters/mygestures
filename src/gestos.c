@@ -616,6 +616,13 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
     free(full_action);
     refresh_gesture_list(editor->app);
 
+    char *filename = configuration_get_default_filename();
+    if (filename) {
+        configuration_save_to_file(editor->app->config, filename);
+        free(filename);
+    }
+    reload_daemon_if_running();
+
     gtk_window_destroy(GTK_WINDOW(editor->dialog));
 }
 
