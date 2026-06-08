@@ -30,6 +30,33 @@ typedef struct {
 
 static void refresh_gesture_list(GestosApp *gestos);
 
+typedef struct {
+    int id;
+    const char *name;
+    const char *prefix;
+    const char *icon;
+} ActionType;
+
+static ActionType action_types[] = {
+    { ACTION_KEYPRESS, "Key Combination", "keypress", "input-keyboard-symbolic" },
+    { ACTION_EXECUTE, "Execute Command", "exec", "system-run-symbolic" },
+    { ACTION_KILL, "Close Window", "kill", "window-close-symbolic" },
+    { ACTION_TOGGLE_MAXIMIZED, "Toggle Maximized", "toggle-maximized", "window-maximize-symbolic" },
+    { ACTION_MAXIMIZE, "Maximize Window", "maximize", "window-maximize-symbolic" },
+    { ACTION_RESTORE, "Restore Window", "restore", "window-restore-symbolic" },
+    { ACTION_ICONIFY, "Minimize Window", "iconify", "window-minimize-symbolic" },
+    { ACTION_RAISE, "Raise Window", "raise", "go-up-symbolic" },
+    { ACTION_LOWER, "Lower Window", "lower", "go-down-symbolic" },
+    { ACTION_WORKSPACE_LEFT, "Workspace Left", "workspace-left", "go-previous-symbolic" },
+    { ACTION_WORKSPACE_RIGHT, "Workspace Right", "workspace-right", "go-next-symbolic" },
+    { ACTION_WORKSPACE_UP, "Workspace Up", "workspace-up", "go-up-symbolic" },
+    { ACTION_WORKSPACE_DOWN, "Workspace Down", "workspace-down", "go-down-symbolic" },
+    { ACTION_SHOW_OVERVIEW, "Show Overview", "show-overview", "view-fullscreen-symbolic" },
+    { ACTION_SHOW_APP_GRID, "Show App Grid", "show-app-grid", "view-grid-symbolic" },
+    { ACTION_CLICK, "Mouse Click", "click", "input-mouse-symbolic" },
+    { 0, NULL, NULL, NULL }
+};
+
 /* --- GNOME ACTION BROWSER --- */
 
 typedef struct {
