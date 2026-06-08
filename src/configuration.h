@@ -59,6 +59,8 @@ Movement * configuration_create_movement(	Configuration * self,
 											char *movement_name,
 											char *movement_expression);
 
+void movement_set_expression(Movement * movement, char * movement_expression);
+
 Action * configuration_create_action(Gesture * self, int action_type, char * original_str);
 
 void configuration_add_action_from_string(Gesture * self, const char * action_str);
