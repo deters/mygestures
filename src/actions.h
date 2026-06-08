@@ -3,7 +3,7 @@
 
 #include "configuration.h"
 
-#define ACTION_COUNT 19
+#define ACTION_COUNT 20
 
 /* Actions */
 enum {
