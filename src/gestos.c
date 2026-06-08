@@ -331,7 +331,7 @@ static void open_gnome_action_browser(GtkWidget *btn, gpointer user_data) {
         gtk_box_append(GTK_BOX(hbox), vbox);
 
         GtkWidget *l_accel = gtk_label_new(a->accelerator);
-        gtk_widget_add_css_class(l_accel, "move-badge");
+        gtk_widget_add_css_class(l_accel, "accel-badge");
         gtk_box_append(GTK_BOX(hbox), l_accel);
 
         gtk_list_box_row_set_child(GTK_LIST_BOX_ROW(row), hbox);
@@ -350,6 +350,32 @@ static const char* get_action_icon(int id) {
         if (action_types[i].id == id) return action_types[i].icon;
     }
     return "system-run-symbolic";
+}
+
+static const char* get_action_class(int id) {
+    switch (id) {
+        case ACTION_KEYPRESS:
+        case ACTION_EXECUTE:
+            return "icon-bg-purple";
+        case ACTION_KILL:
+        case ACTION_MAXIMIZE:
+        case ACTION_RESTORE:
+        case ACTION_TOGGLE_MAXIMIZED:
+        case ACTION_ICONIFY:
+        case ACTION_RAISE:
+        case ACTION_LOWER:
+        case ACTION_TOGGLE_FULLSCREEN:
+            return "icon-bg-orange";
+        case ACTION_WORKSPACE_LEFT:
+        case ACTION_WORKSPACE_RIGHT:
+        case ACTION_WORKSPACE_UP:
+        case ACTION_WORKSPACE_DOWN:
+        case ACTION_SHOW_OVERVIEW:
+        case ACTION_SHOW_APP_GRID:
+            return "icon-bg-blue";
+        default:
+            return "icon-bg-green";
+    }
 }
 
 static void on_action_type_changed(GtkDropDown *combo, gpointer user_data) {
@@ -396,7 +422,7 @@ static gboolean on_record_key_pressed(GtkEventControllerKey *controller,
             
             editor->recording = FALSE;
             gtk_button_set_label(GTK_BUTTON(editor->record_btn), "Record");
-            gtk_widget_remove_css_class(editor->record_btn, "suggested-action");
+            gtk_widget_remove_css_class(editor->record_btn, "recording-active");
         }
     }
     
@@ -409,10 +435,10 @@ static void on_record_clicked(GtkWidget *btn, gpointer user_data) {
     editor->recording = !editor->recording;
     if (editor->recording) {
         gtk_button_set_label(GTK_BUTTON(btn), "Recording...");
-        gtk_widget_add_css_class(btn, "suggested-action");
+        gtk_widget_add_css_class(btn, "recording-active");
     } else {
         gtk_button_set_label(GTK_BUTTON(btn), "Record");
-        gtk_widget_remove_css_class(btn, "suggested-action");
+        gtk_widget_remove_css_class(btn, "recording-active");
     }
 }
 
@@ -528,11 +554,12 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     gtk_box_append(GTK_BOX(editor->action_val_box), editor->action_val_entry);
     
     editor->record_btn = gtk_button_new_with_label("Record");
+    gtk_widget_add_css_class(editor->record_btn, "record-btn");
     gtk_box_append(GTK_BOX(editor->action_val_box), editor->record_btn);
     g_signal_connect(editor->record_btn, "clicked", G_CALLBACK(on_record_clicked), editor);
 
     GtkWidget *browse_btn = gtk_button_new_with_label("Browse GNOME Actions");
-    gtk_widget_add_css_class(browse_btn, "flat");
+    gtk_widget_add_css_class(browse_btn, "browse-btn");
     gtk_grid_attach(GTK_GRID(grid), browse_btn, 1, 4, 1, 1);
     g_signal_connect(browse_btn, "clicked", G_CALLBACK(open_gnome_action_browser), editor);
 
@@ -602,6 +629,7 @@ static char* get_full_action_str(Action *a) {
 
 static void add_gesture_row(GestosApp *gestos, Gesture *gesture) {
     GtkWidget *row = gtk_list_box_row_new();
+    gtk_widget_add_css_class(row, "gesture-row");
     g_object_set_data(G_OBJECT(row), "gesture-ptr", gesture);
     
     GtkWidget *main_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 16);
@@ -613,10 +641,15 @@ static void add_gesture_row(GestosApp *gestos, Gesture *gesture) {
     int action_id = ACTION_NULL;
     if (gesture->action_count > 0) action_id = gesture->action_list[0]->type;
     
+    GtkWidget *icon_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_widget_add_css_class(icon_box, "icon-holder");
+    gtk_widget_add_css_class(icon_box, get_action_class(action_id));
+    gtk_widget_set_valign(icon_box, GTK_ALIGN_CENTER);
+    
     GtkWidget *icon = gtk_image_new_from_icon_name(get_action_icon(action_id));
-    gtk_widget_set_valign(icon, GTK_ALIGN_CENTER);
-    gtk_widget_set_size_request(icon, 32, 32);
-    gtk_box_append(GTK_BOX(main_hbox), icon);
+    gtk_widget_set_size_request(icon, 20, 20);
+    gtk_box_append(GTK_BOX(icon_box), icon);
+    gtk_box_append(GTK_BOX(main_hbox), icon_box);
 
     GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
     gtk_widget_set_hexpand(vbox, TRUE);
@@ -761,12 +794,38 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
     GtkCssProvider *provider = gtk_css_provider_new();
     gtk_css_provider_load_from_string(provider,
-        ".context-title { font-size: 2.2em; font-weight: 800; }\n"
-        ".boxed-list { border-radius: 12px; }\n"
-        ".move-badge { background: alpha(currentColor, 0.1); padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 0.8em; }\n"
-        ".action-label { font-size: 0.85em; opacity: 0.7; }\n"
-        ".dim-label { font-size: 0.85em; opacity: 0.7; font-style: italic; }\n"
-        ".toast { background: alpha(@theme_text_color, 0.9); color: @theme_bg_color; padding: 10px 20px; border-radius: 20px; position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); font-weight: bold; }\n");
+        "window { background-color: @theme_bg_color; }\n"
+        ".context-title { font-size: 2.2em; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }\n"
+        "entry { border-radius: 10px; padding: 8px 12px; border: 1px solid alpha(currentColor, 0.15); background: @view_bg_color; transition: all 0.2s ease; }\n"
+        "entry:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); }\n"
+        "dropdown { border-radius: 10px; padding: 6px 12px; border: 1px solid alpha(currentColor, 0.15); background: @view_bg_color; transition: all 0.2s ease; }\n"
+        "dropdown:focus { border-color: #6366f1; }\n"
+        "scrolledwindow { border: none; }\n"
+        ".boxed-list { background: @view_bg_color; border: 1px solid alpha(currentColor, 0.08); border-radius: 16px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.02); }\n"
+        ".gesture-row { background: transparent; border-bottom: 1px solid alpha(currentColor, 0.06); transition: all 0.2s ease; }\n"
+        ".gesture-row:last-child { border-bottom: none; }\n"
+        ".gesture-row:hover { background: alpha(currentColor, 0.03); }\n"
+        ".icon-holder { border-radius: 10px; padding: 6px; transition: transform 0.2s ease; }\n"
+        ".icon-holder:hover { transform: scale(1.05); }\n"
+        ".icon-bg-purple { background: rgba(139, 92, 246, 0.12); color: #8b5cf6; }\n"
+        ".icon-bg-orange { background: rgba(249, 115, 22, 0.12); color: #f97316; }\n"
+        ".icon-bg-blue { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }\n"
+        ".icon-bg-green { background: rgba(16, 185, 129, 0.12); color: #10b981; }\n"
+        ".move-badge { background: rgba(99, 102, 241, 0.08); color: #6366f1; padding: 4px 12px; border-radius: 12px; font-weight: 700; font-size: 0.8em; border: 1px solid rgba(99, 102, 241, 0.15); }\n"
+        ".accel-badge { background: alpha(currentColor, 0.05); color: alpha(currentColor, 0.8); padding: 4px 8px; border-radius: 8px; font-family: monospace, Courier, monospace; font-weight: 600; font-size: 0.8em; border: 1px solid alpha(currentColor, 0.1); }\n"
+        ".action-label { font-size: 0.82em; opacity: 0.6; }\n"
+        ".dim-label { font-size: 0.82em; opacity: 0.5; font-style: italic; }\n"
+        "headerbar { background: @theme_bg_color; border-bottom: 1px solid alpha(currentColor, 0.06); padding: 8px 12px; }\n"
+        "button { border-radius: 8px; padding: 6px 12px; transition: all 0.2s ease; }\n"
+        ".suggested-action { background: linear-gradient(135deg, #6366f1, #4f46e5) !important; color: white !important; border: none !important; font-weight: 600 !important; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25) !important; }\n"
+        ".suggested-action:hover { background: linear-gradient(135deg, #4f46e5, #4338ca) !important; box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35) !important; }\n"
+        ".destructive-action { color: alpha(currentColor, 0.4); }\n"
+        ".destructive-action:hover { color: #ef4444 !important; background: rgba(239, 68, 68, 0.08) !important; }\n"
+        ".recording-active { background: linear-gradient(135deg, #ef4444, #dc2626) !important; color: white !important; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important; border: none !important; }\n"
+        ".browse-btn { background: rgba(99, 102, 241, 0.06); color: #6366f1; border: 1px dashed rgba(99, 102, 241, 0.25); border-radius: 10px; padding: 10px; font-weight: 600; }\n"
+        ".browse-btn:hover { background: rgba(99, 102, 241, 0.1); border-color: #6366f1; }\n"
+        "searchentry { border-radius: 18px; padding-left: 6px; padding-right: 6px; }\n"
+        ".toast { background: alpha(@theme_text_color, 0.95); color: @theme_bg_color; padding: 8px 18px; border-radius: 20px; position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); font-weight: bold; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); }\n");
     gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
     gtk_window_present(GTK_WINDOW(gestos->window));
