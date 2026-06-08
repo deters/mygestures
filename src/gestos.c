@@ -5,6 +5,7 @@
 #include "configuration_parser.h"
 #include "actions.h"
 #include "mygestures.h"
+#include "grabbing.h"
 
 typedef struct {
     GtkApplication *app;
@@ -27,6 +28,12 @@ typedef struct {
     GtkWidget *record_btn;
     gboolean recording;
     GtkWidget *browser_dialog;
+    
+    GtkWidget *canvas;
+    Point2D *drawn_points;
+    int drawn_count;
+    int drawn_capacity;
+    gboolean is_drawing;
 } GestureEditor;
 
 static void refresh_gesture_list(GestosApp *gestos);
@@ -586,7 +593,240 @@ static void on_editor_dialog_destroy(GtkWidget *widget, gpointer user_data) {
     if (editor->browser_dialog) {
         gtk_window_destroy(GTK_WINDOW(editor->browser_dialog));
     }
+    if (editor->drawn_points) {
+        free(editor->drawn_points);
+    }
     g_free(editor);
+}
+
+static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width, int height, gpointer user_data) {
+    GestureEditor *editor = (GestureEditor *)user_data;
+    
+    cairo_set_source_rgb(cr, 0.96, 0.97, 0.98);
+    cairo_paint(cr);
+    
+    cairo_set_source_rgba(cr, 0.88, 0.90, 0.92, 0.5);
+    cairo_set_line_width(cr, 1.0);
+    for (int i = 25; i < width; i += 25) {
+        cairo_move_to(cr, i, 0);
+        cairo_line_to(cr, i, height);
+    }
+    for (int j = 25; j < height; j += 25) {
+        cairo_move_to(cr, 0, j);
+        cairo_line_to(cr, width, j);
+    }
+    cairo_stroke(cr);
+    
+    if (editor->is_drawing && editor->drawn_count > 1) {
+        cairo_set_source_rgb(cr, 0.25, 0.55, 0.95);
+        cairo_set_line_width(cr, 3.5);
+        cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
+        cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+        
+        cairo_move_to(cr, editor->drawn_points[0].x, editor->drawn_points[0].y);
+        for (int i = 1; i < editor->drawn_count; i++) {
+            cairo_line_to(cr, editor->drawn_points[i].x, editor->drawn_points[i].y);
+        }
+        cairo_stroke(cr);
+    } else {
+        guint move_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->move_combo));
+        if (move_idx != GTK_INVALID_LIST_POSITION && move_idx < (guint)editor->app->config->movement_count) {
+            Movement *m = editor->app->config->movement_list[move_idx];
+            if (m && m->point_count > 0) {
+                cairo_set_source_rgb(cr, 0.15, 0.65, 0.35);
+                cairo_set_line_width(cr, 4.0);
+                cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
+                cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+                
+                cairo_move_to(cr, m->points[0].x, m->points[0].y);
+                for (int i = 1; i < m->point_count; i++) {
+                    cairo_line_to(cr, m->points[i].x, m->points[i].y);
+                }
+                cairo_stroke(cr);
+                
+                cairo_set_source_rgb(cr, 0.92, 0.35, 0.25);
+                for (int i = 0; i < m->point_count; i++) {
+                    cairo_arc(cr, m->points[i].x, m->points[i].y, 4.0, 0, 2 * G_PI);
+                    cairo_fill(cr);
+                }
+            }
+        }
+    }
+}
+
+static void on_canvas_drag_begin(GtkGestureDrag *gesture, double start_x, double start_y, gpointer user_data) {
+    GestureEditor *editor = (GestureEditor *)user_data;
+    editor->is_drawing = TRUE;
+    editor->drawn_count = 0;
+    
+    if (editor->drawn_capacity < 128) {
+        editor->drawn_capacity = 1024;
+        editor->drawn_points = malloc(sizeof(Point2D) * editor->drawn_capacity);
+    }
+    
+    editor->drawn_points[0].x = start_x;
+    editor->drawn_points[0].y = start_y;
+    editor->drawn_count = 1;
+    
+    gtk_widget_queue_draw(editor->canvas);
+}
+
+static void on_canvas_drag_update(GtkGestureDrag *gesture, double offset_x, double offset_y, gpointer user_data) {
+    GestureEditor *editor = (GestureEditor *)user_data;
+    if (!editor->is_drawing) return;
+    
+    double start_x, start_y;
+    if (gtk_gesture_drag_get_start_point(gesture, &start_x, &start_y)) {
+        double cur_x = start_x + offset_x;
+        double cur_y = start_y + offset_y;
+        
+        if (editor->drawn_count > 0) {
+            double dx = cur_x - editor->drawn_points[editor->drawn_count - 1].x;
+            double dy = cur_y - editor->drawn_points[editor->drawn_count - 1].y;
+            if (dx*dx + dy*dy < 4.0) {
+                return;
+            }
+        }
+        
+        if (editor->drawn_count >= editor->drawn_capacity) {
+            editor->drawn_capacity *= 2;
+            editor->drawn_points = realloc(editor->drawn_points, sizeof(Point2D) * editor->drawn_capacity);
+        }
+        
+        editor->drawn_points[editor->drawn_count].x = cur_x;
+        editor->drawn_points[editor->drawn_count].y = cur_y;
+        editor->drawn_count++;
+        
+        gtk_widget_queue_draw(editor->canvas);
+    }
+}
+
+static void on_canvas_drag_end(GtkGestureDrag *gesture, double offset_x, double offset_y, gpointer user_data) {
+    GestureEditor *editor = (GestureEditor *)user_data;
+    if (!editor->is_drawing) return;
+    editor->is_drawing = FALSE;
+    
+    double start_x, start_y;
+    if (gtk_gesture_drag_get_start_point(gesture, &start_x, &start_y)) {
+        double cur_x = start_x + offset_x;
+        double cur_y = start_y + offset_y;
+        if (editor->drawn_count > 0) {
+            double dx = cur_x - editor->drawn_points[editor->drawn_count - 1].x;
+            double dy = cur_y - editor->drawn_points[editor->drawn_count - 1].y;
+            if (dx*dx + dy*dy >= 4.0) {
+                if (editor->drawn_count >= editor->drawn_capacity) {
+                    editor->drawn_capacity *= 2;
+                    editor->drawn_points = realloc(editor->drawn_points, sizeof(Point2D) * editor->drawn_capacity);
+                }
+                editor->drawn_points[editor->drawn_count].x = cur_x;
+                editor->drawn_points[editor->drawn_count].y = cur_y;
+                editor->drawn_count++;
+            }
+        }
+    }
+    
+    if (editor->drawn_count >= 2) {
+        int simplified_count = 0;
+        Point2D *simplified = grabbing_simplify_points(editor->drawn_points, editor->drawn_count, 6.0, &simplified_count);
+        
+        guint move_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->move_combo));
+        if (move_idx != GTK_INVALID_LIST_POSITION && move_idx < (guint)editor->app->config->movement_count) {
+            Movement *m = editor->app->config->movement_list[move_idx];
+            
+            int buf_size = simplified_count * 40 + 1;
+            char *buf = malloc(buf_size);
+            buf[0] = '\0';
+            for (int i = 0; i < simplified_count; i++) {
+                char pt_buf[40];
+                snprintf(pt_buf, sizeof(pt_buf), "%.1f,%.1f", simplified[i].x, simplified[i].y);
+                strcat(buf, pt_buf);
+                if (i < simplified_count - 1) {
+                    strcat(buf, " ");
+                }
+            }
+            
+            movement_set_expression(m, buf);
+        }
+        free(simplified);
+    }
+    
+    gtk_widget_queue_draw(editor->canvas);
+}
+
+static void on_move_combo_changed(GObject *object, GParamSpec *pspec, gpointer user_data) {
+    GestureEditor *editor = (GestureEditor *)user_data;
+    gtk_widget_queue_draw(editor->canvas);
+}
+
+typedef struct {
+    GestureEditor *editor;
+    GtkWidget *dialog;
+    GtkWidget *entry;
+} NewMoveDialogData;
+
+static void on_new_move_ok(GtkWidget *btn, gpointer user_data) {
+    NewMoveDialogData *data = (NewMoveDialogData *)user_data;
+    const char *name = gtk_editable_get_text(GTK_EDITABLE(data->entry));
+    if (name && strlen(name) > 0) {
+        Movement *m = configuration_create_movement(data->editor->app->config, strdup(name), strdup("0,0 0,0"));
+        
+        GtkStringList *move_list = GTK_STRING_LIST(gtk_drop_down_get_model(GTK_DROP_DOWN(data->editor->move_combo)));
+        gtk_string_list_append(move_list, name);
+        
+        gtk_drop_down_set_selected(GTK_DROP_DOWN(data->editor->move_combo), data->editor->app->config->movement_count - 1);
+        
+        gtk_widget_queue_draw(data->editor->canvas);
+    }
+    gtk_window_destroy(GTK_WINDOW(data->dialog));
+    free(data);
+}
+
+static void on_new_move_cancel(GtkWidget *btn, gpointer user_data) {
+    NewMoveDialogData *data = (NewMoveDialogData *)user_data;
+    gtk_window_destroy(GTK_WINDOW(data->dialog));
+    free(data);
+}
+
+static void on_new_move_clicked(GtkWidget *btn, gpointer user_data) {
+    GestureEditor *editor = (GestureEditor *)user_data;
+    
+    NewMoveDialogData *data = malloc(sizeof(NewMoveDialogData));
+    data->editor = editor;
+    
+    data->dialog = gtk_window_new();
+    gtk_window_set_title(GTK_WINDOW(data->dialog), "New Movement Name");
+    gtk_window_set_transient_for(GTK_WINDOW(data->dialog), GTK_WINDOW(editor->dialog));
+    gtk_window_set_modal(GTK_WINDOW(data->dialog), TRUE);
+    gtk_window_set_default_size(GTK_WINDOW(data->dialog), 320, -1);
+    
+    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
+    gtk_widget_set_margin_top(box, 16);
+    gtk_widget_set_margin_bottom(box, 16);
+    gtk_widget_set_margin_start(box, 16);
+    gtk_widget_set_margin_end(box, 16);
+    
+    GtkWidget *label = gtk_label_new("Enter a name for the new custom movement:");
+    gtk_widget_set_halign(label, GTK_ALIGN_START);
+    gtk_box_append(GTK_BOX(box), label);
+    
+    data->entry = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(data->entry), "e.g. Spiral, Wave...");
+    gtk_box_append(GTK_BOX(box), data->entry);
+    
+    GtkWidget *btn_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    gtk_widget_set_halign(btn_box, GTK_ALIGN_END);
+    
+    GtkWidget *cancel = gtk_button_new_with_label("Cancel");
+    g_signal_connect(cancel, "clicked", G_CALLBACK(on_new_move_cancel), data);
+    gtk_box_append(GTK_BOX(btn_box), cancel);
+    
+    GtkWidget *ok = gtk_button_new_with_label("OK");
+    g_signal_connect(ok, "clicked", G_CALLBACK(on_new_move_ok), data);
+    gtk_box_append(GTK_BOX(btn_box), ok);
+    
+    gtk_box_append(GTK_BOX(box), btn_box);
+    gtk_window_set_child(GTK_WINDOW(data->dialog), box);
+    gtk_window_present(GTK_WINDOW(data->dialog));
 }
 
 static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
@@ -644,7 +884,16 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
         }
     }
     if (!g) gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->move_combo), 0);
-    gtk_grid_attach(GTK_GRID(grid), editor->move_combo, 1, 1, 1, 1);
+    
+    GtkWidget *move_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    gtk_widget_set_hexpand(editor->move_combo, TRUE);
+    gtk_box_append(GTK_BOX(move_box), editor->move_combo);
+    
+    GtkWidget *new_move_btn = gtk_button_new_with_label("New...");
+    gtk_box_append(GTK_BOX(move_box), new_move_btn);
+    g_signal_connect(new_move_btn, "clicked", G_CALLBACK(on_new_move_clicked), editor);
+    
+    gtk_grid_attach(GTK_GRID(grid), move_box, 1, 1, 1, 1);
     
     gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Action Type:"), 0, 2, 1, 1);
     GtkStringList *type_sl = gtk_string_list_new(NULL);
@@ -700,6 +949,30 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     g_signal_connect(key_controller, "key-pressed", G_CALLBACK(on_record_key_pressed), editor);
     gtk_widget_add_controller(editor->dialog, key_controller);
     
+    g_signal_connect(editor->move_combo, "notify::selected", G_CALLBACK(on_move_combo_changed), editor);
+
+    GtkWidget *canvas_label = gtk_label_new("Draw Movement (drag to customize):");
+    gtk_widget_set_halign(canvas_label, GTK_ALIGN_START);
+    gtk_widget_set_margin_top(canvas_label, 16);
+    gtk_widget_set_margin_bottom(canvas_label, 6);
+    gtk_box_append(GTK_BOX(content), canvas_label);
+
+    GtkWidget *canvas_frame = gtk_frame_new(NULL);
+    gtk_widget_set_size_request(canvas_frame, 220, 220);
+    gtk_widget_set_halign(canvas_frame, GTK_ALIGN_CENTER);
+
+    editor->canvas = gtk_drawing_area_new();
+    gtk_widget_set_size_request(editor->canvas, 200, 200);
+    gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(editor->canvas), on_canvas_draw, editor, NULL);
+    gtk_frame_set_child(GTK_FRAME(canvas_frame), editor->canvas);
+    gtk_box_append(GTK_BOX(content), canvas_frame);
+
+    GtkGesture *drag = gtk_gesture_drag_new();
+    gtk_widget_add_controller(editor->canvas, GTK_EVENT_CONTROLLER(drag));
+    g_signal_connect(drag, "drag-begin", G_CALLBACK(on_canvas_drag_begin), editor);
+    g_signal_connect(drag, "drag-update", G_CALLBACK(on_canvas_drag_update), editor);
+    g_signal_connect(drag, "drag-end", G_CALLBACK(on_canvas_drag_end), editor);
+
     gtk_window_present(GTK_WINDOW(editor->dialog));
 }
 

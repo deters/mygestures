@@ -22,28 +22,146 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <regex.h>
+#include <math.h>
 #include <assert.h>
 
 #include "configuration.h"
 #include "actions.h"
 
+static double path_length(const Point2D *points, int count) {
+	double d = 0;
+	for (int i = 1; i < count; i++) {
+		double dx = points[i].x - points[i-1].x;
+		double dy = points[i].y - points[i-1].y;
+		d += sqrt(dx*dx + dy*dy);
+	}
+	return d;
+}
+
+static Point2D *resample_path(const Point2D *points, int count, int n) {
+	Point2D *resampled = malloc(sizeof(Point2D) * n);
+	if (!resampled) return NULL;
+	if (count == 0) {
+		memset(resampled, 0, sizeof(Point2D) * n);
+		return resampled;
+	}
+	if (count == 1) {
+		for (int i = 0; i < n; i++) resampled[i] = points[0];
+		return resampled;
+	}
+	
+	double len = path_length(points, count);
+	double I = (len > 1e-4) ? (len / (n - 1)) : 0.0;
+	double D = 0;
+	resampled[0] = points[0];
+	int r_count = 1;
+	
+	Point2D *pts = malloc(sizeof(Point2D) * count);
+	memcpy(pts, points, sizeof(Point2D) * count);
+	
+	for (int i = 1; i < count; i++) {
+		double dx = pts[i].x - pts[i-1].x;
+		double dy = pts[i].y - pts[i-1].y;
+		double d = sqrt(dx*dx + dy*dy);
+		if ((D + d) >= I && I > 1e-4) {
+			double qx = pts[i-1].x + ((I - D) / d) * dx;
+			double qy = pts[i-1].y + ((I - D) / d) * dy;
+			resampled[r_count++] = (Point2D){qx, qy};
+			pts[i-1] = (Point2D){qx, qy};
+			i--; // check the same segment again
+			D = 0;
+		} else {
+			D += d;
+		}
+	}
+	free(pts);
+	
+	while (r_count < n) {
+		resampled[r_count++] = points[count - 1];
+	}
+	return resampled;
+}
+
+static void normalize_path(Point2D *points, int count, double size) {
+	if (count == 0) return;
+	double min_x = points[0].x, max_x = points[0].x;
+	double min_y = points[0].y, max_y = points[0].y;
+	for (int i = 1; i < count; i++) {
+		if (points[i].x < min_x) min_x = points[i].x;
+		if (points[i].x > max_x) max_x = points[i].x;
+		if (points[i].y < min_y) min_y = points[i].y;
+		if (points[i].y > max_y) max_y = points[i].y;
+	}
+	double width = max_x - min_x;
+	double height = max_y - min_y;
+	double max_dim = (width > height) ? width : height;
+	if (max_dim < 1e-4) max_dim = 1e-4;
+	
+	double scale = size / max_dim;
+	double sum_x = 0, sum_y = 0;
+	for (int i = 0; i < count; i++) {
+		points[i].x *= scale;
+		points[i].y *= scale;
+		sum_x += points[i].x;
+		sum_y += points[i].y;
+	}
+	double centroid_x = sum_x / count;
+	double centroid_y = sum_y / count;
+	for (int i = 0; i < count; i++) {
+		points[i].x -= centroid_x;
+		points[i].y -= centroid_y;
+	}
+}
+
+static double path_distance(const Point2D *p1, const Point2D *p2, int n) {
+	double dist = 0;
+	for (int i = 0; i < n; i++) {
+		double dx = p1[i].x - p2[i].x;
+		double dy = p1[i].y - p2[i].y;
+		dist += sqrt(dx*dx + dy*dy);
+	}
+	return dist / n;
+}
+
 void movement_set_expression(Movement* movement, char* movement_expression) {
 	movement->expression = movement_expression;
-	char* regex_str = malloc(sizeof(char) * (strlen(movement_expression) + 5));
-	strcpy(regex_str, "");
-	strcat(regex_str, "^(");
-	strcat(regex_str, movement_expression);
-	strcat(regex_str, ")$");
-	regex_t* movement_compiled = NULL;
-	movement_compiled = malloc(sizeof(regex_t));
-	if (regcomp(movement_compiled, regex_str, REG_EXTENDED | REG_NOSUB) != 0) {
-		fprintf(stderr, "Warning: Invalid movement sequence: %s\n", regex_str);
-		free(movement_compiled);
-		movement_compiled = NULL;
+	if (movement->points) {
+		free(movement->points);
+		movement->points = NULL;
 	}
-	free(regex_str);
-	movement->expression_compiled = movement_compiled;
+	movement->point_count = 0;
+	
+	int count = 0;
+	char *expr_copy = strdup(movement_expression);
+	char *token = strtok(expr_copy, " ");
+	while (token) {
+		count++;
+		token = strtok(NULL, " ");
+	}
+	free(expr_copy);
+	
+	if (count == 0) {
+		movement->points = NULL;
+		return;
+	}
+	
+	movement->points = malloc(sizeof(Point2D) * count);
+	movement->point_count = count;
+	
+	expr_copy = strdup(movement_expression);
+	token = strtok(expr_copy, " ");
+	int idx = 0;
+	while (token) {
+		double x = 0, y = 0;
+		if (sscanf(token, "%lf,%lf", &x, &y) == 2) {
+			movement->points[idx].x = x;
+			movement->points[idx].y = y;
+			idx++;
+		}
+		token = strtok(NULL, " ");
+	}
+	free(expr_copy);
+	movement->point_count = idx;
 }
 
 /* alloc a movement struct */
@@ -226,58 +344,48 @@ Action *configuration_create_action(Gesture * self, int action_type,
 	return ans;
 }
 
-Gesture * match_gesture(Configuration * self, char * captured_sequence) {
-
+Gesture * match_gesture(Configuration * self, const Point2D * captured_points, int point_count) {
 	assert(self);
-	assert(captured_sequence);
-
-	Gesture * matched_gesture = NULL;
-
-	int g = 0;
-
-	for (g = 0; g < self->gesture_count; ++g) {
-
-		Gesture * gest = self->gesture_list[g];
-
-		assert(gest);
-		assert(gest->movement);
-		assert(gest->movement->expression_compiled);
-
-		if (regexec(gest->movement->expression_compiled, captured_sequence,
-				0, (regmatch_t *) NULL, 0) == 0) {
-
-			matched_gesture = gest;
-			break;
-
+	if (!captured_points || point_count < 2) return NULL;
+	
+	int N = 64;
+	double BOX_SIZE = 250.0;
+	double THRESHOLD = 55.0; // Distance threshold for gesture matching
+	
+	// Normalize the input path
+	Point2D *input_resampled = resample_path(captured_points, point_count, N);
+	if (!input_resampled) return NULL;
+	normalize_path(input_resampled, N, BOX_SIZE);
+	
+	Gesture *best_gesture = NULL;
+	double min_dist = THRESHOLD;
+	
+	for (int g = 0; g < self->gesture_count; g++) {
+		Gesture *gest = self->gesture_list[g];
+		if (!gest || !gest->movement || gest->movement->point_count < 2) continue;
+		
+		// Normalize the template path
+		Point2D *temp_resampled = resample_path(gest->movement->points, gest->movement->point_count, N);
+		if (!temp_resampled) continue;
+		normalize_path(temp_resampled, N, BOX_SIZE);
+		
+		double dist = path_distance(input_resampled, temp_resampled, N);
+		free(temp_resampled);
+		
+		if (dist < min_dist) {
+			min_dist = dist;
+			best_gesture = gest;
 		}
-
 	}
-
-	return matched_gesture;
+	
+	free(input_resampled);
+	return best_gesture;
 }
 
-Gesture * configuration_process_gesture(Configuration * self, Capture * grab) {
-
+Gesture * configuration_process_gesture(Configuration * self, const Point2D * points, int point_count) {
 	assert(self);
-	assert(grab);
-
-	Gesture *gest = NULL;
-
-	int i = 0;
-
-	for (i = 0; i < grab->expression_count; ++i) {
-
-		char * sequence = grab->expression_list[i];
-		gest = match_gesture(self, sequence);
-
-		if (gest) {
-			return gest;
-		}
-
-	}
-
-	return NULL;
-
+	if (!points || point_count < 2) return NULL;
+	return match_gesture(self, points, point_count);
 }
 
 Movement * configuration_find_movement_by_name(Configuration * self,

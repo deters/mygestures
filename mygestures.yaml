@@ -2,50 +2,50 @@
 
 # Reusable movement definitions (Regex)
 movements:
-  Up: U
-  Down: D
-  Left: L
-  Right: R
-  NorthWest: (7(U|L)?)+
-  NorthEast: (9(U|R)?)+
-  SouthWest: (1(D|L)?)+
-  SouthEast: (3(D|R)?)+
-  B: (D?U)?((R|3)(D1?L|1))((R|3)(D1?L|1))
-  C: U?LDRU?
-  D: DRUL
-  E: RULDRU?
-  F: (LD(UR|RLD)|RUL?DU(R|RU)?)
-  G: LDRU(LRD?|DL(U|UR))
-  H: DURUD
-  I: RL?DL?R
-  J: (RLD(RD?)LU?|D3D1L|RLD3L|RD3DL|D1L7)
-  K: DU(9?13|913?|93|RLDR(D(RD?)?)?)
-  L: DR
-  M: (D?UR?DUR?D|9393)
-  N: (9|U|7)+(R?(D|3)R?)+(9|U|7)+
-  O: (LDRUL)+
-  O_REVERSE: (RDLUR)+
-  P: RULD
-  Q: 1?D3?R9?U7?D1?R3?
-  R: ((RDL?)|DL?|L)?URDLR?(D|DRD?R?)?
-  S: U?7?L1?D3?R3?D1?L7?U?
-  T: RLD
-  U: DRU
-  V: 39
-  W: (DR?UDR?U|3939)
-  X: (DLURU?|3L9)
-  Y: (DRUDLUR?|391)
-  Z: R(1?D?L?)*R
-  UpRight: UR
-  UpRightDown: URD
-  UpLeftDown: ULD
-  UpLeft: UL
-  LeftUp: LU
-  LeftDown: LD
-  DownLeft: DL
-  DownRight: DR
-  RightDown: RD
-  RightUp: RU
+  Up: "50,100 50,0"
+  Down: "50,0 50,100"
+  Left: "100,50 0,50"
+  Right: "0,50 100,50"
+  NorthWest: "100,100 0,0"
+  NorthEast: "0,100 100,0"
+  SouthWest: "100,0 0,100"
+  SouthEast: "0,0 100,100"
+  B: "0,0 0,100 0,0 50,0 50,50 0,50 50,50 50,100 0,100"
+  C: "100,0 0,0 0,100 100,100"
+  D: "0,0 0,100 0,0 100,0 100,100 0,100"
+  E: "100,0 0,0 0,50 80,50 0,50 0,100 100,100"
+  F: "100,0 0,0 0,100 0,50 70,50"
+  G: "100,0 0,0 0,100 100,100 100,50 50,50"
+  H: "0,0 0,100 0,50 100,50 100,0 100,100"
+  I: "0,0 100,0 50,0 50,100 0,100 100,100"
+  J: "100,0 100,100 0,100 0,70"
+  K: "0,0 0,100 0,50 100,0 0,50 100,100"
+  L: "0,0 0,100 100,100"
+  M: "0,100 0,0 50,50 100,0 100,100"
+  N: "0,100 0,0 100,100 100,0"
+  O: "50,0 0,50 50,100 100,50 50,0"
+  O_REVERSE: "50,0 100,50 50,100 0,50 50,0"
+  P: "0,100 0,0 100,0 100,50 0,50"
+  Q: "50,0 0,50 50,100 100,50 50,0 70,70 100,100"
+  R: "0,100 0,0 100,0 100,50 0,50 100,100"
+  S: "100,0 0,0 0,50 100,50 100,100 0,100"
+  T: "0,0 100,0 50,0 50,100"
+  U: "0,0 0,100 100,100 100,0"
+  V: "0,0 50,100 100,0"
+  W: "0,0 25,100 50,50 75,100 100,0"
+  X: "0,0 100,100 50,50 100,0 0,100"
+  Y: "0,0 50,50 100,0 50,50 50,100 0,100"
+  Z: "0,0 100,0 0,100 100,100"
+  UpRight: "0,100 100,0"
+  UpRightDown: "0,100 100,0 100,100"
+  UpLeftDown: "100,100 0,0 0,100"
+  UpLeft: "100,100 0,0"
+  LeftUp: "100,100 0,100 0,0"
+  LeftDown: "100,0 0,0 0,100"
+  DownLeft: "100,0 100,100 0,100"
+  DownRight: "0,0 0,100 100,100"
+  RightDown: "0,0 100,0 100,100"
+  RightUp: "0,100 100,100 100,0"
 
 # Default gestures available in all windows
 global:

@@ -316,7 +316,7 @@ void configuration_save_to_file(Configuration *conf, char *filename) {
     /* Movements */
     fprintf(f, "movements:\n");
     for (int i = 0; i < conf->movement_count; i++) {
-        fprintf(f, "  %s: %s\n", conf->movement_list[i]->name, (char*)conf->movement_list[i]->expression);
+        fprintf(f, "  %s: \"%s\"\n", conf->movement_list[i]->name, (char*)conf->movement_list[i]->expression);
     }
     fprintf(f, "\n");
 

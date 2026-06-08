@@ -61,13 +61,9 @@ typedef struct
 	int evdev;
 	int is_exclusive;
 
-	int rought_old_x;
-	int rought_old_y;
-
-	char *fine_direction_sequence;
-	char *rought_direction_sequence;
-	int fine_len;
-	int rought_len;
+	Point2D *captured_points;
+	int captured_count;
+	int captured_capacity;
 
 	int shut_down;
 
@@ -79,6 +75,7 @@ void grabbing_start_movement(Grabber *self, int new_x, int new_y);
 void grabbing_update_movement(Grabber *self, int new_x, int new_y);
 void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 						   char *device_name, Configuration *conf);
+Point2D *grabbing_simplify_points(const Point2D *points, int count, double epsilon, int *out_count);
 
 void grabber_finalize(Grabber *self);
 void grabber_print_devices(Grabber *self);

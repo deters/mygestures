@@ -18,21 +18,16 @@
 #ifndef MYGESTURES_CONFIGURATION_H_
 #define MYGESTURES_CONFIGURATION_H_
 
-#include <regex.h>
-
-#define GEST_SEQUENCE_MAX 64
-#define GEST_ACTION_NAME_MAX 32
-#define GEST_EXTRA_DATA_MAX 4096
-
-/* the movements */
-enum STROKES {
-	NONE, LEFT, RIGHT, UP, DOWN, ONE, THREE, SEVEN, NINE
-};
+typedef struct {
+    double x;
+    double y;
+} Point2D;
 
 typedef struct movement_ {
 	char *name;
-	void *expression;
-	regex_t * expression_compiled;
+	char *expression;
+	Point2D *points;
+	int point_count;
 } Movement;
 
 typedef struct user_configuration_ {
@@ -56,11 +51,6 @@ typedef struct gesture_ {
 	int action_count;
 } Gesture;
 
-typedef struct capture_ {
-	int expression_count;
-	char ** expression_list;
-} Capture;
-
 Configuration * configuration_new();
 
 Gesture * configuration_create_gesture(Configuration * self, char * gesture_name, char * gesture_movement_or_stroke);
@@ -75,7 +65,7 @@ void configuration_add_action_from_string(Gesture * self, const char * action_st
 
 Movement * configuration_find_movement_by_name(Configuration * self, char * movement_name);
 int configuration_get_gestures_count(Configuration * self);
-Gesture * configuration_process_gesture(Configuration * self, Capture * capture);
+Gesture * configuration_process_gesture(Configuration * self, const Point2D * points, int point_count);
 
 void configuration_load_from_defaults(Configuration * configuration, int create_config);
 void configuration_load_from_file(Configuration * configuration, char * filename);

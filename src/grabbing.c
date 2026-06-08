@@ -38,224 +38,134 @@
 #define MAX_STROKES_PER_CAPTURE 63 /*TODO*/
 #endif
 
-const char stroke_representations[] = {' ', 'L', 'R', 'U', 'D', '1', '3', '7',
-									   '9'};
-
 static void mouse_click(Grabber *self, int button, int x, int y)
 {
     execute_click_agnostic(button);
 }
 
-static void free_grabbed(Capture *free_me)
-{
-	assert(free_me);
-	if (free_me->expression_list)
-	{
-		free(free_me->expression_list);
+static double perpendicular_distance(Point2D p, Point2D line_start, Point2D line_end) {
+	double dx = line_end.x - line_start.x;
+	double dy = line_end.y - line_start.y;
+	double mag2 = dx*dx + dy*dy;
+	if (mag2 < 1e-9) {
+		double dx2 = p.x - line_start.x;
+		double dy2 = p.y - line_start.y;
+		return sqrt(dx2*dx2 + dy2*dy2);
 	}
-	free(free_me);
+	double u = ((p.x - line_start.x) * dx + (p.y - line_start.y) * dy) / mag2;
+	if (u < 0) u = 0;
+	else if (u > 1) u = 1;
+	double intersection_x = line_start.x + u * dx;
+	double intersection_y = line_start.y + u * dy;
+	double diff_x = p.x - intersection_x;
+	double diff_y = p.y - intersection_y;
+	return sqrt(diff_x*diff_x + diff_y*diff_y);
 }
 
-static char get_fine_direction_from_deltas(int x_delta, int y_delta)
-{
-
-	if ((x_delta == 0) && (y_delta == 0))
-	{
-		return stroke_representations[NONE];
-	}
-
-	int abs_x = abs(x_delta);
-	int abs_y = abs(y_delta);
-
-	// check if the movement is near main axes
-	if ((x_delta == 0) || (y_delta == 0) || (abs_x > 3 * abs_y) || (abs_y > 3 * abs_x))
-	{
-
-		// x axe
-		if (abs_x > abs_y)
-		{
-
-			if (x_delta > 0)
-			{
-				return stroke_representations[RIGHT];
-			}
-			else
-			{
-				return stroke_representations[LEFT];
-			}
-
-			// y axe
-		}
-		else
-		{
-
-			if (y_delta > 0)
-			{
-				return stroke_representations[DOWN];
-			}
-			else
-			{
-				return stroke_representations[UP];
-			}
-		}
-
-		// diagonal axes
-	}
-	else
-	{
-
-		if (y_delta < 0)
-		{
-			if (x_delta < 0)
-			{
-				return stroke_representations[SEVEN];
-			}
-			else if (x_delta > 0)
-			{ // RIGHT
-				return stroke_representations[NINE];
-			}
-		}
-		else if (y_delta > 0)
-		{ // DOWN
-			if (x_delta < 0)
-			{ // RIGHT
-				return stroke_representations[ONE];
-			}
-			else if (x_delta > 0)
-			{
-				return stroke_representations[THREE];
-			}
+static void douglas_peucker_recursive(const Point2D *points, int start, int end, double epsilon, int *keep) {
+	if (end <= start + 1) return;
+	double max_dist = 0;
+	int index = start;
+	for (int i = start + 1; i < end; i++) {
+		double dist = perpendicular_distance(points[i], points[start], points[end]);
+		if (dist > max_dist) {
+			max_dist = dist;
+			index = i;
 		}
 	}
-
-	return stroke_representations[NONE];
-}
-
-static char get_direction_from_deltas(int x_delta, int y_delta)
-{
-
-	if (abs(y_delta) > abs(x_delta))
-	{
-		if (y_delta > 0)
-		{
-			return stroke_representations[DOWN];
-		}
-		else
-		{
-			return stroke_representations[UP];
-		}
-	}
-	else
-	{
-		if (x_delta > 0)
-		{
-			return stroke_representations[RIGHT];
-		}
-		else
-		{
-			return stroke_representations[LEFT];
-		}
+	if (max_dist > epsilon) {
+		keep[index] = 1;
+		douglas_peucker_recursive(points, start, index, epsilon, keep);
+		douglas_peucker_recursive(points, index, end, epsilon, keep);
 	}
 }
 
-static void movement_add_direction(char *stroke_sequence, int *len_ptr, char direction)
-{
-	// grab stroke
-	int len = *len_ptr;
-	if ((len == 0) || (stroke_sequence[len - 1] != direction))
-	{
-
-		if (len < MAX_STROKES_PER_CAPTURE)
-		{
-
-			stroke_sequence[len] = direction;
-			stroke_sequence[len + 1] = '\0';
-			(*len_ptr)++;
+Point2D *grabbing_simplify_points(const Point2D *points, int count, double epsilon, int *out_count) {
+	if (count <= 2) {
+		Point2D *res = malloc(sizeof(Point2D) * count);
+		memcpy(res, points, sizeof(Point2D) * count);
+		*out_count = count;
+		return res;
+	}
+	int *keep = calloc(count, sizeof(int));
+	keep[0] = 1;
+	keep[count - 1] = 1;
+	douglas_peucker_recursive(points, 0, count - 1, epsilon, keep);
+	
+	int keep_count = 0;
+	for (int i = 0; i < count; i++) {
+		if (keep[i]) keep_count++;
+	}
+	Point2D *simplified = malloc(sizeof(Point2D) * keep_count);
+	int idx = 0;
+	for (int i = 0; i < count; i++) {
+		if (keep[i]) {
+			simplified[idx++] = points[i];
 		}
 	}
+	free(keep);
+	*out_count = keep_count;
+	return simplified;
 }
 
-/**
- * Clear previous movement data.
- */
 void grabbing_start_movement(Grabber *self, int new_x, int new_y)
 {
-
 	self->started = 1;
-
-	self->fine_direction_sequence[0] = '\0';
-	self->rought_direction_sequence[0] = '\0';
-	self->fine_len = 0;
-	self->rought_len = 0;
-
-	self->old_x = new_x;
-	self->old_y = new_y;
-
-	self->rought_old_x = new_x;
-	self->rought_old_y = new_y;
-
-	return;
+	self->captured_count = 0;
+	
+	if (self->captured_capacity < 128) {
+		self->captured_capacity = 1024;
+		self->captured_points = malloc(sizeof(Point2D) * self->captured_capacity);
+	}
+	
+	self->captured_points[0].x = new_x;
+	self->captured_points[0].y = new_y;
+	self->captured_count = 1;
 }
 
 void grabbing_update_movement(Grabber *self, int new_x, int new_y)
 {
-
 	if (!self->started)
 	{
 		return;
 	}
 
-	int x_delta = (new_x - self->old_x);
-	int y_delta = (new_y - self->old_y);
-
-	if ((abs(x_delta) > self->delta_min) || (abs(y_delta) > self->delta_min))
+	if (self->captured_count > 0)
 	{
-
-		char stroke = get_fine_direction_from_deltas(x_delta, y_delta);
-		LOG_INFO(1, "DEBUG: Stroke detected: %c (dx=%d, dy=%d)\n", stroke, x_delta, y_delta);
-
-		movement_add_direction(self->fine_direction_sequence, &self->fine_len, stroke);
-
-		// reset start position
-		self->old_x = new_x;
-		self->old_y = new_y;
+		double dx = new_x - self->captured_points[self->captured_count - 1].x;
+		double dy = new_y - self->captured_points[self->captured_count - 1].y;
+		if (dx*dx + dy*dy < 4.0) {
+			return; // point hasn't moved significantly
+		}
 	}
 
-	int rought_delta_x = new_x - self->rought_old_x;
-	int rought_delta_y = new_y - self->rought_old_y;
-
-	int square_distance_2 = rought_delta_x * rought_delta_x + rought_delta_y * rought_delta_y;
-
-	if (self->delta_min * self->delta_min < square_distance_2)
+	if (self->captured_count >= self->captured_capacity)
 	{
-		// grab stroke
-		char rought_direction = get_direction_from_deltas(rought_delta_x,
-														  rought_delta_y);
-
-		movement_add_direction(self->rought_direction_sequence, &self->rought_len,
-							   rought_direction);
-
-		// reset start position
-		self->rought_old_x = new_x;
-		self->rought_old_y = new_y;
+		self->captured_capacity *= 2;
+		self->captured_points = realloc(self->captured_points, sizeof(Point2D) * self->captured_capacity);
 	}
 
-	return;
+	self->captured_points[self->captured_count].x = new_x;
+	self->captured_points[self->captured_count].y = new_y;
+	self->captured_count++;
 }
 
-/**
- *
- */
 void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 						   char *device_name, Configuration *conf)
 {
-
-	Capture *grab = NULL;
-
 	self->started = 0;
 
-	// if there is no gesture
-	if ((self->rought_len == 0) && (self->fine_len == 0))
+	// Add final coordinate
+	grabbing_update_movement(self, new_x, new_y);
+
+	double length = 0;
+	for (int i = 1; i < self->captured_count; i++) {
+		double dx = self->captured_points[i].x - self->captured_points[i-1].x;
+		double dy = self->captured_points[i].y - self->captured_points[i-1].y;
+		length += sqrt(dx*dx + dy*dy);
+	}
+
+	if (self->captured_count < 5 || length < 15.0)
 	{
 		if (self->is_exclusive || self->evdev)
 		{
@@ -265,38 +175,18 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 	}
 	else
 	{
-
-		int expression_count = 2;
-		char **expression_list = malloc(sizeof(char *) * expression_count);
-
-		expression_list[0] = self->fine_direction_sequence;
-		expression_list[1] = self->rought_direction_sequence;
-
-		grab = malloc(sizeof(Capture));
-
-		grab->expression_count = expression_count;
-		grab->expression_list = expression_list;
-
-		LOG_INFO(1, "DEBUG: Captured sequences: Fine='%s', Rough='%s'\n", 
-				 self->fine_direction_sequence, self->rought_direction_sequence);
-	}
-
-	if (grab)
-	{
-
 		LOG_INFO(1, "\n");
 		LOG_INFO(1, "     Device      : \"%s\"\n", device_name);
+		LOG_INFO(1, "     Captured %d points, length %.2f px\n", self->captured_count, length);
 
-		Gesture *gest = configuration_process_gesture(conf, grab);
+		Gesture *gest = configuration_process_gesture(conf, self->captured_points, self->captured_count);
 
 		if (gest)
 		{
 			LOG_INFO(1, "     Movement '%s' matched gesture '%s'\n",
 				   gest->movement->name, gest->name);
 
-			int j = 0;
-
-			for (j = 0; j < gest->action_count; ++j)
+			for (int j = 0; j < gest->action_count; ++j)
 			{
 				Action *a = gest->action_list[j];
 				LOG_INFO(1, "     Executing action: %s %s\n",
@@ -306,19 +196,10 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 		}
 		else
 		{
-
-			for (int i = 0; i < grab->expression_count; ++i)
-			{
-				char *movement = grab->expression_list[i];
-				LOG_INFO(1,
-					"     Sequence '%s' does not match any known movement.\n",
-					movement);
-			}
+			LOG_INFO(1, "     Gesture does not match any known movement.\n");
 		}
 
 		LOG_INFO(1, "\n");
-
-		free_grabbed(grab);
 	}
 }
 
@@ -339,14 +220,12 @@ void grabber_set_brush_color(Grabber *self, char *brush_color)
 
 Grabber *grabber_new(char *device_name, int button)
 {
-
 	Grabber *self = malloc(sizeof(Grabber));
 	bzero(self, sizeof(Grabber));
 
-	self->fine_direction_sequence = malloc(MAX_STROKES_PER_CAPTURE + 1);
-	self->rought_direction_sequence = malloc(MAX_STROKES_PER_CAPTURE + 1);
-	self->fine_len = 0;
-	self->rought_len = 0;
+	self->captured_capacity = 1024;
+	self->captured_points = malloc(sizeof(Point2D) * self->captured_capacity);
+	self->captured_count = 0;
 
 	grabber_set_device(self, device_name);
 	grabber_set_button(self, button);
