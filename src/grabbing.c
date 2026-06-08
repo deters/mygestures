@@ -536,7 +536,7 @@ void grabbing_end_movement(Grabber *self, int new_x, int new_y,
 	if ((self->rought_len == 0) && (self->fine_len == 0))
 	{
 
-		if (self->is_exclusive)
+		if (self->is_exclusive || self->evdev)
 		{
 
 			LOG_INFO(1, "\nEmulating click\n");

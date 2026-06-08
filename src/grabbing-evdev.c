@@ -121,10 +121,25 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 		}
 	}
 
+	int grabbed = 0;
+	if (self->button == 3) {
+		rc = libevdev_grab(dev, LIBEVDEV_GRAB);
+		if (rc < 0) {
+			fprintf(stderr, "mygestures: Failed to grab device %s exclusively: %s\n",
+					libevdev_get_name(dev), strerror(-rc));
+		} else {
+			printf("mygestures: Grabbed device %s exclusively.\n", libevdev_get_name(dev));
+			grabbed = 1;
+			if (uinput_init() < 0) {
+				fprintf(stderr, "mygestures: Failed to initialize uinput for forwarding.\n");
+			}
+		}
+	}
+
 	int target_button = get_evdev_button_code(self->button);
 	printf("Listening for events from %s using libevdev (button %d)\n", libevdev_get_name(dev), self->button);
 
-	self->is_exclusive = 0;
+	self->is_exclusive = grabbed;
 
 	int moved = 0;
 	int virtual_x = 0;
@@ -155,13 +170,14 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 				if (ev.value == 1) {
 					virtual_x = 0;
 					virtual_y = 0;
-					printf("DEBUG: Button %d Pressed. Starting movement capture.\n", self->button);
 					grabbing_start_movement(self, virtual_x, virtual_y);
 				} else if (ev.value == 0) {
-					printf("DEBUG: Button %d Released. Ending movement capture.\n", self->button);
 					grabbing_end_movement(self, virtual_x, virtual_y, (char*)libevdev_get_name(dev), conf);
 				}
 			} else {
+				if (grabbed) {
+					uinput_forward_event(ev.type, ev.code, ev.value);
+				}
 				if (ev.type == EV_REL) {
 					if (ev.code == REL_X) {
 						virtual_x += ev.value;
@@ -193,6 +209,9 @@ void grabber_evdev_loop(Grabber *self, Configuration *conf) {
 		}
 	}
 
+	if (grabbed) {
+		libevdev_grab(dev, LIBEVDEV_UNGRAB);
+	}
 	libevdev_free(dev);
 	close(fd);
 }
