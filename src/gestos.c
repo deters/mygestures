@@ -1296,8 +1296,16 @@ static void on_gesture_delete_clicked(GtkWidget *widget, gpointer user_data) {
     }
     GtkWidget *row = gtk_widget_get_ancestor(widget, GTK_TYPE_LIST_BOX_ROW);
     if (row) {
+        gtk_widget_grab_focus(GTK_WIDGET(gestos->main_list));
         gtk_list_box_remove(GTK_LIST_BOX(gestos->main_list), row);
     }
+
+    char *filename = configuration_get_default_filename();
+    if (filename) {
+        configuration_save_to_file(gestos->config, filename);
+        free(filename);
+    }
+    reload_daemon_if_running();
 }
 
 static char* get_full_action_str(Action *a) {
