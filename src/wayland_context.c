@@ -139,6 +139,7 @@ void discover_wayland_context(WaylandContext *ctx) {
 }
 
 const char *get_user_command_prefix(WaylandContext *ctx, char *out_buf, size_t len) {
+    if (len > 0) out_buf[0] = '\0';
     char bus_path[1024];
     snprintf(bus_path, sizeof(bus_path), "/run/user/%d/bus", ctx->uid);
     const char *dbus_env = "";
