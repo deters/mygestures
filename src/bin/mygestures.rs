@@ -80,8 +80,8 @@ fn run_grabber(
         .map(|(_, info)| info);
     if let Some(abs_info) = abs_x {
         if sensitivity <= 30 {
-            let range = abs_info.maximum - abs_info.minimum;
-            let resolution = abs_info.resolution;
+            let range = abs_info.maximum() - abs_info.minimum();
+            let resolution = abs_info.resolution();
             if resolution > 0 {
                 threshold = (resolution * 4) as f64;
             } else if range > 0 {
@@ -377,7 +377,7 @@ fn main() {
     let ipc = match DaemonIpc::new(device_path) {
         Ok(ipc_inst) => {
             ipc_inst.send_kill_message();
-            ipc
+            ipc_inst
         }
         Err(e) => {
             eprintln!("Failed to allocate shared memory segment: {}", e);

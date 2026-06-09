@@ -1,10 +1,10 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 use std::process::Command;
 use gtk4 as gtk;
 use gtk::prelude::*;
-use mygestures::config::{Configuration, Gesture, ActionType, get_default_config_path, parse_points};
+use gtk::{cairo, glib, gdk};
+use mygestures::config::{Configuration, Gesture, ActionType};
 use mygestures::protractor::Point2D;
 
 struct AppState {
@@ -688,7 +688,7 @@ fn build_ui(app: &gtk::Application) {
 
     // Stylesheet injection
     let provider = gtk::CssProvider::new();
-    provider.load_from_string(
+    provider.load_from_data(
         "window { background-color: @theme_bg_color; }\n\
          .context-title { font-size: 2.2em; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }\n\
          entry { border-radius: 10px; padding: 8px 12px; border: 1px solid alpha(currentColor, 0.15); background: @view_bg_color; transition: all 0.2s ease; }\n\
@@ -717,7 +717,7 @@ fn build_ui(app: &gtk::Application) {
          .status-label { font-size: 0.85em; font-weight: 600; }\n"
     );
 
-    if let Some(display) = gdk4::Display::default() {
+    if let Some(display) = gdk::Display::default() {
         gtk::style_context_add_provider_for_display(
             &display,
             &provider,
