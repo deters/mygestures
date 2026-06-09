@@ -1,5 +1,5 @@
 #[cfg(target_os = "linux")]
-use evdev::uinput::VirtualDeviceBuilder;
+use evdev::uinput::VirtualDevice;
 
 pub fn name_to_keycode(name: &str) -> Option<u16> {
     let lower = name.to_lowercase();
@@ -64,16 +64,16 @@ pub struct UinputDevice {
 #[cfg(target_os = "linux")]
 impl UinputDevice {
     pub fn init_from_device(source_dev: &evdev::Device) -> Result<Self, std::io::Error> {
-        let mut keys = evdev::AttributeSet::<evdev::Key>::new();
+        let mut keys = evdev::AttributeSet::<evdev::KeyCode>::new();
         // Enable standard keyboard keys so virtual device can type shortcuts
         for code in 1..255 {
             if code >= 0x110 && code <= 0x11f {
                 continue; // Skip mouse button range to preserve source bindings
             }
-            keys.insert(evdev::Key(code));
+            keys.insert(evdev::KeyCode(code));
         }
 
-        let mut builder = VirtualDeviceBuilder::new()?
+        let mut builder = VirtualDevice::builder()?
             .name(source_dev.name().unwrap_or("Virtual MyGestures Forwarder"));
 
         // Add keyboard keys
@@ -81,7 +81,7 @@ impl UinputDevice {
 
         // Copy source device mouse buttons
         if let Some(src_keys) = source_dev.supported_keys() {
-            let mut mouse_keys = evdev::AttributeSet::<evdev::Key>::new();
+            let mut mouse_keys = evdev::AttributeSet::<evdev::KeyCode>::new();
             for k in src_keys.iter() {
                 if k.0 >= 0x110 && k.0 <= 0x11f {
                     mouse_keys.insert(k);
@@ -107,17 +107,17 @@ impl UinputDevice {
 
     pub fn click(&mut self, button: i32) {
         let ev_button = match button {
-            1 => evdev::Key::BTN_LEFT,
-            2 => evdev::Key::BTN_MIDDLE,
-            3 => evdev::Key::BTN_RIGHT,
-            8 => evdev::Key::BTN_SIDE,
-            9 => evdev::Key::BTN_EXTRA,
-            other => evdev::Key(other as u16),
+            1 => evdev::KeyCode::BTN_LEFT,
+            2 => evdev::KeyCode::BTN_MIDDLE,
+            3 => evdev::KeyCode::BTN_RIGHT,
+            8 => evdev::KeyCode::BTN_SIDE,
+            9 => evdev::KeyCode::BTN_EXTRA,
+            other => evdev::KeyCode(other as u16),
         };
 
-        let press = evdev::InputEvent::new(evdev::EventType::KEY, ev_button.0, 1);
-        let syn = evdev::InputEvent::new(evdev::EventType::SYNCHRONIZATION, 0, 0);
-        let release = evdev::InputEvent::new(evdev::EventType::KEY, ev_button.0, 0);
+        let press = evdev::InputEvent::new(evdev::EventType::KEY.0, ev_button.0, 1);
+        let syn = evdev::InputEvent::new(evdev::EventType::SYNCHRONIZATION.0, 0, 0);
+        let release = evdev::InputEvent::new(evdev::EventType::KEY.0, ev_button.0, 0);
 
         let _ = self.device.emit(&[press, syn]);
         std::thread::sleep(std::time::Duration::from_millis(50));
@@ -137,8 +137,8 @@ impl UinputDevice {
 
         // Press all keys in sequence
         for &code in &codes {
-            let press = evdev::InputEvent::new(evdev::EventType::KEY, code, 1);
-            let syn = evdev::InputEvent::new(evdev::EventType::SYNCHRONIZATION, 0, 0);
+            let press = evdev::InputEvent::new(evdev::EventType::KEY.0, code, 1);
+            let syn = evdev::InputEvent::new(evdev::EventType::SYNCHRONIZATION.0, 0, 0);
             let _ = self.device.emit(&[press, syn]);
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
@@ -147,15 +147,15 @@ impl UinputDevice {
 
         // Release in reverse order
         for &code in codes.iter().rev() {
-            let release = evdev::InputEvent::new(evdev::EventType::KEY, code, 0);
-            let syn = evdev::InputEvent::new(evdev::EventType::SYNCHRONIZATION, 0, 0);
+            let release = evdev::InputEvent::new(evdev::EventType::KEY.0, code, 0);
+            let syn = evdev::InputEvent::new(evdev::EventType::SYNCHRONIZATION.0, 0, 0);
             let _ = self.device.emit(&[release, syn]);
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
     }
 
     pub fn forward_event(&mut self, ev_type: u16, ev_code: u16, ev_value: i32) {
-        let ev = evdev::InputEvent::new(evdev::EventType(ev_type), ev_code, ev_value);
+        let ev = evdev::InputEvent::new(ev_type, ev_code, ev_value);
         let _ = self.device.emit(&[ev]);
     }
 }

@@ -66,7 +66,7 @@ fn run_grabber(
     wayland_ctx: mygestures::wayland::WaylandContext,
     ipc: mygestures::ipc::DaemonIpc,
 ) -> Result<(), std::io::Error> {
-    use evdev::{Device, EventType, Key};
+    use evdev::{Device, EventType, KeyCode};
     use mygestures::protractor::{Point2D, match_gesture};
     use mygestures::uinput::UinputDevice;
 
@@ -92,12 +92,12 @@ fn run_grabber(
 
     // Translate trigger button to evdev code
     let target_button = match trigger_button {
-        1 => Key::BTN_LEFT,
-        2 => Key::BTN_MIDDLE,
-        3 => Key::BTN_RIGHT,
-        8 => Key::BTN_SIDE,
-        9 => Key::BTN_EXTRA,
-        other => Key(other as u16),
+        1 => KeyCode::BTN_LEFT,
+        2 => KeyCode::BTN_MIDDLE,
+        3 => KeyCode::BTN_RIGHT,
+        8 => KeyCode::BTN_SIDE,
+        9 => KeyCode::BTN_EXTRA,
+        other => KeyCode(other as u16),
     };
 
     // Exclusive grab (only for button 3 by default)
