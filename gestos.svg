@@ -41,18 +41,18 @@
         stroke-width="14" 
         stroke-linecap="round"/>
 
-  <!-- Glowing Tip Vector Halo (No Filters) -->
-  <circle cx="340" cy="320" r="16" fill="#89dceb" opacity="0.2"/>
-  <circle cx="340" cy="320" r="10" fill="#89dceb" opacity="0.4"/>
-  <circle cx="340" cy="320" r="5" fill="#ffffff"/>
+  <!-- Glowing Tip Vector Halo (No Filters) - Scaled Up -->
+  <circle cx="340" cy="320" r="24" fill="#89dceb" opacity="0.15"/>
+  <circle cx="340" cy="320" r="14" fill="#89dceb" opacity="0.3"/>
+  <circle cx="340" cy="320" r="6" fill="#ffffff"/>
 
-  <!-- Cursor Vector Shadow (No Filters) -->
-  <g transform="translate(342, 324) rotate(135)">
+  <!-- Cursor Vector Shadow (No Filters) - Scaled Up -->
+  <g transform="translate(344, 326) rotate(135) scale(2.2)">
     <polygon points="0,0 0,36 10,27 20,37 25,32 15,22 25,22" fill="#000000" opacity="0.3" stroke="#000000" stroke-width="4" stroke-linejoin="round" stroke-opacity="0.3"/>
   </g>
 
-  <!-- Cursor Body -->
-  <g transform="translate(340, 320) rotate(135)">
+  <!-- Cursor Body - Scaled Up -->
+  <g transform="translate(340, 320) rotate(135) scale(2.2)">
     <polygon points="0,0 0,36 10,27 20,37 25,32 15,22 25,22" fill="#ffffff" stroke="#11111b" stroke-width="4" stroke-linejoin="round"/>
   </g>
 </svg>
