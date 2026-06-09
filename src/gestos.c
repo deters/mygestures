@@ -27,7 +27,8 @@ typedef struct {
     GtkWidget *dialog;
     GtkWidget *name_entry;
     GtkWidget *move_combo;
-    GtkWidget *action_type_combo;
+    GtkWidget *category_combo;
+    GtkWidget *action_combo;
     GtkWidget *action_val_entry;
     GtkWidget *action_val_label;
     GtkWidget *action_val_box;
@@ -41,6 +42,10 @@ typedef struct {
     int drawn_capacity;
     gboolean is_drawing;
     char *custom_expression;
+
+    GList *all_options;
+    GList *current_options;
+    gboolean initializing;
 } GestureEditor;
 
 static void refresh_gesture_list(GestosApp *gestos);
@@ -104,51 +109,42 @@ static ActionType action_types[] = {
     { 0, NULL, NULL, NULL }
 };
 
-/* --- GNOME ACTION BROWSER --- */
+/* --- EDITOR ACTION CATEGORIES & OPTIONS --- */
+
+enum {
+    CAT_INPUT,
+    CAT_WINDOW,
+    CAT_WORKSPACE,
+    CAT_MEDIA,
+    CAT_SYSTEM,
+    CAT_APP,
+    CAT_GNOME,
+    CAT_OTHER,
+    CAT_COUNT
+};
+
+static const char *category_names[] = {
+    "Input Emulation",
+    "Window Management",
+    "Workspaces & Overview",
+    "Media & Audio",
+    "System & Settings",
+    "Applications",
+    "GNOME Actions (Native)",
+    "Other/Internal"
+};
 
 typedef struct {
+    int category;
+    int action_id;
     char *name;
-    char *accelerator;
-    char *description;
-    char *command;
-} GnomeAction;
+    char *gnome_key;
+    char *icon;
+    char *tooltip;
+    char *custom_cmd;
+} EditorActionOption;
 
-typedef struct {
-    GestureEditor *editor;
-    GtkWidget *dialog;
-    GtkWidget *list;
-    GList *actions;
-} GnomeActionBrowser;
-
-static char* translate_gnome_accel(const char *accel) {
-    if (!accel || strlen(accel) == 0) return strdup("");
-
-    GString *res = g_string_new("");
-    char **parts = g_strsplit(accel, ">", -1);
-
-    for (int i = 0; parts[i] != NULL; i++) {
-        char *p = parts[i];
-        if (p[0] == '<') p++;
-
-        if (strlen(p) == 0) continue;
-
-        if (parts[i+1] != NULL) {
-            /* Modifier */
-            if (g_ascii_strcasecmp(p, "Control") == 0 || g_ascii_strcasecmp(p, "Primary") == 0) g_string_append(res, "Control_L+");
-            else if (g_ascii_strcasecmp(p, "Alt") == 0) g_string_append(res, "Alt_L+");
-            else if (g_ascii_strcasecmp(p, "Shift") == 0) g_string_append(res, "Shift_L+");
-            else if (g_ascii_strcasecmp(p, "Super") == 0) g_string_append(res, "Super_L+");
-        } else {
-            /* Final key */
-            g_string_append(res, p);
-        }
-    }
-
-    g_strfreev(parts);
-    return g_string_free(res, FALSE);
-}
-
-static void fetch_gnome_shortcuts(GnomeActionBrowser *browser) {
+static void fetch_gnome_action_options(GList **list) {
     const char *schemas[] = {
         "org.gnome.desktop.wm.keybindings",
         "org.gnome.settings-daemon.plugins.media-keys",
@@ -157,6 +153,7 @@ static void fetch_gnome_shortcuts(GnomeActionBrowser *browser) {
     };
 
     GSettingsSchemaSource *source = g_settings_schema_source_get_default();
+    if (!source) return;
 
     for (int i = 0; schemas[i]; i++) {
         GSettingsSchema *schema = g_settings_schema_source_lookup(source, schemas[i], TRUE);
@@ -180,21 +177,26 @@ static void fetch_gnome_shortcuts(GnomeActionBrowser *browser) {
                 g_free(arr);
             }
 
-            if (accel && strlen(accel) > 0 && strcmp(accel, "disabled") != 0) {
-                GnomeAction *action = g_new0(GnomeAction, 1);
-                action->name = g_strdup(keys[j]);
-                action->description = g_strdup(summary ? summary : keys[j]);
-                action->accelerator = accel;
-                browser->actions = g_list_append(browser->actions, action);
-            } else {
-                g_free(accel);
+            if (summary && strlen(summary) > 0) {
+                EditorActionOption *opt = g_new0(EditorActionOption, 1);
+                opt->category = CAT_GNOME;
+                opt->action_id = ACTION_GNOME;
+                opt->name = g_strdup(summary);
+                opt->gnome_key = g_strdup(keys[j]);
+                opt->icon = g_strdup("preferences-system-symbolic");
+                if (accel && strlen(accel) > 0 && strcmp(accel, "disabled") != 0) {
+                    opt->tooltip = g_strdup_printf("Schema key: %s (Shortcut: %s)", keys[j], accel);
+                } else {
+                    opt->tooltip = g_strdup_printf("Schema key: %s (No shortcut configured)", keys[j]);
+                }
+                *list = g_list_append(*list, opt);
             }
 
+            g_free(accel);
             g_variant_unref(val);
             g_settings_schema_key_unref(skey);
         }
 
-        /* Fetch custom shortcuts from this schema if it's media-keys */
         if (strcmp(schemas[i], "org.gnome.settings-daemon.plugins.media-keys") == 0) {
             char **paths = g_settings_get_strv(settings, "custom-keybindings");
             if (paths) {
@@ -204,17 +206,18 @@ static void fetch_gnome_shortcuts(GnomeActionBrowser *browser) {
                     char *c_cmd = g_settings_get_string(custom, "command");
                     char *c_bind = g_settings_get_string(custom, "binding");
                     
-                    if (c_bind && strlen(c_bind) > 0) {
-                        GnomeAction *action = g_new0(GnomeAction, 1);
-                        action->name = g_strdup(c_name);
-                        action->description = g_strdup(c_name);
-                        action->accelerator = c_bind;
-                        action->command = c_cmd;
-                        browser->actions = g_list_append(browser->actions, action);
-                    } else {
-                        g_free(c_cmd);
+                    if (c_name && strlen(c_name) > 0) {
+                        EditorActionOption *opt = g_new0(EditorActionOption, 1);
+                        opt->category = CAT_GNOME;
+                        opt->action_id = ACTION_EXECUTE;
+                        opt->name = g_strdup(c_name);
+                        opt->custom_cmd = g_strdup(c_cmd);
+                        opt->icon = g_strdup("system-run-symbolic");
+                        opt->tooltip = g_strdup_printf("Custom GNOME shortcut: %s", c_cmd);
+                        *list = g_list_append(*list, opt);
                     }
                     g_free(c_name);
+                    g_free(c_cmd);
                     g_free(c_bind);
                     g_object_unref(custom);
                 }
@@ -228,161 +231,81 @@ static void fetch_gnome_shortcuts(GnomeActionBrowser *browser) {
     }
 }
 
-static void on_gnome_action_row_activated(GtkListBox *list, GtkListBoxRow *row, gpointer user_data) {
-    GnomeActionBrowser *browser = (GnomeActionBrowser *)user_data;
-    GnomeAction *action = g_object_get_data(G_OBJECT(row), "gnome-action");
-
-    if (action) {
-        if (action->command) {
-            /* If it's a custom command, use EXECUTE instead of faking keys */
-            gtk_drop_down_set_selected(GTK_DROP_DOWN(browser->editor->action_type_combo), 1); /* Execute */
-            gtk_editable_set_text(GTK_EDITABLE(browser->editor->action_val_entry), action->command);
-        } else {
-            /* Use native GNOME action */
-            int gnome_idx = -1;
-            for (int i = 0; action_types[i].name; i++) {
-                if (action_types[i].id == ACTION_GNOME) {
-                    gnome_idx = i;
-                    break;
-                }
-            }
-            if (gnome_idx != -1) {
-                gtk_drop_down_set_selected(GTK_DROP_DOWN(browser->editor->action_type_combo), gnome_idx);
-                gtk_editable_set_text(GTK_EDITABLE(browser->editor->action_val_entry), action->name);
-            }
-        }
-    }
-
-    gtk_window_destroy(GTK_WINDOW(browser->dialog));
-}
-
-static gboolean gnome_action_filter_func(GtkListBoxRow *row, gpointer user_data) {
-    const char *search_text = (const char *)user_data;
-    if (!search_text || strlen(search_text) == 0) return TRUE;
+static GList *build_editor_action_options(void) {
+    GList *list = NULL;
     
-    GnomeAction *action = g_object_get_data(G_OBJECT(row), "gnome-action");
-    if (!action) return FALSE;
-    
-    return (g_strrstr(action->name, search_text) || 
-            g_strrstr(action->description, search_text) ||
-            (action->command && g_strrstr(action->command, search_text)));
-}
-
-static void on_gnome_browser_search_changed(GtkSearchEntry *entry, gpointer user_data) {
-    GnomeActionBrowser *browser = (GnomeActionBrowser *)user_data;
-    const char *text = gtk_editable_get_text(GTK_EDITABLE(entry));
-    gtk_list_box_set_filter_func(GTK_LIST_BOX(browser->list), gnome_action_filter_func, (gpointer)text, NULL);
-}
-
-static void on_browser_dialog_destroy(GtkWidget *widget, gpointer user_data) {
-    GnomeActionBrowser *browser = (GnomeActionBrowser *)user_data;
-    if (browser) {
-        if (browser->editor) {
-            browser->editor->browser_dialog = NULL;
-        }
-        for (GList *l = browser->actions; l; l = l->next) {
-            GnomeAction *a = (GnomeAction *)l->data;
-            if (a) {
-                g_free(a->name);
-                g_free(a->accelerator);
-                g_free(a->description);
-                g_free(a->command);
-                g_free(a);
-            }
-        }
-        g_list_free(browser->actions);
-        g_free(browser);
-    }
-}
-
-static void open_gnome_action_browser(GtkWidget *btn, gpointer user_data) {
-    GestureEditor *editor = (GestureEditor *)user_data;
-    if (editor->browser_dialog) {
-        gtk_window_present(GTK_WINDOW(editor->browser_dialog));
-        return;
-    }
-
-    GnomeActionBrowser *browser = g_new0(GnomeActionBrowser, 1);
-    browser->editor = editor;
-
-    browser->dialog = gtk_window_new();
-    editor->browser_dialog = browser->dialog;
-    g_signal_connect(browser->dialog, "destroy", G_CALLBACK(on_browser_dialog_destroy), browser);
-
-    gtk_window_set_title(GTK_WINDOW(browser->dialog), "Browse GNOME Actions");
-    gtk_window_set_transient_for(GTK_WINDOW(browser->dialog), GTK_WINDOW(editor->dialog));
-    gtk_window_set_modal(GTK_WINDOW(browser->dialog), TRUE);
-    gtk_window_set_default_size(GTK_WINDOW(browser->dialog), 550, 650);
-
-    GtkWidget *header = gtk_header_bar_new();
-    gtk_window_set_titlebar(GTK_WINDOW(browser->dialog), header);
-
-    GtkWidget *close_btn = gtk_button_new_with_label("Close");
-    gtk_header_bar_pack_start(GTK_HEADER_BAR(header), close_btn);
-    g_signal_connect_swapped(close_btn, "clicked", G_CALLBACK(gtk_window_destroy), browser->dialog);
-
-    GtkWidget *content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_window_set_child(GTK_WINDOW(browser->dialog), content);
-    
-    GtkWidget *search_entry = gtk_search_entry_new();
-    gtk_widget_set_margin_top(search_entry, 12);
-    gtk_widget_set_margin_bottom(search_entry, 12);
-    gtk_widget_set_margin_start(search_entry, 12);
-    gtk_widget_set_margin_end(search_entry, 12);
-    gtk_box_append(GTK_BOX(content), search_entry);
-    g_signal_connect(search_entry, "search-changed", G_CALLBACK(on_gnome_browser_search_changed), browser);
-
-    GtkWidget *scrolled = gtk_scrolled_window_new();
-    gtk_widget_set_vexpand(scrolled, TRUE);
-    gtk_box_append(GTK_BOX(content), scrolled);
-
-    browser->list = gtk_list_box_new();
-    gtk_widget_add_css_class(browser->list, "boxed-list");
-    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scrolled), browser->list);
-
-    fetch_gnome_shortcuts(browser);
-
-    for (GList *l = browser->actions; l; l = l->next) {
-        GnomeAction *a = (GnomeAction *)l->data;
-        GtkWidget *row = gtk_list_box_row_new();
-        g_object_set_data(G_OBJECT(row), "gnome-action", a);
-
-        GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
-        gtk_widget_set_margin_top(hbox, 10);
-        gtk_widget_set_margin_bottom(hbox, 10);
-        gtk_widget_set_margin_start(hbox, 10);
-        gtk_widget_set_margin_end(hbox, 10);
-
-        GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
-        gtk_widget_set_hexpand(vbox, TRUE);
-
-        GtkWidget *l_desc = gtk_label_new(a->description);
-        gtk_widget_set_halign(l_desc, GTK_ALIGN_START);
-        gtk_label_set_wrap(GTK_LABEL(l_desc), TRUE);
-        gtk_box_append(GTK_BOX(vbox), l_desc);
-
-        GString *subtext = g_string_new(a->name);
-        if (a->command) g_string_append_printf(subtext, " — %s", a->command);
+    for (int i = 0; action_types[i].name; i++) {
+        ActionType *at = &action_types[i];
+        if (at->id == ACTION_GNOME) continue;
         
-        GtkWidget *l_name = gtk_label_new(subtext->str);
-        gtk_widget_set_halign(l_name, GTK_ALIGN_START);
-        gtk_widget_add_css_class(l_name, "dim-label");
-        gtk_box_append(GTK_BOX(vbox), l_name);
-        g_string_free(subtext, TRUE);
-
-        gtk_box_append(GTK_BOX(hbox), vbox);
-
-        GtkWidget *l_accel = gtk_label_new(a->accelerator);
-        gtk_widget_add_css_class(l_accel, "accel-badge");
-        gtk_box_append(GTK_BOX(hbox), l_accel);
-
-        gtk_list_box_row_set_child(GTK_LIST_BOX_ROW(row), hbox);
-        gtk_list_box_append(GTK_LIST_BOX(browser->list), row);
+        EditorActionOption *opt = g_new0(EditorActionOption, 1);
+        opt->action_id = at->id;
+        opt->name = g_strdup(at->name);
+        opt->icon = g_strdup(at->icon);
+        
+        switch (at->id) {
+            case ACTION_KEYPRESS:
+            case ACTION_CLICK:
+                opt->category = CAT_INPUT;
+                break;
+            case ACTION_KILL:
+            case ACTION_TOGGLE_MAXIMIZED:
+            case ACTION_MAXIMIZE:
+            case ACTION_RESTORE:
+            case ACTION_ICONIFY:
+            case ACTION_RAISE:
+            case ACTION_LOWER:
+            case ACTION_TOGGLE_FULLSCREEN:
+            case ACTION_SHOW_DESKTOP:
+                opt->category = CAT_WINDOW;
+                break;
+            case ACTION_WORKSPACE_LEFT:
+            case ACTION_WORKSPACE_RIGHT:
+            case ACTION_WORKSPACE_UP:
+            case ACTION_WORKSPACE_DOWN:
+            case ACTION_SHOW_OVERVIEW:
+            case ACTION_SHOW_APP_GRID:
+                opt->category = CAT_WORKSPACE;
+                break;
+            case ACTION_VOLUME_UP:
+            case ACTION_VOLUME_DOWN:
+            case ACTION_VOLUME_MUTE:
+            case ACTION_MEDIA_PLAY:
+            case ACTION_MEDIA_NEXT:
+            case ACTION_MEDIA_PREV:
+                opt->category = CAT_MEDIA;
+                break;
+            case ACTION_LOCK_SCREEN:
+            case ACTION_TERMINAL:
+            case ACTION_CONTROL_CENTER:
+            case ACTION_LOGOUT:
+            case ACTION_SCREENSHOT:
+            case ACTION_SCREENSHOT_WINDOW:
+            case ACTION_SCREENSHOT_AREA:
+                opt->category = CAT_SYSTEM;
+                break;
+            case ACTION_WWW:
+            case ACTION_HOME:
+            case ACTION_EMAIL:
+            case ACTION_SEARCH:
+            case ACTION_CALCULATOR:
+                opt->category = CAT_APP;
+                break;
+            case ACTION_EXECUTE:
+            case ACTION_RECONF:
+            case ACTION_EXIT_GEST:
+            case ACTION_ABORT:
+                opt->category = CAT_OTHER;
+                break;
+            default:
+                opt->category = CAT_OTHER;
+                break;
+        }
+        list = g_list_append(list, opt);
     }
-
-    g_signal_connect(browser->list, "row-activated", G_CALLBACK(on_gnome_action_row_activated), browser);
-
-    gtk_window_present(GTK_WINDOW(browser->dialog));
+    
+    fetch_gnome_action_options(&list);
+    return list;
 }
 
 /* --- GESTURE EDITOR --- */
@@ -433,23 +356,61 @@ static const char* get_action_class(int id) {
     }
 }
 
-static void on_action_type_changed(GObject *gobject, GParamSpec *pspec, gpointer user_data) {
-    GtkDropDown *combo = GTK_DROP_DOWN(gobject);
+static void on_action_changed(GObject *gobject, GParamSpec *pspec, gpointer user_data) {
     GestureEditor *editor = (GestureEditor *)user_data;
-    guint index = gtk_drop_down_get_selected(combo);
-    if (index == GTK_INVALID_LIST_POSITION) return;
+    guint opt_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->action_combo));
+    if (opt_idx == GTK_INVALID_LIST_POSITION) {
+        gtk_widget_set_visible(editor->action_val_box, FALSE);
+        return;
+    }
     
-    int id = action_types[index].id;
+    EditorActionOption *opt = (EditorActionOption *)g_list_nth_data(editor->current_options, opt_idx);
+    if (!opt) {
+        gtk_widget_set_visible(editor->action_val_box, FALSE);
+        return;
+    }
     
-    if (id == ACTION_EXECUTE || id == ACTION_KEYPRESS || id == ACTION_GNOME) {
+    int id = opt->action_id;
+    if (id == ACTION_EXECUTE || id == ACTION_KEYPRESS) {
         gtk_widget_set_visible(editor->action_val_box, TRUE);
         const char *label_text = "Command:";
         if (id == ACTION_KEYPRESS) label_text = "Keys:";
-        else if (id == ACTION_GNOME) label_text = "GNOME Action:";
         gtk_label_set_text(GTK_LABEL(editor->action_val_label), label_text);
         gtk_widget_set_visible(editor->record_btn, (id == ACTION_KEYPRESS));
+        
+        if (!editor->initializing && opt->custom_cmd) {
+            gtk_editable_set_text(GTK_EDITABLE(editor->action_val_entry), opt->custom_cmd);
+        }
     } else {
         gtk_widget_set_visible(editor->action_val_box, FALSE);
+    }
+}
+
+static void on_category_changed(GObject *gobject, GParamSpec *pspec, gpointer user_data) {
+    GestureEditor *editor = (GestureEditor *)user_data;
+    guint cat_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->category_combo));
+    if (cat_idx == GTK_INVALID_LIST_POSITION) return;
+    
+    if (editor->current_options) {
+        g_list_free(editor->current_options);
+        editor->current_options = NULL;
+    }
+    
+    GtkStringList *action_sl = gtk_string_list_new(NULL);
+    
+    for (GList *l = editor->all_options; l; l = l->next) {
+        EditorActionOption *opt = (EditorActionOption *)l->data;
+        if (opt->category == (int)cat_idx) {
+            gtk_string_list_append(action_sl, opt->name);
+            editor->current_options = g_list_append(editor->current_options, opt);
+        }
+    }
+    
+    gtk_drop_down_set_model(GTK_DROP_DOWN(editor->action_combo), G_LIST_MODEL(action_sl));
+    g_object_unref(action_sl);
+    
+    if (!editor->initializing) {
+        gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->action_combo), 0);
     }
 }
 
@@ -504,16 +465,34 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
     GestureEditor *editor = (GestureEditor *)user_data;
     const char *name = gtk_editable_get_text(GTK_EDITABLE(editor->name_entry));
     
-    guint type_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->action_type_combo));
-    if (type_idx == GTK_INVALID_LIST_POSITION) type_idx = 0;
-    ActionType *type = &action_types[type_idx];
+    guint opt_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->action_combo));
+    if (opt_idx == GTK_INVALID_LIST_POSITION) return;
+    
+    EditorActionOption *opt = (EditorActionOption *)g_list_nth_data(editor->current_options, opt_idx);
+    if (!opt) return;
+    
     const char *val = gtk_editable_get_text(GTK_EDITABLE(editor->action_val_entry));
     
-    char *full_action;
-    if (type->id == ACTION_EXECUTE || type->id == ACTION_KEYPRESS || type->id == ACTION_GNOME) {
-        if (asprintf(&full_action, "%s %s", type->prefix, val) == -1) full_action = NULL;
+    char *full_action = NULL;
+    if (opt->action_id == ACTION_EXECUTE) {
+        if (asprintf(&full_action, "exec %s", val) == -1) full_action = NULL;
+    } else if (opt->action_id == ACTION_KEYPRESS) {
+        if (asprintf(&full_action, "keypress %s", val) == -1) full_action = NULL;
+    } else if (opt->action_id == ACTION_GNOME) {
+        if (asprintf(&full_action, "gnome %s", opt->gnome_key) == -1) full_action = NULL;
     } else {
-        full_action = strdup(type->prefix);
+        const char *prefix = NULL;
+        for (int i = 0; action_types[i].name; i++) {
+            if (action_types[i].id == opt->action_id) {
+                prefix = action_types[i].prefix;
+                break;
+            }
+        }
+        if (prefix) {
+            full_action = strdup(prefix);
+        } else {
+            full_action = strdup("abort");
+        }
     }
 
     if (editor->gesture) {
@@ -607,11 +586,16 @@ static void on_dropdown_bind(GtkSignalListItemFactory *factory, GtkListItem *lis
     GtkStringObject *string_obj = GTK_STRING_OBJECT(gtk_list_item_get_item(list_item));
     const char *text = gtk_string_object_get_string(string_obj);
     gtk_label_set_text(GTK_LABEL(label), text);
+    
     const char *icon_name = "system-run-symbolic";
-    for (int i = 0; action_types[i].name; i++) {
-        if (strcmp(action_types[i].name, text) == 0) {
-            icon_name = action_types[i].icon;
-            break;
+    GestureEditor *editor = (GestureEditor *)user_data;
+    if (editor && editor->current_options) {
+        for (GList *l = editor->current_options; l; l = l->next) {
+            EditorActionOption *opt = (EditorActionOption *)l->data;
+            if (strcmp(opt->name, text) == 0) {
+                icon_name = opt->icon ? opt->icon : "system-run-symbolic";
+                break;
+            }
         }
     }
     gtk_image_set_from_icon_name(GTK_IMAGE(icon), icon_name);
@@ -627,6 +611,21 @@ static void on_editor_dialog_destroy(GtkWidget *widget, gpointer user_data) {
     }
     if (editor->custom_expression) {
         free(editor->custom_expression);
+    }
+    if (editor->all_options) {
+        for (GList *l = editor->all_options; l; l = l->next) {
+            EditorActionOption *opt = (EditorActionOption *)l->data;
+            g_free(opt->name);
+            g_free(opt->gnome_key);
+            g_free(opt->icon);
+            g_free(opt->tooltip);
+            g_free(opt->custom_cmd);
+            g_free(opt);
+        }
+        g_list_free(editor->all_options);
+    }
+    if (editor->current_options) {
+        g_list_free(editor->current_options);
     }
     g_free(editor);
 }
@@ -1161,23 +1160,26 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
         editor->custom_expression = strdup(g->movement->expression);
     }
     
-    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Action Type:"), 0, 1, 1, 1);
-    GtkStringList *type_sl = gtk_string_list_new(NULL);
-    int active_type = 0;
-    for (int i = 0; action_types[i].name; i++) {
-        gtk_string_list_append(type_sl, action_types[i].name);
-        if (g && g->action_count > 0 && g->action_list[0]->type == action_types[i].id) {
-            active_type = i;
-        }
+    editor->initializing = TRUE;
+    editor->all_options = build_editor_action_options();
+
+    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Category:"), 0, 1, 1, 1);
+    GtkStringList *cat_sl = gtk_string_list_new(NULL);
+    for (int i = 0; i < CAT_COUNT; i++) {
+        gtk_string_list_append(cat_sl, category_names[i]);
     }
-    editor->action_type_combo = gtk_drop_down_new(G_LIST_MODEL(type_sl), NULL);
-    gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->action_type_combo), active_type);
-    gtk_grid_attach(GTK_GRID(grid), editor->action_type_combo, 1, 1, 1, 1);
-    
+    editor->category_combo = gtk_drop_down_new(G_LIST_MODEL(cat_sl), NULL);
+    g_object_unref(cat_sl);
+    gtk_grid_attach(GTK_GRID(grid), editor->category_combo, 1, 1, 1, 1);
+
+    gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Action:"), 0, 2, 1, 1);
+    editor->action_combo = gtk_drop_down_new(NULL, NULL);
+    gtk_grid_attach(GTK_GRID(grid), editor->action_combo, 1, 2, 1, 1);
+
     editor->action_val_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     editor->action_val_label = gtk_label_new("Command:");
-    gtk_grid_attach(GTK_GRID(grid), editor->action_val_label, 0, 2, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), editor->action_val_box, 1, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), editor->action_val_label, 0, 3, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), editor->action_val_box, 1, 3, 1, 1);
     
     editor->action_val_entry = gtk_entry_new();
     gtk_widget_set_hexpand(editor->action_val_entry, TRUE);
@@ -1188,10 +1190,68 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     gtk_box_append(GTK_BOX(editor->action_val_box), editor->record_btn);
     g_signal_connect(editor->record_btn, "clicked", G_CALLBACK(on_record_clicked), editor);
 
-    GtkWidget *browse_btn = gtk_button_new_with_label("Browse GNOME Actions");
-    gtk_widget_add_css_class(browse_btn, "browse-btn");
-    gtk_grid_attach(GTK_GRID(grid), browse_btn, 1, 3, 1, 1);
-    g_signal_connect(browse_btn, "clicked", G_CALLBACK(open_gnome_action_browser), editor);
+    int active_cat_idx = CAT_OTHER;
+    if (g && g->action_count > 0) {
+        Action *a = g->action_list[0];
+        int found = 0;
+        for (GList *l = editor->all_options; l; l = l->next) {
+            EditorActionOption *opt = (EditorActionOption *)l->data;
+            if (a->type == ACTION_GNOME && opt->action_id == ACTION_GNOME && opt->gnome_key && a->original_str && strcmp(opt->gnome_key, a->original_str) == 0) {
+                active_cat_idx = opt->category;
+                found = 1;
+                break;
+            }
+            else if (a->type == ACTION_EXECUTE && opt->category == CAT_GNOME && opt->custom_cmd && a->original_str && strcmp(opt->custom_cmd, a->original_str) == 0) {
+                active_cat_idx = opt->category;
+                found = 1;
+                break;
+            }
+            else if (a->type == opt->action_id && a->type != ACTION_GNOME && opt->category != CAT_GNOME) {
+                active_cat_idx = opt->category;
+                found = 1;
+                break;
+            }
+        }
+        if (!found) {
+            for (GList *l = editor->all_options; l; l = l->next) {
+                EditorActionOption *opt = (EditorActionOption *)l->data;
+                if (a->type == opt->action_id && opt->category != CAT_GNOME) {
+                    active_cat_idx = opt->category;
+                    break;
+                }
+            }
+        }
+    }
+
+    g_signal_connect(editor->category_combo, "notify::selected", G_CALLBACK(on_category_changed), editor);
+    gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->category_combo), active_cat_idx);
+    
+    // Manually trigger category change to build action list
+    on_category_changed(G_OBJECT(editor->category_combo), NULL, editor);
+
+    int select_opt_idx = 0;
+    if (g && g->action_count > 0) {
+        Action *a = g->action_list[0];
+        int idx = 0;
+        for (GList *l = editor->current_options; l; l = l->next) {
+            EditorActionOption *opt = (EditorActionOption *)l->data;
+            if (a->type == ACTION_GNOME && opt->action_id == ACTION_GNOME && opt->gnome_key && a->original_str && strcmp(opt->gnome_key, a->original_str) == 0) {
+                select_opt_idx = idx;
+                break;
+            }
+            else if (a->type == ACTION_EXECUTE && opt->custom_cmd && a->original_str && strcmp(opt->custom_cmd, a->original_str) == 0) {
+                select_opt_idx = idx;
+                break;
+            }
+            else if (a->type == opt->action_id && a->type != ACTION_GNOME && opt->category != CAT_GNOME) {
+                select_opt_idx = idx;
+                break;
+            }
+            idx++;
+        }
+    }
+    gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->action_combo), select_opt_idx);
+    editor->initializing = FALSE;
 
     if (g && g->action_count > 0) {
         if (g->action_list[0]->original_str)
@@ -1200,16 +1260,16 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     
     GtkListItemFactory *factory = gtk_signal_list_item_factory_new();
     g_signal_connect(factory, "setup", G_CALLBACK(on_dropdown_setup), NULL);
-    g_signal_connect(factory, "bind", G_CALLBACK(on_dropdown_bind), NULL);
-    gtk_drop_down_set_factory(GTK_DROP_DOWN(editor->action_type_combo), factory);
+    g_signal_connect(factory, "bind", G_CALLBACK(on_dropdown_bind), editor);
+    gtk_drop_down_set_factory(GTK_DROP_DOWN(editor->action_combo), factory);
 
     GtkListItemFactory *list_factory = gtk_signal_list_item_factory_new();
     g_signal_connect(list_factory, "setup", G_CALLBACK(on_dropdown_setup), NULL);
-    g_signal_connect(list_factory, "bind", G_CALLBACK(on_dropdown_bind), NULL);
-    gtk_drop_down_set_list_factory(GTK_DROP_DOWN(editor->action_type_combo), list_factory);
+    g_signal_connect(list_factory, "bind", G_CALLBACK(on_dropdown_bind), editor);
+    gtk_drop_down_set_list_factory(GTK_DROP_DOWN(editor->action_combo), list_factory);
 
-    g_signal_connect(editor->action_type_combo, "notify::selected", G_CALLBACK(on_action_type_changed), editor);
-    on_action_type_changed(G_OBJECT(editor->action_type_combo), NULL, editor);
+    g_signal_connect(editor->action_combo, "notify::selected", G_CALLBACK(on_action_changed), editor);
+    on_action_changed(G_OBJECT(editor->action_combo), NULL, editor);
 
     GtkEventController *key_controller = gtk_event_controller_key_new();
     g_signal_connect(key_controller, "key-pressed", G_CALLBACK(on_record_key_pressed), editor);
