@@ -1,6 +1,6 @@
 project('mygestures',
   version: '4.0.0',
-  meson_version: '>= 0.50.0'
+  meson_version: '>= 0.56.0'
 )
 
 # Install directories
@@ -41,6 +41,8 @@ cargo_build = custom_target(
   input: cargo_sources,
   output: ['mygestures', 'gestos'],
   console: true,
+  install: true,
+  install_dir: bindir,
   command: [
     cargo_script,
     cargo_target_dir,
@@ -51,10 +53,6 @@ cargo_build = custom_target(
     'gestos'
   ]
 )
-
-# Install the binaries
-install_program(meson.project_build_root() / 'mygestures', install_dir: bindir)
-install_program(meson.project_build_root() / 'gestos', install_dir: bindir)
 
 # Install the udev rules
 udevdir = get_option('udevdir')
