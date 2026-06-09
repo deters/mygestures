@@ -14,7 +14,7 @@ typedef struct {
     GtkWidget *window;
     GtkWidget *main_list;
     GtkWidget *search_entry;
-    
+
     GtkWidget *status_dot;
     GtkWidget *status_label;
     GtkWidget *daemon_switch;
@@ -35,7 +35,7 @@ typedef struct {
     GtkWidget *record_btn;
     gboolean recording;
     GtkWidget *browser_dialog;
-    
+
     GtkWidget *canvas;
     Point2D *drawn_points;
     int drawn_count;
@@ -217,7 +217,7 @@ static void fetch_gnome_action_options(GList **list) {
                     char *c_name = g_settings_get_string(custom, "name");
                     char *c_cmd = g_settings_get_string(custom, "command");
                     char *c_bind = g_settings_get_string(custom, "binding");
-                    
+
                     if (c_name && strlen(c_name) > 0) {
                         EditorActionOption *opt = g_new0(EditorActionOption, 1);
                         opt->category = CAT_GNOME;
@@ -244,16 +244,16 @@ static void fetch_gnome_action_options(GList **list) {
 
 static GList *build_editor_action_options(void) {
     GList *list = NULL;
-    
+
     for (int i = 0; action_types[i].name; i++) {
         ActionType *at = &action_types[i];
         if (at->id == ACTION_GNOME) continue;
-        
+
         EditorActionOption *opt = g_new0(EditorActionOption, 1);
         opt->action_id = at->id;
         opt->name = g_strdup(at->name);
         opt->icon = g_strdup(at->icon);
-        
+
         switch (at->id) {
             case ACTION_KEYPRESS:
             case ACTION_CLICK:
@@ -314,7 +314,7 @@ static GList *build_editor_action_options(void) {
         }
         list = g_list_append(list, opt);
     }
-    
+
     fetch_gnome_action_options(&list);
     return list;
 }
@@ -376,7 +376,7 @@ static void on_action_changed(GObject *gobject, GParamSpec *pspec, gpointer user
         gtk_widget_set_visible(editor->action_val_box, FALSE);
         return;
     }
-    
+
     if (!editor->current_options) {
         gtk_widget_set_visible(editor->action_val_box, FALSE);
         return;
@@ -387,7 +387,7 @@ static void on_action_changed(GObject *gobject, GParamSpec *pspec, gpointer user
         gtk_widget_set_visible(editor->action_val_box, FALSE);
         return;
     }
-    
+
     int id = opt->action_id;
     if (id == ACTION_EXECUTE || id == ACTION_KEYPRESS) {
         gtk_widget_set_visible(editor->action_val_box, TRUE);
@@ -395,7 +395,7 @@ static void on_action_changed(GObject *gobject, GParamSpec *pspec, gpointer user
         if (id == ACTION_KEYPRESS) label_text = "Keys:";
         gtk_label_set_text(GTK_LABEL(editor->action_val_label), label_text);
         gtk_widget_set_visible(editor->record_btn, (id == ACTION_KEYPRESS));
-        
+
         if (!editor->initializing && opt->custom_cmd && editor->action_val_entry) {
             gtk_editable_set_text(GTK_EDITABLE(editor->action_val_entry), opt->custom_cmd);
         }
@@ -410,16 +410,16 @@ static void on_category_changed(GObject *gobject, GParamSpec *pspec, gpointer us
 
     guint cat_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->category_combo));
     if (cat_idx == GTK_INVALID_LIST_POSITION) return;
-    
+
     g_signal_handlers_block_by_func(editor->action_combo, G_CALLBACK(on_action_changed), editor);
 
     if (editor->current_options) {
         g_list_free(editor->current_options);
         editor->current_options = NULL;
     }
-    
+
     GtkStringList *action_sl = gtk_string_list_new(NULL);
-    
+
     if (editor->all_options) {
         for (GList *l = editor->all_options; l; l = l->next) {
             EditorActionOption *opt = (EditorActionOption *)l->data;
@@ -429,10 +429,10 @@ static void on_category_changed(GObject *gobject, GParamSpec *pspec, gpointer us
             }
         }
     }
-    
+
     gtk_drop_down_set_model(GTK_DROP_DOWN(editor->action_combo), G_LIST_MODEL(action_sl));
     g_object_unref(action_sl);
-    
+
     if (!editor->initializing) {
         gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->action_combo), 0);
     }
@@ -462,16 +462,16 @@ static gboolean on_record_key_pressed(GtkEventControllerKey *controller,
             strcmp(name, "Alt_L") != 0 && strcmp(name, "Alt_R") != 0 &&
             strcmp(name, "Shift_L") != 0 && strcmp(name, "Shift_R") != 0 &&
             strcmp(name, "Super_L") != 0 && strcmp(name, "Super_R") != 0) {
-            
+
             g_string_append(s, name);
             gtk_editable_set_text(GTK_EDITABLE(editor->action_val_entry), s->str);
-            
+
             editor->recording = FALSE;
             gtk_button_set_label(GTK_BUTTON(editor->record_btn), "Record");
             gtk_widget_remove_css_class(editor->record_btn, "recording-active");
         }
     }
-    
+
     g_string_free(s, TRUE);
     return TRUE;
 }
@@ -491,15 +491,15 @@ static void on_record_clicked(GtkWidget *btn, gpointer user_data) {
 static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
     GestureEditor *editor = (GestureEditor *)user_data;
     const char *name = gtk_editable_get_text(GTK_EDITABLE(editor->name_entry));
-    
+
     guint opt_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->action_combo));
     if (opt_idx == GTK_INVALID_LIST_POSITION) return;
-    
+
     EditorActionOption *opt = (EditorActionOption *)g_list_nth_data(editor->current_options, opt_idx);
     if (!opt) return;
-    
+
     const char *val = gtk_editable_get_text(GTK_EDITABLE(editor->action_val_entry));
-    
+
     char *full_action = NULL;
     if (opt->action_id == ACTION_EXECUTE) {
         if (asprintf(&full_action, "exec %s", val) == -1) full_action = NULL;
@@ -532,16 +532,16 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
 
         if (editor->gesture->name) free(editor->gesture->name);
         editor->gesture->name = strdup(name);
-        
+
         if (editor->gesture->movement) {
             if (editor->gesture->movement->name) free(editor->gesture->movement->name);
             if (editor->gesture->movement->expression) free(editor->gesture->movement->expression);
             if (editor->gesture->movement->points) free(editor->gesture->movement->points);
             free(editor->gesture->movement);
         }
-        
+
         editor->gesture->movement = final_move;
-        
+
         for (int i = 0; i < editor->gesture->action_count; i++) {
             if (editor->gesture->action_list[i]->original_str) {
                 free(editor->gesture->action_list[i]->original_str);
@@ -575,7 +575,7 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
         Gesture *new_g = configuration_create_gesture(editor->app->config, (char*)name, editor->custom_expression ? editor->custom_expression : "0,0 0,0");
         new_g->is_custom = 1;
         configuration_add_action_from_string(new_g, full_action);
-        
+
         const char *search_text = gtk_editable_get_text(GTK_EDITABLE(editor->app->search_entry));
         if (search_text && strlen(search_text) > 0) {
             refresh_gesture_list(editor->app);
@@ -592,7 +592,7 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
     }
     reload_daemon_if_running();
 
-    gtk_window_destroy(GTK_WINDOW(editor->dialog));
+    gtk_window_close(GTK_WINDOW(editor->dialog));
 }
 
 static void on_dropdown_setup(GtkSignalListItemFactory *factory, GtkListItem *list_item, gpointer user_data) {
@@ -606,10 +606,6 @@ static void on_dropdown_setup(GtkSignalListItemFactory *factory, GtkListItem *li
     gtk_list_item_set_child(list_item, box);
 }
 
-static void on_dropdown_teardown(GtkSignalListItemFactory *factory, GtkListItem *list_item, gpointer user_data) {
-    gtk_list_item_set_child(list_item, NULL);
-}
-
 static void on_dropdown_bind(GtkSignalListItemFactory *factory, GtkListItem *list_item, gpointer user_data) {
     GtkWidget *box = gtk_list_item_get_child(list_item);
     if (!box) return;
@@ -617,16 +613,16 @@ static void on_dropdown_bind(GtkSignalListItemFactory *factory, GtkListItem *lis
     if (!icon) return;
     GtkWidget *label = gtk_widget_get_next_sibling(icon);
     if (!label) return;
-    
+
     gpointer item = gtk_list_item_get_item(list_item);
     if (!item || !GTK_IS_STRING_OBJECT(item)) return;
-    
+
     GtkStringObject *string_obj = GTK_STRING_OBJECT(item);
     const char *text = gtk_string_object_get_string(string_obj);
     if (!text) return;
-    
+
     gtk_label_set_text(GTK_LABEL(label), text);
-    
+
     const char *icon_name = "system-run-symbolic";
     GestureEditor *editor = (GestureEditor *)user_data;
     if (editor && editor->current_options) {
@@ -644,7 +640,7 @@ static void on_dropdown_bind(GtkSignalListItemFactory *factory, GtkListItem *lis
 static void free_editor_data(gpointer data) {
     GestureEditor *editor = (GestureEditor *)data;
     if (!editor) return;
-    
+
     if (editor->browser_dialog) {
         gtk_window_destroy(GTK_WINDOW(editor->browser_dialog));
 
@@ -673,22 +669,10 @@ static void free_editor_data(gpointer data) {
     g_free(editor);
 }
 
-static void on_dialog_destroy(GtkWidget *widget, gpointer user_data) {
-    GestureEditor *editor = (GestureEditor *)user_data;
-    if (editor) {
-        if (editor->category_combo) {
-            g_signal_handlers_disconnect_by_data(editor->category_combo, editor);
-        }
-        if (editor->action_combo) {
-            g_signal_handlers_disconnect_by_data(editor->action_combo, editor);
-        }
-    }
-}
-
 
 static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width, int height, gpointer user_data) {
     GestureEditor *editor = (GestureEditor *)user_data;
-    
+
     // 1. Radial background vignette
     cairo_pattern_t *bg_pat = cairo_pattern_create_radial(width / 2.0, height / 2.0, width / 10.0,
                                                           width / 2.0, height / 2.0, width * 0.8);
@@ -697,7 +681,7 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
     cairo_set_source(cr, bg_pat);
     cairo_paint(cr);
     cairo_pattern_destroy(bg_pat);
-    
+
     // 2. Subtle dashed grid
     cairo_set_source_rgba(cr, 0.82, 0.85, 0.88, 0.35);
     cairo_set_line_width(cr, 1.0);
@@ -713,35 +697,35 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
     }
     cairo_stroke(cr);
     cairo_set_dash(cr, NULL, 0, 0); // Clear dash
-    
+
     if (editor->is_drawing && editor->drawn_count > 1) {
         cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
         cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
-        
+
         int M = 4; // Sub-segment division for active drawing
         double start_r = 0.98, start_g = 0.72, start_b = 0.80; // Faded sunset pink
         double end_r = 0.49, end_g = 0.27, end_b = 0.90;       // Sunset violet
-        
+
         // Glow layer
         for (int i = 1; i < editor->drawn_count; i++) {
             double f_start = (double)(i - 1) / (editor->drawn_count - 1);
             double f_end = (double)i / (editor->drawn_count - 1);
-            
+
             for (int s = 0; s < M; s++) {
                 double t1 = (double)s / M;
                 double t2 = (double)(s + 1) / M;
                 double f_global = f_start + (f_end - f_start) * t1;
-                
+
                 double w = 6.0 + 6.0 * f_global;
                 double r = start_r * (1.0 - f_global) + end_r * f_global;
                 double g = start_g * (1.0 - f_global) + end_g * f_global;
                 double b = start_b * (1.0 - f_global) + end_b * f_global;
-                
+
                 double x1 = editor->drawn_points[i-1].x + (editor->drawn_points[i].x - editor->drawn_points[i-1].x) * t1;
                 double y1 = editor->drawn_points[i-1].y + (editor->drawn_points[i].y - editor->drawn_points[i-1].y) * t1;
                 double x2 = editor->drawn_points[i-1].x + (editor->drawn_points[i].x - editor->drawn_points[i-1].x) * t2;
                 double y2 = editor->drawn_points[i-1].y + (editor->drawn_points[i].y - editor->drawn_points[i-1].y) * t2;
-                
+
                 cairo_set_source_rgba(cr, r, g, b, 0.2);
                 cairo_set_line_width(cr, w);
                 cairo_move_to(cr, x1, y1);
@@ -749,27 +733,27 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
                 cairo_stroke(cr);
             }
         }
-        
+
         // Solid core layer
         for (int i = 1; i < editor->drawn_count; i++) {
             double f_start = (double)(i - 1) / (editor->drawn_count - 1);
             double f_end = (double)i / (editor->drawn_count - 1);
-            
+
             for (int s = 0; s < M; s++) {
                 double t1 = (double)s / M;
                 double t2 = (double)(s + 1) / M;
                 double f_global = f_start + (f_end - f_start) * t1;
-                
+
                 double w = 1.5 + 2.5 * f_global;
                 double r = start_r * (1.0 - f_global) + end_r * f_global;
                 double g = start_g * (1.0 - f_global) + end_g * f_global;
                 double b = start_b * (1.0 - f_global) + end_b * f_global;
-                
+
                 double x1 = editor->drawn_points[i-1].x + (editor->drawn_points[i].x - editor->drawn_points[i-1].x) * t1;
                 double y1 = editor->drawn_points[i-1].y + (editor->drawn_points[i].y - editor->drawn_points[i-1].y) * t1;
                 double x2 = editor->drawn_points[i-1].x + (editor->drawn_points[i].x - editor->drawn_points[i-1].x) * t2;
                 double y2 = editor->drawn_points[i-1].y + (editor->drawn_points[i].y - editor->drawn_points[i-1].y) * t2;
-                
+
                 cairo_set_source_rgb(cr, r, g, b);
                 cairo_set_line_width(cr, w);
                 cairo_move_to(cr, x1, y1);
@@ -781,7 +765,7 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
         Point2D *pts = NULL;
         int pt_count = 0;
         gboolean free_pts = FALSE;
-        
+
         int count = 0;
         char *expr_copy = strdup(editor->custom_expression);
         char *token = strtok(expr_copy, " ");
@@ -790,7 +774,7 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
             token = strtok(NULL, " ");
         }
         free(expr_copy);
-        
+
         if (count > 0) {
             pts = malloc(sizeof(Point2D) * count);
             expr_copy = strdup(editor->custom_expression);
@@ -809,7 +793,7 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
             pt_count = idx;
             free_pts = TRUE;
         }
-        
+
         if (pts && pt_count > 0) {
             // Find bounding box to center the path
             double min_x = pts[0].x, max_x = pts[0].x;
@@ -822,44 +806,44 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
             }
             double path_center_x = (min_x + max_x) / 2.0;
             double path_center_y = (min_y + max_y) / 2.0;
-            
+
             double offset_x = (width / 2.0) - path_center_x;
             double offset_y = (height / 2.0) - path_center_y;
 
             cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
             cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
-            
+
             // Color Gradient Definition: Faded Sunset Pink to Sunset Violet
             double start_r = 0.98, start_g = 0.72, start_b = 0.80; // Faded sunset pink
             double end_r = 0.49, end_g = 0.27, end_b = 0.90;       // Sunset violet
-            
+
             if (pt_count == 1) {
                 cairo_set_source_rgb(cr, start_r, start_g, start_b);
                 cairo_arc(cr, pts[0].x + offset_x, pts[0].y + offset_y, 8.0, 0, 2 * G_PI);
                 cairo_fill(cr);
             } else {
                 int M = 16;
-                
+
                 // Draw outer glowing shadow
                 for (int i = 1; i < pt_count; i++) {
                     double f_start = (double)(i - 1) / (pt_count - 1);
                     double f_end = (double)i / (pt_count - 1);
-                    
+
                     for (int s = 0; s < M; s++) {
                         double t1 = (double)s / M;
                         double t2 = (double)(s + 1) / M;
                         double f_global = f_start + (f_end - f_start) * t1;
-                        
+
                         double w = 18.0 * f_global + 4.0;
                         double r = start_r * (1.0 - f_global) + end_r * f_global;
                         double g = start_g * (1.0 - f_global) + end_g * f_global;
                         double b = start_b * (1.0 - f_global) + end_b * f_global;
-                        
+
                         double x1 = pts[i-1].x + (pts[i].x - pts[i-1].x) * t1;
                         double y1 = pts[i-1].y + (pts[i].y - pts[i-1].y) * t1;
                         double x2 = pts[i-1].x + (pts[i].x - pts[i-1].x) * t2;
                         double y2 = pts[i-1].y + (pts[i].y - pts[i-1].y) * t2;
-                        
+
                         cairo_set_source_rgba(cr, r, g, b, 0.15);
                         cairo_set_line_width(cr, w);
                         cairo_move_to(cr, x1 + offset_x, y1 + offset_y);
@@ -867,27 +851,27 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
                         cairo_stroke(cr);
                     }
                 }
-                
+
                 // Draw solid core
                 for (int i = 1; i < pt_count; i++) {
                     double f_start = (double)(i - 1) / (pt_count - 1);
                     double f_end = (double)i / (pt_count - 1);
-                    
+
                     for (int s = 0; s < M; s++) {
                         double t1 = (double)s / M;
                         double t2 = (double)(s + 1) / M;
                         double f_global = f_start + (f_end - f_start) * t1;
-                        
+
                         double w = 10.0 * f_global + 2.0;
                         double r = start_r * (1.0 - f_global) + end_r * f_global;
                         double g = start_g * (1.0 - f_global) + end_g * f_global;
                         double b = start_b * (1.0 - f_global) + end_b * f_global;
-                        
+
                         double x1 = pts[i-1].x + (pts[i].x - pts[i-1].x) * t1;
                         double y1 = pts[i-1].y + (pts[i].y - pts[i-1].y) * t1;
                         double x2 = pts[i-1].x + (pts[i].x - pts[i-1].x) * t2;
                         double y2 = pts[i-1].y + (pts[i].y - pts[i-1].y) * t2;
-                        
+
                         cairo_set_source_rgb(cr, r, g, b);
                         cairo_set_line_width(cr, w);
                         cairo_move_to(cr, x1 + offset_x, y1 + offset_y);
@@ -896,26 +880,26 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
                     }
                 }
             }
-            
+
             // Draw glowing dots at key vertices
             for (int i = 0; i < pt_count; i++) {
                 double fraction = (double)i / (pt_count > 1 ? (pt_count - 1) : 1);
                 double dot_radius = 5.0 * fraction + 2.0;
-                
+
                 double r = start_r * (1.0 - fraction) + end_r * fraction;
                 double g = start_g * (1.0 - fraction) + end_g * fraction;
                 double b = start_b * (1.0 - fraction) + end_b * fraction;
-                
+
                 cairo_set_source_rgba(cr, r, g, b, 0.4);
                 cairo_arc(cr, pts[i].x + offset_x, pts[i].y + offset_y, dot_radius + 4.0, 0, 2 * G_PI);
                 cairo_fill(cr);
-                
+
                 cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
                 cairo_arc(cr, pts[i].x + offset_x, pts[i].y + offset_y, fmax(2.0, dot_radius - 1.5), 0, 2 * G_PI);
                 cairo_fill(cr);
             }
         }
-        
+
         if (free_pts && pts) {
             free(pts);
         }
@@ -924,7 +908,7 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
 
 static void on_preview_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width, int height, gpointer user_data) {
     Movement *m = (Movement *)user_data;
-    
+
     // 1. Radial background vignette
     cairo_pattern_t *bg_pat = cairo_pattern_create_radial(width / 2.0, height / 2.0, width / 10.0,
                                                           width / 2.0, height / 2.0, width * 0.8);
@@ -992,27 +976,27 @@ static void on_preview_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width
         cairo_fill(cr);
     } else {
         int M = 8;
-        
+
         // Draw shadow/glow
         for (int i = 1; i < pt_count; i++) {
             double f_start = (double)(i - 1) / (pt_count - 1);
             double f_end = (double)i / (pt_count - 1);
-            
+
             for (int s = 0; s < M; s++) {
                 double t1 = (double)s / M;
                 double t2 = (double)(s + 1) / M;
                 double f_global = f_start + (f_end - f_start) * t1;
-                
+
                 double w = 8.0 * f_global + 2.0;
                 double r = start_r * (1.0 - f_global) + end_r * f_global;
                 double g = start_g * (1.0 - f_global) + end_g * f_global;
                 double b = start_b * (1.0 - f_global) + end_b * f_global;
-                
+
                 double px1 = width / 2.0 + (pts[i-1].x + (pts[i].x - pts[i-1].x) * t1 - path_center_x) * scale;
                 double py1 = height / 2.0 + (pts[i-1].y + (pts[i].y - pts[i-1].y) * t1 - path_center_y) * scale;
                 double px2 = width / 2.0 + (pts[i-1].x + (pts[i].x - pts[i-1].x) * t2 - path_center_x) * scale;
                 double py2 = height / 2.0 + (pts[i-1].y + (pts[i].y - pts[i-1].y) * t2 - path_center_y) * scale;
-                
+
                 cairo_set_source_rgba(cr, r, g, b, 0.15);
                 cairo_set_line_width(cr, w);
                 cairo_move_to(cr, px1, py1);
@@ -1020,27 +1004,27 @@ static void on_preview_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width
                 cairo_stroke(cr);
             }
         }
-        
+
         // Draw solid core
         for (int i = 1; i < pt_count; i++) {
             double f_start = (double)(i - 1) / (pt_count - 1);
             double f_end = (double)i / (pt_count - 1);
-            
+
             for (int s = 0; s < M; s++) {
                 double t1 = (double)s / M;
                 double t2 = (double)(s + 1) / M;
                 double f_global = f_start + (f_end - f_start) * t1;
-                
+
                 double w = 4.0 * f_global + 1.0;
                 double r = start_r * (1.0 - f_global) + end_r * f_global;
                 double g = start_g * (1.0 - f_global) + end_g * f_global;
                 double b = start_b * (1.0 - f_global) + end_b * f_global;
-                
+
                 double px1 = width / 2.0 + (pts[i-1].x + (pts[i].x - pts[i-1].x) * t1 - path_center_x) * scale;
                 double py1 = height / 2.0 + (pts[i-1].y + (pts[i].y - pts[i-1].y) * t1 - path_center_y) * scale;
                 double px2 = width / 2.0 + (pts[i-1].x + (pts[i].x - pts[i-1].x) * t2 - path_center_x) * scale;
                 double py2 = height / 2.0 + (pts[i-1].y + (pts[i].y - pts[i-1].y) * t2 - path_center_y) * scale;
-                
+
                 cairo_set_source_rgb(cr, r, g, b);
                 cairo_set_line_width(cr, w);
                 cairo_move_to(cr, px1, py1);
@@ -1049,23 +1033,23 @@ static void on_preview_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width
             }
         }
     }
-    
+
     // Draw glowing dots at key vertices
     for (int i = 0; i < pt_count; i++) {
         double fraction = (double)i / (pt_count > 1 ? (pt_count - 1) : 1);
         double dot_radius = 2.5 * fraction + 1.0;
-        
+
         double px = width / 2.0 + (pts[i].x - path_center_x) * scale;
         double py = height / 2.0 + (pts[i].y - path_center_y) * scale;
-        
+
         double r = start_r * (1.0 - fraction) + end_r * fraction;
         double g = start_g * (1.0 - fraction) + end_g * fraction;
         double b = start_b * (1.0 - fraction) + end_b * fraction;
-        
+
         cairo_set_source_rgba(cr, r, g, b, 0.4);
         cairo_arc(cr, px, py, dot_radius + 2.0, 0, 2 * G_PI);
         cairo_fill(cr);
-        
+
         cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
         cairo_arc(cr, px, py, fmax(1.0, dot_radius - 0.5), 0, 2 * G_PI);
         cairo_fill(cr);
@@ -1076,28 +1060,28 @@ static void on_canvas_drag_begin(GtkGestureDrag *gesture, double start_x, double
     GestureEditor *editor = (GestureEditor *)user_data;
     editor->is_drawing = TRUE;
     editor->drawn_count = 0;
-    
+
     if (editor->drawn_capacity < 128) {
         editor->drawn_capacity = 1024;
         editor->drawn_points = malloc(sizeof(Point2D) * editor->drawn_capacity);
     }
-    
+
     editor->drawn_points[0].x = start_x;
     editor->drawn_points[0].y = start_y;
     editor->drawn_count = 1;
-    
+
     gtk_widget_queue_draw(editor->canvas);
 }
 
 static void on_canvas_drag_update(GtkGestureDrag *gesture, double offset_x, double offset_y, gpointer user_data) {
     GestureEditor *editor = (GestureEditor *)user_data;
     if (!editor->is_drawing) return;
-    
+
     double start_x, start_y;
     if (gtk_gesture_drag_get_start_point(gesture, &start_x, &start_y)) {
         double cur_x = start_x + offset_x;
         double cur_y = start_y + offset_y;
-        
+
         if (editor->drawn_count > 0) {
             double dx = cur_x - editor->drawn_points[editor->drawn_count - 1].x;
             double dy = cur_y - editor->drawn_points[editor->drawn_count - 1].y;
@@ -1105,16 +1089,16 @@ static void on_canvas_drag_update(GtkGestureDrag *gesture, double offset_x, doub
                 return;
             }
         }
-        
+
         if (editor->drawn_count >= editor->drawn_capacity) {
             editor->drawn_capacity *= 2;
             editor->drawn_points = realloc(editor->drawn_points, sizeof(Point2D) * editor->drawn_capacity);
         }
-        
+
         editor->drawn_points[editor->drawn_count].x = cur_x;
         editor->drawn_points[editor->drawn_count].y = cur_y;
         editor->drawn_count++;
-        
+
         gtk_widget_queue_draw(editor->canvas);
     }
 }
@@ -1123,7 +1107,7 @@ static void on_canvas_drag_end(GtkGestureDrag *gesture, double offset_x, double 
     GestureEditor *editor = (GestureEditor *)user_data;
     if (!editor->is_drawing) return;
     editor->is_drawing = FALSE;
-    
+
     double start_x, start_y;
     if (gtk_gesture_drag_get_start_point(gesture, &start_x, &start_y)) {
         double cur_x = start_x + offset_x;
@@ -1142,11 +1126,11 @@ static void on_canvas_drag_end(GtkGestureDrag *gesture, double offset_x, double 
             }
         }
     }
-    
+
     if (editor->drawn_count >= 2) {
         int simplified_count = 0;
         Point2D *simplified = grabbing_simplify_points(editor->drawn_points, editor->drawn_count, 6.0, &simplified_count);
-        
+
         int buf_size = simplified_count * 40 + 1;
         char *buf = malloc(buf_size);
         buf[0] = '\0';
@@ -1158,26 +1142,39 @@ static void on_canvas_drag_end(GtkGestureDrag *gesture, double offset_x, double 
                 strcat(buf, " ");
             }
         }
-        
+
         if (editor->custom_expression) {
             free(editor->custom_expression);
         }
         editor->custom_expression = buf;
-        
+
         free(simplified);
     }
-    
+
     gtk_widget_queue_draw(editor->canvas);
+}
+
+static gboolean on_dialog_close_request(GtkWindow *window, gpointer user_data) {
+    GestureEditor *editor = (GestureEditor *)user_data;
+    if (editor) {
+        if (editor->action_combo) {
+            gtk_drop_down_set_model(GTK_DROP_DOWN(editor->action_combo), NULL);
+        }
+        if (editor->category_combo) {
+            gtk_drop_down_set_model(GTK_DROP_DOWN(editor->category_combo), NULL);
+        }
+    }
+    return FALSE;
 }
 
 static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     GestureEditor *editor = g_new0(GestureEditor, 1);
     editor->app = gestos;
     editor->gesture = g;
-    
+
     editor->dialog = gtk_window_new();
     g_object_set_data_full(G_OBJECT(editor->dialog), "editor-data", editor, free_editor_data);
-    g_signal_connect(editor->dialog, "destroy", G_CALLBACK(on_dialog_destroy), editor);
+    g_signal_connect(editor->dialog, "close-request", G_CALLBACK(on_dialog_close_request), editor);
 
     gtk_window_set_title(GTK_WINDOW(editor->dialog), g ? "Edit Gesture" : "New Gesture");
     gtk_window_set_transient_for(GTK_WINDOW(editor->dialog), GTK_WINDOW(gestos->window));
@@ -1189,7 +1186,7 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
 
     GtkWidget *cancel_btn = gtk_button_new_with_label("Cancel");
     gtk_header_bar_pack_start(GTK_HEADER_BAR(header), cancel_btn);
-    g_signal_connect_swapped(cancel_btn, "clicked", G_CALLBACK(gtk_window_destroy), editor->dialog);
+    g_signal_connect_swapped(cancel_btn, "clicked", G_CALLBACK(gtk_window_close), editor->dialog);
 
     GtkWidget *save_btn = gtk_button_new_with_label("Save");
     gtk_widget_add_css_class(save_btn, "suggested-action");
@@ -1202,12 +1199,12 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     gtk_widget_set_margin_bottom(content, 18);
     gtk_widget_set_margin_start(content, 18);
     gtk_widget_set_margin_end(content, 18);
-    
+
     GtkWidget *grid = gtk_grid_new();
     gtk_grid_set_row_spacing(GTK_GRID(grid), 12);
     gtk_grid_set_column_spacing(GTK_GRID(grid), 12);
     gtk_box_append(GTK_BOX(content), grid);
-    
+
     gtk_grid_attach(GTK_GRID(grid), gtk_label_new("Name:"), 0, 0, 1, 1);
     editor->name_entry = gtk_entry_new();
     gtk_widget_set_hexpand(editor->name_entry, TRUE);
@@ -1216,7 +1213,7 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     if (g && g->movement) {
         editor->custom_expression = strdup(g->movement->expression);
     }
-    
+
     editor->initializing = TRUE;
     editor->all_options = build_editor_action_options();
 
@@ -1237,11 +1234,11 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     editor->action_val_label = gtk_label_new("Command:");
     gtk_grid_attach(GTK_GRID(grid), editor->action_val_label, 0, 3, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), editor->action_val_box, 1, 3, 1, 1);
-    
+
     editor->action_val_entry = gtk_entry_new();
     gtk_widget_set_hexpand(editor->action_val_entry, TRUE);
     gtk_box_append(GTK_BOX(editor->action_val_box), editor->action_val_entry);
-    
+
     editor->record_btn = gtk_button_new_with_label("Record");
     gtk_widget_add_css_class(editor->record_btn, "record-btn");
     gtk_box_append(GTK_BOX(editor->action_val_box), editor->record_btn);
@@ -1282,7 +1279,7 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
 
     g_signal_connect(editor->category_combo, "notify::selected", G_CALLBACK(on_category_changed), editor);
     gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->category_combo), active_cat_idx);
-    
+
     // Manually trigger category change to build action list
     on_category_changed(G_OBJECT(editor->category_combo), NULL, editor);
 
@@ -1314,18 +1311,16 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
         if (g->action_list[0]->original_str)
             gtk_editable_set_text(GTK_EDITABLE(editor->action_val_entry), g->action_list[0]->original_str);
     }
-    
+
     GtkListItemFactory *factory = gtk_signal_list_item_factory_new();
     g_signal_connect(factory, "setup", G_CALLBACK(on_dropdown_setup), NULL);
     g_signal_connect(factory, "bind", G_CALLBACK(on_dropdown_bind), editor);
-    g_signal_connect(factory, "teardown", G_CALLBACK(on_dropdown_teardown), NULL);
     gtk_drop_down_set_factory(GTK_DROP_DOWN(editor->action_combo), factory);
     g_object_unref(factory);
 
     GtkListItemFactory *list_factory = gtk_signal_list_item_factory_new();
     g_signal_connect(list_factory, "setup", G_CALLBACK(on_dropdown_setup), NULL);
     g_signal_connect(list_factory, "bind", G_CALLBACK(on_dropdown_bind), editor);
-    g_signal_connect(list_factory, "teardown", G_CALLBACK(on_dropdown_teardown), NULL);
     gtk_drop_down_set_list_factory(GTK_DROP_DOWN(editor->action_combo), list_factory);
     g_object_unref(list_factory);
 
@@ -1466,12 +1461,12 @@ static GtkWidget *create_gesture_row_content(GestosApp *gestos, Gesture *gesture
 
     int action_id = ACTION_NULL;
     if (gesture->action_count > 0) action_id = gesture->action_list[0]->type;
-    
+
     GtkWidget *icon_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_widget_add_css_class(icon_box, "icon-holder");
     gtk_widget_add_css_class(icon_box, get_action_class(action_id));
     gtk_widget_set_valign(icon_box, GTK_ALIGN_CENTER);
-    
+
     GtkWidget *icon = gtk_image_new_from_icon_name(get_action_icon(action_id));
     gtk_widget_set_size_request(icon, 20, 20);
     gtk_box_append(GTK_BOX(icon_box), icon);
@@ -1497,7 +1492,7 @@ static GtkWidget *create_gesture_row_content(GestosApp *gestos, Gesture *gesture
         gtk_box_append(GTK_BOX(vbox), label_action);
         free(full_action);
     }
-    
+
     gtk_box_append(GTK_BOX(main_hbox), vbox);
 
     GtkWidget *preview_frame = gtk_frame_new(NULL);
@@ -1528,7 +1523,7 @@ static void add_gesture_row(GestosApp *gestos, Gesture *gesture) {
     GtkWidget *row = gtk_list_box_row_new();
     gtk_widget_add_css_class(row, "gesture-row");
     g_object_set_data(G_OBJECT(row), "gesture-ptr", gesture);
-    
+
     GtkWidget *main_hbox = create_gesture_row_content(gestos, gesture);
     gtk_list_box_row_set_child(GTK_LIST_BOX_ROW(row), main_hbox);
     gtk_list_box_append(GTK_LIST_BOX(gestos->main_list), row);
@@ -1595,11 +1590,11 @@ static void stop_daemon() {
 static gboolean check_daemon_status_timer(gpointer user_data) {
     GestosApp *gestos = (GestosApp *)user_data;
     gboolean running = is_daemon_running();
-    
+
     g_signal_handler_block(gestos->daemon_switch, gestos->switch_handler_id);
     gtk_switch_set_active(GTK_SWITCH(gestos->daemon_switch), running);
     g_signal_handler_unblock(gestos->daemon_switch, gestos->switch_handler_id);
-    
+
     if (running) {
         gtk_label_set_text(GTK_LABEL(gestos->status_label), "Daemon Active");
         gtk_widget_remove_css_class(gestos->status_dot, "status-dot-stopped");
@@ -1609,7 +1604,7 @@ static gboolean check_daemon_status_timer(gpointer user_data) {
         gtk_widget_remove_css_class(gestos->status_dot, "status-dot-running");
         gtk_widget_add_css_class(gestos->status_dot, "status-dot-stopped");
     }
-    
+
     return TRUE;
 }
 
@@ -1650,19 +1645,19 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_widget_set_valign(ctrl_box, GTK_ALIGN_CENTER);
     gtk_widget_set_margin_start(ctrl_box, 12);
     gtk_widget_set_margin_end(ctrl_box, 12);
-    
+
     gestos->status_dot = gtk_image_new_from_icon_name("media-record-symbolic");
     gtk_widget_add_css_class(gestos->status_dot, "status-dot-stopped");
     gtk_box_append(GTK_BOX(ctrl_box), gestos->status_dot);
-    
+
     gestos->status_label = gtk_label_new("Daemon Off");
     gtk_widget_add_css_class(gestos->status_label, "status-label");
     gtk_box_append(GTK_BOX(ctrl_box), gestos->status_label);
-    
+
     gestos->daemon_switch = gtk_switch_new();
     gtk_box_append(GTK_BOX(ctrl_box), gestos->daemon_switch);
     gestos->switch_handler_id = g_signal_connect(gestos->daemon_switch, "state-set", G_CALLBACK(on_daemon_switch_state_set), gestos);
-    
+
     gtk_header_bar_pack_end(GTK_HEADER_BAR(header), ctrl_box);
 
     GtkWidget *about_btn = gtk_button_new_from_icon_name("help-about-symbolic");
