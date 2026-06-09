@@ -45,8 +45,6 @@ typedef struct {
 
     GList *all_options;
     GList *current_options;
-    GtkListItemFactory *factory;
-    GtkListItemFactory *list_factory;
     gboolean initializing;
 } GestureEditor;
 
@@ -648,28 +646,10 @@ static void gesture_editor_cleanup(GestureEditor *editor) {
         editor->category_combo = NULL;
     }
 
-    if (editor->factory) {
-        g_signal_handlers_disconnect_by_data(editor->factory, editor);
-    }
-    if (editor->list_factory) {
-        g_signal_handlers_disconnect_by_data(editor->list_factory, editor);
-    }
-
     if (editor->action_combo) {
         g_signal_handlers_disconnect_by_data(editor->action_combo, editor);
-        gtk_drop_down_set_factory(GTK_DROP_DOWN(editor->action_combo), NULL);
-        gtk_drop_down_set_list_factory(GTK_DROP_DOWN(editor->action_combo), NULL);
         gtk_drop_down_set_model(GTK_DROP_DOWN(editor->action_combo), NULL);
         editor->action_combo = NULL;
-    }
-
-    if (editor->factory) {
-        g_object_unref(editor->factory);
-        editor->factory = NULL;
-    }
-    if (editor->list_factory) {
-        g_object_unref(editor->list_factory);
-        editor->list_factory = NULL;
     }
 
     if (editor->record_btn) {
@@ -694,12 +674,6 @@ static void free_editor_data(gpointer data) {
 
     if (editor->browser_dialog) {
         gtk_window_destroy(GTK_WINDOW(editor->browser_dialog));
-    }
-    if (editor->factory) {
-        g_object_unref(editor->factory);
-    }
-    if (editor->list_factory) {
-        g_object_unref(editor->list_factory);
     }
     if (editor->drawn_points) {
         free(editor->drawn_points);
@@ -1361,15 +1335,17 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
             gtk_editable_set_text(GTK_EDITABLE(editor->action_val_entry), g->action_list[0]->original_str);
     }
 
-    editor->factory = gtk_signal_list_item_factory_new();
-    g_signal_connect(editor->factory, "setup", G_CALLBACK(on_dropdown_setup), NULL);
-    g_signal_connect(editor->factory, "bind", G_CALLBACK(on_dropdown_bind), editor);
-    gtk_drop_down_set_factory(GTK_DROP_DOWN(editor->action_combo), editor->factory);
+    GtkListItemFactory *factory = gtk_signal_list_item_factory_new();
+    g_signal_connect(factory, "setup", G_CALLBACK(on_dropdown_setup), NULL);
+    g_signal_connect(factory, "bind", G_CALLBACK(on_dropdown_bind), editor);
+    gtk_drop_down_set_factory(GTK_DROP_DOWN(editor->action_combo), factory);
+    g_object_unref(factory);
 
-    editor->list_factory = gtk_signal_list_item_factory_new();
-    g_signal_connect(editor->list_factory, "setup", G_CALLBACK(on_dropdown_setup), NULL);
-    g_signal_connect(editor->list_factory, "bind", G_CALLBACK(on_dropdown_bind), editor);
-    gtk_drop_down_set_list_factory(GTK_DROP_DOWN(editor->action_combo), editor->list_factory);
+    GtkListItemFactory *list_factory = gtk_signal_list_item_factory_new();
+    g_signal_connect(list_factory, "setup", G_CALLBACK(on_dropdown_setup), NULL);
+    g_signal_connect(list_factory, "bind", G_CALLBACK(on_dropdown_bind), editor);
+    gtk_drop_down_set_list_factory(GTK_DROP_DOWN(editor->action_combo), list_factory);
+    g_object_unref(list_factory);
 
     g_signal_connect(editor->action_combo, "notify::selected", G_CALLBACK(on_action_changed), editor);
     on_action_changed(G_OBJECT(editor->action_combo), NULL, editor);
