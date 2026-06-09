@@ -15,7 +15,7 @@
  one line to give the program's name and an idea of what it does.
  */
 
-#if HAVE_CONFIG_H          
+#if HAVE_CONFIG_H
 #include <config.h>
 #endif
 
@@ -49,16 +49,16 @@ static Point2D *resample_path(const Point2D *points, int count, int n) {
 		for (int i = 0; i < n; i++) resampled[i] = points[0];
 		return resampled;
 	}
-	
+
 	double len = path_length(points, count);
 	double I = (len > 1e-4) ? (len / (n - 1)) : 0.0;
 	double D = 0;
 	resampled[0] = points[0];
 	int r_count = 1;
-	
+
 	Point2D *pts = malloc(sizeof(Point2D) * count);
 	memcpy(pts, points, sizeof(Point2D) * count);
-	
+
 	for (int i = 1; i < count; i++) {
 		double dx = pts[i].x - pts[i-1].x;
 		double dy = pts[i].y - pts[i-1].y;
@@ -75,7 +75,7 @@ static Point2D *resample_path(const Point2D *points, int count, int n) {
 		}
 	}
 	free(pts);
-	
+
 	while (r_count < n) {
 		resampled[r_count++] = points[count - 1];
 	}
@@ -96,7 +96,7 @@ static void normalize_path(Point2D *points, int count, double size) {
 	double height = max_y - min_y;
 	double max_dim = (width > height) ? width : height;
 	if (max_dim < 1e-4) max_dim = 1e-4;
-	
+
 	double scale = size / max_dim;
 	double sum_x = 0, sum_y = 0;
 	for (int i = 0; i < count; i++) {
@@ -119,7 +119,7 @@ static void normalize_path(Point2D *points, int count, double size) {
 
 static void vectorize_path(Point2D *points, int count) {
 	if (count == 0) return;
-	
+
 	// Translate to centroid
 	double sum_x = 0, sum_y = 0;
 	for (int i = 0; i < count; i++) {
@@ -132,7 +132,7 @@ static void vectorize_path(Point2D *points, int count) {
 		points[i].x -= centroid_x;
 		points[i].y -= centroid_y;
 	}
-	
+
 	// Scale magnitude to 1.0
 	double sum_squares = 0;
 	for (int i = 0; i < count; i++) {
@@ -153,7 +153,7 @@ static double compute_protractor_similarity(const Point2D *u, const Point2D *w, 
 		a += u[i].x * w[i].x + u[i].y * w[i].y;
 		b += u[i].x * w[i].y - u[i].y * w[i].x;
 	}
-	
+
 	double theta = atan2(b, a);
 	if (fabs(theta) <= max_angle_rad) {
 		return sqrt(a*a + b*b);
@@ -170,7 +170,7 @@ void movement_set_expression(Movement* movement, char* movement_expression) {
 		movement->points = NULL;
 	}
 	movement->point_count = 0;
-	
+
 	int count = 0;
 	char *expr_copy = strdup(movement_expression);
 	char *token = strtok(expr_copy, " ");
@@ -179,15 +179,15 @@ void movement_set_expression(Movement* movement, char* movement_expression) {
 		token = strtok(NULL, " ");
 	}
 	free(expr_copy);
-	
+
 	if (count == 0) {
 		movement->points = NULL;
 		return;
 	}
-	
+
 	movement->points = malloc(sizeof(Point2D) * count);
 	movement->point_count = count;
-	
+
 	expr_copy = strdup(movement_expression);
 	token = strtok(expr_copy, " ");
 	int idx = 0;
@@ -275,7 +275,7 @@ void configuration_add_action_from_string(Gesture * self, const char * action_st
 	char *copy = strdup(action_str);
 	char *action_name = copy;
 	char *value = strchr(copy, ' ');
-	
+
 	if (value) {
 		*value = '\0';
 		value++;
@@ -445,43 +445,43 @@ Action *configuration_create_action(Gesture * self, int action_type,
 Gesture * match_gesture(Configuration * self, const Point2D * captured_points, int point_count) {
 	assert(self);
 	if (!captured_points || point_count < 2) return NULL;
-	
+
 	int N = 64;
 	double THRESHOLD_SCORE = 0.80; // Minimum similarity score (80%) for matching
-	double MAX_ANGLE = 45.0 * (M_PI / 180.0); // Allow up to 45 degrees of rotation
-	
+	double MAX_ANGLE = 15.0 * (M_PI / 180.0); // Allow up to 45 degrees of rotation
+
 	// Vectorize the input path
 	Point2D *input_vector = resample_path(captured_points, point_count, N);
 	if (!input_vector) return NULL;
 	vectorize_path(input_vector, N);
-	
+
 	Gesture *best_gesture = NULL;
 	double max_score = -1.0;
-	
+
 	for (int g = 0; g < self->gesture_count; g++) {
 		Gesture *gest = self->gesture_list[g];
 		if (!gest || gest->is_deleted || !gest->movement || gest->movement->point_count < 2) continue;
-		
+
 		// Vectorize the template path
 		Point2D *temp_vector = resample_path(gest->movement->points, gest->movement->point_count, N);
 		if (!temp_vector) continue;
 		vectorize_path(temp_vector, N);
-		
+
 		double score = compute_protractor_similarity(input_vector, temp_vector, N, MAX_ANGLE);
 		free(temp_vector);
-		
+
 		if (score > max_score) {
 			max_score = score;
 			best_gesture = gest;
 		}
 	}
-	
+
 	free(input_vector);
-	
+
 	if (max_score >= THRESHOLD_SCORE) {
 		return best_gesture;
 	}
-	
+
 	return NULL;
 }
 
