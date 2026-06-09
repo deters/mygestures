@@ -184,9 +184,9 @@ fn run_grabber(
                             if let Some(gesture) = config.gestures.iter().find(|g| g.name == matched_name) {
                                 println!("Matched gesture: {}", gesture.name);
                                 for action in &gesture.actions {
-                                    let ui_clone = uinput.as_mut();
+                                    let ui_cell = std::cell::RefCell::new(uinput.as_mut());
                                     wayland_ctx.execute_action(action, &|keys_str| {
-                                        if let Some(u) = ui_clone {
+                                        if let Some(ref mut u) = *ui_cell.borrow_mut() {
                                             u.keypress_string(keys_str);
                                         }
                                     });

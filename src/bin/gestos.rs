@@ -114,9 +114,9 @@ fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height
     let cy = min_y + h / 2.0;
 
     cr.save().unwrap();
-    cr.translate(width / 2.0, height / 2.0).unwrap();
+    cr.translate(width / 2.0, height / 2.0);
     cr.scale(scale, scale);
-    cr.translate(-cx, -cy).unwrap();
+    cr.translate(-cx, -cy);
 
     cr.set_line_width(4.0 / scale);
     cr.set_line_cap(cairo::LineCap::Round);
@@ -124,8 +124,8 @@ fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height
 
     // Draw stroke gradient (violet to pink)
     let pat = cairo::LinearGradient::new(min_x, min_y, max_x, max_y);
-    pat.add_color_stop_rgba(0.0, 0.49, 0.27, 0.90, 0.9).unwrap();
-    pat.add_color_stop_rgba(1.0, 0.98, 0.72, 0.80, 0.9).unwrap();
+    pat.add_color_stop_rgba(0.0, 0.49, 0.27, 0.90, 0.9);
+    pat.add_color_stop_rgba(1.0, 0.98, 0.72, 0.80, 0.9);
     cr.set_source(&pat).unwrap();
 
     cr.move_to(points[0].x, points[0].y);
@@ -136,8 +136,8 @@ fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height
 
     // Draw end indicator
     let end = points.last().unwrap();
-    cr.set_source_rgba(0.49, 0.27, 0.90, 1.0).unwrap();
-    cr.arc(end.x, end.y, 5.0 / scale, 0.0, 2.0 * std::f64::consts::PI).unwrap();
+    cr.set_source_rgba(0.49, 0.27, 0.90, 1.0);
+    cr.arc(end.x, end.y, 5.0 / scale, 0.0, 2.0 * std::f64::consts::PI);
     cr.fill().unwrap();
 
     cr.restore().unwrap();
