@@ -362,6 +362,25 @@ static int file_copy(const char *from, const char *to) {
 }
 
 void configuration_save_to_file(Configuration *conf, char *filename) {
+    if (filename) {
+        char *last_slash = strrchr(filename, '/');
+        if (last_slash) {
+            size_t dir_len = last_slash - filename;
+            char *dir_path = malloc(dir_len + 1);
+            if (dir_path) {
+                strncpy(dir_path, filename, dir_len);
+                dir_path[dir_len] = '\0';
+                struct stat st;
+                if (stat(dir_path, &st) != 0) {
+                    if (mkdir(dir_path, 0700) != 0 && errno != EEXIST) {
+                        fprintf(stderr, "Warning: Failed to create directory '%s': %s\n", dir_path, strerror(errno));
+                    }
+                }
+                free(dir_path);
+            }
+        }
+    }
+
     FILE *f = fopen(filename, "w");
     if (!f) {
         perror("Failed to open config for writing");
