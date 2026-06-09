@@ -434,6 +434,36 @@ fn reload_daemon() {
     }
 }
 
+fn get_autostart_file_path() -> Option<std::path::PathBuf> {
+    std::env::var("HOME").ok().map(|home| {
+        std::path::PathBuf::from(home)
+            .join(".config")
+            .join("autostart")
+            .join("mygestures.desktop")
+    })
+}
+
+fn set_autostart_enabled(enabled: bool) {
+    if let Some(path) = get_autostart_file_path() {
+        if enabled {
+            if let Some(parent) = path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            let content = "[Desktop Entry]\n\
+                           Type=Application\n\
+                           Name=MyGestures Daemon\n\
+                           Comment=Gesture recognition daemon\n\
+                           Exec=mygestures\n\
+                           Icon=mygestures\n\
+                           Terminal=false\n\
+                           X-GNOME-Autostart-enabled=true\n";
+            let _ = std::fs::write(&path, content);
+        } else if path.exists() {
+            let _ = std::fs::remove_file(&path);
+        }
+    }
+}
+
 fn get_action_category_icon(action: &ActionType) -> (&'static str, &'static str) {
     match action {
         ActionType::Execute(_) => ("utilities-terminal-symbolic", "icon-bg-purple"),
@@ -1113,8 +1143,10 @@ fn build_ui(app: &gtk::Application) {
     let handler_id = state.borrow().daemon_switch.connect_state_set(move |_, state| {
         if state {
             start_daemon();
+            set_autostart_enabled(true);
         } else {
             stop_daemon();
+            set_autostart_enabled(false);
         }
         
         let state_borrow = state_clone4.borrow();
