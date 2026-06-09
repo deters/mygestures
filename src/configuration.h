@@ -37,6 +37,7 @@ typedef struct user_configuration_ {
 
 	struct gesture_ ** gesture_list;
 	int gesture_count;
+	int parsing_user_config;
 } Configuration;
 
 typedef struct action_ {
@@ -49,11 +50,15 @@ typedef struct gesture_ {
 	Movement *movement;
 	Action ** action_list;
 	int action_count;
+	int is_custom;
+	int is_modified;
+	int is_deleted;
 } Gesture;
 
 Configuration * configuration_new();
 
 Gesture * configuration_create_gesture(Configuration * self, char * gesture_name, char * gesture_movement_or_stroke);
+Gesture * configuration_find_gesture_by_name(Configuration * self, const char * gesture_name);
 
 Movement * configuration_create_movement(	Configuration * self,
 											char *movement_name,

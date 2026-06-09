@@ -542,8 +542,13 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
         }
         editor->gesture->action_count = 0;
         configuration_add_action_from_string(editor->gesture, full_action);
+        if (!editor->gesture->is_custom) {
+            editor->gesture->is_modified = 1;
+            editor->gesture->is_deleted = 0;
+        }
     } else {
         Gesture *new_g = configuration_create_gesture(editor->app->config, (char*)name, editor->custom_expression ? editor->custom_expression : "0,0 0,0");
+        new_g->is_custom = 1;
         configuration_add_action_from_string(new_g, full_action);
     }
     free(full_action);
@@ -1235,24 +1240,34 @@ static void on_gesture_delete_clicked(GtkWidget *widget, gpointer user_data) {
     }
     if (found != -1) {
         Gesture *del_g = conf->gesture_list[found];
-        if (del_g->name) free(del_g->name);
-        for (int j = 0; j < del_g->action_count; j++) {
-            if (del_g->action_list[j]->original_str) free(del_g->action_list[j]->original_str);
-            free(del_g->action_list[j]);
-        }
-        free(del_g->action_list);
-        if (del_g->movement) {
-            if (del_g->movement->name) free(del_g->movement->name);
-            if (del_g->movement->expression) free(del_g->movement->expression);
-            if (del_g->movement->points) free(del_g->movement->points);
-            free(del_g->movement);
-        }
-        free(del_g);
+        if (!del_g->is_custom) {
+            del_g->is_deleted = 1;
+            for (int j = 0; j < del_g->action_count; j++) {
+                if (del_g->action_list[j]->original_str) free(del_g->action_list[j]->original_str);
+                free(del_g->action_list[j]);
+            }
+            del_g->action_count = 0;
+            configuration_create_action(del_g, ACTION_ABORT, strdup(""));
+        } else {
+            if (del_g->name) free(del_g->name);
+            for (int j = 0; j < del_g->action_count; j++) {
+                if (del_g->action_list[j]->original_str) free(del_g->action_list[j]->original_str);
+                free(del_g->action_list[j]);
+            }
+            free(del_g->action_list);
+            if (del_g->movement) {
+                if (del_g->movement->name) free(del_g->movement->name);
+                if (del_g->movement->expression) free(del_g->movement->expression);
+                if (del_g->movement->points) free(del_g->movement->points);
+                free(del_g->movement);
+            }
+            free(del_g);
 
-        for (int i = found; i < conf->gesture_count - 1; i++) {
-            conf->gesture_list[i] = conf->gesture_list[i+1];
+            for (int i = found; i < conf->gesture_count - 1; i++) {
+                conf->gesture_list[i] = conf->gesture_list[i+1];
+            }
+            conf->gesture_count--;
         }
-        conf->gesture_count--;
     }
     refresh_gesture_list(gestos);
 }
@@ -1358,6 +1373,7 @@ static void refresh_gesture_list(GestosApp *gestos) {
 
     for (int i = 0; i < gestos->config->gesture_count; i++) {
         Gesture *g = gestos->config->gesture_list[i];
+        if (g->is_deleted) continue;
         if (search_text && strlen(search_text) > 0) {
             if (!g_strrstr(g->name, search_text)) continue;
         }

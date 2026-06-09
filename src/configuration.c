@@ -255,6 +255,19 @@ Gesture * configuration_create_gesture(Configuration * self, char * gesture_name
 	return ans;
 }
 
+Gesture * configuration_find_gesture_by_name(Configuration * self, const char * gesture_name) {
+	assert(self);
+	assert(gesture_name);
+
+	for (int i = 0; i < self->gesture_count; i++) {
+		Gesture * g = self->gesture_list[i];
+		if (g->name && strcasecmp(gesture_name, g->name) == 0) {
+			return g;
+		}
+	}
+	return NULL;
+}
+
 void configuration_add_action_from_string(Gesture * self, const char * action_str) {
 	assert(self);
 	assert(action_str);
@@ -347,6 +360,9 @@ void configuration_add_action_from_string(Gesture * self, const char * action_st
 		id = ACTION_SCREENSHOT_AREA;
 	} else if (strcasecmp(action_name, "gnome") == 0) {
 		id = ACTION_GNOME;
+	} else if (strcasecmp(action_name, "disabled") == 0) {
+		id = ACTION_ABORT;
+		self->is_deleted = 1;
 	} else {
 		fprintf(stderr, "Warning: unknown action '%s' in gesture '%s'\n", action_name, self->name);
 		free(copy);
@@ -444,7 +460,7 @@ Gesture * match_gesture(Configuration * self, const Point2D * captured_points, i
 	
 	for (int g = 0; g < self->gesture_count; g++) {
 		Gesture *gest = self->gesture_list[g];
-		if (!gest || !gest->movement || gest->movement->point_count < 2) continue;
+		if (!gest || gest->is_deleted || !gest->movement || gest->movement->point_count < 2) continue;
 		
 		// Vectorize the template path
 		Point2D *temp_vector = resample_path(gest->movement->points, gest->movement->point_count, N);
