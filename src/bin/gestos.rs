@@ -7,6 +7,7 @@ use gtk::{cairo, glib, gdk, gio};
 use mygestures::config::{Configuration, Gesture, ActionType};
 use mygestures::protractor::Point2D;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct EditorActionOption {
     category: usize,
