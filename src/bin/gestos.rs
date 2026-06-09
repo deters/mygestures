@@ -783,7 +783,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let option_refs: Vec<&str> = option_names.iter().map(|s| s.as_str()).collect();
     let action_model = gtk::StringList::new(&option_refs);
 
-    let action_dropdown = gtk::DropDown::new(Some(&action_model), None::<&gtk::Expression>);
+    let action_dropdown = gtk::DropDown::new(Some(action_model), None::<&gtk::Expression>);
     action_dropdown.set_enable_search(true);
     main_box.append(&action_dropdown);
 
