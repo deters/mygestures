@@ -43,7 +43,7 @@ typedef struct {
     char *custom_expression;
 } GestureEditor;
 
-static void refresh_gesture_list(GestosApp *gestos, gboolean restore_scroll);
+static void refresh_gesture_list(GestosApp *gestos);
 static gboolean is_daemon_running(void);
 static void start_daemon(void);
 static void stop_daemon(void);
@@ -546,13 +546,35 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
             editor->gesture->is_modified = 1;
             editor->gesture->is_deleted = 0;
         }
+        // Update in-place in list box row
+        GtkWidget *row = gtk_widget_get_first_child(editor->app->main_list);
+        GtkWidget *found_row = NULL;
+        while (row) {
+            Gesture *row_g = g_object_get_data(G_OBJECT(row), "gesture-ptr");
+            if (row_g == editor->gesture) {
+                found_row = row;
+                break;
+            }
+            row = gtk_widget_get_next_sibling(row);
+        }
+        if (found_row) {
+            gtk_list_box_row_set_child(GTK_LIST_BOX_ROW(found_row), NULL);
+            GtkWidget *new_content = create_gesture_row_content(editor->app, editor->gesture);
+            gtk_list_box_row_set_child(GTK_LIST_BOX_ROW(found_row), new_content);
+        }
     } else {
         Gesture *new_g = configuration_create_gesture(editor->app->config, (char*)name, editor->custom_expression ? editor->custom_expression : "0,0 0,0");
         new_g->is_custom = 1;
         configuration_add_action_from_string(new_g, full_action);
+        
+        const char *search_text = gtk_editable_get_text(GTK_EDITABLE(editor->app->search_entry));
+        if (search_text && strlen(search_text) > 0) {
+            refresh_gesture_list(editor->app);
+        } else {
+            add_gesture_row(editor->app, new_g);
+        }
     }
     free(full_action);
-    refresh_gesture_list(editor->app, TRUE);
 
     char *filename = configuration_get_default_filename();
     if (filename) {
@@ -1269,7 +1291,10 @@ static void on_gesture_delete_clicked(GtkWidget *widget, gpointer user_data) {
             conf->gesture_count--;
         }
     }
-    refresh_gesture_list(gestos, TRUE);
+    GtkWidget *row = gtk_widget_get_ancestor(widget, GTK_TYPE_LIST_BOX_ROW);
+    if (row) {
+        gtk_list_box_remove(GTK_LIST_BOX(gestos->main_list), row);
+    }
 }
 
 static char* get_full_action_str(Action *a) {
@@ -1289,11 +1314,7 @@ static char* get_full_action_str(Action *a) {
 
 /* --- MAIN UI LOGIC --- */
 
-static void add_gesture_row(GestosApp *gestos, Gesture *gesture) {
-    GtkWidget *row = gtk_list_box_row_new();
-    gtk_widget_add_css_class(row, "gesture-row");
-    g_object_set_data(G_OBJECT(row), "gesture-ptr", gesture);
-    
+static GtkWidget *create_gesture_row_content(GestosApp *gestos, Gesture *gesture) {
     GtkWidget *main_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 16);
     gtk_widget_set_margin_start(main_hbox, 16);
     gtk_widget_set_margin_end(main_hbox, 16);
@@ -1357,37 +1378,20 @@ static void add_gesture_row(GestosApp *gestos, Gesture *gesture) {
     g_signal_connect(del_btn, "clicked", G_CALLBACK(on_gesture_delete_clicked), gesture);
     gtk_box_append(GTK_BOX(main_hbox), del_btn);
 
+    return main_hbox;
+}
+
+static void add_gesture_row(GestosApp *gestos, Gesture *gesture) {
+    GtkWidget *row = gtk_list_box_row_new();
+    gtk_widget_add_css_class(row, "gesture-row");
+    g_object_set_data(G_OBJECT(row), "gesture-ptr", gesture);
+    
+    GtkWidget *main_hbox = create_gesture_row_content(gestos, gesture);
     gtk_list_box_row_set_child(GTK_LIST_BOX_ROW(row), main_hbox);
     gtk_list_box_append(GTK_LIST_BOX(gestos->main_list), row);
 }
 
-struct ScrollRestoreData {
-    GtkAdjustment *vadj;
-    double target_value;
-};
-
-static gboolean restore_scroll_cb(gpointer user_data) {
-    struct ScrollRestoreData *data = (struct ScrollRestoreData *)user_data;
-    gtk_adjustment_set_value(data->vadj, data->target_value);
-    g_object_unref(data->vadj);
-    free(data);
-    return G_SOURCE_REMOVE;
-}
-
-static void refresh_gesture_list(GestosApp *gestos, gboolean restore_scroll) {
-    GtkAdjustment *vadj = NULL;
-    double scroll_value = 0.0;
-
-    if (restore_scroll) {
-        GtkWidget *scrolled = gtk_widget_get_ancestor(gestos->main_list, GTK_TYPE_SCROLLED_WINDOW);
-        if (scrolled) {
-            vadj = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(scrolled));
-            if (vadj) {
-                scroll_value = gtk_adjustment_get_value(vadj);
-            }
-        }
-    }
-
+static void refresh_gesture_list(GestosApp *gestos) {
     GtkWidget *child = gtk_widget_get_first_child(gestos->main_list);
     while (child) {
         GtkWidget *next = gtk_widget_get_next_sibling(child);
@@ -1405,17 +1409,10 @@ static void refresh_gesture_list(GestosApp *gestos, gboolean restore_scroll) {
         }
         add_gesture_row(gestos, g);
     }
-
-    if (restore_scroll && vadj && scroll_value > 0.0) {
-        struct ScrollRestoreData *data = malloc(sizeof(struct ScrollRestoreData));
-        data->vadj = g_object_ref(vadj);
-        data->target_value = scroll_value;
-        g_timeout_add(50, restore_scroll_cb, data);
-    }
 }
 
 static void on_search_changed(GtkSearchEntry *entry, gpointer user_data) {
-    refresh_gesture_list((GestosApp *)user_data, FALSE);
+    refresh_gesture_list((GestosApp *)user_data);
 }
 
 static void on_save_config_clicked(GtkWidget *widget, gpointer user_data) {
@@ -1586,7 +1583,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
     /* LOAD */
     gestos->config = configuration_new();
     configuration_load_from_defaults(gestos->config, 0);
-    refresh_gesture_list(gestos, FALSE);
+    refresh_gesture_list(gestos);
 
     GtkCssProvider *provider = gtk_css_provider_new();
     gtk_css_provider_load_from_string(provider,
