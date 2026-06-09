@@ -442,7 +442,7 @@ static void gnome_workspace_left(void) { wayland_execute_desktop_shortcut("switc
 static void gnome_workspace_right(void) { wayland_execute_desktop_shortcut("switch-to-workspace-right", "Control_L+Alt_L+Right"); }
 static void gnome_workspace_up(void) { wayland_execute_desktop_shortcut("switch-to-workspace-up", "Control_L+Alt_L+Up"); }
 static void gnome_workspace_down(void) { wayland_execute_desktop_shortcut("switch-to-workspace-down", "Control_L+Alt_L+Down"); }
-static void gnome_show_overview(void) { wayland_execute_desktop_shortcut("panel-main-menu", "Super_L"); }
+static void gnome_show_overview(void) { wayland_execute_desktop_shortcut("toggle-overview", "Super_L"); }
 static void gnome_show_app_grid(void) { wayland_execute_desktop_shortcut("toggle-application-view", "Super_L+a"); }
 static void gnome_toggle_fullscreen(void) { wayland_execute_desktop_shortcut("toggle-fullscreen", "F11"); }
 static void gnome_show_desktop(void) { wayland_execute_desktop_shortcut("show-desktop", "Super_L+d"); }
