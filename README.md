@@ -11,29 +11,36 @@ Installing from source:
 
 #### Ubuntu / Debian:
 ```bash
-sudo apt install pkg-config libgtk-4-dev libevdev-dev git
+sudo apt install pkg-config libgtk-4-dev libevdev-dev git meson ninja-build cargo
 ```
 
 #### Fedora:
 ```bash
-sudo dnf install pkgconf-pkg-config gtk4-devel libevdev-devel git
+sudo dnf install pkgconf-pkg-config gtk4-devel libevdev-devel git meson ninja-build cargo
 ```
 
 ### Build and Install:
 
+You can compile and install `mygestures` either using the compatibility wrapper `Makefile` or directly using `meson`.
+
+#### Option A: Using the Makefile wrapper (Recommended)
 ```bash
 git clone https://github.com/deters/mygestures.git
 cd mygestures/
-cargo build --release
+make
+sudo make install
 ```
 
-After compilation, copy the binaries and udev rules to your system path:
-
+#### Option B: Using Meson directly
 ```bash
-sudo cp target/release/mygestures target/release/gestos /usr/local/bin/
-sudo cp 99-mygestures.rules /etc/udev/rules.d/
-sudo udevadm control --reload-rules && sudo udevadm trigger
+git clone https://github.com/deters/mygestures.git
+cd mygestures/
+meson setup build
+meson compile -C build
+sudo meson install -C build
 ```
+
+The installation process automatically installs the `mygestures` and `gestos` binaries, installs the udev rules, reloads the udev system, and adds your user to the `input` group if necessary.
 
 Usage:
 ------
