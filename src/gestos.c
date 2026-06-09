@@ -1339,13 +1339,11 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     g_signal_connect(factory, "setup", G_CALLBACK(on_dropdown_setup), NULL);
     g_signal_connect(factory, "bind", G_CALLBACK(on_dropdown_bind), editor);
     gtk_drop_down_set_factory(GTK_DROP_DOWN(editor->action_combo), factory);
-    g_object_unref(factory);
 
     GtkListItemFactory *list_factory = gtk_signal_list_item_factory_new();
     g_signal_connect(list_factory, "setup", G_CALLBACK(on_dropdown_setup), NULL);
     g_signal_connect(list_factory, "bind", G_CALLBACK(on_dropdown_bind), editor);
     gtk_drop_down_set_list_factory(GTK_DROP_DOWN(editor->action_combo), list_factory);
-    g_object_unref(list_factory);
 
     g_signal_connect(editor->action_combo, "notify::selected", G_CALLBACK(on_action_changed), editor);
     on_action_changed(G_OBJECT(editor->action_combo), NULL, editor);
