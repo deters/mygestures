@@ -3,9 +3,368 @@ use std::rc::Rc;
 use std::process::Command;
 use gtk4 as gtk;
 use gtk::prelude::*;
-use gtk::{cairo, glib, gdk};
+use gtk::{cairo, glib, gdk, gio};
 use mygestures::config::{Configuration, Gesture, ActionType};
 use mygestures::protractor::Point2D;
+
+#[derive(Debug, Clone)]
+struct EditorActionOption {
+    category: usize,
+    action_type: ActionType,
+    name: String,
+    tooltip: String,
+}
+
+const CATEGORY_NAMES: &[&str] = &[
+    "Input Emulation",
+    "Window Management",
+    "Workspaces & Overview",
+    "Media & Audio",
+    "System & Settings",
+    "Applications",
+    "GNOME Actions (Native)",
+    "Other/Internal",
+];
+
+fn action_matches(a: &ActionType, opt: &EditorActionOption) -> bool {
+    match (a, &opt.action_type) {
+        (ActionType::Gnome(k1), ActionType::Gnome(k2)) => k1 == k2,
+        (ActionType::Execute(cmd1), ActionType::Execute(cmd2)) => {
+            if opt.category == 6 {
+                // Custom GNOME shortcut command must match exactly
+                cmd1 == cmd2
+            } else {
+                // Generic execute matches any command
+                opt.category == 7
+            }
+        }
+        (ActionType::Keypress(_), ActionType::Keypress(_)) => opt.category == 0,
+        (ActionType::Click(_), ActionType::Click(_)) => opt.category == 0,
+        (at1, at2) => at1 == at2,
+    }
+}
+
+fn get_static_action_options() -> Vec<EditorActionOption> {
+    vec![
+        // Input Emulation (0)
+        EditorActionOption {
+            category: 0,
+            action_type: ActionType::Keypress(String::new()),
+            name: "Keypress Shortcut".to_string(),
+            tooltip: "Simulate keys like Control_L+Alt_L+t".to_string(),
+        },
+        EditorActionOption {
+            category: 0,
+            action_type: ActionType::Click(None),
+            name: "Mouse Click".to_string(),
+            tooltip: "Simulate a mouse button click".to_string(),
+        },
+        
+        // Window Management (1)
+        EditorActionOption {
+            category: 1,
+            action_type: ActionType::Kill,
+            name: "Close Window (Kill)".to_string(),
+            tooltip: "Close the active application window".to_string(),
+        },
+        EditorActionOption {
+            category: 1,
+            action_type: ActionType::ToggleMaximized,
+            name: "Toggle Maximized".to_string(),
+            tooltip: "Toggle maximize state of active window".to_string(),
+        },
+        EditorActionOption {
+            category: 1,
+            action_type: ActionType::Maximize,
+            name: "Maximize Window".to_string(),
+            tooltip: "Maximize active window".to_string(),
+        },
+        EditorActionOption {
+            category: 1,
+            action_type: ActionType::Restore,
+            name: "Restore Window".to_string(),
+            tooltip: "Restore window from maximized state".to_string(),
+        },
+        EditorActionOption {
+            category: 1,
+            action_type: ActionType::Iconify,
+            name: "Minimize Window (Iconify)".to_string(),
+            tooltip: "Minimize active window".to_string(),
+        },
+        EditorActionOption {
+            category: 1,
+            action_type: ActionType::Raise,
+            name: "Raise Window".to_string(),
+            tooltip: "Bring window to front".to_string(),
+        },
+        EditorActionOption {
+            category: 1,
+            action_type: ActionType::Lower,
+            name: "Lower Window".to_string(),
+            tooltip: "Send window to back".to_string(),
+        },
+        EditorActionOption {
+            category: 1,
+            action_type: ActionType::ToggleFullscreen,
+            name: "Toggle Fullscreen".to_string(),
+            tooltip: "Toggle fullscreen mode".to_string(),
+        },
+        EditorActionOption {
+            category: 1,
+            action_type: ActionType::ShowDesktop,
+            name: "Show Desktop".to_string(),
+            tooltip: "Minimize all windows or toggle show desktop".to_string(),
+        },
+
+        // Workspaces & Overview (2)
+        EditorActionOption {
+            category: 2,
+            action_type: ActionType::WorkspaceLeft,
+            name: "Workspace Left".to_string(),
+            tooltip: "Switch to workspace on the left".to_string(),
+        },
+        EditorActionOption {
+            category: 2,
+            action_type: ActionType::WorkspaceRight,
+            name: "Workspace Right".to_string(),
+            tooltip: "Switch to workspace on the right".to_string(),
+        },
+        EditorActionOption {
+            category: 2,
+            action_type: ActionType::WorkspaceUp,
+            name: "Workspace Up".to_string(),
+            tooltip: "Workspace Up".to_string(),
+        },
+        EditorActionOption {
+            category: 2,
+            action_type: ActionType::WorkspaceDown,
+            name: "Workspace Down".to_string(),
+            tooltip: "Workspace Down".to_string(),
+        },
+        EditorActionOption {
+            category: 2,
+            action_type: ActionType::ShowOverview,
+            name: "Show Overview".to_string(),
+            tooltip: "Toggle workspace overview".to_string(),
+        },
+        EditorActionOption {
+            category: 2,
+            action_type: ActionType::ShowAppGrid,
+            name: "Show App Grid".to_string(),
+            tooltip: "Toggle applications menu/grid".to_string(),
+        },
+
+        // Media & Audio (3)
+        EditorActionOption {
+            category: 3,
+            action_type: ActionType::VolumeUp,
+            name: "Volume Up".to_string(),
+            tooltip: "Increase audio volume".to_string(),
+        },
+        EditorActionOption {
+            category: 3,
+            action_type: ActionType::VolumeDown,
+            name: "Volume Down".to_string(),
+            tooltip: "Decrease audio volume".to_string(),
+        },
+        EditorActionOption {
+            category: 3,
+            action_type: ActionType::VolumeMute,
+            name: "Volume Mute".to_string(),
+            tooltip: "Mute/unmute audio volume".to_string(),
+        },
+        EditorActionOption {
+            category: 3,
+            action_type: ActionType::MediaPlay,
+            name: "Play/Pause Media".to_string(),
+            tooltip: "Toggle playback of media players".to_string(),
+        },
+        EditorActionOption {
+            category: 3,
+            action_type: ActionType::MediaNext,
+            name: "Next Track".to_string(),
+            tooltip: "Skip to next track".to_string(),
+        },
+        EditorActionOption {
+            category: 3,
+            action_type: ActionType::MediaPrev,
+            name: "Previous Track".to_string(),
+            tooltip: "Skip to previous track".to_string(),
+        },
+
+        // System & Settings (4)
+        EditorActionOption {
+            category: 4,
+            action_type: ActionType::LockScreen,
+            name: "Lock Screen".to_string(),
+            tooltip: "Lock the computer screen".to_string(),
+        },
+        EditorActionOption {
+            category: 4,
+            action_type: ActionType::Terminal,
+            name: "Open Terminal".to_string(),
+            tooltip: "Launch default terminal emulator".to_string(),
+        },
+        EditorActionOption {
+            category: 4,
+            action_type: ActionType::ControlCenter,
+            name: "Control Center".to_string(),
+            tooltip: "Launch system settings panel".to_string(),
+        },
+        EditorActionOption {
+            category: 4,
+            action_type: ActionType::Logout,
+            name: "Log Out".to_string(),
+            tooltip: "Log out of session".to_string(),
+        },
+        EditorActionOption {
+            category: 4,
+            action_type: ActionType::Screenshot,
+            name: "Take Screenshot".to_string(),
+            tooltip: "Take screen capture".to_string(),
+        },
+        EditorActionOption {
+            category: 4,
+            action_type: ActionType::ScreenshotWindow,
+            name: "Screenshot Window".to_string(),
+            tooltip: "Take screenshot of active window".to_string(),
+        },
+        EditorActionOption {
+            category: 4,
+            action_type: ActionType::ScreenshotArea,
+            name: "Screenshot Area".to_string(),
+            tooltip: "Take screenshot of selection area".to_string(),
+        },
+
+        // Applications (5)
+        EditorActionOption {
+            category: 5,
+            action_type: ActionType::Www,
+            name: "Web Browser".to_string(),
+            tooltip: "Launch web browser".to_string(),
+        },
+        EditorActionOption {
+            category: 5,
+            action_type: ActionType::Home,
+            name: "Home Folder".to_string(),
+            tooltip: "Open file manager in home directory".to_string(),
+        },
+        EditorActionOption {
+            category: 5,
+            action_type: ActionType::Email,
+            name: "Email Client".to_string(),
+            tooltip: "Launch email reader".to_string(),
+        },
+        EditorActionOption {
+            category: 5,
+            action_type: ActionType::Search,
+            name: "System Search".to_string(),
+            tooltip: "Open system search tool".to_string(),
+        },
+        EditorActionOption {
+            category: 5,
+            action_type: ActionType::Calculator,
+            name: "Calculator".to_string(),
+            tooltip: "Open calculator application".to_string(),
+        },
+
+        // Other/Internal (7)
+        EditorActionOption {
+            category: 7,
+            action_type: ActionType::Execute(String::new()),
+            name: "Run Command (Execute)".to_string(),
+            tooltip: "Run custom shell command".to_string(),
+        },
+        EditorActionOption {
+            category: 7,
+            action_type: ActionType::Abort,
+            name: "Abort Gesture".to_string(),
+            tooltip: "Ignore gesture matching".to_string(),
+        },
+    ]
+}
+
+fn fetch_gnome_action_options() -> Vec<EditorActionOption> {
+    let mut options = Vec::new();
+
+    let schemas = vec![
+        "org.gnome.desktop.wm.keybindings",
+        "org.gnome.settings-daemon.plugins.media-keys",
+        "org.gnome.shell.keybindings",
+    ];
+
+    let source = match gio::SettingsSchemaSource::default() {
+        Some(s) => s,
+        None => return options,
+    };
+
+    for schema_id in schemas {
+        let schema = match source.lookup(schema_id, true) {
+            Some(s) => s,
+            None => continue,
+        };
+
+        let settings = match gio::Settings::new(schema_id) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+
+        for key in schema.list_keys() {
+            let skey = schema.key(&key);
+            let summary = skey.summary().map(|s| s.to_string()).unwrap_or_default();
+            if summary.is_empty() {
+                continue;
+            }
+
+            let val = settings.value(&key);
+            let mut accel = String::new();
+            if let Some(s) = val.get::<String>() {
+                accel = s;
+            } else if let Some(arr) = val.get::<Vec<String>>() {
+                if !arr.is_empty() {
+                    accel = arr[0].clone();
+                }
+            }
+
+            let tooltip = if !accel.is_empty() && accel != "disabled" {
+                format!("Schema key: {} (Shortcut: {})", key, accel)
+            } else {
+                format!("Schema key: {} (No shortcut configured)", key)
+            };
+
+            options.push(EditorActionOption {
+                category: 6, // CAT_GNOME
+                action_type: ActionType::Gnome(key.to_string()),
+                name: summary,
+                tooltip,
+            });
+        }
+
+        // Handle custom keybindings
+        if schema_id == "org.gnome.settings-daemon.plugins.media-keys" {
+            if schema.key("custom-keybindings").is_some() {
+                let paths: Vec<String> = settings.get("custom-keybindings");
+                for path in paths {
+                    if let Ok(custom) = gio::Settings::new_with_path("org.gnome.settings-daemon.plugins.media-keys.custom-keybinding", &path) {
+                        let c_name: String = custom.get("name");
+                        let c_cmd: String = custom.get("command");
+
+                        if !c_name.is_empty() {
+                            options.push(EditorActionOption {
+                                category: 6, // CAT_GNOME
+                                action_type: ActionType::Execute(c_cmd.clone()),
+                                name: c_name,
+                                tooltip: format!("Custom GNOME shortcut: {}", c_cmd),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    options
+}
 
 struct AppState {
     config: Configuration,
@@ -369,73 +728,157 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     canvas_frame.set_child(Some(&canvas));
     main_box.append(&canvas_frame);
 
-    // Action config dropdown and text entries
-    let action_label = gtk::Label::new(Some("Action Mapping"));
+    // Action config dropdowns and text entries
+    let category_label = gtk::Label::new(Some("Category"));
+    category_label.set_halign(gtk::Align::Start);
+    category_label.add_css_class("status-label");
+    main_box.append(&category_label);
+
+    let category_dropdown = gtk::DropDown::from_strings(CATEGORY_NAMES);
+    main_box.append(&category_dropdown);
+
+    let action_label = gtk::Label::new(Some("Action"));
     action_label.set_halign(gtk::Align::Start);
     action_label.add_css_class("status-label");
     main_box.append(&action_label);
 
-    let action_types = vec![
-        "Keypress Shortcut",
-        "Run Command (Execute)",
-        "GNOME Action (Native)",
-        "Workspace Left",
-        "Workspace Right",
-        "Workspace Up",
-        "Workspace Down",
-        "Close Window (Kill)",
-        "Minimize Window (Iconify)",
-        "Volume Up",
-        "Volume Down",
-        "Volume Mute",
-    ];
-
-    let action_dropdown = gtk::DropDown::from_strings(&action_types);
+    let action_dropdown = gtk::DropDown::new(None::<&gio::ListModel>, None::<&gtk::Expression>);
     main_box.append(&action_dropdown);
 
     let action_details_entry = gtk::Entry::new();
-    action_details_entry.set_placeholder_text(Some("e.g. Control_L+Alt_L+t, firefox, or minimize"));
     main_box.append(&action_details_entry);
 
-    // Setup initial editor values if editing an existing gesture
+    // Build options list
+    let mut all_options = get_static_action_options();
+    all_options.extend(fetch_gnome_action_options());
+
+    // Share current options filtered for category
+    let current_options: Rc<RefCell<Vec<EditorActionOption>>> = Rc::new(RefCell::new(Vec::new()));
+
+    // Find initial matching option
+    let mut selected_cat = 0;
+    let mut selected_act = 0;
+
     if let Some(ref g) = target_gesture {
         if !g.actions.is_empty() {
-            match &g.actions[0] {
-                ActionType::Keypress(combo) => {
-                    action_dropdown.set_selected(0);
-                    action_details_entry.set_text(combo);
+            let a = &g.actions[0];
+            if let Some(found_opt) = all_options.iter().find(|opt| action_matches(a, opt)) {
+                selected_cat = found_opt.category;
+
+                // Get the filtered options for this category
+                let filtered: Vec<EditorActionOption> = all_options.iter()
+                    .filter(|opt| opt.category == selected_cat)
+                    .cloned()
+                    .collect();
+
+                // Find index of option within the filtered list
+                if let Some(act_idx) = filtered.iter().position(|opt| action_matches(a, opt)) {
+                    selected_act = act_idx;
                 }
-                ActionType::Execute(cmd) => {
-                    action_dropdown.set_selected(1);
-                    action_details_entry.set_text(cmd);
+
+                // If the action contains input text details, populate it
+                match a {
+                    ActionType::Keypress(combo) => {
+                        action_details_entry.set_text(combo);
+                    }
+                    ActionType::Execute(cmd) => {
+                        if selected_cat == 7 {
+                            action_details_entry.set_text(cmd);
+                        }
+                    }
+                    _ => {}
                 }
-                ActionType::Gnome(key) => {
-                    action_dropdown.set_selected(2);
-                    action_details_entry.set_text(key);
-                }
-                ActionType::WorkspaceLeft => action_dropdown.set_selected(3),
-                ActionType::WorkspaceRight => action_dropdown.set_selected(4),
-                ActionType::WorkspaceUp => action_dropdown.set_selected(5),
-                ActionType::WorkspaceDown => action_dropdown.set_selected(6),
-                ActionType::Kill => action_dropdown.set_selected(7),
-                ActionType::Iconify => action_dropdown.set_selected(8),
-                ActionType::VolumeUp => action_dropdown.set_selected(9),
-                ActionType::VolumeDown => action_dropdown.set_selected(10),
-                ActionType::VolumeMute => action_dropdown.set_selected(11),
-                _ => {}
             }
         }
     }
 
-    // Connect dropdown selection to details field visibility
-    let entry_clone = action_details_entry.clone();
-    action_dropdown.connect_selected_notify(move |dd| {
-        let sel = dd.selected();
-        entry_clone.set_visible(sel == 0 || sel == 1 || sel == 2);
+    // Filter options for initial category and set model/selections
+    let initial_filtered: Vec<EditorActionOption> = all_options.iter()
+        .filter(|opt| opt.category == selected_cat)
+        .cloned()
+        .collect();
+
+    let action_names: Vec<&str> = initial_filtered.iter().map(|opt| opt.name.as_str()).collect();
+    let action_model = gtk::StringList::new(&action_names);
+    action_dropdown.set_model(Some(&action_model));
+
+    *current_options.borrow_mut() = initial_filtered.clone();
+
+    category_dropdown.set_selected(selected_cat as u32);
+    action_dropdown.set_selected(selected_act as u32);
+
+    // Initialize details entry visibility and placeholder
+    if selected_act < initial_filtered.len() {
+        let opt = &initial_filtered[selected_act];
+        let show_entry = match &opt.action_type {
+            ActionType::Keypress(_) => true,
+            ActionType::Execute(_) if opt.category == 7 => true,
+            _ => false,
+        };
+        action_details_entry.set_visible(show_entry);
+        match &opt.action_type {
+            ActionType::Keypress(_) => {
+                action_details_entry.set_placeholder_text(Some("e.g. Control_L+Alt_L+t"));
+            }
+            ActionType::Execute(_) => {
+                action_details_entry.set_placeholder_text(Some("e.g. firefox"));
+            }
+            _ => {}
+        }
+    }
+
+    // Connect category changed signal
+    let all_options_clone = all_options.clone();
+    let current_opts_clone = Rc::clone(&current_options);
+    let action_dropdown_clone = action_dropdown.clone();
+
+    category_dropdown.connect_selected_notify(move |cat_dd| {
+        let cat_idx = cat_dd.selected() as usize;
+        let filtered: Vec<EditorActionOption> = all_options_clone.iter()
+            .filter(|opt| opt.category == cat_idx)
+            .cloned()
+            .collect();
+
+        let action_names: Vec<&str> = filtered.iter().map(|opt| opt.name.as_str()).collect();
+        let action_model = gtk::StringList::new(&action_names);
+        action_dropdown_clone.set_model(Some(&action_model));
+
+        *current_opts_clone.borrow_mut() = filtered;
+        action_dropdown_clone.set_selected(0);
     });
-    // Trigger initial notify
-    let sel = action_dropdown.selected();
-    action_details_entry.set_visible(sel == 0 || sel == 1 || sel == 2);
+
+    // Connect action changed signal
+    let current_opts_clone2 = Rc::clone(&current_options);
+    let entry_clone2 = action_details_entry.clone();
+
+    action_dropdown.connect_selected_notify(move |act_dd| {
+        let act_idx = act_dd.selected();
+        if act_idx == gtk::INVALID_LIST_POSITION {
+            return;
+        }
+        let act_idx = act_idx as usize;
+
+        let opts = current_opts_clone2.borrow();
+        if act_idx < opts.len() {
+            let opt = &opts[act_idx];
+            let show_entry = match &opt.action_type {
+                ActionType::Keypress(_) => true,
+                ActionType::Execute(_) if opt.category == 7 => true,
+                _ => false,
+            };
+            entry_clone2.set_visible(show_entry);
+
+            match &opt.action_type {
+                ActionType::Keypress(_) => {
+                    entry_clone2.set_placeholder_text(Some("e.g. Control_L+Alt_L+t"));
+                }
+                ActionType::Execute(_) => {
+                    entry_clone2.set_placeholder_text(Some("e.g. firefox"));
+                }
+                _ => {}
+            }
+        }
+    });
 
     // Save and Cancel buttons
     let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
@@ -455,6 +898,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let is_edit = target_gesture.is_some();
     let dialog_clone2 = dialog.clone();
     
+    let current_opts_save = Rc::clone(&current_options);
     save_btn.connect_clicked(move |_| {
         let name = name_entry.text().to_string();
         if name.trim().is_empty() {
@@ -472,22 +916,23 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             .collect::<Vec<_>>()
             .join(" ");
 
-        let sel_idx = action_dropdown.selected();
+        let act_idx = action_dropdown.selected();
+        if act_idx == gtk::INVALID_LIST_POSITION {
+            return;
+        }
+        let act_idx = act_idx as usize;
+
+        let opts = current_opts_save.borrow();
+        if act_idx >= opts.len() {
+            return;
+        }
+        let opt = &opts[act_idx];
         let detail = action_details_entry.text().to_string();
 
-        let action = match sel_idx {
-            0 => ActionType::Keypress(detail),
-            1 => ActionType::Execute(detail),
-            2 => ActionType::Gnome(detail),
-            3 => ActionType::WorkspaceLeft,
-            4 => ActionType::WorkspaceRight,
-            5 => ActionType::WorkspaceUp,
-            6 => ActionType::WorkspaceDown,
-            7 => ActionType::Kill,
-            8 => ActionType::Iconify,
-            9 => ActionType::VolumeUp,
-            10 => ActionType::VolumeDown,
-            _ => ActionType::VolumeMute,
+        let action = match &opt.action_type {
+            ActionType::Keypress(_) => ActionType::Keypress(detail),
+            ActionType::Execute(_) if opt.category == 7 => ActionType::Execute(detail),
+            other => other.clone(),
         };
 
         let mut state = state_clone.borrow_mut();
