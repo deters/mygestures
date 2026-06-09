@@ -3,7 +3,7 @@
 
 #include "configuration.h"
 
-#define ACTION_COUNT 40
+#define ACTION_COUNT 41
 
 /* Actions */
 enum {
@@ -47,6 +47,7 @@ enum {
 	ACTION_SCREENSHOT,
 	ACTION_SCREENSHOT_WINDOW,
 	ACTION_SCREENSHOT_AREA,
+	ACTION_GNOME,
 	ACTION_LAST
 };
 

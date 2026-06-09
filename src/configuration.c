@@ -345,6 +345,8 @@ void configuration_add_action_from_string(Gesture * self, const char * action_st
 		id = ACTION_SCREENSHOT_WINDOW;
 	} else if (strcasecmp(action_name, "screenshot-area") == 0) {
 		id = ACTION_SCREENSHOT_AREA;
+	} else if (strcasecmp(action_name, "gnome") == 0) {
+		id = ACTION_GNOME;
 	} else {
 		fprintf(stderr, "Warning: unknown action '%s' in gesture '%s'\n", action_name, self->name);
 		free(copy);
@@ -353,6 +355,52 @@ void configuration_add_action_from_string(Gesture * self, const char * action_st
 
 	configuration_create_action(self, id, strdup(value));
 	free(copy);
+}
+
+const char *action_get_prefix(int action_type) {
+	switch (action_type) {
+		case ACTION_ICONIFY: return "iconify";
+		case ACTION_KILL: return "kill";
+		case ACTION_LOWER: return "lower";
+		case ACTION_RAISE: return "raise";
+		case ACTION_MAXIMIZE: return "maximize";
+		case ACTION_RESTORE: return "restore";
+		case ACTION_TOGGLE_MAXIMIZED: return "toggle-maximized";
+		case ACTION_KEYPRESS: return "keypress";
+		case ACTION_EXECUTE: return "exec";
+		case ACTION_WORKSPACE_LEFT: return "workspace-left";
+		case ACTION_WORKSPACE_RIGHT: return "workspace-right";
+		case ACTION_WORKSPACE_UP: return "workspace-up";
+		case ACTION_WORKSPACE_DOWN: return "workspace-down";
+		case ACTION_SHOW_OVERVIEW: return "show-overview";
+		case ACTION_SHOW_APP_GRID: return "show-app-grid";
+		case ACTION_CLICK: return "click";
+		case ACTION_TOGGLE_FULLSCREEN: return "toggle-fullscreen";
+		case ACTION_SHOW_DESKTOP: return "show-desktop";
+		case ACTION_LOCK_SCREEN: return "lock-screen";
+		case ACTION_TERMINAL: return "terminal";
+		case ACTION_VOLUME_UP: return "volume-up";
+		case ACTION_VOLUME_DOWN: return "volume-down";
+		case ACTION_VOLUME_MUTE: return "volume-mute";
+		case ACTION_MEDIA_PLAY: return "media-play";
+		case ACTION_MEDIA_NEXT: return "media-next";
+		case ACTION_MEDIA_PREV: return "media-prev";
+		case ACTION_WWW: return "www";
+		case ACTION_HOME: return "home";
+		case ACTION_EMAIL: return "email";
+		case ACTION_SEARCH: return "search";
+		case ACTION_CALCULATOR: return "calculator";
+		case ACTION_CONTROL_CENTER: return "control-center";
+		case ACTION_LOGOUT: return "logout";
+		case ACTION_SCREENSHOT: return "screenshot";
+		case ACTION_SCREENSHOT_WINDOW: return "screenshot-window";
+		case ACTION_SCREENSHOT_AREA: return "screenshot-area";
+		case ACTION_EXIT_GEST: return "exit-gest";
+		case ACTION_RECONF: return "reconf";
+		case ACTION_ABORT: return "abort";
+		case ACTION_GNOME: return "gnome";
+		default: return "unknown";
+	}
 }
 
 /* alloc an action struct */

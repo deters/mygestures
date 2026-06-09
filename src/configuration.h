@@ -64,6 +64,7 @@ void movement_set_expression(Movement * movement, char * movement_expression);
 Action * configuration_create_action(Gesture * self, int action_type, char * original_str);
 
 void configuration_add_action_from_string(Gesture * self, const char * action_str);
+const char *action_get_prefix(int action_type);
 
 Movement * configuration_find_movement_by_name(Configuration * self, char * movement_name);
 int configuration_get_gestures_count(Configuration * self);

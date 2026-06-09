@@ -320,7 +320,13 @@ void configuration_save_to_file(Configuration *conf, char *filename) {
             fprintf(f, "  \"%s\":\n", g->name);
             fprintf(f, "    move: \"%s\"\n", (g->movement && g->movement->expression) ? g->movement->expression : "");
             if (g->action_count > 0) {
-                fprintf(f, "    do: %s\n", g->action_list[0]->original_str);
+                Action *a = g->action_list[0];
+                const char *prefix = action_get_prefix(a->type);
+                if (a->original_str && strlen(a->original_str) > 0) {
+                    fprintf(f, "    do: %s %s\n", prefix, a->original_str);
+                } else {
+                    fprintf(f, "    do: %s\n", prefix);
+                }
             }
         }
         fprintf(f, "\n");

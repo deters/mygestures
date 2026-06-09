@@ -98,6 +98,7 @@ static ActionType action_types[] = {
     { ACTION_EXIT_GEST, "Exit MyGestures", "exit-gest", "application-exit-symbolic" },
     { ACTION_RECONF, "Reload Configuration", "reconf", "view-refresh-symbolic" },
     { ACTION_ABORT, "Abort Gesture", "abort", "dialog-cancel-symbolic" },
+    { ACTION_GNOME, "GNOME Action", "gnome", "preferences-system-symbolic" },
     { 0, NULL, NULL, NULL }
 };
 
@@ -235,51 +236,17 @@ static void on_gnome_action_row_activated(GtkListBox *list, GtkListBoxRow *row, 
             gtk_drop_down_set_selected(GTK_DROP_DOWN(browser->editor->action_type_combo), 1); /* Execute */
             gtk_editable_set_text(GTK_EDITABLE(browser->editor->action_val_entry), action->command);
         } else {
-            /* Try to map common actions to native types first */
-            int native_id = -1;
-            if (strcmp(action->name, "close") == 0) native_id = ACTION_KILL;
-            else if (strcmp(action->name, "maximize") == 0) native_id = ACTION_MAXIMIZE;
-            else if (strcmp(action->name, "unmaximize") == 0) native_id = ACTION_RESTORE;
-            else if (strcmp(action->name, "minimize") == 0) native_id = ACTION_ICONIFY;
-            else if (strcmp(action->name, "toggle-fullscreen") == 0) native_id = ACTION_TOGGLE_FULLSCREEN;
-            else if (strcmp(action->name, "show-desktop") == 0) native_id = ACTION_SHOW_DESKTOP;
-            else if (strcmp(action->name, "screensaver") == 0) native_id = ACTION_LOCK_SCREEN;
-            else if (strcmp(action->name, "terminal") == 0) native_id = ACTION_TERMINAL;
-            else if (strcmp(action->name, "volume-up") == 0) native_id = ACTION_VOLUME_UP;
-            else if (strcmp(action->name, "volume-down") == 0) native_id = ACTION_VOLUME_DOWN;
-            else if (strcmp(action->name, "volume-mute") == 0) native_id = ACTION_VOLUME_MUTE;
-            else if (strcmp(action->name, "play") == 0) native_id = ACTION_MEDIA_PLAY;
-            else if (strcmp(action->name, "next") == 0) native_id = ACTION_MEDIA_NEXT;
-            else if (strcmp(action->name, "previous") == 0) native_id = ACTION_MEDIA_PREV;
-            else if (strcmp(action->name, "switch-to-workspace-left") == 0) native_id = ACTION_WORKSPACE_LEFT;
-            else if (strcmp(action->name, "switch-to-workspace-right") == 0) native_id = ACTION_WORKSPACE_RIGHT;
-            else if (strcmp(action->name, "switch-to-workspace-up") == 0) native_id = ACTION_WORKSPACE_UP;
-            else if (strcmp(action->name, "switch-to-workspace-down") == 0) native_id = ACTION_WORKSPACE_DOWN;
-            else if (strcmp(action->name, "panel-main-menu") == 0) native_id = ACTION_SHOW_OVERVIEW;
-            else if (strcmp(action->name, "toggle-application-view") == 0) native_id = ACTION_SHOW_APP_GRID;
-            else if (strcmp(action->name, "www") == 0) native_id = ACTION_WWW;
-            else if (strcmp(action->name, "home") == 0) native_id = ACTION_HOME;
-            else if (strcmp(action->name, "email") == 0) native_id = ACTION_EMAIL;
-            else if (strcmp(action->name, "search") == 0) native_id = ACTION_SEARCH;
-            else if (strcmp(action->name, "calculator") == 0) native_id = ACTION_CALCULATOR;
-            else if (strcmp(action->name, "control-center") == 0) native_id = ACTION_CONTROL_CENTER;
-            else if (strcmp(action->name, "logout") == 0) native_id = ACTION_LOGOUT;
-            else if (strcmp(action->name, "screenshot") == 0 || strcmp(action->name, "screenshot-clip") == 0) native_id = ACTION_SCREENSHOT;
-            else if (strcmp(action->name, "window-screenshot") == 0 || strcmp(action->name, "window-screenshot-clip") == 0) native_id = ACTION_SCREENSHOT_WINDOW;
-            else if (strcmp(action->name, "area-screenshot") == 0 || strcmp(action->name, "area-screenshot-clip") == 0) native_id = ACTION_SCREENSHOT_AREA;
-            
-            if (native_id != -1) {
-                for (int i = 0; action_types[i].name; i++) {
-                    if (action_types[i].id == native_id) {
-                        gtk_drop_down_set_selected(GTK_DROP_DOWN(browser->editor->action_type_combo), i);
-                        break;
-                    }
+            /* Use native GNOME action */
+            int gnome_idx = -1;
+            for (int i = 0; action_types[i].name; i++) {
+                if (action_types[i].id == ACTION_GNOME) {
+                    gnome_idx = i;
+                    break;
                 }
-            } else {
-                gtk_drop_down_set_selected(GTK_DROP_DOWN(browser->editor->action_type_combo), 0); /* Keypress */
-                char *translated = translate_gnome_accel(action->accelerator);
-                gtk_editable_set_text(GTK_EDITABLE(browser->editor->action_val_entry), translated);
-                free(translated);
+            }
+            if (gnome_idx != -1) {
+                gtk_drop_down_set_selected(GTK_DROP_DOWN(browser->editor->action_type_combo), gnome_idx);
+                gtk_editable_set_text(GTK_EDITABLE(browser->editor->action_val_entry), action->name);
             }
         }
     }
@@ -472,10 +439,12 @@ static void on_action_type_changed(GObject *gobject, GParamSpec *pspec, gpointer
     
     int id = action_types[index].id;
     
-    if (id == ACTION_EXECUTE || id == ACTION_KEYPRESS) {
+    if (id == ACTION_EXECUTE || id == ACTION_KEYPRESS || id == ACTION_GNOME) {
         gtk_widget_set_visible(editor->action_val_box, TRUE);
-        gtk_label_set_text(GTK_LABEL(editor->action_val_label), 
-            (id == ACTION_EXECUTE) ? "Command:" : "Keys:");
+        const char *label_text = "Command:";
+        if (id == ACTION_KEYPRESS) label_text = "Keys:";
+        else if (id == ACTION_GNOME) label_text = "GNOME Action:";
+        gtk_label_set_text(GTK_LABEL(editor->action_val_label), label_text);
         gtk_widget_set_visible(editor->record_btn, (id == ACTION_KEYPRESS));
     } else {
         gtk_widget_set_visible(editor->action_val_box, FALSE);
@@ -539,7 +508,7 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
     const char *val = gtk_editable_get_text(GTK_EDITABLE(editor->action_val_entry));
     
     char *full_action;
-    if (type->id == ACTION_EXECUTE || type->id == ACTION_KEYPRESS) {
+    if (type->id == ACTION_EXECUTE || type->id == ACTION_KEYPRESS || type->id == ACTION_GNOME) {
         if (asprintf(&full_action, "%s %s", type->prefix, val) == -1) full_action = NULL;
     } else {
         full_action = strdup(type->prefix);

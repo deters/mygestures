@@ -39,7 +39,7 @@ const char *action_name[ACTION_COUNT + 1] = {
 		"VOLUME_UP", "VOLUME_DOWN", "VOLUME_MUTE",
 		"MEDIA_PLAY", "MEDIA_NEXT", "MEDIA_PREV",
 		"WWW", "HOME", "EMAIL", "SEARCH", "CALCULATOR", "CONTROL_CENTER", "LOGOUT",
-		"SCREENSHOT", "SCREENSHOT_WINDOW", "SCREENSHOT_AREA", "LAST" };
+		"SCREENSHOT", "SCREENSHOT_WINDOW", "SCREENSHOT_AREA", "GNOME", "LAST" };
 
 const char *get_action_name(int action) {
 	return action_name[action];
@@ -181,6 +181,9 @@ void execute_action_agnostic(Action *action) {
             break;
         case ACTION_SCREENSHOT_AREA:
             if (current_backend->screenshot_area) current_backend->screenshot_area();
+            break;
+        case ACTION_GNOME:
+            if (current_backend->gnome_action) current_backend->gnome_action(action->original_str);
             break;
         default:
             LOG_ERROR("found an unknown gesture \n");

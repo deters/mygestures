@@ -39,6 +39,7 @@ typedef struct ActionBackend {
     void (*screenshot)(void);
     void (*screenshot_window)(void);
     void (*screenshot_area)(void);
+    void (*gnome_action)(const char *gnome_key);
 } ActionBackend;
 
 /* Initialize the appropriate backend */

@@ -366,6 +366,10 @@ static void hypr_screenshot_window(void) { wayland_keypress("Alt_L+Print"); }
 static void hypr_screenshot_area(void) { wayland_keypress("Shift_L+Print"); }
 
 // GNOME actions
+static void wl_gnome_action(const char *gnome_key) {
+    wayland_execute_desktop_shortcut(gnome_key, NULL);
+}
+
 static void gnome_iconify(void) { wayland_execute_desktop_shortcut("minimize", "Super_L+h"); }
 static void gnome_kill_window(void) { wayland_execute_desktop_shortcut("close", "Alt_L+F4"); }
 static void gnome_raise(void) {}
@@ -480,6 +484,7 @@ ActionBackend *action_backend_wayland_get(void) {
     ensure_ctx();
 
     wayland_backend.click = wl_click;
+    wayland_backend.gnome_action = wl_gnome_action;
 
     if (ctx.is_sway) {
         wayland_backend.iconify = sway_iconify;
