@@ -658,6 +658,26 @@ fn refresh_gesture_list(state_rc: &Rc<RefCell<AppState>>) {
     }
 }
 
+fn get_default_gesture_name(opt: &EditorActionOption, detail: &str) -> String {
+    match &opt.action_type {
+        ActionType::Keypress(_) => {
+            if detail.trim().is_empty() {
+                opt.name.clone()
+            } else {
+                format!("{} ({})", opt.name, detail.trim())
+            }
+        }
+        ActionType::Execute(_) if opt.category == 7 => {
+            if detail.trim().is_empty() {
+                opt.name.clone()
+            } else {
+                format!("{} ({})", opt.name, detail.trim())
+            }
+        }
+        _ => opt.name.clone(),
+    }
+}
+
 fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<Gesture>) {
     let state = state_rc.borrow();
     let dialog = gtk::Window::new();
@@ -686,6 +706,22 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         name_entry.set_sensitive(false); // Can't change name of existing gesture
     }
     main_box.append(&name_entry);
+
+    let is_name_customized = Rc::new(RefCell::new(false));
+    let is_updating_programmatically = Rc::new(RefCell::new(false));
+
+    let cust_clone = Rc::clone(&is_name_customized);
+    let prog_clone = Rc::clone(&is_updating_programmatically);
+    name_entry.connect_changed(move |entry| {
+        if *prog_clone.borrow() {
+            return;
+        }
+        if entry.text().trim().is_empty() {
+            *cust_clone.borrow_mut() = false;
+        } else {
+            *cust_clone.borrow_mut() = true;
+        }
+    });
 
     // Canvas Frame and Drawing area
     let canvas_label = gtk::Label::new(Some("Draw gesture below"));
@@ -865,10 +901,52 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         }
     }
 
+    // Helper to dynamically update the gesture name if not customized
+    let update_default_name = Rc::new({
+        let name_entry = name_entry.clone();
+        let action_dropdown = action_dropdown.clone();
+        let action_details_entry = action_details_entry.clone();
+        let current_options = Rc::clone(&current_options);
+        let is_name_customized = Rc::clone(&is_name_customized);
+        let is_updating_programmatically = Rc::clone(&is_updating_programmatically);
+
+        move || {
+            if *is_name_customized.borrow() {
+                return;
+            }
+            let act_idx = action_dropdown.selected();
+            if act_idx == gtk::INVALID_LIST_POSITION {
+                return;
+            }
+            let act_idx = act_idx as usize;
+            let opts = current_options.borrow();
+            if act_idx < opts.len() {
+                let opt = &opts[act_idx];
+                let detail = action_details_entry.text().to_string();
+                let default_name = get_default_gesture_name(opt, &detail);
+                
+                *is_updating_programmatically.borrow_mut() = true;
+                name_entry.set_text(&default_name);
+                *is_updating_programmatically.borrow_mut() = false;
+            }
+        }
+    });
+
+    let udn_clone = Rc::clone(&update_default_name);
+    if target_gesture.is_none() {
+        udn_clone();
+    }
+
+    let udn_clone4 = Rc::clone(&update_default_name);
+    action_details_entry.connect_changed(move |_| {
+        udn_clone4();
+    });
+
     // Connect category changed signal
     let all_options_clone = all_options.clone();
     let current_opts_clone = Rc::clone(&current_options);
     let action_dropdown_clone = action_dropdown.clone();
+    let udn_clone3 = Rc::clone(&update_default_name);
 
     category_dropdown.connect_selected_notify(move |cat_dd| {
         let cat_idx = cat_dd.selected();
@@ -888,11 +966,14 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
 
         *current_opts_clone.borrow_mut() = filtered;
         action_dropdown_clone.set_selected(0);
+
+        udn_clone3();
     });
 
     // Connect action changed signal
     let current_opts_clone2 = Rc::clone(&current_options);
     let entry_clone2 = action_details_entry.clone();
+    let udn_clone2 = Rc::clone(&update_default_name);
 
     action_dropdown.connect_selected_notify(move |act_dd| {
         let act_idx = act_dd.selected();
@@ -921,6 +1002,8 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 _ => {}
             }
         }
+
+        udn_clone2();
     });
 
     // Save and Cancel buttons
