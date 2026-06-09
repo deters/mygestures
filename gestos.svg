@@ -12,38 +12,47 @@
       <stop offset="50%" stop-color="#89b4fa"/> <!-- Blue -->
       <stop offset="100%" stop-color="#89dceb"/> <!-- Cyan -->
     </linearGradient>
-
-    <!-- Glow Filter -->
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="10" result="blur" />
-      <feMerge>
-        <feMergeNode in="blur" />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
-    </filter>
-
-    <!-- Drop Shadow Filter for Cursor -->
-    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="2" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.6"/>
-    </filter>
   </defs>
 
   <!-- Base Squircle Background -->
   <rect x="32" y="32" width="448" height="448" rx="112" fill="url(#bgGrad)" stroke="#313244" stroke-width="6"/>
 
-  <!-- The Gestural Loop/Path -->
+  <!-- Vector Glow Layers (No Filters) -->
+  <!-- Outer Glow -->
   <path d="M 140 280 C 140 160, 240 140, 280 200 C 320 260, 380 380, 280 380 C 180 380, 200 240, 320 180 C 400 140, 400 260, 340 320" 
         fill="none" 
         stroke="url(#pathGrad)" 
-        stroke-width="18" 
-        stroke-linecap="round" 
-        filter="url(#glow)"/>
+        stroke-width="36" 
+        stroke-linecap="round"
+        stroke-opacity="0.1"/>
 
-  <!-- Tracing Pointer/Cursor -->
-  <g transform="translate(340, 320) rotate(135)" filter="url(#shadow)">
-    <polygon points="0,0 0,36 10,27 20,37 25,32 15,22 25,22" fill="#ffffff" stroke="#11111b" stroke-width="4" stroke-linejoin="round"/>
+  <!-- Mid Glow -->
+  <path d="M 140 280 C 140 160, 240 140, 280 200 C 320 260, 380 380, 280 380 C 180 380, 200 240, 320 180 C 400 140, 400 260, 340 320" 
+        fill="none" 
+        stroke="url(#pathGrad)" 
+        stroke-width="26" 
+        stroke-linecap="round"
+        stroke-opacity="0.25"/>
+
+  <!-- Core Sharp Stroke -->
+  <path d="M 140 280 C 140 160, 240 140, 280 200 C 320 260, 380 380, 280 380 C 180 380, 200 240, 320 180 C 400 140, 400 260, 340 320" 
+        fill="none" 
+        stroke="url(#pathGrad)" 
+        stroke-width="14" 
+        stroke-linecap="round"/>
+
+  <!-- Glowing Tip Vector Halo (No Filters) -->
+  <circle cx="340" cy="320" r="16" fill="#89dceb" opacity="0.2"/>
+  <circle cx="340" cy="320" r="10" fill="#89dceb" opacity="0.4"/>
+  <circle cx="340" cy="320" r="5" fill="#ffffff"/>
+
+  <!-- Cursor Vector Shadow (No Filters) -->
+  <g transform="translate(342, 324) rotate(135)">
+    <polygon points="0,0 0,36 10,27 20,37 25,32 15,22 25,22" fill="#000000" opacity="0.3" stroke="#000000" stroke-width="4" stroke-linejoin="round" stroke-opacity="0.3"/>
   </g>
 
-  <!-- Glowing Tip Circle -->
-  <circle cx="340" cy="320" r="7" fill="#89dceb" filter="url(#glow)"/>
+  <!-- Cursor Body -->
+  <g transform="translate(340, 320) rotate(135)">
+    <polygon points="0,0 0,36 10,27 20,37 25,32 15,22 25,22" fill="#ffffff" stroke="#11111b" stroke-width="4" stroke-linejoin="round"/>
+  </g>
 </svg>
