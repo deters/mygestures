@@ -125,13 +125,12 @@ void discover_wayland_context(WaylandContext *ctx) {
                         }
                     }
 
-                    if (ctx->is_sway || ctx->is_hypr) {
-                        ctx->uid = d_uid;
-                        struct passwd *pw = getpwuid(ctx->uid);
-                        if (ctx->username) free(ctx->username);
-                        ctx->username = pw ? strdup(pw->pw_name) : NULL;
-                        break;
-                    }
+                    // Fall back to the first discovered user on the system (which handles GNOME/KDE sessions).
+                    ctx->uid = d_uid;
+                    struct passwd *pw = getpwuid(ctx->uid);
+                    if (ctx->username) free(ctx->username);
+                    ctx->username = pw ? strdup(pw->pw_name) : NULL;
+                    break;
                 }
             }
             closedir(dir);
