@@ -598,7 +598,10 @@ static void on_dropdown_setup(GtkSignalListItemFactory *factory, GtkListItem *li
     GtkWidget *label = gtk_label_new(NULL);
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     gtk_box_append(GTK_BOX(box), label);
-    gtk_list_item_set_child(list_item, box);
+}
+
+static void on_dropdown_teardown(GtkSignalListItemFactory *factory, GtkListItem *list_item, gpointer user_data) {
+    gtk_list_item_set_child(list_item, NULL);
 }
 
 static void on_dropdown_bind(GtkSignalListItemFactory *factory, GtkListItem *list_item, gpointer user_data) {
@@ -1293,12 +1296,16 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     GtkListItemFactory *factory = gtk_signal_list_item_factory_new();
     g_signal_connect(factory, "setup", G_CALLBACK(on_dropdown_setup), NULL);
     g_signal_connect(factory, "bind", G_CALLBACK(on_dropdown_bind), editor);
+    g_signal_connect(factory, "teardown", G_CALLBACK(on_dropdown_teardown), NULL);
     gtk_drop_down_set_factory(GTK_DROP_DOWN(editor->action_combo), factory);
+    g_object_unref(factory);
 
     GtkListItemFactory *list_factory = gtk_signal_list_item_factory_new();
     g_signal_connect(list_factory, "setup", G_CALLBACK(on_dropdown_setup), NULL);
     g_signal_connect(list_factory, "bind", G_CALLBACK(on_dropdown_bind), editor);
+    g_signal_connect(list_factory, "teardown", G_CALLBACK(on_dropdown_teardown), NULL);
     gtk_drop_down_set_list_factory(GTK_DROP_DOWN(editor->action_combo), list_factory);
+    g_object_unref(list_factory);
 
     g_signal_connect(editor->action_combo, "notify::selected", G_CALLBACK(on_action_changed), editor);
     on_action_changed(G_OBJECT(editor->action_combo), NULL, editor);
