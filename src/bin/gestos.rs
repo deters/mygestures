@@ -838,7 +838,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let action_names: Vec<String> = initial_filtered.iter().map(|opt| opt.name.clone()).collect();
     let action_refs: Vec<&str> = action_names.iter().map(|s| s.as_str()).collect();
     let action_model = gtk::StringList::new(&action_refs);
-    action_dropdown.set_model(Some(action_model));
+    action_dropdown.set_model(Some(&action_model));
 
     *current_options.borrow_mut() = initial_filtered.clone();
 
@@ -884,7 +884,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         let action_names: Vec<String> = filtered.iter().map(|opt| opt.name.clone()).collect();
         let action_refs: Vec<&str> = action_names.iter().map(|s| s.as_str()).collect();
         let action_model = gtk::StringList::new(&action_refs);
-        action_dropdown_clone.set_model(Some(action_model));
+        action_dropdown_clone.set_model(Some(&action_model));
 
         *current_opts_clone.borrow_mut() = filtered;
         action_dropdown_clone.set_selected(0);
