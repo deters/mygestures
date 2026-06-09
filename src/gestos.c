@@ -1379,8 +1379,8 @@ static void refresh_gesture_list(GestosApp *gestos, gboolean restore_scroll) {
     double scroll_value = 0.0;
 
     if (restore_scroll) {
-        GtkWidget *scrolled = gtk_widget_get_parent(gestos->main_list);
-        if (scrolled && GTK_IS_SCROLLED_WINDOW(scrolled)) {
+        GtkWidget *scrolled = gtk_widget_get_ancestor(gestos->main_list, GTK_TYPE_SCROLLED_WINDOW);
+        if (scrolled) {
             vadj = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(scrolled));
             if (vadj) {
                 scroll_value = gtk_adjustment_get_value(vadj);
@@ -1410,7 +1410,7 @@ static void refresh_gesture_list(GestosApp *gestos, gboolean restore_scroll) {
         struct ScrollRestoreData *data = malloc(sizeof(struct ScrollRestoreData));
         data->vadj = g_object_ref(vadj);
         data->target_value = scroll_value;
-        g_idle_add(restore_scroll_cb, data);
+        g_timeout_add(50, restore_scroll_cb, data);
     }
 }
 
