@@ -1296,7 +1296,18 @@ static void on_gesture_delete_clicked(GtkWidget *widget, gpointer user_data) {
     }
     GtkWidget *row = gtk_widget_get_ancestor(widget, GTK_TYPE_LIST_BOX_ROW);
     if (row) {
-        gtk_widget_grab_focus(GTK_WIDGET(gestos->main_list));
+        int idx = gtk_list_box_row_get_index(GTK_LIST_BOX_ROW(row));
+        GtkListBoxRow *sibling = NULL;
+        if (idx > 0) {
+            sibling = gtk_list_box_get_row_at_index(GTK_LIST_BOX(gestos->main_list), idx - 1);
+        } else {
+            sibling = gtk_list_box_get_row_at_index(GTK_LIST_BOX(gestos->main_list), idx + 1);
+        }
+        if (sibling) {
+            gtk_widget_grab_focus(GTK_WIDGET(sibling));
+        } else {
+            gtk_widget_grab_focus(GTK_WIDGET(gestos->main_list));
+        }
         gtk_list_box_remove(GTK_LIST_BOX(gestos->main_list), row);
     }
 
