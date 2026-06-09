@@ -46,13 +46,13 @@
   <circle cx="340" cy="320" r="16" fill="#89dceb" opacity="0.3"/>
   <circle cx="340" cy="320" r="7" fill="#ffffff"/>
 
-  <!-- Cursor Vector Shadow (No Filters) - Classic macOS Geometry (Even Bigger) -->
-  <g transform="translate(346, 328) scale(5.5)">
-    <polygon points="0,0 0,17 4.5,13 8.5,22.5 11.5,21.1 7.5,11.5 12,11.5" fill="#000000" opacity="0.45" stroke="#000000" stroke-width="1.5" stroke-linejoin="miter" stroke-opacity="0.45"/>
+  <!-- Cursor Vector Shadow (No Filters) - Open Source macOS Geometry -->
+  <g transform="translate(345, 326) scale(6)">
+    <path d="M 0 0 v 17.62 l 3.86 -3.86 l 3.86 3.86 l 3.86 -3.86 l -3.86 -3.86 h 7.61 Z" fill="#000000" opacity="0.45" stroke="#000000" stroke-width="1.2" stroke-linejoin="miter" stroke-opacity="0.45"/>
   </g>
 
-  <!-- Cursor Body - Classic macOS Geometry (Even Bigger) -->
-  <g transform="translate(340, 320) scale(5.5)">
-    <polygon points="0,0 0,17 4.5,13 8.5,22.5 11.5,21.1 7.5,11.5 12,11.5" fill="#ffffff" stroke="#11111b" stroke-width="1.5" stroke-linejoin="miter"/>
+  <!-- Cursor Body - Open Source macOS Geometry -->
+  <g transform="translate(340, 320) scale(6)">
+    <path d="M 0 0 v 17.62 l 3.86 -3.86 l 3.86 3.86 l 3.86 -3.86 l -3.86 -3.86 h 7.61 Z" fill="#ffffff" stroke="#11111b" stroke-width="1.2" stroke-linejoin="miter"/>
   </g>
 </svg>
