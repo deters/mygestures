@@ -44,6 +44,8 @@ typedef struct {
 } GestureEditor;
 
 static void refresh_gesture_list(GestosApp *gestos);
+static GtkWidget *create_gesture_row_content(GestosApp *gestos, Gesture *gesture);
+static void add_gesture_row(GestosApp *gestos, Gesture *gesture);
 static gboolean is_daemon_running(void);
 static void start_daemon(void);
 static void stop_daemon(void);
