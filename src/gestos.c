@@ -411,6 +411,8 @@ static void on_category_changed(GObject *gobject, GParamSpec *pspec, gpointer us
     guint cat_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->category_combo));
     if (cat_idx == GTK_INVALID_LIST_POSITION) return;
     
+    g_signal_handlers_block_by_func(editor->action_combo, G_CALLBACK(on_action_changed), editor);
+
     if (editor->current_options) {
         g_list_free(editor->current_options);
         editor->current_options = NULL;
@@ -434,6 +436,9 @@ static void on_category_changed(GObject *gobject, GParamSpec *pspec, gpointer us
     if (!editor->initializing) {
         gtk_drop_down_set_selected(GTK_DROP_DOWN(editor->action_combo), 0);
     }
+
+    g_signal_handlers_unblock_by_func(editor->action_combo, G_CALLBACK(on_action_changed), editor);
+    on_action_changed(G_OBJECT(editor->action_combo), NULL, editor);
 }
 
 static gboolean on_record_key_pressed(GtkEventControllerKey *controller,
@@ -640,11 +645,6 @@ static void free_editor_data(gpointer data) {
     GestureEditor *editor = (GestureEditor *)data;
     if (!editor) return;
     
-    // Unbind model so GTK doesn't try to access freed editor options during teardown
-    if (editor->action_combo) {
-        gtk_drop_down_set_model(GTK_DROP_DOWN(editor->action_combo), NULL);
-    }
-    
     if (editor->browser_dialog) {
         gtk_window_destroy(GTK_WINDOW(editor->browser_dialog));
 
@@ -672,6 +672,19 @@ static void free_editor_data(gpointer data) {
     }
     g_free(editor);
 }
+
+static void on_dialog_destroy(GtkWidget *widget, gpointer user_data) {
+    GestureEditor *editor = (GestureEditor *)user_data;
+    if (editor) {
+        if (editor->category_combo) {
+            g_signal_handlers_disconnect_by_data(editor->category_combo, editor);
+        }
+        if (editor->action_combo) {
+            g_signal_handlers_disconnect_by_data(editor->action_combo, editor);
+        }
+    }
+}
+
 
 static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width, int height, gpointer user_data) {
     GestureEditor *editor = (GestureEditor *)user_data;
@@ -1164,6 +1177,7 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     
     editor->dialog = gtk_window_new();
     g_object_set_data_full(G_OBJECT(editor->dialog), "editor-data", editor, free_editor_data);
+    g_signal_connect(editor->dialog, "destroy", G_CALLBACK(on_dialog_destroy), editor);
 
     gtk_window_set_title(GTK_WINDOW(editor->dialog), g ? "Edit Gesture" : "New Gesture");
     gtk_window_set_transient_for(GTK_WINDOW(editor->dialog), GTK_WINDOW(gestos->window));
