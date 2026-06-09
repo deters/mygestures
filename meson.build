@@ -61,5 +61,11 @@ if udevdir == ''
 endif
 install_data('99-mygestures.rules', install_dir: udevdir)
 
+# Install desktop entry and icon
+datadir = prefix / get_option('datadir')
+install_data('gestos.desktop', install_dir: datadir / 'applications')
+install_data('gestos.png', install_dir: datadir / 'icons/hicolor/512x512/apps')
+
 # Run post-install script
 meson.add_install_script('build-aux/post-install.sh')
+

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Gestos
+Comment=Configure MyGestures Mouse Gestures
+Exec=gestos
+Icon=gestos
+Terminal=false
+Categories=Settings;GTK;Utility;
+StartupNotify=true
