@@ -632,8 +632,9 @@ static void on_dropdown_bind(GtkSignalListItemFactory *factory, GtkListItem *lis
     gtk_image_set_from_icon_name(GTK_IMAGE(icon), icon_name);
 }
 
-static void on_editor_dialog_destroy(GtkWidget *widget, gpointer user_data) {
-    GestureEditor *editor = (GestureEditor *)user_data;
+static void free_editor_data(gpointer data) {
+    GestureEditor *editor = (GestureEditor *)data;
+    if (!editor) return;
     if (editor->browser_dialog) {
         gtk_window_destroy(GTK_WINDOW(editor->browser_dialog));
     }
@@ -1151,7 +1152,7 @@ static void open_gesture_editor(GestosApp *gestos, Gesture *g) {
     editor->gesture = g;
     
     editor->dialog = gtk_window_new();
-    g_signal_connect(editor->dialog, "destroy", G_CALLBACK(on_editor_dialog_destroy), editor);
+    g_object_set_data_full(G_OBJECT(editor->dialog), "editor-data", editor, free_editor_data);
 
     gtk_window_set_title(GTK_WINDOW(editor->dialog), g ? "Edit Gesture" : "New Gesture");
     gtk_window_set_transient_for(GTK_WINDOW(editor->dialog), GTK_WINDOW(gestos->window));
