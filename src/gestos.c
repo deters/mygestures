@@ -637,6 +637,47 @@ static void on_dropdown_bind(GtkSignalListItemFactory *factory, GtkListItem *lis
     gtk_image_set_from_icon_name(GTK_IMAGE(icon), icon_name);
 }
 
+static void gesture_editor_cleanup(GestureEditor *editor) {
+    if (!editor || !editor->dialog) return;
+
+    if (editor->category_combo) {
+        g_signal_handlers_disconnect_by_data(editor->category_combo, editor);
+        gtk_drop_down_set_model(GTK_DROP_DOWN(editor->category_combo), NULL);
+        editor->category_combo = NULL;
+    }
+
+    if (editor->action_combo) {
+        GtkListItemFactory *factory = gtk_drop_down_get_factory(GTK_DROP_DOWN(editor->action_combo));
+        if (factory) {
+            g_signal_handlers_disconnect_by_data(factory, editor);
+        }
+        GtkListItemFactory *list_factory = gtk_drop_down_get_list_factory(GTK_DROP_DOWN(editor->action_combo));
+        if (list_factory) {
+            g_signal_handlers_disconnect_by_data(list_factory, editor);
+        }
+        g_signal_handlers_disconnect_by_data(editor->action_combo, editor);
+        gtk_drop_down_set_factory(GTK_DROP_DOWN(editor->action_combo), NULL);
+        gtk_drop_down_set_list_factory(GTK_DROP_DOWN(editor->action_combo), NULL);
+        gtk_drop_down_set_model(GTK_DROP_DOWN(editor->action_combo), NULL);
+        editor->action_combo = NULL;
+    }
+
+    if (editor->record_btn) {
+        g_signal_handlers_disconnect_by_data(editor->record_btn, editor);
+        editor->record_btn = NULL;
+    }
+
+    if (editor->canvas) {
+        gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(editor->canvas), NULL, NULL, NULL);
+        editor->canvas = NULL;
+    }
+
+    if (editor->dialog) {
+        g_signal_handlers_disconnect_by_data(editor->dialog, editor);
+        editor->dialog = NULL;
+    }
+}
+
 static void free_editor_data(gpointer data) {
     GestureEditor *editor = (GestureEditor *)data;
     if (!editor) return;
@@ -1156,14 +1197,7 @@ static void on_canvas_drag_end(GtkGestureDrag *gesture, double offset_x, double 
 
 static gboolean on_dialog_close_request(GtkWindow *window, gpointer user_data) {
     GestureEditor *editor = (GestureEditor *)user_data;
-    if (editor) {
-        if (editor->action_combo) {
-            gtk_drop_down_set_model(GTK_DROP_DOWN(editor->action_combo), NULL);
-        }
-        if (editor->category_combo) {
-            gtk_drop_down_set_model(GTK_DROP_DOWN(editor->category_combo), NULL);
-        }
-    }
+    gesture_editor_cleanup(editor);
     return FALSE;
 }
 
