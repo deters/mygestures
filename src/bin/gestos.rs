@@ -304,10 +304,7 @@ fn fetch_gnome_action_options() -> Vec<EditorActionOption> {
             None => continue,
         };
 
-        let settings = match gio::Settings::new(schema_id) {
-            Ok(s) => s,
-            Err(_) => continue,
-        };
+        let settings = gio::Settings::new(schema_id);
 
         for key in schema.list_keys() {
             let skey = schema.key(&key);
@@ -342,21 +339,20 @@ fn fetch_gnome_action_options() -> Vec<EditorActionOption> {
 
         // Handle custom keybindings
         if schema_id == "org.gnome.settings-daemon.plugins.media-keys" {
-            if schema.key("custom-keybindings").is_some() {
+            if schema.has_key("custom-keybindings") {
                 let paths: Vec<String> = settings.get("custom-keybindings");
                 for path in paths {
-                    if let Ok(custom) = gio::Settings::new_with_path("org.gnome.settings-daemon.plugins.media-keys.custom-keybinding", &path) {
-                        let c_name: String = custom.get("name");
-                        let c_cmd: String = custom.get("command");
+                    let custom = gio::Settings::with_path("org.gnome.settings-daemon.plugins.media-keys.custom-keybinding", &path);
+                    let c_name: String = custom.get("name");
+                    let c_cmd: String = custom.get("command");
 
-                        if !c_name.is_empty() {
-                            options.push(EditorActionOption {
-                                category: 6, // CAT_GNOME
-                                action_type: ActionType::Execute(c_cmd.clone()),
-                                name: c_name,
-                                tooltip: format!("Custom GNOME shortcut: {}", c_cmd),
-                            });
-                        }
+                    if !c_name.is_empty() {
+                        options.push(EditorActionOption {
+                            category: 6, // CAT_GNOME
+                            action_type: ActionType::Execute(c_cmd.clone()),
+                            name: c_name,
+                            tooltip: format!("Custom GNOME shortcut: {}", c_cmd),
+                        });
                     }
                 }
             }
@@ -742,7 +738,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     action_label.add_css_class("status-label");
     main_box.append(&action_label);
 
-    let action_dropdown = gtk::DropDown::new(None::<&gio::ListModel>, None::<&gtk::Expression>);
+    let action_dropdown = gtk::DropDown::new(None::<gtk::StringList>, None::<&gtk::Expression>);
     main_box.append(&action_dropdown);
 
     let action_details_entry = gtk::Entry::new();
