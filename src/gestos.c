@@ -598,6 +598,7 @@ static void on_dropdown_setup(GtkSignalListItemFactory *factory, GtkListItem *li
     GtkWidget *label = gtk_label_new(NULL);
     gtk_widget_set_halign(label, GTK_ALIGN_START);
     gtk_box_append(GTK_BOX(box), label);
+    gtk_list_item_set_child(list_item, box);
 }
 
 static void on_dropdown_teardown(GtkSignalListItemFactory *factory, GtkListItem *list_item, gpointer user_data) {
@@ -638,8 +639,15 @@ static void on_dropdown_bind(GtkSignalListItemFactory *factory, GtkListItem *lis
 static void free_editor_data(gpointer data) {
     GestureEditor *editor = (GestureEditor *)data;
     if (!editor) return;
+    
+    // Unbind model so GTK doesn't try to access freed editor options during teardown
+    if (editor->action_combo) {
+        gtk_drop_down_set_model(GTK_DROP_DOWN(editor->action_combo), NULL);
+    }
+    
     if (editor->browser_dialog) {
         gtk_window_destroy(GTK_WINDOW(editor->browser_dialog));
+
     }
     if (editor->drawn_points) {
         free(editor->drawn_points);
