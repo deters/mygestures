@@ -75,7 +75,10 @@ fn run_grabber(
 
     // Adjust sensitivity threshold if relative device vs absolute device
     let mut threshold = sensitivity as f64;
-    if let Some(abs_info) = dev.get_abs_info(evdev::AbsoluteAxis::ABS_X) {
+    let abs_x = dev.get_absinfo().ok()
+        .and_then(|mut iter| iter.find(|(code, _)| *code == evdev::AbsoluteAxisCode::ABS_X))
+        .map(|(_, info)| info);
+    if let Some(abs_info) = abs_x {
         if sensitivity <= 30 {
             let range = abs_info.maximum - abs_info.minimum;
             let resolution = abs_info.resolution;

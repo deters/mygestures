@@ -92,15 +92,12 @@ impl UinputDevice {
 
         // Copy relative/absolute axes
         if let Some(src_rel) = source_dev.supported_relative_axes() {
-            for code in src_rel.iter() {
-                builder = builder.with_relative_axis(code)?;
-            }
+            builder = builder.with_relative_axes(src_rel)?;
         }
-        if let Some(src_abs) = source_dev.supported_absolute_axes() {
-            for code in src_abs.iter() {
-                if let Some(abs_info) = source_dev.get_abs_info(code) {
-                    builder = builder.with_absolute_axis(code, &abs_info)?;
-                }
+        if let Ok(abs_axes) = source_dev.get_absinfo() {
+            for (code, info) in abs_axes {
+                let abs_setup = evdev::UinputAbsSetup::new(code, info);
+                builder = builder.with_absolute_axis(&abs_setup)?;
             }
         }
 
