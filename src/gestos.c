@@ -665,8 +665,8 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
         cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
         
         int M = 4; // Sub-segment division for active drawing
-        double start_r = 0.49, start_g = 0.27, start_b = 0.90; // Sunset violet
-        double end_r = 0.98, end_g = 0.72, end_b = 0.80;       // Faded sunset pink
+        double start_r = 0.98, start_g = 0.72, start_b = 0.80; // Faded sunset pink
+        double end_r = 0.49, end_g = 0.27, end_b = 0.90;       // Sunset violet
         
         // Glow layer
         for (int i = 1; i < editor->drawn_count; i++) {
@@ -678,7 +678,7 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
                 double t2 = (double)(s + 1) / M;
                 double f_global = f_start + (f_end - f_start) * t1;
                 
-                double w = 12.0 * (1.0 - f_global * 0.5);
+                double w = 6.0 + 6.0 * f_global;
                 double r = start_r * (1.0 - f_global) + end_r * f_global;
                 double g = start_g * (1.0 - f_global) + end_g * f_global;
                 double b = start_b * (1.0 - f_global) + end_b * f_global;
@@ -706,7 +706,7 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
                 double t2 = (double)(s + 1) / M;
                 double f_global = f_start + (f_end - f_start) * t1;
                 
-                double w = 4.0;
+                double w = 1.5 + 2.5 * f_global;
                 double r = start_r * (1.0 - f_global) + end_r * f_global;
                 double g = start_g * (1.0 - f_global) + end_g * f_global;
                 double b = start_b * (1.0 - f_global) + end_b * f_global;
@@ -775,9 +775,9 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
             cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
             cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
             
-            // Color Gradient Definition: Sunset Violet to Faded Sunset Pink
-            double start_r = 0.49, start_g = 0.27, start_b = 0.90; // Sunset violet
-            double end_r = 0.98, end_g = 0.72, end_b = 0.80;       // Faded sunset pink
+            // Color Gradient Definition: Faded Sunset Pink to Sunset Violet
+            double start_r = 0.98, start_g = 0.72, start_b = 0.80; // Faded sunset pink
+            double end_r = 0.49, end_g = 0.27, end_b = 0.90;       // Sunset violet
             
             if (pt_count == 1) {
                 cairo_set_source_rgb(cr, start_r, start_g, start_b);
@@ -796,7 +796,7 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
                         double t2 = (double)(s + 1) / M;
                         double f_global = f_start + (f_end - f_start) * t1;
                         
-                        double w = 18.0 * (1.0 - f_global) + 4.0;
+                        double w = 18.0 * f_global + 4.0;
                         double r = start_r * (1.0 - f_global) + end_r * f_global;
                         double g = start_g * (1.0 - f_global) + end_g * f_global;
                         double b = start_b * (1.0 - f_global) + end_b * f_global;
@@ -824,7 +824,7 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
                         double t2 = (double)(s + 1) / M;
                         double f_global = f_start + (f_end - f_start) * t1;
                         
-                        double w = 10.0 * (1.0 - f_global) + 2.0;
+                        double w = 10.0 * f_global + 2.0;
                         double r = start_r * (1.0 - f_global) + end_r * f_global;
                         double g = start_g * (1.0 - f_global) + end_g * f_global;
                         double b = start_b * (1.0 - f_global) + end_b * f_global;
@@ -846,7 +846,7 @@ static void on_canvas_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width,
             // Draw glowing dots at key vertices
             for (int i = 0; i < pt_count; i++) {
                 double fraction = (double)i / (pt_count > 1 ? (pt_count - 1) : 1);
-                double dot_radius = 5.0 * (1.0 - fraction) + 2.0;
+                double dot_radius = 5.0 * fraction + 2.0;
                 
                 double r = start_r * (1.0 - fraction) + end_r * fraction;
                 double g = start_g * (1.0 - fraction) + end_g * fraction;
@@ -929,8 +929,8 @@ static void on_preview_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width
     cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
     cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
 
-    double start_r = 0.49, start_g = 0.27, start_b = 0.90; // Sunset violet
-    double end_r = 0.98, end_g = 0.72, end_b = 0.80;       // Faded sunset pink
+    double start_r = 0.98, start_g = 0.72, start_b = 0.80; // Faded sunset pink
+    double end_r = 0.49, end_g = 0.27, end_b = 0.90;       // Sunset violet
 
     if (pt_count == 1) {
         cairo_set_source_rgb(cr, start_r, start_g, start_b);
@@ -949,7 +949,7 @@ static void on_preview_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width
                 double t2 = (double)(s + 1) / M;
                 double f_global = f_start + (f_end - f_start) * t1;
                 
-                double w = 8.0 * (1.0 - f_global) + 2.0;
+                double w = 8.0 * f_global + 2.0;
                 double r = start_r * (1.0 - f_global) + end_r * f_global;
                 double g = start_g * (1.0 - f_global) + end_g * f_global;
                 double b = start_b * (1.0 - f_global) + end_b * f_global;
@@ -977,7 +977,7 @@ static void on_preview_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width
                 double t2 = (double)(s + 1) / M;
                 double f_global = f_start + (f_end - f_start) * t1;
                 
-                double w = 4.0 * (1.0 - f_global) + 1.0;
+                double w = 4.0 * f_global + 1.0;
                 double r = start_r * (1.0 - f_global) + end_r * f_global;
                 double g = start_g * (1.0 - f_global) + end_g * f_global;
                 double b = start_b * (1.0 - f_global) + end_b * f_global;
@@ -999,7 +999,7 @@ static void on_preview_draw(GtkDrawingArea *drawing_area, cairo_t *cr, int width
     // Draw glowing dots at key vertices
     for (int i = 0; i < pt_count; i++) {
         double fraction = (double)i / (pt_count > 1 ? (pt_count - 1) : 1);
-        double dot_radius = 2.5 * (1.0 - fraction) + 1.0;
+        double dot_radius = 2.5 * fraction + 1.0;
         
         double px = width / 2.0 + (pts[i].x - path_center_x) * scale;
         double py = height / 2.0 + (pts[i].y - path_center_y) * scale;
