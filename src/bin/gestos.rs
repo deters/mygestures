@@ -766,45 +766,52 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     main_box.append(&canvas_frame);
 
     // Action config dropdowns and text entries
-    let action_label = gtk::Label::new(Some("Action (Searchable)"));
+    let category_label = gtk::Label::new(Some("Category"));
+    category_label.set_halign(gtk::Align::Start);
+    category_label.add_css_class("status-label");
+    main_box.append(&category_label);
+
+    let category_dropdown = gtk::DropDown::from_strings(CATEGORY_NAMES);
+    main_box.append(&category_dropdown);
+
+    let action_label = gtk::Label::new(Some("Action"));
     action_label.set_halign(gtk::Align::Start);
     action_label.add_css_class("status-label");
     main_box.append(&action_label);
 
-    // Build options list
-    let mut all_options = get_static_action_options();
-    all_options.extend(fetch_gnome_action_options());
-
-    // Generate option names prefixed with their category
-    let option_names: Vec<String> = all_options.iter().map(|opt| {
-        let cat_name = CATEGORY_NAMES.get(opt.category).unwrap_or(&"Other");
-        format!("[{}] {}", cat_name, opt.name)
-    }).collect();
-    let option_refs: Vec<&str> = option_names.iter().map(|s| s.as_str()).collect();
-    let action_model = gtk::StringList::new(&option_refs);
-
-    let expression = gtk::PropertyExpression::new(
-        gtk::StringObject::static_type(),
-        None::<&gtk::Expression>,
-        "string",
-    );
-
-    let action_dropdown = gtk::DropDown::new(Some(action_model), Some(expression));
-    action_dropdown.set_enable_search(true);
+    let action_dropdown = gtk::DropDown::new(None::<gtk::StringList>, None::<gtk::Expression>);
     main_box.append(&action_dropdown);
 
     let action_details_entry = gtk::Entry::new();
     main_box.append(&action_details_entry);
 
+    // Build options list
+    let mut all_options = get_static_action_options();
+    all_options.extend(fetch_gnome_action_options());
+
+    // Share current options filtered for category
+    let current_options: Rc<RefCell<Vec<EditorActionOption>>> = Rc::new(RefCell::new(Vec::new()));
+
     // Find initial matching option
-    let mut selected_idx = 0;
+    let mut selected_cat = 0;
+    let mut selected_act = 0;
 
     if let Some(ref g) = target_gesture {
         if !g.actions.is_empty() {
             let a = &g.actions[0];
-            if let Some(pos) = all_options.iter().position(|opt| action_matches(a, opt)) {
-                selected_idx = pos;
-                let opt = &all_options[pos];
+            if let Some(found_opt) = all_options.iter().find(|opt| action_matches(a, opt)) {
+                selected_cat = found_opt.category;
+
+                // Get the filtered options for this category
+                let filtered: Vec<EditorActionOption> = all_options.iter()
+                    .filter(|opt| opt.category == selected_cat)
+                    .cloned()
+                    .collect();
+
+                // Find index of option within the filtered list
+                if let Some(act_idx) = filtered.iter().position(|opt| action_matches(a, opt)) {
+                    selected_act = act_idx;
+                }
 
                 // If the action contains input text details, populate it
                 match a {
@@ -812,7 +819,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                         action_details_entry.set_text(combo);
                     }
                     ActionType::Execute(cmd) => {
-                        if opt.category == 7 {
+                        if selected_cat == 7 {
                             action_details_entry.set_text(cmd);
                         }
                     }
@@ -822,11 +829,25 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         }
     }
 
-    action_dropdown.set_selected(selected_idx as u32);
+    // Filter options for initial category and set model/selections
+    let initial_filtered: Vec<EditorActionOption> = all_options.iter()
+        .filter(|opt| opt.category == selected_cat)
+        .cloned()
+        .collect();
+
+    let action_names: Vec<String> = initial_filtered.iter().map(|opt| opt.name.clone()).collect();
+    let action_refs: Vec<&str> = action_names.iter().map(|s| s.as_str()).collect();
+    let action_model = gtk::StringList::new(&action_refs);
+    action_dropdown.set_model(Some(action_model));
+
+    *current_options.borrow_mut() = initial_filtered.clone();
+
+    category_dropdown.set_selected(selected_cat as u32);
+    action_dropdown.set_selected(selected_act as u32);
 
     // Initialize details entry visibility and placeholder
-    if selected_idx < all_options.len() {
-        let opt = &all_options[selected_idx];
+    if selected_act < initial_filtered.len() {
+        let opt = &initial_filtered[selected_act];
         let show_entry = match &opt.action_type {
             ActionType::Keypress(_) => true,
             ActionType::Execute(_) if opt.category == 7 => true,
@@ -844,36 +865,60 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         }
     }
 
-    // Connect action changed signal
-    let option_names_clone = option_names.clone();
+    // Connect category changed signal
     let all_options_clone = all_options.clone();
+    let current_opts_clone = Rc::clone(&current_options);
+    let action_dropdown_clone = action_dropdown.clone();
+
+    category_dropdown.connect_selected_notify(move |cat_dd| {
+        let cat_idx = cat_dd.selected();
+        if cat_idx == gtk::INVALID_LIST_POSITION {
+            return;
+        }
+        let cat_idx = cat_idx as usize;
+        let filtered: Vec<EditorActionOption> = all_options_clone.iter()
+            .filter(|opt| opt.category == cat_idx)
+            .cloned()
+            .collect();
+
+        let action_names: Vec<String> = filtered.iter().map(|opt| opt.name.clone()).collect();
+        let action_refs: Vec<&str> = action_names.iter().map(|s| s.as_str()).collect();
+        let action_model = gtk::StringList::new(&action_refs);
+        action_dropdown_clone.set_model(Some(action_model));
+
+        *current_opts_clone.borrow_mut() = filtered;
+        action_dropdown_clone.set_selected(0);
+    });
+
+    // Connect action changed signal
+    let current_opts_clone2 = Rc::clone(&current_options);
     let entry_clone2 = action_details_entry.clone();
 
     action_dropdown.connect_selected_notify(move |act_dd| {
-        if let Some(obj) = act_dd.selected_item() {
-            if let Ok(string_obj) = obj.downcast::<gtk::StringObject>() {
-                let selected_str = string_obj.string();
-                if let Some(act_idx) = option_names_clone.iter().position(|name| name == selected_str.as_str()) {
-                    if act_idx < all_options_clone.len() {
-                        let opt = &all_options_clone[act_idx];
-                        let show_entry = match &opt.action_type {
-                            ActionType::Keypress(_) => true,
-                            ActionType::Execute(_) if opt.category == 7 => true,
-                            _ => false,
-                        };
-                        entry_clone2.set_visible(show_entry);
+        let act_idx = act_dd.selected();
+        if act_idx == gtk::INVALID_LIST_POSITION {
+            return;
+        }
+        let act_idx = act_idx as usize;
 
-                        match &opt.action_type {
-                            ActionType::Keypress(_) => {
-                                entry_clone2.set_placeholder_text(Some("e.g. Control_L+Alt_L+t"));
-                            }
-                            ActionType::Execute(_) => {
-                                entry_clone2.set_placeholder_text(Some("e.g. firefox"));
-                            }
-                            _ => {}
-                        }
-                    }
+        let opts = current_opts_clone2.borrow();
+        if act_idx < opts.len() {
+            let opt = &opts[act_idx];
+            let show_entry = match &opt.action_type {
+                ActionType::Keypress(_) => true,
+                ActionType::Execute(_) if opt.category == 7 => true,
+                _ => false,
+            };
+            entry_clone2.set_visible(show_entry);
+
+            match &opt.action_type {
+                ActionType::Keypress(_) => {
+                    entry_clone2.set_placeholder_text(Some("e.g. Control_L+Alt_L+t"));
                 }
+                ActionType::Execute(_) => {
+                    entry_clone2.set_placeholder_text(Some("e.g. firefox"));
+                }
+                _ => {}
             }
         }
     });
@@ -896,8 +941,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let is_edit = target_gesture.is_some();
     let dialog_clone2 = dialog.clone();
     
-    let option_names_save = option_names.clone();
-    let all_options_save = all_options.clone();
+    let current_opts_save = Rc::clone(&current_options);
     save_btn.connect_clicked(move |_| {
         let name = name_entry.text().to_string();
         if name.trim().is_empty() {
@@ -915,25 +959,17 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             .collect::<Vec<_>>()
             .join(" ");
 
-        let selected_item = action_dropdown.selected_item();
-        if selected_item.is_none() {
+        let act_idx = action_dropdown.selected();
+        if act_idx == gtk::INVALID_LIST_POSITION {
             return;
         }
-        let obj = selected_item.unwrap();
-        let string_obj = match obj.downcast::<gtk::StringObject>() {
-            Ok(s) => s,
-            Err(_) => return,
-        };
-        let selected_str = string_obj.string();
-        let act_idx = match option_names_save.iter().position(|name| name == selected_str.as_str()) {
-            Some(idx) => idx,
-            None => return,
-        };
+        let act_idx = act_idx as usize;
 
-        if act_idx >= all_options_save.len() {
+        let opts = current_opts_save.borrow();
+        if act_idx >= opts.len() {
             return;
         }
-        let opt = &all_options_save[act_idx];
+        let opt = &opts[act_idx];
         let detail = action_details_entry.text().to_string();
 
         let action = match &opt.action_type {
