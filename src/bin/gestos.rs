@@ -72,6 +72,7 @@ fn get_action_category_icon(action: &ActionType) -> (&'static str, &'static str)
     match action {
         ActionType::Execute(_) => ("utilities-terminal-symbolic", "icon-bg-purple"),
         ActionType::Keypress(_) => ("preferences-desktop-keyboard-shortcuts-symbolic", "icon-bg-orange"),
+        ActionType::Gnome(_) => ("preferences-system-symbolic", "icon-bg-blue"),
         ActionType::WorkspaceLeft | ActionType::WorkspaceRight | ActionType::WorkspaceUp | ActionType::WorkspaceDown => {
             ("go-next-symbolic", "icon-bg-blue")
         }
@@ -377,6 +378,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let action_types = vec![
         "Keypress Shortcut",
         "Run Command (Execute)",
+        "GNOME Action (Native)",
         "Workspace Left",
         "Workspace Right",
         "Workspace Up",
@@ -392,7 +394,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     main_box.append(&action_dropdown);
 
     let action_details_entry = gtk::Entry::new();
-    action_details_entry.set_placeholder_text(Some("e.g. Control_L+Alt_L+t or firefox"));
+    action_details_entry.set_placeholder_text(Some("e.g. Control_L+Alt_L+t, firefox, or minimize"));
     main_box.append(&action_details_entry);
 
     // Setup initial editor values if editing an existing gesture
@@ -407,15 +409,19 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                     action_dropdown.set_selected(1);
                     action_details_entry.set_text(cmd);
                 }
-                ActionType::WorkspaceLeft => action_dropdown.set_selected(2),
-                ActionType::WorkspaceRight => action_dropdown.set_selected(3),
-                ActionType::WorkspaceUp => action_dropdown.set_selected(4),
-                ActionType::WorkspaceDown => action_dropdown.set_selected(5),
-                ActionType::Kill => action_dropdown.set_selected(6),
-                ActionType::Iconify => action_dropdown.set_selected(7),
-                ActionType::VolumeUp => action_dropdown.set_selected(8),
-                ActionType::VolumeDown => action_dropdown.set_selected(9),
-                ActionType::VolumeMute => action_dropdown.set_selected(10),
+                ActionType::Gnome(key) => {
+                    action_dropdown.set_selected(2);
+                    action_details_entry.set_text(key);
+                }
+                ActionType::WorkspaceLeft => action_dropdown.set_selected(3),
+                ActionType::WorkspaceRight => action_dropdown.set_selected(4),
+                ActionType::WorkspaceUp => action_dropdown.set_selected(5),
+                ActionType::WorkspaceDown => action_dropdown.set_selected(6),
+                ActionType::Kill => action_dropdown.set_selected(7),
+                ActionType::Iconify => action_dropdown.set_selected(8),
+                ActionType::VolumeUp => action_dropdown.set_selected(9),
+                ActionType::VolumeDown => action_dropdown.set_selected(10),
+                ActionType::VolumeMute => action_dropdown.set_selected(11),
                 _ => {}
             }
         }
@@ -425,11 +431,11 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let entry_clone = action_details_entry.clone();
     action_dropdown.connect_selected_notify(move |dd| {
         let sel = dd.selected();
-        entry_clone.set_visible(sel == 0 || sel == 1);
+        entry_clone.set_visible(sel == 0 || sel == 1 || sel == 2);
     });
     // Trigger initial notify
     let sel = action_dropdown.selected();
-    action_details_entry.set_visible(sel == 0 || sel == 1);
+    action_details_entry.set_visible(sel == 0 || sel == 1 || sel == 2);
 
     // Save and Cancel buttons
     let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
@@ -472,14 +478,15 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         let action = match sel_idx {
             0 => ActionType::Keypress(detail),
             1 => ActionType::Execute(detail),
-            2 => ActionType::WorkspaceLeft,
-            3 => ActionType::WorkspaceRight,
-            4 => ActionType::WorkspaceUp,
-            5 => ActionType::WorkspaceDown,
-            6 => ActionType::Kill,
-            7 => ActionType::Iconify,
-            8 => ActionType::VolumeUp,
-            9 => ActionType::VolumeDown,
+            2 => ActionType::Gnome(detail),
+            3 => ActionType::WorkspaceLeft,
+            4 => ActionType::WorkspaceRight,
+            5 => ActionType::WorkspaceUp,
+            6 => ActionType::WorkspaceDown,
+            7 => ActionType::Kill,
+            8 => ActionType::Iconify,
+            9 => ActionType::VolumeUp,
+            10 => ActionType::VolumeDown,
             _ => ActionType::VolumeMute,
         };
 
