@@ -81,7 +81,7 @@ fn get_action_category_icon(action: &ActionType) -> (&'static str, &'static str)
     }
 }
 
-fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height: f64, draw_bg: bool) {
+fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height: f64, draw_bg: bool, fit_to_canvas: bool) {
     if draw_bg {
         // Subtle background
         cr.set_source_rgba(0.95, 0.96, 0.98, 0.5);
@@ -108,15 +108,21 @@ fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height
     let w = max_x - min_x;
     let h = max_y - min_y;
     let max_dim = w.max(h);
-    let scale = if max_dim > 1.0 { (width * 0.7) / max_dim } else { 1.0 };
+    let scale = if fit_to_canvas {
+        if max_dim > 1.0 { (width * 0.7) / max_dim } else { 1.0 }
+    } else {
+        1.0
+    };
 
     let cx = min_x + w / 2.0;
     let cy = min_y + h / 2.0;
 
     cr.save().unwrap();
-    cr.translate(width / 2.0, height / 2.0);
-    cr.scale(scale, scale);
-    cr.translate(-cx, -cy);
+    if fit_to_canvas {
+        cr.translate(width / 2.0, height / 2.0);
+        cr.scale(scale, scale);
+        cr.translate(-cx, -cy);
+    }
 
     cr.set_line_width(4.0 / scale);
     cr.set_line_cap(cairo::LineCap::Round);
@@ -200,7 +206,7 @@ fn create_gesture_row(state_rc: &Rc<RefCell<AppState>>, gesture: &Gesture) -> gt
     let preview_canvas = gtk::DrawingArea::new();
     let pts_clone = gesture.points.clone();
     preview_canvas.set_draw_func(move |_, cr, width, height| {
-        draw_gesture_path(cr, &pts_clone, width as f64, height as f64, true);
+        draw_gesture_path(cr, &pts_clone, width as f64, height as f64, true, true);
     });
     preview_frame.set_child(Some(&preview_canvas));
     main_hbox.append(&preview_frame);
@@ -298,16 +304,18 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let recorded_points: Rc<RefCell<Vec<Point2D>>> = Rc::new(RefCell::new(
         target_gesture.as_ref().map(|g| g.points.clone()).unwrap_or_default()
     ));
+    let is_recording = Rc::new(RefCell::new(false));
 
     let pts_clone = Rc::clone(&recorded_points);
+    let rec_clone = Rc::clone(&is_recording);
     canvas.set_draw_func(move |_, cr, width, height| {
         let pts = pts_clone.borrow();
-        draw_gesture_path(cr, &pts, width as f64, height as f64, true);
+        let active = *rec_clone.borrow();
+        draw_gesture_path(cr, &pts, width as f64, height as f64, true, !active);
     });
 
     // GestureDrag controller for recording drawing
     let drag = gtk::GestureDrag::new();
-    let is_recording = Rc::new(RefCell::new(false));
     
     let canvas_clone = canvas.clone();
     let pts_drag = Rc::clone(&recorded_points);
@@ -348,9 +356,11 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         }
     });
 
+    let canvas_clone3 = canvas.clone();
     let rec_drag3 = Rc::clone(&is_recording);
     drag.connect_drag_end(move |_, _, _| {
         *rec_drag3.borrow_mut() = false;
+        canvas_clone3.queue_draw();
     });
 
     canvas.add_controller(drag);
