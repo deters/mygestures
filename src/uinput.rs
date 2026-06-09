@@ -92,10 +92,16 @@ impl UinputDevice {
 
         // Copy relative/absolute axes
         if let Some(src_rel) = source_dev.supported_relative_axes() {
-            builder = builder.with_relative_axes(src_rel)?;
+            for code in src_rel.iter() {
+                builder = builder.with_relative_axis(code)?;
+            }
         }
         if let Some(src_abs) = source_dev.supported_absolute_axes() {
-            builder = builder.with_absolute_axes(src_abs)?;
+            for code in src_abs.iter() {
+                if let Some(abs_info) = source_dev.get_abs_info(code) {
+                    builder = builder.with_absolute_axis(code, &abs_info)?;
+                }
+            }
         }
 
         let device = builder.build()?;
@@ -113,7 +119,7 @@ impl UinputDevice {
         };
 
         let press = evdev::InputEvent::new(evdev::EventType::KEY, ev_button.0, 1);
-        let syn = evdev::InputEvent::new(evdev::EventType::SYNCHO, 0, 0);
+        let syn = evdev::InputEvent::new(evdev::EventType::SYNCHRONIZATION, 0, 0);
         let release = evdev::InputEvent::new(evdev::EventType::KEY, ev_button.0, 0);
 
         let _ = self.device.emit(&[press, syn]);
@@ -135,7 +141,7 @@ impl UinputDevice {
         // Press all keys in sequence
         for &code in &codes {
             let press = evdev::InputEvent::new(evdev::EventType::KEY, code, 1);
-            let syn = evdev::InputEvent::new(evdev::EventType::SYNCHO, 0, 0);
+            let syn = evdev::InputEvent::new(evdev::EventType::SYNCHRONIZATION, 0, 0);
             let _ = self.device.emit(&[press, syn]);
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
@@ -145,7 +151,7 @@ impl UinputDevice {
         // Release in reverse order
         for &code in codes.iter().rev() {
             let release = evdev::InputEvent::new(evdev::EventType::KEY, code, 0);
-            let syn = evdev::InputEvent::new(evdev::EventType::SYNCHO, 0, 0);
+            let syn = evdev::InputEvent::new(evdev::EventType::SYNCHRONIZATION, 0, 0);
             let _ = self.device.emit(&[release, syn]);
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
