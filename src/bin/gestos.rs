@@ -845,33 +845,35 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     }
 
     // Connect action changed signal
+    let option_names_clone = option_names.clone();
     let all_options_clone = all_options.clone();
     let entry_clone2 = action_details_entry.clone();
 
     action_dropdown.connect_selected_notify(move |act_dd| {
-        let act_idx = act_dd.selected();
-        if act_idx == gtk::INVALID_LIST_POSITION {
-            return;
-        }
-        let act_idx = act_idx as usize;
+        if let Some(obj) = act_dd.selected_item() {
+            if let Ok(string_obj) = obj.downcast::<gtk::StringObject>() {
+                let selected_str = string_obj.string();
+                if let Some(act_idx) = option_names_clone.iter().position(|name| name == selected_str.as_str()) {
+                    if act_idx < all_options_clone.len() {
+                        let opt = &all_options_clone[act_idx];
+                        let show_entry = match &opt.action_type {
+                            ActionType::Keypress(_) => true,
+                            ActionType::Execute(_) if opt.category == 7 => true,
+                            _ => false,
+                        };
+                        entry_clone2.set_visible(show_entry);
 
-        if act_idx < all_options_clone.len() {
-            let opt = &all_options_clone[act_idx];
-            let show_entry = match &opt.action_type {
-                ActionType::Keypress(_) => true,
-                ActionType::Execute(_) if opt.category == 7 => true,
-                _ => false,
-            };
-            entry_clone2.set_visible(show_entry);
-
-            match &opt.action_type {
-                ActionType::Keypress(_) => {
-                    entry_clone2.set_placeholder_text(Some("e.g. Control_L+Alt_L+t"));
+                        match &opt.action_type {
+                            ActionType::Keypress(_) => {
+                                entry_clone2.set_placeholder_text(Some("e.g. Control_L+Alt_L+t"));
+                            }
+                            ActionType::Execute(_) => {
+                                entry_clone2.set_placeholder_text(Some("e.g. firefox"));
+                            }
+                            _ => {}
+                        }
+                    }
                 }
-                ActionType::Execute(_) => {
-                    entry_clone2.set_placeholder_text(Some("e.g. firefox"));
-                }
-                _ => {}
             }
         }
     });
@@ -894,6 +896,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let is_edit = target_gesture.is_some();
     let dialog_clone2 = dialog.clone();
     
+    let option_names_save = option_names.clone();
     let all_options_save = all_options.clone();
     save_btn.connect_clicked(move |_| {
         let name = name_entry.text().to_string();
@@ -912,11 +915,20 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             .collect::<Vec<_>>()
             .join(" ");
 
-        let act_idx = action_dropdown.selected();
-        if act_idx == gtk::INVALID_LIST_POSITION {
+        let selected_item = action_dropdown.selected_item();
+        if selected_item.is_none() {
             return;
         }
-        let act_idx = act_idx as usize;
+        let obj = selected_item.unwrap();
+        let string_obj = match obj.downcast::<gtk::StringObject>() {
+            Ok(s) => s,
+            Err(_) => return,
+        };
+        let selected_str = string_obj.string();
+        let act_idx = match option_names_save.iter().position(|name| name == selected_str.as_str()) {
+            Some(idx) => idx,
+            None => return,
+        };
 
         if act_idx >= all_options_save.len() {
             return;
