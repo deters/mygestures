@@ -296,22 +296,31 @@ fn fetch_gnome_action_options() -> Vec<EditorActionOption> {
 
     let source = match gio::SettingsSchemaSource::default() {
         Some(s) => s,
-        None => return options,
+        None => {
+            eprintln!("Warning: GSettings default schema source not found.");
+            return options;
+        }
     };
 
     for schema_id in schemas {
         let schema = match source.lookup(schema_id, true) {
             Some(s) => s,
-            None => continue,
+            None => {
+                eprintln!("Info: GSettings schema '{}' not found, skipping.", schema_id);
+                continue;
+            }
         };
 
         let settings = gio::Settings::new(schema_id);
 
         for key in schema.list_keys() {
             let skey = schema.key(&key);
-            let summary = skey.summary().map(|s| s.to_string()).unwrap_or_default();
+            let mut summary = skey.summary().map(|s| s.to_string()).unwrap_or_default();
             if summary.is_empty() {
-                continue;
+                summary = skey.description().map(|s| s.to_string()).unwrap_or_default();
+            }
+            if summary.is_empty() {
+                summary = key.to_string();
             }
 
             let val = settings.value(&key);
@@ -360,6 +369,7 @@ fn fetch_gnome_action_options() -> Vec<EditorActionOption> {
         }
     }
 
+    println!("Fetched {} GNOME action options from GSettings.", options.len());
     options
 }
 
