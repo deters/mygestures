@@ -84,6 +84,42 @@ static char *get_gnome_shortcut(const char *schema, const char *key) {
     return NULL;
 }
 
+static char *gsettings_get_value(const char *schema, const char *key) {
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "%sgsettings get %s %s 2>/dev/null", prefix, schema, key);
+    FILE *fp = popen(cmd, "r");
+    if (!fp) return NULL;
+
+    char line[1024];
+    if (fgets(line, sizeof(line), fp)) {
+        pclose(fp);
+        size_t len = strlen(line);
+        while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) {
+            line[len - 1] = '\0';
+            len--;
+        }
+        if (len == 0) return NULL;
+        return strdup(line);
+    }
+    pclose(fp);
+    return NULL;
+}
+
+static void gsettings_set_value(const char *schema, const char *key, const char *value) {
+    ensure_ctx();
+    char prefix[1024];
+    get_user_command_prefix(&ctx, prefix, sizeof(prefix));
+
+    char cmd[4096];
+    snprintf(cmd, sizeof(cmd), "%sgsettings set %s %s \"%s\" 2>/dev/null", prefix, schema, key, value);
+    FILE *fp = popen(cmd, "w");
+    if (fp) pclose(fp);
+}
+
 static void wayland_execute_desktop_shortcut(const char *gnome_key, const char *fallback_keys) {
     LOG_INFO(1, "  [Action] Executing desktop shortcut: %s\n", gnome_key);
     const char *schemas[] = {
@@ -93,17 +129,42 @@ static void wayland_execute_desktop_shortcut(const char *gnome_key, const char *
         NULL
     };
 
+    char *shortcut = NULL;
+
     for (int i = 0; schemas[i] != NULL; i++) {
-        char *shortcut = get_gnome_shortcut(schemas[i], gnome_key);
+        shortcut = get_gnome_shortcut(schemas[i], gnome_key);
         if (shortcut) {
-            wayland_keypress(shortcut);
-            free(shortcut);
+            break;
+        }
+    }
+
+    if (shortcut) {
+        wayland_keypress(shortcut);
+        free(shortcut);
+        return;
+    }
+
+    LOG_INFO(1, "  [Action] No active shortcut found for %s. Attempting temporary binding...\n", gnome_key);
+    for (int i = 0; schemas[i] != NULL; i++) {
+        char *orig_val = gsettings_get_value(schemas[i], gnome_key);
+        if (orig_val) {
+            LOG_INFO(1, "  [Action] Found schema %s for key %s. Original value: %s\n", schemas[i], gnome_key, orig_val);
+            
+            gsettings_set_value(schemas[i], gnome_key, "['<Super><Shift><Control><Alt>F12']");
+            usleep(50 * 1000);
+            
+            wayland_keypress("Super_L+Shift_L+Control_L+Alt_L+F12");
+            usleep(50 * 1000);
+            
+            gsettings_set_value(schemas[i], gnome_key, orig_val);
+            
+            free(orig_val);
             return;
         }
     }
 
     if (fallback_keys) {
-        LOG_INFO(1, "  [Action] No GSettings found for %s, using fallback: %s\n", gnome_key, fallback_keys);
+        LOG_INFO(1, "  [Action] GSettings lookup failed, using fallback keys: %s\n", fallback_keys);
         wayland_keypress(fallback_keys);
     }
 }
