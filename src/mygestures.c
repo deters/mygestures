@@ -32,6 +32,7 @@
 
 #include "mygestures.h"
 #include "main.h"
+#include "ipc.h"
 
 #include "grabbing.h"
 #include "grabbing-evdev.h"
@@ -174,7 +175,12 @@ static void mygestures_grab_device(Mygestures *self, char *device_name)
                 signal(SIGINT, on_interrupt);
                 signal(SIGKILL, on_kill);
 
+                /* Single-instance check: terminate previous instance of mygestures for this device/button */
+                alloc_shared_memory(device_name, trigger_button);
+                send_kill_message(device_name);
+
                 grabber_loop(grabber, self->gestures_configuration);
+                release_shared_memory();
                 exit(0);
         }
 }
