@@ -1,0 +1,1 @@
+option('udevdir', type: 'string', value: '', description: 'Directory for udev rules')
