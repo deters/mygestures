@@ -160,41 +160,52 @@ static void fetch_gnome_action_options(GList **list) {
         if (!schema) continue;
 
         GSettings *settings = g_settings_new(schemas[i]);
+        if (!settings) {
+            g_settings_schema_unref(schema);
+            continue;
+        }
         char **keys = g_settings_schema_list_keys(schema);
+        if (keys) {
+            for (int j = 0; keys[j]; j++) {
+                GSettingsSchemaKey *skey = g_settings_schema_get_key(schema, keys[j]);
+                if (!skey) continue;
+                const char *summary = g_settings_schema_key_get_summary(skey);
 
-        for (int j = 0; keys[j]; j++) {
-            GSettingsSchemaKey *skey = g_settings_schema_get_key(schema, keys[j]);
-            const char *summary = g_settings_schema_key_get_summary(skey);
-
-            GVariant *val = g_settings_get_value(settings, keys[j]);
-            char *accel = NULL;
-
-            if (g_variant_is_of_type(val, G_VARIANT_TYPE_STRING)) {
-                accel = g_variant_dup_string(val, NULL);
-            } else if (g_variant_is_of_type(val, G_VARIANT_TYPE_STRING_ARRAY)) {
-                const char **arr = g_variant_get_strv(val, NULL);
-                if (arr && arr[0]) accel = g_strdup(arr[0]);
-                g_free(arr);
-            }
-
-            if (summary && strlen(summary) > 0) {
-                EditorActionOption *opt = g_new0(EditorActionOption, 1);
-                opt->category = CAT_GNOME;
-                opt->action_id = ACTION_GNOME;
-                opt->name = g_strdup(summary);
-                opt->gnome_key = g_strdup(keys[j]);
-                opt->icon = g_strdup("preferences-system-symbolic");
-                if (accel && strlen(accel) > 0 && strcmp(accel, "disabled") != 0) {
-                    opt->tooltip = g_strdup_printf("Schema key: %s (Shortcut: %s)", keys[j], accel);
-                } else {
-                    opt->tooltip = g_strdup_printf("Schema key: %s (No shortcut configured)", keys[j]);
+                GVariant *val = g_settings_get_value(settings, keys[j]);
+                if (!val) {
+                    g_settings_schema_key_unref(skey);
+                    continue;
                 }
-                *list = g_list_append(*list, opt);
-            }
+                char *accel = NULL;
 
-            g_free(accel);
-            g_variant_unref(val);
-            g_settings_schema_key_unref(skey);
+                if (g_variant_is_of_type(val, G_VARIANT_TYPE_STRING)) {
+                    accel = g_variant_dup_string(val, NULL);
+                } else if (g_variant_is_of_type(val, G_VARIANT_TYPE_STRING_ARRAY)) {
+                    const char **arr = g_variant_get_strv(val, NULL);
+                    if (arr && arr[0]) accel = g_strdup(arr[0]);
+                    g_free(arr);
+                }
+
+                if (summary && strlen(summary) > 0) {
+                    EditorActionOption *opt = g_new0(EditorActionOption, 1);
+                    opt->category = CAT_GNOME;
+                    opt->action_id = ACTION_GNOME;
+                    opt->name = g_strdup(summary);
+                    opt->gnome_key = g_strdup(keys[j]);
+                    opt->icon = g_strdup("preferences-system-symbolic");
+                    if (accel && strlen(accel) > 0 && strcmp(accel, "disabled") != 0) {
+                        opt->tooltip = g_strdup_printf("Schema key: %s (Shortcut: %s)", keys[j], accel);
+                    } else {
+                        opt->tooltip = g_strdup_printf("Schema key: %s (No shortcut configured)", keys[j]);
+                    }
+                    *list = g_list_append(*list, opt);
+                }
+
+                g_free(accel);
+                g_variant_unref(val);
+                g_settings_schema_key_unref(skey);
+            }
+            g_strfreev(keys);
         }
 
         if (strcmp(schemas[i], "org.gnome.settings-daemon.plugins.media-keys") == 0) {
@@ -202,6 +213,7 @@ static void fetch_gnome_action_options(GList **list) {
             if (paths) {
                 for (int k = 0; paths[k]; k++) {
                     GSettings *custom = g_settings_new_with_path("org.gnome.settings-daemon.plugins.media-keys.custom-keybinding", paths[k]);
+                    if (!custom) continue;
                     char *c_name = g_settings_get_string(custom, "name");
                     char *c_cmd = g_settings_get_string(custom, "command");
                     char *c_bind = g_settings_get_string(custom, "binding");
@@ -213,7 +225,7 @@ static void fetch_gnome_action_options(GList **list) {
                         opt->name = g_strdup(c_name);
                         opt->custom_cmd = g_strdup(c_cmd);
                         opt->icon = g_strdup("system-run-symbolic");
-                        opt->tooltip = g_strdup_printf("Custom GNOME shortcut: %s", c_cmd);
+                        opt->tooltip = g_strdup_printf("Custom GNOME shortcut: %s", c_cmd ? c_cmd : "");
                         *list = g_list_append(*list, opt);
                     }
                     g_free(c_name);
@@ -225,7 +237,6 @@ static void fetch_gnome_action_options(GList **list) {
             }
         }
 
-        g_strfreev(keys);
         g_settings_schema_unref(schema);
         g_object_unref(settings);
     }
@@ -358,12 +369,19 @@ static const char* get_action_class(int id) {
 
 static void on_action_changed(GObject *gobject, GParamSpec *pspec, gpointer user_data) {
     GestureEditor *editor = (GestureEditor *)user_data;
+    if (!editor || !editor->action_combo || !editor->action_val_box || !editor->action_val_label || !editor->record_btn) return;
+
     guint opt_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->action_combo));
     if (opt_idx == GTK_INVALID_LIST_POSITION) {
         gtk_widget_set_visible(editor->action_val_box, FALSE);
         return;
     }
     
+    if (!editor->current_options) {
+        gtk_widget_set_visible(editor->action_val_box, FALSE);
+        return;
+    }
+
     EditorActionOption *opt = (EditorActionOption *)g_list_nth_data(editor->current_options, opt_idx);
     if (!opt) {
         gtk_widget_set_visible(editor->action_val_box, FALSE);
@@ -378,7 +396,7 @@ static void on_action_changed(GObject *gobject, GParamSpec *pspec, gpointer user
         gtk_label_set_text(GTK_LABEL(editor->action_val_label), label_text);
         gtk_widget_set_visible(editor->record_btn, (id == ACTION_KEYPRESS));
         
-        if (!editor->initializing && opt->custom_cmd) {
+        if (!editor->initializing && opt->custom_cmd && editor->action_val_entry) {
             gtk_editable_set_text(GTK_EDITABLE(editor->action_val_entry), opt->custom_cmd);
         }
     } else {
@@ -388,6 +406,8 @@ static void on_action_changed(GObject *gobject, GParamSpec *pspec, gpointer user
 
 static void on_category_changed(GObject *gobject, GParamSpec *pspec, gpointer user_data) {
     GestureEditor *editor = (GestureEditor *)user_data;
+    if (!editor || !editor->category_combo || !editor->action_combo) return;
+
     guint cat_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(editor->category_combo));
     if (cat_idx == GTK_INVALID_LIST_POSITION) return;
     
@@ -398,11 +418,13 @@ static void on_category_changed(GObject *gobject, GParamSpec *pspec, gpointer us
     
     GtkStringList *action_sl = gtk_string_list_new(NULL);
     
-    for (GList *l = editor->all_options; l; l = l->next) {
-        EditorActionOption *opt = (EditorActionOption *)l->data;
-        if (opt->category == (int)cat_idx) {
-            gtk_string_list_append(action_sl, opt->name);
-            editor->current_options = g_list_append(editor->current_options, opt);
+    if (editor->all_options) {
+        for (GList *l = editor->all_options; l; l = l->next) {
+            EditorActionOption *opt = (EditorActionOption *)l->data;
+            if (opt && opt->category == (int)cat_idx) {
+                gtk_string_list_append(action_sl, opt->name ? opt->name : "");
+                editor->current_options = g_list_append(editor->current_options, opt);
+            }
         }
     }
     
@@ -581,10 +603,19 @@ static void on_dropdown_setup(GtkSignalListItemFactory *factory, GtkListItem *li
 
 static void on_dropdown_bind(GtkSignalListItemFactory *factory, GtkListItem *list_item, gpointer user_data) {
     GtkWidget *box = gtk_list_item_get_child(list_item);
+    if (!box) return;
     GtkWidget *icon = gtk_widget_get_first_child(box);
+    if (!icon) return;
     GtkWidget *label = gtk_widget_get_next_sibling(icon);
-    GtkStringObject *string_obj = GTK_STRING_OBJECT(gtk_list_item_get_item(list_item));
+    if (!label) return;
+    
+    gpointer item = gtk_list_item_get_item(list_item);
+    if (!item || !GTK_IS_STRING_OBJECT(item)) return;
+    
+    GtkStringObject *string_obj = GTK_STRING_OBJECT(item);
     const char *text = gtk_string_object_get_string(string_obj);
+    if (!text) return;
+    
     gtk_label_set_text(GTK_LABEL(label), text);
     
     const char *icon_name = "system-run-symbolic";
@@ -592,7 +623,7 @@ static void on_dropdown_bind(GtkSignalListItemFactory *factory, GtkListItem *lis
     if (editor && editor->current_options) {
         for (GList *l = editor->current_options; l; l = l->next) {
             EditorActionOption *opt = (EditorActionOption *)l->data;
-            if (strcmp(opt->name, text) == 0) {
+            if (opt && opt->name && strcmp(opt->name, text) == 0) {
                 icon_name = opt->icon ? opt->icon : "system-run-symbolic";
                 break;
             }
