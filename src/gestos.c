@@ -1527,21 +1527,6 @@ static void refresh_gesture_list(GestosApp *gestos) {
 static void on_search_changed(GtkSearchEntry *entry, gpointer user_data) {
     refresh_gesture_list((GestosApp *)user_data);
 }
-
-static void on_save_config_clicked(GtkWidget *widget, gpointer user_data) {
-    GestosApp *gestos = (GestosApp *)user_data;
-    char *filename = configuration_get_default_filename();
-    configuration_save_to_file(gestos->config, filename);
-    
-    reload_daemon_if_running();
-    
-    GtkWidget *toast = gtk_label_new("Configuration saved!");
-    gtk_widget_add_css_class(toast, "toast");
-    gtk_box_append(GTK_BOX(gtk_window_get_child(GTK_WINDOW(gestos->window))), toast);
-    g_timeout_add_seconds(2, (GSourceFunc)gtk_widget_unparent, toast);
-    free(filename);
-}
-
 static void on_about_clicked(GtkWidget *widget, gpointer user_data) {
     GtkWindow *parent = GTK_WINDOW(user_data);
     gtk_show_about_dialog(parent, "program-name", "Gestos", "version", "1.3.0", "logo-icon-name", "input-mouse", NULL);
@@ -1626,12 +1611,6 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
     GtkWidget *header = gtk_header_bar_new();
     gtk_window_set_titlebar(GTK_WINDOW(gestos->window), header);
-
-    GtkWidget *save_btn = gtk_button_new_with_label("Save");
-    gtk_widget_add_css_class(save_btn, "suggested-action");
-    gtk_header_bar_pack_start(GTK_HEADER_BAR(header), save_btn);
-    g_signal_connect(save_btn, "clicked", G_CALLBACK(on_save_config_clicked), gestos);
-
     GtkWidget *add_gest_btn = gtk_button_new_from_icon_name("list-add-symbolic");
     gtk_header_bar_pack_end(GTK_HEADER_BAR(header), add_gest_btn);
     gtk_widget_set_tooltip_text(add_gest_btn, "Add Gesture");
