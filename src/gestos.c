@@ -548,16 +548,17 @@ static void on_gesture_save_clicked(GtkWidget *btn, gpointer user_data) {
             editor->gesture->is_modified = 1;
             editor->gesture->is_deleted = 0;
         }
-        // Update in-place in list box row
-        GtkWidget *row = gtk_widget_get_first_child(editor->app->main_list);
-        GtkWidget *found_row = NULL;
-        while (row) {
+        GtkListBoxRow *found_row = NULL;
+        int idx = 0;
+        while (1) {
+            GtkListBoxRow *row = gtk_list_box_get_row_at_index(GTK_LIST_BOX(editor->app->main_list), idx);
+            if (!row) break;
             Gesture *row_g = g_object_get_data(G_OBJECT(row), "gesture-ptr");
             if (row_g == editor->gesture) {
                 found_row = row;
                 break;
             }
-            row = gtk_widget_get_next_sibling(row);
+            idx++;
         }
         if (found_row) {
             gtk_list_box_row_set_child(GTK_LIST_BOX_ROW(found_row), NULL);
@@ -1578,6 +1579,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_widget_set_margin_start(gestos->main_list, 24);
     gtk_widget_set_margin_end(gestos->main_list, 24);
     gtk_widget_add_css_class(gestos->main_list, "boxed-list");
+    gtk_list_box_set_selection_mode(GTK_LIST_BOX(gestos->main_list), GTK_SELECTION_NONE);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scrolled), gestos->main_list);
     g_object_set_data(G_OBJECT(gestos->main_list), "gestos-app", gestos);
     g_signal_connect(gestos->main_list, "row-activated", G_CALLBACK(on_gesture_row_activated), gestos);
