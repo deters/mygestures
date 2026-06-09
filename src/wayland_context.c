@@ -139,15 +139,14 @@ void discover_wayland_context(WaylandContext *ctx) {
 }
 
 const char *get_user_command_prefix(WaylandContext *ctx, char *out_buf, size_t len) {
-    if (getuid() == 0 && ctx->username) {
-        char bus_path[1024];
-        snprintf(bus_path, sizeof(bus_path), "/run/user/%d/bus", ctx->uid);
-        
-        const char *dbus_env = "";
-        if (access(bus_path, F_OK) == 0) {
-            dbus_env = "DBUS_SESSION_BUS_ADDRESS=unix:path=";
-        }
+    char bus_path[1024];
+    snprintf(bus_path, sizeof(bus_path), "/run/user/%d/bus", ctx->uid);
+    const char *dbus_env = "";
+    if (access(bus_path, F_OK) == 0 && !getenv("DBUS_SESSION_BUS_ADDRESS")) {
+        dbus_env = "DBUS_SESSION_BUS_ADDRESS=unix:path=";
+    }
 
+    if (getuid() == 0 && ctx->username) {
         if (ctx->is_sway) {
             snprintf(out_buf, len, "sudo -u %s env %s%s XDG_RUNTIME_DIR=/run/user/%d SWAYSOCK=%s ", 
                      ctx->username, dbus_env, (strlen(dbus_env) > 0 ? bus_path : ""), ctx->uid, ctx->sway_sock);
@@ -158,6 +157,9 @@ const char *get_user_command_prefix(WaylandContext *ctx, char *out_buf, size_t l
             snprintf(out_buf, len, "sudo -u %s env %s%s XDG_RUNTIME_DIR=/run/user/%d ", 
                      ctx->username, dbus_env, (strlen(dbus_env) > 0 ? bus_path : ""), ctx->uid);
         }
+        return out_buf;
+    } else if (strlen(dbus_env) > 0) {
+        snprintf(out_buf, len, "%s%s ", dbus_env, bus_path);
         return out_buf;
     }
     return "";

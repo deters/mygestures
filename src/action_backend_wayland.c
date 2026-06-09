@@ -28,7 +28,7 @@ static char *get_gnome_shortcut(const char *schema, const char *key) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
 
     char cmd[2048];
-    snprintf(cmd, sizeof(cmd), "%sgsettings get %s %s 2>/dev/null", prefix, schema, key);
+    snprintf(cmd, sizeof(cmd), "%sgsettings get %s %s", prefix, schema, key);
     FILE *fp = popen(cmd, "r");
     if (!fp) return NULL;
 
@@ -90,7 +90,7 @@ static char *gsettings_get_value(const char *schema, const char *key) {
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
 
     char cmd[2048];
-    snprintf(cmd, sizeof(cmd), "%sgsettings get %s %s 2>/dev/null", prefix, schema, key);
+    snprintf(cmd, sizeof(cmd), "%sgsettings get %s %s", prefix, schema, key);
     FILE *fp = popen(cmd, "r");
     if (!fp) return NULL;
 
@@ -115,7 +115,7 @@ static void gsettings_set_value(const char *schema, const char *key, const char 
     get_user_command_prefix(&ctx, prefix, sizeof(prefix));
 
     char cmd[4096];
-    snprintf(cmd, sizeof(cmd), "%sgsettings set %s %s \"%s\" 2>/dev/null", prefix, schema, key, value);
+    snprintf(cmd, sizeof(cmd), "%sgsettings set %s %s \"%s\"", prefix, schema, key, value);
     FILE *fp = popen(cmd, "w");
     if (fp) pclose(fp);
 }
