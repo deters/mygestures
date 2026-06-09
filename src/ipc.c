@@ -25,14 +25,14 @@ static void char_replace(char *str, char oldChar, char newChar) {
         *strPtr++ = newChar;
 }
 
-void alloc_shared_memory(char *device_name, int button) {
+void alloc_shared_memory(char *device_name) {
     char *sanitized_device_name = strdup(device_name ? device_name : "");
     if (sanitized_device_name) {
         char_replace(sanitized_device_name, '/', '%');
     }
 
-    int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s_button_%d", getuid(),
-                         sanitized_device_name ? sanitized_device_name : "", button);
+    int bytes = asprintf(&shm_identifier, "/mygestures_uid_%d_dev_%s", getuid(),
+                         sanitized_device_name ? sanitized_device_name : "");
 
     if (sanitized_device_name) {
         free(sanitized_device_name);

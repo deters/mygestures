@@ -175,8 +175,8 @@ static void mygestures_grab_device(Mygestures *self, char *device_name)
                 signal(SIGINT, on_interrupt);
                 signal(SIGKILL, on_kill);
 
-                /* Single-instance check: terminate previous instance of mygestures for this device/button */
-                alloc_shared_memory(device_name, trigger_button);
+                /* Single-instance check: terminate previous instance of mygestures for this device */
+                alloc_shared_memory(device_name);
                 send_kill_message(device_name);
 
                 grabber_loop(grabber, self->gestures_configuration);
