@@ -90,14 +90,6 @@ global:
   "Copy":
     move: "100,0 0,0 0,100 100,100"
     do: keypress Control_L+C
-
-apps:
-  - name: Terminal
-    match: { class: ".*(Term|term).*" }
-    gestures:
-      "New tab":
-        move: "0,0 100,0 50,0 50,100"
-        do: keypress Control_L+Shift_L+T
 ```
 
 Supported Actions:
