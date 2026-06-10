@@ -50,20 +50,32 @@ fn check_permissions(device: &str) -> bool {
                 eprintln!(" - Cannot write to /dev/uinput virtual device creator.");
             }
         }
-        eprintln!("\nTo resolve this, perform the following:\n");
+
         let mut step = 1;
         if !uinput_exists {
+            eprintln!("\nTo resolve the missing kernel module:\n");
             eprintln!("{}. Load the uinput kernel module:", step);
             eprintln!("   sudo modprobe uinput");
-            eprintln!("   (To load it automatically on boot, e.g. on Alpine Linux, add 'uinput' to /etc/modules)\n");
+            eprintln!("   (To load it automatically on boot, add 'uinput' to /etc/modules)\n");
             step += 1;
         }
-        eprintln!("{}. Add your user to the 'input' group:", step);
-        eprintln!("   sudo usermod -aG input $USER\n");
-        step += 1;
-        eprintln!("{}. Ensure the mygestures udev rules are installed to allow non-root uinput device creation:", step);
-        eprintln!("   sudo cp 99-mygestures.rules /etc/udev/rules.d/");
-        eprintln!("   sudo udevadm control --reload-rules && sudo udevadm trigger");
+
+        eprintln!("\nTo resolve permissions, choose one of the following setups:\n");
+        eprintln!("OPTION A: SECURE SETUP (Recommended - Only mygestures has access)");
+        eprintln!("  {}. Install the mygestures udev rules (restricts access to the 'input' group):", step);
+        eprintln!("     sudo cp 99-mygestures.rules /etc/udev/rules.d/");
+        eprintln!("     sudo udevadm control --reload-rules && sudo udevadm trigger");
+        eprintln!("  {}. Configure the mygestures binary to run as Set-Group-ID (SGID) to 'input':", step + 1);
+        eprintln!("     sudo chown root:input /usr/local/bin/mygestures");
+        eprintln!("     sudo chmod 2755 /usr/local/bin/mygestures");
+        eprintln!("     (Note: This allows only this binary to capture inputs/inject actions)");
+        
+        eprintln!("\nOPTION B: STANDARD SETUP (Allows all user applications to capture inputs)");
+        eprintln!("  {}. Add your user to the 'input' group:", step);
+        eprintln!("     sudo usermod -aG input $USER");
+        eprintln!("  {}. Install the udev rules:", step + 1);
+        eprintln!("     sudo cp 99-mygestures.rules /etc/udev/rules.d/");
+        eprintln!("     sudo udevadm control --reload-rules && sudo udevadm trigger");
         eprintln!("=========================================================================\n");
         return false;
     }
@@ -132,6 +144,19 @@ fn run_grabber(
             None
         }
     };
+
+    // Drop elevated GID privileges if running as setgid (SGID)
+    unsafe {
+        let rgid = libc::getgid();
+        let egid = libc::getegid();
+        if egid != rgid {
+            if libc::setregid(rgid, rgid) == 0 {
+                println!("mygestures: Successfully dropped elevated GID from {} to {}", egid, rgid);
+            } else {
+                eprintln!("mygestures: Warning: Failed to drop elevated GID.");
+            }
+        }
+    }
 
     println!("Listening for events from device using libevdev (button {})", trigger_button);
 

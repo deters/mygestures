@@ -1,13 +1,18 @@
 # MyGestures udev rules
-# This file is designed to ensure MyGestures can access the mouse and simulate keystrokes.
+# This file is designed to ensure MyGestures can access input devices and simulate keystrokes securely.
 
-# Force /dev/uinput to be accessible by all users (required for keyboard emulation).
-KERNEL=="uinput", SUBSYSTEM=="misc", MODE:="0666", OPTIONS+="static_node=uinput"
+# SECURE SETUP (Recommended): Restrict /dev/uinput to the 'input' group.
+# This prevents unauthorized users/processes from injecting keyboard/mouse events.
+# When mygestures is installed as Set-Group-ID (SGID) to the 'input' group, it is granted access.
+KERNEL=="uinput", SUBSYSTEM=="misc", GROUP="input", MODE:="0660", OPTIONS+="static_node=uinput"
 
-# Allow access to input devices (mice, touchpads, etc.) via session-aware uaccess.
-# We DO NOT use MODE="0666" here because it breaks hypervisors like UTM.
-SUBSYSTEM=="input", KERNEL=="event*", TAG+="uaccess"
-SUBSYSTEM=="input", KERNEL=="mouse*", TAG+="uaccess"
+# Access to input devices (mice, touchpads, etc.) is allowed via the 'input' group.
+# (Most distributions already make event/mouse nodes owned by root:input with mode 0660 or 0640)
+SUBSYSTEM=="input", KERNEL=="event*", GROUP="input", MODE="0660"
+SUBSYSTEM=="input", KERNEL=="mouse*", GROUP="input", MODE="0660"
 
-# Specific matches for modern input devices based on ID_INPUT
-SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT}=="1", TAG+="uaccess"
+# Note: If you prefer the STANDARD SETUP (allowing all user applications to capture inputs),
+# you can comment out the lines above and uncomment the lines below:
+# KERNEL=="uinput", SUBSYSTEM=="misc", MODE:="0666", OPTIONS+="static_node=uinput"
+# SUBSYSTEM=="input", KERNEL=="event*", TAG+="uaccess"
+# SUBSYSTEM=="input", KERNEL=="mouse*", TAG+="uaccess"

@@ -62,7 +62,7 @@ Troubleshooting:
 
 ### Gestures not working or no response:
 1. **Wrong device:** The daemon auto-detects standard pointer devices. If yours is not captured, find its path in `/dev/input/by-path/` and run `mygestures -d '/dev/input/by-path/event-mouse'`.
-2. **Permissions:** Ensure you have installed the udev rules (see above) to grant permission to create virtual uinput input devices. Modern MyGestures uses `uaccess` tagging, so you **do not need to be in the input group**.
+2. **Permissions:** Ensure you have installed the udev rules (see above) and configured permissions. By default, the udev rules restrict access to the `input` group for security. You can configure `mygestures` with Set-Group-ID (SGID) privileges to run securely, or fallback to standard `uaccess`/`input` group setups. Running the binary will output detailed instructions on both options.
 3. **Trigger Button:** If you are on a laptop with a touchpad, you might need to use button 1 (left-click) instead of 3. Try `mygestures -b 1`.
 4. **Missing /dev/uinput (e.g. Alpine Linux):** On some distributions like Alpine Linux, the `uinput` kernel module is not loaded by default, and `/dev/uinput` will not exist. Load it manually using `sudo modprobe uinput`. To make this persistent on boot, add `uinput` to `/etc/modules`.
 
