@@ -705,11 +705,21 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     main_box.set_margin_bottom(24);
     dialog.set_child(Some(&main_box));
 
+    // Scrollable area for all inputs
+    let scrolled = gtk::ScrolledWindow::new();
+    scrolled.set_hscrollbar_policy(gtk::PolicyType::Never);
+    scrolled.set_vscrollbar_policy(gtk::PolicyType::Automatic);
+    scrolled.set_vexpand(true);
+    main_box.append(&scrolled);
+
+    let scroll_content = gtk::Box::new(gtk::Orientation::Vertical, 16);
+    scrolled.set_child(Some(&scroll_content));
+
     // Name entry
     let name_label = gtk::Label::new(Some("Gesture Name"));
     name_label.set_halign(gtk::Align::Start);
     name_label.add_css_class("status-label");
-    main_box.append(&name_label);
+    scroll_content.append(&name_label);
 
     let name_entry = gtk::Entry::new();
     name_entry.set_placeholder_text(Some("e.g. Back Action"));
@@ -717,7 +727,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         name_entry.set_text(&g.name);
         name_entry.set_sensitive(false); // Can't change name of existing gesture
     }
-    main_box.append(&name_entry);
+    scroll_content.append(&name_entry);
 
     let is_name_customized = Rc::new(RefCell::new(target_gesture.is_some()));
     let is_updating_programmatically = Rc::new(RefCell::new(false));
@@ -739,7 +749,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let canvas_label = gtk::Label::new(Some("Draw gesture below"));
     canvas_label.set_halign(gtk::Align::Start);
     canvas_label.add_css_class("status-label");
-    main_box.append(&canvas_label);
+    scroll_content.append(&canvas_label);
 
     let canvas_frame = gtk::Frame::new(None);
     canvas_frame.add_css_class("gesture-preview-frame");
@@ -813,27 +823,32 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
 
     canvas.add_controller(drag);
     canvas_frame.set_child(Some(&canvas));
-    main_box.append(&canvas_frame);
+    scroll_content.append(&canvas_frame);
 
     // Action config dropdowns and text entries
     let category_label = gtk::Label::new(Some("Category"));
     category_label.set_halign(gtk::Align::Start);
     category_label.add_css_class("status-label");
-    main_box.append(&category_label);
+    scroll_content.append(&category_label);
 
     let category_dropdown = gtk::DropDown::from_strings(CATEGORY_NAMES);
-    main_box.append(&category_dropdown);
+    scroll_content.append(&category_dropdown);
 
     let action_label = gtk::Label::new(Some("Action"));
     action_label.set_halign(gtk::Align::Start);
     action_label.add_css_class("status-label");
-    main_box.append(&action_label);
+    scroll_content.append(&action_label);
 
     let action_dropdown = gtk::DropDown::new(None::<gtk::StringList>, None::<gtk::Expression>);
-    main_box.append(&action_dropdown);
+    scroll_content.append(&action_dropdown);
+
+    let action_details_label = gtk::Label::new(None);
+    action_details_label.set_halign(gtk::Align::Start);
+    action_details_label.add_css_class("status-label");
+    scroll_content.append(&action_details_label);
 
     let action_details_entry = gtk::Entry::new();
-    main_box.append(&action_details_entry);
+    scroll_content.append(&action_details_entry);
 
     // Build options list
     let mut all_options = get_static_action_options();
@@ -899,7 +914,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     category_dropdown.set_selected(selected_cat as u32);
     action_dropdown.set_selected(selected_act as u32);
 
-    // Initialize details entry visibility and placeholder
+    // Initialize details entry visibility, label, and placeholder
     if selected_act < initial_filtered.len() {
         let opt = &initial_filtered[selected_act];
         let show_entry = match &opt.action_type {
@@ -909,14 +924,18 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             _ => false,
         };
         action_details_entry.set_visible(show_entry);
+        action_details_label.set_visible(show_entry);
         match &opt.action_type {
             ActionType::Keypress(_) => {
+                action_details_label.set_text("Keys to Send");
                 action_details_entry.set_placeholder_text(Some("e.g. Control_L+Alt_L+t"));
             }
             ActionType::Execute(_) => {
+                action_details_label.set_text("Command to Execute");
                 action_details_entry.set_placeholder_text(Some("e.g. firefox"));
             }
             ActionType::Click(_) => {
+                action_details_label.set_text("Mouse Button");
                 action_details_entry.set_placeholder_text(Some("e.g. 1 (Left), 2 (Middle), 3 (Right)"));
             }
             _ => {}
@@ -968,6 +987,8 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let all_options_clone = all_options.clone();
     let current_opts_clone = Rc::clone(&current_options);
     let action_dropdown_clone = action_dropdown.clone();
+    let entry_clone = action_details_entry.clone();
+    let label_clone = action_details_label.clone();
     let udn_clone3 = Rc::clone(&update_default_name);
 
     category_dropdown.connect_selected_notify(move |cat_dd| {
@@ -986,8 +1007,37 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         let action_model = gtk::StringList::new(&action_refs);
         action_dropdown_clone.set_model(Some(&action_model));
 
-        *current_opts_clone.borrow_mut() = filtered;
+        *current_opts_clone.borrow_mut() = filtered.clone();
         action_dropdown_clone.set_selected(0);
+
+        // Manually update details entry visibility/placeholder/label for index 0
+        if !filtered.is_empty() {
+            let opt = &filtered[0];
+            let show_entry = match &opt.action_type {
+                ActionType::Keypress(_) => true,
+                ActionType::Execute(_) if opt.category == 7 => true,
+                ActionType::Click(_) => true,
+                _ => false,
+            };
+            entry_clone.set_visible(show_entry);
+            label_clone.set_visible(show_entry);
+
+            match &opt.action_type {
+                ActionType::Keypress(_) => {
+                    label_clone.set_text("Keys to Send");
+                    entry_clone.set_placeholder_text(Some("e.g. Control_L+Alt_L+t"));
+                }
+                ActionType::Execute(_) => {
+                    label_clone.set_text("Command to Execute");
+                    entry_clone.set_placeholder_text(Some("e.g. firefox"));
+                }
+                ActionType::Click(_) => {
+                    label_clone.set_text("Mouse Button");
+                    entry_clone.set_placeholder_text(Some("e.g. 1 (Left), 2 (Middle), 3 (Right)"));
+                }
+                _ => {}
+            }
+        }
 
         udn_clone3();
     });
@@ -995,6 +1045,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     // Connect action changed signal
     let current_opts_clone2 = Rc::clone(&current_options);
     let entry_clone2 = action_details_entry.clone();
+    let label_clone2 = action_details_label.clone();
     let udn_clone2 = Rc::clone(&update_default_name);
 
     action_dropdown.connect_selected_notify(move |act_dd| {
@@ -1014,15 +1065,19 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 _ => false,
             };
             entry_clone2.set_visible(show_entry);
+            label_clone2.set_visible(show_entry);
 
             match &opt.action_type {
                 ActionType::Keypress(_) => {
+                    label_clone2.set_text("Keys to Send");
                     entry_clone2.set_placeholder_text(Some("e.g. Control_L+Alt_L+t"));
                 }
                 ActionType::Execute(_) => {
+                    label_clone2.set_text("Command to Execute");
                     entry_clone2.set_placeholder_text(Some("e.g. firefox"));
                 }
                 ActionType::Click(_) => {
+                    label_clone2.set_text("Mouse Button");
                     entry_clone2.set_placeholder_text(Some("e.g. 1 (Left), 2 (Middle), 3 (Right)"));
                 }
                 _ => {}
