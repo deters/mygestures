@@ -7,5 +7,20 @@ override_dh_auto_build:
 	cargo build --release
 
 override_dh_auto_install:
+	# Install binaries
 	install -D -m 755 target/release/mygestures debian/mygestures/usr/bin/mygestures
 	install -D -m 755 target/release/gestos debian/mygestures/usr/bin/gestos
+
+	# Install udev rules
+	install -D -m 644 99-mygestures.rules debian/mygestures/lib/udev/rules.d/99-mygestures.rules
+
+	# Install desktop application shortcut, icon, and default configuration
+	install -D -m 644 gestos.desktop debian/mygestures/usr/share/applications/gestos.desktop
+	install -D -m 644 gestos.svg debian/mygestures/usr/share/icons/hicolor/scalable/apps/gestos.svg
+	install -D -m 644 mygestures.yaml debian/mygestures/usr/share/mygestures/mygestures.yaml
+
+override_dh_fixperms:
+	dh_fixperms
+	# Set Set-Group-ID (SGID) permission on mygestures binary
+	chgrp input debian/mygestures/usr/bin/mygestures
+	chmod 2755 debian/mygestures/usr/bin/mygestures

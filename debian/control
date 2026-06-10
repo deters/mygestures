@@ -2,8 +2,8 @@ Source: mygestures
 Section: utils
 Priority: optional
 Maintainer: Lucas Augusto Deters <lucasdeters@gmail.com>
-Build-Depends: debhelper (>= 8.0.0), cargo, rustc, libevdev-dev, libgtk-4-dev, libc6-dev
-Standards-Version: 3.9.2
+Build-Depends: debhelper-compat (= 13), cargo, rustc, libevdev-dev, libgtk-4-dev, libc6-dev, pkg-config
+Standards-Version: 4.6.2
 Homepage: https://github.com/deters/mygestures
 
 Package: mygestures

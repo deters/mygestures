@@ -7,17 +7,14 @@ set -e
 
 case "$1" in
     configure)
+        # Ensure the 'input' group exists
+        getent group input >/dev/null || groupadd -r input || true
+
         # Reload udev rules to apply the new uinput rule immediately
         if [ -x /lib/udev/udevadm ] || [ -x /usr/bin/udevadm ]; then
             udevadm control --reload-rules || true
             udevadm trigger --attr-match=subsystem=misc || true
         fi
-        echo "========================================================================="
-        echo "To run mygestures without root privileges under Wayland, ensure your user"
-        echo "is a member of the 'input' group:"
-        echo "  sudo usermod -aG input \$USER"
-        echo "Then log out and log back in for the changes to take effect."
-        echo "========================================================================="
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
