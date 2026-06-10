@@ -1977,6 +1977,7 @@ fn build_ui(app: &gtk::Application) {
     provider.load_from_data(
         "headerbar { background: @view_bg_color; border: none; box-shadow: none; }\n\
          .main-window-content, .dialog-content { background-color: @view_bg_color; }\n\
+         scrolledwindow, viewport { background: transparent; }\n\
          .status-banner { padding: 12px 16px; background-color: @window_bg_color; border-radius: 8px; }\n\
          .boxed-list, .boxed-list row, .boxed-list listrow { background-color: @window_bg_color; }\n\
          .context-title { font-size: 1.5em; font-weight: bold; }\n\
