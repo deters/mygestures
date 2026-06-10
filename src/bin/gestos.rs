@@ -2001,11 +2001,15 @@ fn build_ui(app: &gtk::Application) {
     let provider = gtk::CssProvider::new();
     provider.load_from_data(
         "headerbar { background: transparent; border: none; box-shadow: none; }\n\
-         .main-window-content, .dialog-content { background-color: @window_bg_color; }\n\
+         .main-window-content, .dialog-content { background-color: #f6f6f6; }\n\
          scrolledwindow, viewport { background-color: transparent !important; background-image: none !important; }\n\
-         .status-banner { padding: 12px 16px; background-color: @card_bg_color !important; border-radius: 8px; }\n\
-         .boxed-list, .boxed-list row, .boxed-list listrow, row, listrow { background-color: @card_bg_color !important; }\n\
-         .gesture-preview-frame { background: @window_bg_color; border-radius: 6px; }\n\
+         .status-banner { padding: 12px 16px; background-color: #ffffff !important; border-radius: 8px; }\n\
+         .boxed-list, .boxed-list row, .boxed-list listrow, row, listrow { background-color: #ffffff !important; }\n\
+         .gesture-preview-frame { background: #f6f6f6; border-radius: 6px; }\n\
+         .dark-mode .main-window-content, .dark-mode .dialog-content, .dark .main-window-content, .dark .dialog-content { background-color: #1e1e1e; }\n\
+         .dark-mode .status-banner, .dark .status-banner { background-color: #303030 !important; }\n\
+         .dark-mode .boxed-list, .dark-mode .boxed-list row, .dark-mode .boxed-list listrow, .dark-mode row, .dark-mode listrow, .dark .boxed-list, .dark .boxed-list row, .dark .boxed-list listrow, .dark row, .dark listrow { background-color: #303030 !important; }\n\
+         .dark-mode .gesture-preview-frame, .dark .gesture-preview-frame { background: #1e1e1e; }\n\
          .context-title { font-size: 1.5em; font-weight: bold; }\n\
          .gesture-row { padding: 6px; }\n\
          .icon-holder { padding: 4px; }\n\
