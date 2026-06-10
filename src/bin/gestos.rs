@@ -1520,8 +1520,8 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         if is_edit {
             let lookup_id = target_id.as_ref().unwrap();
             if let Some(pos) = state.config.gestures.iter().position(|g| g.id == *lookup_id) {
-                let lookup_name = &state.config.gestures[pos].name;
-                if name != *lookup_name {
+                let lookup_name = state.config.gestures[pos].name.clone();
+                if name != lookup_name {
                     if state.config.gestures.iter().any(|g| g.name == name) {
                         println!("Gesture save failed: A gesture with the name '{}' already exists.", name);
                         return;
