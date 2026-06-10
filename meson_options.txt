@@ -1,1 +1,2 @@
 option('udevdir', type: 'string', value: '', description: 'Directory for udev rules')
+option('modulesloaddir', type: 'string', value: '', description: 'Directory for systemd modules-load configuration')

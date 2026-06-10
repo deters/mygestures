@@ -48,6 +48,7 @@ getent group input >/dev/null || groupadd -r input
 %attr(2755, root, input) %{_bindir}/mygestures
 %{_bindir}/gestos
 %{_udevrulesdir}/99-mygestures.rules
+/lib/modules-load.d/mygestures.conf
 %{_datadir}/applications/gestos.desktop
 %{_datadir}/icons/hicolor/scalable/apps/gestos.svg
 %{_datadir}/mygestures/mygestures.yaml

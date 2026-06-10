@@ -61,6 +61,13 @@ if udevdir == ''
 endif
 install_data('packaging/99-mygestures.rules', install_dir: udevdir)
 
+# Install systemd modules-load configuration
+modulesloaddir = get_option('modulesloaddir')
+if modulesloaddir == ''
+  modulesloaddir = '/lib/modules-load.d'
+endif
+install_data('packaging/mygestures.conf', install_dir: modulesloaddir)
+
 # Install desktop entry, icon and default configuration
 datadir = prefix / get_option('datadir')
 install_data('gestos.desktop', install_dir: datadir / 'applications')

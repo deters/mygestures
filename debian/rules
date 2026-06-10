@@ -14,6 +14,9 @@ override_dh_auto_install:
 	# Install udev rules
 	install -D -m 644 packaging/99-mygestures.rules debian/mygestures/lib/udev/rules.d/99-mygestures.rules
 
+	# Install systemd modules-load configuration
+	install -D -m 644 packaging/mygestures.conf debian/mygestures/lib/modules-load.d/mygestures.conf
+
 	# Install desktop application shortcut, icon, and default configuration
 	install -D -m 644 gestos.desktop debian/mygestures/usr/share/applications/gestos.desktop
 	install -D -m 644 gestos.svg debian/mygestures/usr/share/icons/hicolor/scalable/apps/gestos.svg
