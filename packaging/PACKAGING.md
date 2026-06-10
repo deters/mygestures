@@ -8,8 +8,8 @@ This document explains how to build, test, and publish packages for Fedora, Debi
 
 This repository includes a pre-configured GitHub Actions workflow in [.github/workflows/package.yml](file:///.github/workflows/package.yml) that automates package creation in clean environments.
 
-### Pull Requests and Pushes to master
-On every Pull Request and push to the `master` branch, GitHub Actions will:
+### Tag Pushes and Manual Dispatch
+On every tag push starting with `v` (e.g. `v4.1.0`) or when triggered manually via **workflow_dispatch**, GitHub Actions will:
 * Build the Fedora `.rpm` package inside a Fedora container.
 * Build the Debian/Ubuntu `.deb` package inside a Debian container.
 * Build the Alpine `.apk` package inside an Alpine container.
@@ -47,20 +47,20 @@ rpmdev-setuptree
 ```
 
 ### Step 2: Create the source tarball
-Create a tarball of the current source tree and place it in the RPM sources directory:
+Create a tarball of the current source tree and place it in the RPM sources directory (making sure to exclude any local cache folders):
 ```bash
-VERSION=$(grep '^Version:' mygestures.spec | awk '{print $2}')
-tar --exclude-vcs --transform "s,^\.,mygestures-$VERSION," -czf ~/rpmbuild/SOURCES/mygestures-$VERSION.tar.gz .
+VERSION=$(grep '^Version:' packaging/mygestures.spec | awk '{print $2}')
+tar --exclude-vcs --exclude='.cargo' --exclude='target-fedora' --transform "s,^\.,mygestures-$VERSION," -czf ~/rpmbuild/SOURCES/mygestures-$VERSION.tar.gz .
 ```
 
 ### Step 3: Build the Source RPM (SRPM)
 ```bash
-rpmbuild -bs mygestures.spec
+rpmbuild -bs packaging/mygestures.spec
 ```
 
 ### Step 4: Build the Binary RPM
 ```bash
-rpmbuild -bb mygestures.spec
+rpmbuild -bb packaging/mygestures.spec
 ```
 The resulting RPM file will be generated under `~/rpmbuild/RPMS/`.
 
@@ -199,3 +199,12 @@ To submit `mygestures` to the official Alpine community repositories:
 1. Fork the [alpine-aports](https://github.com/alpinelinux/aports) repository on GitHub.
 2. Place your `APKBUILD` and install scripts into a new folder `testing/mygestures/`.
 3. Submit a Pull Request. Once approved, the package is built by the Alpine builders and published to the `community` repository.
+
+---
+
+## 9. Kernel Module Loading (uinput)
+
+To run correctly, the daemon requires the `uinput` kernel module to be loaded. The packaging configurations automatically install a systemd/OpenRC modules-load configuration file to handle this:
+* **Source File**: `packaging/mygestures.conf`
+* **Installation Target**: `/lib/modules-load.d/mygestures.conf`
+* **Purpose**: Instructs the system to load the `uinput` kernel module automatically at boot time so that users do not need to manually run `sudo modprobe uinput` or add it manually to `/etc/modules`.
