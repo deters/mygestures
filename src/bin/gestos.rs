@@ -403,6 +403,7 @@ fn show_error_dialog<W: IsA<gtk::Window>>(parent: &W, message: &str) {
     dialog.set_default_size(420, -1);
 
     let vbox = gtk::Box::new(gtk::Orientation::Vertical, 16);
+    vbox.add_css_class("dialog-content");
     vbox.set_margin_top(16);
     vbox.set_margin_bottom(16);
     vbox.set_margin_start(16);
@@ -835,6 +836,11 @@ fn open_shortcut_recorder(
     set_btn.set_sensitive(false);
     header.pack_end(&set_btn);
 
+    let wrapper = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    wrapper.add_css_class("dialog-content");
+    wrapper.set_vexpand(true);
+    wrapper.set_hexpand(true);
+
     let vbox = gtk::Box::new(gtk::Orientation::Vertical, 16);
     vbox.set_margin_start(24);
     vbox.set_margin_end(24);
@@ -842,6 +848,10 @@ fn open_shortcut_recorder(
     vbox.set_margin_bottom(24);
     vbox.set_valign(gtk::Align::Center);
     vbox.set_halign(gtk::Align::Center);
+    vbox.set_vexpand(true);
+    vbox.set_hexpand(true);
+
+    wrapper.append(&vbox);
 
     let prompt_label = gtk::Label::new(None);
     let escaped_name = glib::markup_escape_text(gesture_name);
@@ -872,7 +882,7 @@ fn open_shortcut_recorder(
     hint_label.set_justify(gtk::Justification::Center);
     vbox.append(&hint_label);
 
-    dialog.set_child(Some(&vbox));
+    dialog.set_child(Some(&wrapper));
 
     // Captured key combination state
     let captured_combination = Rc::new(RefCell::new(None::<String>));
@@ -1024,6 +1034,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     dialog.set_titlebar(Some(&dialog_header));
 
     let main_box = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    main_box.add_css_class("dialog-content");
     main_box.set_margin_start(20);
     main_box.set_margin_end(20);
     main_box.set_margin_top(16);
@@ -1798,6 +1809,7 @@ fn build_ui(app: &gtk::Application) {
 
     // Content VBox
     let content_vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    content_vbox.add_css_class("main-window-content");
     window.set_child(Some(&content_vbox));
 
     // 3. Status Banner (for daemon status controls)
@@ -1963,8 +1975,8 @@ fn build_ui(app: &gtk::Application) {
     // Stylesheet injection
     let provider = gtk::CssProvider::new();
     provider.load_from_data(
-        ".background { background-color: @view_bg_color; }\n\
-         headerbar { background: transparent; border: none; box-shadow: none; }\n\
+        "headerbar { background: @view_bg_color; border: none; box-shadow: none; }\n\
+         .main-window-content, .dialog-content { background-color: @view_bg_color; }\n\
          .status-banner { padding: 12px 16px; background-color: @window_bg_color; border-radius: 8px; }\n\
          .boxed-list, .boxed-list row, .boxed-list listrow { background-color: @window_bg_color; }\n\
          .context-title { font-size: 1.5em; font-weight: bold; }\n\
