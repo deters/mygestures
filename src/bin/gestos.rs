@@ -696,13 +696,13 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     dialog.set_transient_for(Some(&state.window));
     dialog.set_modal(true);
     dialog.set_title(Some(if target_gesture.is_some() { "Edit Gesture" } else { "Add Gesture" }));
-    dialog.set_default_size(480, 640);
+    dialog.set_default_size(450, 580);
 
-    let main_box = gtk::Box::new(gtk::Orientation::Vertical, 16);
-    main_box.set_margin_start(24);
-    main_box.set_margin_end(24);
-    main_box.set_margin_top(24);
-    main_box.set_margin_bottom(24);
+    let main_box = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    main_box.set_margin_start(20);
+    main_box.set_margin_end(20);
+    main_box.set_margin_top(16);
+    main_box.set_margin_bottom(16);
     dialog.set_child(Some(&main_box));
 
     // Scrollable area for all inputs
@@ -712,7 +712,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     scrolled.set_vexpand(true);
     main_box.append(&scrolled);
 
-    let scroll_content = gtk::Box::new(gtk::Orientation::Vertical, 16);
+    let scroll_content = gtk::Box::new(gtk::Orientation::Vertical, 12);
     scrolled.set_child(Some(&scroll_content));
 
     let name_entry = gtk::Entry::new();
@@ -746,7 +746,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
 
     let canvas_frame = gtk::Frame::new(None);
     canvas_frame.add_css_class("gesture-preview-frame");
-    canvas_frame.set_size_request(300, 200);
+    canvas_frame.set_size_request(300, 150);
     canvas_frame.set_vexpand(true);
 
     let canvas = gtk::DrawingArea::new();
@@ -1569,9 +1569,9 @@ fn build_ui(app: &gtk::Application) {
          .destructive-action:hover { color: #ef4444 !important; background: rgba(239, 68, 68, 0.08) !important; }\n\
          .status-dot-running { color: #10b981 !important; }\n\
          .status-dot-stopped { color: #6b7280 !important; opacity: 0.6; }\n\
-         .settings-row { background: transparent; border-bottom: 1px solid alpha(currentColor, 0.06); padding: 10px 16px; }\n\
+         .settings-row { background: transparent; border-bottom: 1px solid alpha(currentColor, 0.06); padding: 8px 16px; }\n\
          .settings-row:last-child { border-bottom: none; }\n\
-         .section-header { font-size: 0.78em; font-weight: 700; text-transform: uppercase; opacity: 0.6; margin-top: 16px; margin-bottom: 4px; margin-left: 4px; }\n\
+         .section-header { font-size: 0.78em; font-weight: 700; text-transform: uppercase; opacity: 0.6; margin-top: 12px; margin-bottom: 4px; margin-left: 4px; }\n\
          .status-label { font-size: 0.85em; font-weight: 600; }\n"
     );
 
