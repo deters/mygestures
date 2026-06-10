@@ -817,7 +817,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     dialog.set_transient_for(Some(&state.window));
     dialog.set_modal(true);
     dialog.set_title(Some(if target_gesture.is_some() { "Edit Gesture" } else { "Add Gesture" }));
-    dialog.set_default_size(450, 580);
+    dialog.set_default_size(480, 620);
 
     let dialog_header = gtk::HeaderBar::new();
     dialog_header.set_show_title_buttons(false);
@@ -838,6 +838,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     scrolled.set_hscrollbar_policy(gtk::PolicyType::Never);
     scrolled.set_vscrollbar_policy(gtk::PolicyType::Automatic);
     scrolled.set_vexpand(true);
+    scrolled.set_hexpand(true);
     main_box.append(&scrolled);
 
     let scroll_content = gtk::Box::new(gtk::Orientation::Vertical, 12);
