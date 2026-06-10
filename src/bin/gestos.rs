@@ -397,6 +397,12 @@ fn is_daemon_running() -> bool {
 
 fn show_error_dialog<W: IsA<gtk::Window>>(parent: &W, message: &str) {
     let dialog = gtk::Window::new();
+    let prefer_dark = gtk::Settings::default()
+        .map(|s| s.property::<bool>("gtk-application-prefer-dark-theme"))
+        .unwrap_or(false);
+    if prefer_dark {
+        dialog.add_css_class("dark-mode");
+    }
     dialog.set_transient_for(Some(parent));
     dialog.set_modal(true);
     dialog.set_title(Some("Daemon Startup Error"));
@@ -809,6 +815,12 @@ fn open_shortcut_recorder(
     udn: Rc<dyn Fn() + 'static>
 ) {
     let dialog = gtk::Window::new();
+    let prefer_dark = gtk::Settings::default()
+        .map(|s| s.property::<bool>("gtk-application-prefer-dark-theme"))
+        .unwrap_or(false);
+    if prefer_dark {
+        dialog.add_css_class("dark-mode");
+    }
     dialog.set_transient_for(Some(parent));
     dialog.set_modal(true);
     dialog.set_default_size(440, 300);
@@ -1021,6 +1033,12 @@ fn open_shortcut_recorder(
 fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<Gesture>) {
     let state = state_rc.borrow();
     let dialog = gtk::Window::new();
+    let prefer_dark = gtk::Settings::default()
+        .map(|s| s.property::<bool>("gtk-application-prefer-dark-theme"))
+        .unwrap_or(false);
+    if prefer_dark {
+        dialog.add_css_class("dark-mode");
+    }
     dialog.set_transient_for(Some(&state.window));
     dialog.set_modal(true);
     dialog.set_title(Some(if target_gesture.is_some() { "Edit Gesture" } else { "Add Gesture" }));
@@ -1765,16 +1783,26 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
 }
 
 fn build_ui(app: &gtk::Application) {
+    let window = gtk::ApplicationWindow::new(app);
+    window.set_title(Some("Gestos"));
+    window.set_default_size(650, 700);
+
     // Dynamically track and follow the system dark mode preference
     let schema_id = "org.gnome.desktop.interface";
     if let Some(source) = gio::SettingsSchemaSource::default() {
         if source.lookup(schema_id, true).is_some() {
             let settings = gio::Settings::new(schema_id);
-            let update_theme = |s: &gio::Settings| {
+            let window_clone = window.clone();
+            let update_theme = move |s: &gio::Settings| {
                 let scheme: String = s.get("color-scheme");
                 let prefer_dark = scheme.contains("dark");
                 if let Some(gtk_settings) = gtk::Settings::default() {
                     gtk_settings.set_gtk_application_prefer_dark_theme(prefer_dark);
+                }
+                if prefer_dark {
+                    window_clone.add_css_class("dark-mode");
+                } else {
+                    window_clone.remove_css_class("dark-mode");
                 }
             };
             
@@ -1782,15 +1810,12 @@ fn build_ui(app: &gtk::Application) {
             update_theme(&settings);
             
             // Connect signal to handle dynamic changes
+            let update_theme_clone = update_theme.clone();
             settings.connect_changed(Some("color-scheme"), move |s, _| {
-                update_theme(s);
+                update_theme_clone(s);
             });
         }
     }
-
-    let window = gtk::ApplicationWindow::new(app);
-    window.set_title(Some("Gestos"));
-    window.set_default_size(650, 700);
 
     let header = gtk::HeaderBar::new();
     let title_label = gtk::Label::new(Some("Gestures"));
@@ -1980,10 +2005,14 @@ fn build_ui(app: &gtk::Application) {
          scrolledwindow, viewport { background-color: transparent !important; background-image: none !important; }\n\
          .status-banner { padding: 12px 16px; background-color: @view_bg_color !important; border-radius: 8px; }\n\
          .boxed-list, .boxed-list row, .boxed-list listrow, row, listrow { background-color: @view_bg_color !important; }\n\
+         .gesture-preview-frame { background: @window_bg_color; border-radius: 6px; }\n\
+         .dark-mode .main-window-content, .dark-mode .dialog-content { background-color: @view_bg_color; }\n\
+         .dark-mode .status-banner { background-color: @window_bg_color !important; }\n\
+         .dark-mode .boxed-list, .dark-mode .boxed-list row, .dark-mode .boxed-list listrow, .dark-mode row, .dark-mode listrow { background-color: @window_bg_color !important; }\n\
+         .dark-mode .gesture-preview-frame { background: @view_bg_color; }\n\
          .context-title { font-size: 1.5em; font-weight: bold; }\n\
          .gesture-row { padding: 6px; }\n\
          .icon-holder { padding: 4px; }\n\
-         .gesture-preview-frame { background: @window_bg_color; border-radius: 6px; }\n\
          .action-label { font-size: 0.9em; opacity: 0.7; }\n\
          .status-dot-running { color: #10b981; }\n\
          .status-dot-stopped { color: #6b7280; }\n\
