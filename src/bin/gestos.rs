@@ -1963,7 +1963,7 @@ fn build_ui(app: &gtk::Application) {
     // Stylesheet injection
     let provider = gtk::CssProvider::new();
     provider.load_from_data(
-        "window { background-color: @view_bg_color; }\n\
+        ".background { background-color: @view_bg_color; }\n\
          headerbar { background: transparent; border: none; box-shadow: none; }\n\
          .status-banner { padding: 12px 16px; background-color: @window_bg_color; border-radius: 8px; }\n\
          .boxed-list, .boxed-list row, .boxed-list listrow { background-color: @window_bg_color; }\n\
