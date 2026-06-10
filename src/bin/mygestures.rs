@@ -160,6 +160,7 @@ fn run_grabber(
                     is_drawing = true;
                     captured_points.clear();
                     captured_points.push(Point2D { x: virtual_x, y: virtual_y });
+                    println!("Gesture drawing started at ({:.1}, {:.1})", virtual_x, virtual_y);
                 } else if ev_value == 0 {
                     // End gesture movement
                     is_drawing = false;
@@ -167,11 +168,15 @@ fn run_grabber(
                     // Final coordinate
                     if moved {
                         captured_points.push(Point2D { x: virtual_x, y: virtual_y });
+                        println!("Gesture point added: ({:.1}, {:.1}), total points: {}", virtual_x, virtual_y, captured_points.len());
                     }
+
+                    println!("Gesture drawing finished. Path points: {}", captured_points.len());
 
                     // Calculate path length
                     let len = mygestures::protractor::path_length(&captured_points);
                     if captured_points.len() < 5 || len < 15.0 {
+                        println!("Gesture failed: path too short or too few points (points: {}, length: {:.1})", captured_points.len(), len);
                         // Click emulation
                         if grabbed {
                             if let Some(ref mut u) = uinput {
@@ -193,7 +198,7 @@ fn run_grabber(
                                 }
                             }
                         } else {
-                            println!("Gesture did not match any known template.");
+                            println!("Gesture failed: did not match any known template.");
                         }
                     }
                     moved = false;
@@ -236,6 +241,7 @@ fn run_grabber(
                         };
                         if add_point {
                             captured_points.push(Point2D { x: virtual_x, y: virtual_y });
+                            println!("Gesture point added: ({:.1}, {:.1}), total points: {}", virtual_x, virtual_y, captured_points.len());
                         }
                     }
                     moved = false;

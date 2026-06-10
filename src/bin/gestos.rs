@@ -624,10 +624,15 @@ fn create_gesture_row(state_rc: &Rc<RefCell<AppState>>, gesture: &Gesture) -> gt
             } else {
                 state.config.gestures[pos].is_deleted = true;
             }
-            let _ = state.config.save_to_file();
+            if let Err(e) = state.config.save_to_file() {
+                println!("Failed to save config to file on delete: {}", e);
+            }
+            println!("Gesture deleted successfully: {}", name_clone);
             reload_daemon();
             drop(state);
             refresh_gesture_list(&state_clone);
+        } else {
+            println!("Gesture deletion failed: Could not find gesture '{}'", name_clone);
         }
     });
     main_hbox.append(&del_btn);
@@ -759,6 +764,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         let mut pts = pts_drag.borrow_mut();
         pts.clear();
         pts.push(Point2D { x: start_x, y: start_y });
+        println!("GUI: Gesture drawing started at ({:.1}, {:.1})", start_x, start_y);
         canvas_clone.queue_draw();
     });
 
@@ -785,6 +791,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             };
             if add {
                 pts.push(Point2D { x: cx, y: cy });
+                println!("GUI: Gesture point added: ({:.1}, {:.1}), total points: {}", cx, cy, pts.len());
                 canvas_clone2.queue_draw();
             }
         }
@@ -795,6 +802,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     drag.connect_drag_end(move |_, _, _| {
         *rec_drag3.borrow_mut() = false;
         canvas_clone3.queue_draw();
+        println!("GUI: Gesture drawing finished.");
     });
 
     canvas.add_controller(drag);
@@ -1028,11 +1036,13 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     save_btn.connect_clicked(move |_| {
         let name = name_entry.text().to_string();
         if name.trim().is_empty() {
+            println!("Gesture save failed: Name is empty.");
             return;
         }
 
         let pts = recorded_points.borrow();
         if pts.len() < 2 {
+            println!("Gesture save failed: Not enough points drawn.");
             return;
         }
 
@@ -1044,12 +1054,14 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
 
         let act_idx = action_dropdown.selected();
         if act_idx == gtk::INVALID_LIST_POSITION {
+            println!("Gesture save failed: Invalid action selection.");
             return;
         }
         let act_idx = act_idx as usize;
 
         let opts = current_opts_save.borrow();
         if act_idx >= opts.len() {
+            println!("Gesture save failed: Selected action index out of bounds.");
             return;
         }
         let opt = &opts[act_idx];
@@ -1069,12 +1081,17 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 existing.actions = vec![action];
                 existing.is_modified = true;
                 existing.is_deleted = false;
+                println!("Gesture modified successfully: {}", name);
+            } else {
+                println!("Gesture modification failed: Could not find existing gesture '{}'", name);
             }
         } else {
             // Check if name conflict
             if state.config.gestures.iter().any(|g| g.name == name) {
+                println!("Gesture save failed: A gesture with the name '{}' already exists.", name);
                 return;
             }
+            println!("Gesture added successfully: {}", name);
             state.config.gestures.push(Gesture {
                 name: name.clone(),
                 raw_movement,
@@ -1086,7 +1103,9 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             });
         }
 
-        let _ = state.config.save_to_file();
+        if let Err(e) = state.config.save_to_file() {
+            println!("Failed to save configuration to file: {}", e);
+        }
         reload_daemon();
         drop(state);
 
