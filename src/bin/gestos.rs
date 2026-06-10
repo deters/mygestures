@@ -807,6 +807,213 @@ fn get_default_gesture_name(opt: &EditorActionOption, detail: &str) -> String {
     }
 }
 
+fn open_shortcut_recorder(
+    parent: &gtk::Window, 
+    gesture_name: &str, 
+    entry: &gtk::Entry, 
+    udn: Rc<dyn Fn() + 'static>
+) {
+    let dialog = gtk::Window::new();
+    dialog.set_transient_for(Some(parent));
+    dialog.set_modal(true);
+    dialog.set_default_size(440, 300);
+
+    let header = gtk::HeaderBar::new();
+    header.set_show_title_buttons(true); // Initially show close button
+    let title_label = gtk::Label::new(Some("Set Shortcut"));
+    title_label.add_css_class("title");
+    header.set_title_widget(Some(&title_label));
+    dialog.set_titlebar(Some(&header));
+
+    // Cancel button (initially hidden)
+    let cancel_btn = gtk::Button::with_label("Cancel");
+    cancel_btn.set_visible(false);
+    let dialog_cancel_clone = dialog.clone();
+    cancel_btn.connect_clicked(move |_| {
+        dialog_cancel_clone.destroy();
+    });
+    header.pack_start(&cancel_btn);
+
+    // Set button (initially hidden and insensitive)
+    let set_btn = gtk::Button::with_label("Set");
+    set_btn.add_css_class("suggested-action");
+    set_btn.set_visible(false);
+    set_btn.set_sensitive(false);
+    header.pack_end(&set_btn);
+
+    let vbox = gtk::Box::new(gtk::Orientation::Vertical, 16);
+    vbox.set_margin_start(24);
+    vbox.set_margin_end(24);
+    vbox.set_margin_top(24);
+    vbox.set_margin_bottom(24);
+    vbox.set_valign(gtk::Align::Center);
+    vbox.set_halign(gtk::Align::Center);
+
+    let prompt_label = gtk::Label::new(None);
+    let escaped_name = glib::markup_escape_text(gesture_name);
+    prompt_label.set_markup(&format!("Enter new shortcut to change <b>{}</b>", escaped_name));
+    prompt_label.set_wrap(true);
+    prompt_label.set_justify(gtk::Justification::Center);
+    vbox.append(&prompt_label);
+
+    // Initial keyboard image
+    let kb_image = gtk::Image::from_icon_name("input-keyboard-symbolic");
+    kb_image.set_pixel_size(96);
+    kb_image.set_opacity(0.8);
+    kb_image.set_margin_top(8);
+    kb_image.set_margin_bottom(8);
+    vbox.append(&kb_image);
+
+    // Container for displaying the keycaps combination
+    let shortcut_display_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    shortcut_display_box.set_halign(gtk::Align::Center);
+    shortcut_display_box.set_valign(gtk::Align::Center);
+    shortcut_display_box.set_margin_top(24);
+    shortcut_display_box.set_margin_bottom(24);
+    shortcut_display_box.set_visible(false);
+    vbox.append(&shortcut_display_box);
+
+    let hint_label = gtk::Label::new(Some("Press Esc to cancel or Backspace to reset the shortcut"));
+    hint_label.add_css_class("action-label");
+    hint_label.set_justify(gtk::Justification::Center);
+    vbox.append(&hint_label);
+
+    dialog.set_child(Some(&vbox));
+
+    // Captured key combination state
+    let captured_combination = Rc::new(RefCell::new(None::<String>));
+
+    // Set button click callback
+    let captured_save = Rc::clone(&captured_combination);
+    let entry_save = entry.clone();
+    let udn_save = Rc::clone(&udn);
+    let dialog_save = dialog.clone();
+    set_btn.connect_clicked(move |_| {
+        if let Some(ref combo_str) = *captured_save.borrow() {
+            entry_save.set_text(combo_str);
+            udn_save();
+        }
+        dialog_save.destroy();
+    });
+
+    // Keypress listener
+    let key_controller = gtk::EventControllerKey::new();
+    let entry_clone = entry.clone();
+    let dialog_clone = dialog.clone();
+    let udn_clone = Rc::clone(&udn);
+    let captured_clone = Rc::clone(&captured_combination);
+    let kb_image_clone = kb_image.clone();
+    let display_box_clone = shortcut_display_box.clone();
+    let set_btn_clone = set_btn.clone();
+    let header_clone = header.clone();
+    let cancel_btn_clone = cancel_btn.clone();
+    let hint_label_clone = hint_label.clone();
+
+    key_controller.connect_key_pressed(move |_, keyval, _keycode, state| {
+        // Handle cancel
+        if keyval == gdk::Key::Escape {
+            dialog_clone.destroy();
+            return glib::Propagation::Stop;
+        }
+
+        // Handle reset/disable
+        if keyval == gdk::Key::BackSpace {
+            entry_clone.set_text("");
+            udn_clone();
+            dialog_clone.destroy();
+            return glib::Propagation::Stop;
+        }
+
+        // Identify modifiers
+        let mut mods = Vec::new();
+        let mut display_mods = Vec::new();
+        if state.contains(gdk::ModifierType::CONTROL_MASK) {
+            mods.push("Control_L");
+            display_mods.push("Ctrl");
+        }
+        if state.contains(gdk::ModifierType::ALT_MASK) {
+            mods.push("Alt_L");
+            display_mods.push("Alt");
+        }
+        if state.contains(gdk::ModifierType::SHIFT_MASK) {
+            mods.push("Shift_L");
+            display_mods.push("Shift");
+        }
+        if state.contains(gdk::ModifierType::SUPER_MASK) {
+            mods.push("Super_L");
+            display_mods.push("Super");
+        }
+
+        let is_modifier = match keyval {
+            gdk::Key::Control_L | gdk::Key::Control_R |
+            gdk::Key::Alt_L | gdk::Key::Alt_R |
+            gdk::Key::Shift_L | gdk::Key::Shift_R |
+            gdk::Key::Super_L | gdk::Key::Super_R |
+            gdk::Key::Meta_L | gdk::Key::Meta_R => true,
+            _ => false,
+        };
+
+        if is_modifier {
+            return glib::Propagation::Stop;
+        }
+
+        let mut key_name = keyval.name().map(|s| s.to_string()).unwrap_or_default();
+        let display_key = if key_name.len() == 1 {
+            key_name.to_uppercase()
+        } else {
+            key_name.clone()
+        };
+
+        if key_name.len() == 1 {
+            key_name = key_name.to_uppercase();
+        }
+
+        let mut combo = mods;
+        if !key_name.is_empty() {
+            combo.push(&key_name);
+        }
+
+        let combo_str = combo.join("+");
+        *captured_clone.borrow_mut() = Some(combo_str);
+
+        // Update UI
+        header_clone.set_show_title_buttons(false);
+        cancel_btn_clone.set_visible(true);
+        set_btn_clone.set_visible(true);
+        set_btn_clone.set_sensitive(true);
+        hint_label_clone.set_visible(false);
+        kb_image_clone.set_visible(false);
+
+        // Clear previous visual keycaps
+        while let Some(child) = display_box_clone.first_child() {
+            display_box_clone.remove(&child);
+        }
+
+        // Append keycaps for modifiers
+        for m in display_mods {
+            let label = gtk::Label::new(Some(m));
+            label.add_css_class("keycap");
+            display_box_clone.append(&label);
+
+            let plus = gtk::Label::new(Some("+"));
+            plus.set_opacity(0.6);
+            display_box_clone.append(&plus);
+        }
+
+        // Append keycap for the final key
+        let label = gtk::Label::new(Some(&display_key));
+        label.add_css_class("keycap");
+        display_box_clone.append(&label);
+
+        display_box_clone.set_visible(true);
+
+        glib::Propagation::Stop
+    });
+
+    dialog.add_controller(key_controller);
+    dialog.present();
+}
+
 fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<Gesture>) {
     let state = state_rc.borrow();
     let dialog = gtk::Window::new();
@@ -1091,97 +1298,58 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     action_details_row.append(&entry_container);
     settings_list.append(&action_details_row);
 
-    // Setup EventControllerKey to capture keypress shortcuts
-    let is_recording_keys = Rc::new(RefCell::new(false));
+    let current_options: Rc<RefCell<Vec<EditorActionOption>>> = Rc::new(RefCell::new(Vec::new()));
 
-    let key_controller = gtk::EventControllerKey::new();
-    let entry_key_clone = action_details_entry.clone();
-    let is_recording_key_clone = Rc::clone(&is_recording_keys);
-    let record_btn_key_clone = record_btn.clone();
+    // Helper to dynamically update the gesture name if not customized
+    let update_default_name = Rc::new({
+        let name_entry = name_entry.clone();
+        let action_dropdown = action_dropdown.clone();
+        let action_details_entry = action_details_entry.clone();
+        let current_options = Rc::clone(&current_options);
+        let is_name_customized = Rc::clone(&is_name_customized);
+        let is_updating_programmatically = Rc::clone(&is_updating_programmatically);
 
-    key_controller.connect_key_pressed(move |_, keyval, _keycode, state| {
-        if !*is_recording_key_clone.borrow() {
-            return glib::Propagation::Proceed;
-        }
-
-        // Identify modifiers
-        let mut mods = Vec::new();
-        if state.contains(gdk::ModifierType::CONTROL_MASK) {
-            mods.push("Control_L");
-        }
-        if state.contains(gdk::ModifierType::ALT_MASK) {
-            mods.push("Alt_L");
-        }
-        if state.contains(gdk::ModifierType::SHIFT_MASK) {
-            mods.push("Shift_L");
-        }
-        if state.contains(gdk::ModifierType::SUPER_MASK) {
-            mods.push("Super_L");
-        }
-
-        let is_modifier = match keyval {
-            gdk::Key::Control_L | gdk::Key::Control_R |
-            gdk::Key::Alt_L | gdk::Key::Alt_R |
-            gdk::Key::Shift_L | gdk::Key::Shift_R |
-            gdk::Key::Super_L | gdk::Key::Super_R |
-            gdk::Key::Meta_L | gdk::Key::Meta_R => true,
-            _ => false,
-        };
-
-        if is_modifier {
-            if !mods.is_empty() {
-                entry_key_clone.set_text(&format!("{}+", mods.join("+")));
+        move || {
+            if *is_name_customized.borrow() {
+                return;
             }
-            return glib::Propagation::Stop;
+            let act_idx = action_dropdown.selected();
+            if act_idx == gtk::INVALID_LIST_POSITION {
+                return;
+            }
+            let act_idx = act_idx as usize;
+            let opts = current_options.borrow();
+            if act_idx < opts.len() {
+                let opt = &opts[act_idx];
+                let detail = action_details_entry.text().to_string();
+                let default_name = get_default_gesture_name(opt, &detail);
+                
+                *is_updating_programmatically.borrow_mut() = true;
+                name_entry.set_text(&default_name);
+                *is_updating_programmatically.borrow_mut() = false;
+            }
         }
-
-        let mut key_name = keyval.name().map(|s| s.to_string()).unwrap_or_default();
-        if key_name.len() == 1 {
-            key_name = key_name.to_uppercase();
-        }
-
-        let mut combo = mods;
-        if !key_name.is_empty() {
-            combo.push(&key_name);
-        }
-
-        let combo_str = combo.join("+");
-        entry_key_clone.set_text(&combo_str);
-
-        *is_recording_key_clone.borrow_mut() = false;
-        record_btn_key_clone.set_icon_name("media-record-symbolic");
-        entry_key_clone.set_placeholder_text(Some("e.g. Control_L+Alt_L+t"));
-
-        glib::Propagation::Stop
     });
 
-    action_details_entry.add_controller(key_controller);
-
-    // Setup record button action
-    let rec_btn_click = record_btn.clone();
+    // Setup record button to open the "Set Shortcut" modal dialog
     let entry_click = action_details_entry.clone();
-    let is_recording_click = Rc::clone(&is_recording_keys);
+    let dialog_parent = dialog.clone();
+    let name_entry_click = name_entry.clone();
+    let udn_click = Rc::clone(&update_default_name);
+
     record_btn.connect_clicked(move |_| {
-        let mut rec = is_recording_click.borrow_mut();
-        if *rec {
-            *rec = false;
-            rec_btn_click.set_icon_name("media-record-symbolic");
-            entry_click.set_placeholder_text(Some("e.g. Control_L+Alt_L+t"));
-        } else {
-            *rec = true;
-            rec_btn_click.set_icon_name("media-playback-stop-symbolic");
-            entry_click.set_placeholder_text(Some("Press keys now..."));
-            entry_click.set_text("");
-            entry_click.grab_focus();
-        }
+        let gesture_name = name_entry_click.text().to_string();
+        open_shortcut_recorder(
+            &dialog_parent, 
+            if gesture_name.trim().is_empty() { "Gesture" } else { &gesture_name }, 
+            &entry_click, 
+            Rc::clone(&udn_click) as Rc<dyn Fn()>
+        );
     });
 
     // Build options list
     let mut all_options = get_static_action_options();
     all_options.extend(fetch_gnome_action_options());
-
-    // Share current options filtered for category
-    let current_options: Rc<RefCell<Vec<EditorActionOption>>> = Rc::new(RefCell::new(Vec::new()));
 
     // Find initial matching option
     let mut selected_cat = 0;
@@ -1269,36 +1437,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         }
     }
 
-    // Helper to dynamically update the gesture name if not customized
-    let update_default_name = Rc::new({
-        let name_entry = name_entry.clone();
-        let action_dropdown = action_dropdown.clone();
-        let action_details_entry = action_details_entry.clone();
-        let current_options = Rc::clone(&current_options);
-        let is_name_customized = Rc::clone(&is_name_customized);
-        let is_updating_programmatically = Rc::clone(&is_updating_programmatically);
 
-        move || {
-            if *is_name_customized.borrow() {
-                return;
-            }
-            let act_idx = action_dropdown.selected();
-            if act_idx == gtk::INVALID_LIST_POSITION {
-                return;
-            }
-            let act_idx = act_idx as usize;
-            let opts = current_options.borrow();
-            if act_idx < opts.len() {
-                let opt = &opts[act_idx];
-                let detail = action_details_entry.text().to_string();
-                let default_name = get_default_gesture_name(opt, &detail);
-                
-                *is_updating_programmatically.borrow_mut() = true;
-                name_entry.set_text(&default_name);
-                *is_updating_programmatically.borrow_mut() = false;
-            }
-        }
-    });
 
     let udn_clone = Rc::clone(&update_default_name);
     if target_gesture.is_none() {
@@ -1816,7 +1955,8 @@ fn build_ui(app: &gtk::Application) {
          .section-header { font-weight: bold; margin-top: 8px; margin-bottom: 4px; }\n\
          .status-label { font-weight: bold; }\n\
          .warning-box { padding: 8px; background-color: alpha(@warning_color, 0.15); border: 1px solid alpha(@warning_color, 0.3); border-radius: 6px; }\n\
-         .warning-label { color: @warning_color; font-size: 0.95em; }\n"
+         .warning-label { color: @warning_color; font-size: 0.95em; }\n\
+         .keycap { padding: 6px 12px; background-color: alpha(currentColor, 0.08); border: 1px solid alpha(currentColor, 0.15); border-radius: 6px; font-weight: bold; font-size: 1.1em; }\n"
     );
 
     if let Some(display) = gdk::Display::default() {
