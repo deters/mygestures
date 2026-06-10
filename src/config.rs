@@ -171,6 +171,7 @@ impl ActionsVecOrString {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GestureConfig {
+    pub id: Option<String>,
     #[serde(rename = "move")]
     pub movement_expr: Option<String>,
     #[serde(rename = "do")]
@@ -199,6 +200,7 @@ pub struct YamlConfig {
 
 #[derive(Debug, Clone)]
 pub struct Gesture {
+    pub id: String,
     pub name: String,
     pub raw_movement: String,
     pub points: Vec<Point2D>,
@@ -394,16 +396,35 @@ impl Configuration {
                 let raw_movement = gest_cfg.movement_expr.unwrap_or_else(|| "0,0 0,0".to_string());
                 let points = parse_points(&raw_movement);
 
-                if let Some(existing) = self.gestures.iter_mut().find(|g| g.name == name) {
+                let matched_pos = if let Some(ref id) = gest_cfg.id {
+                    self.gestures.iter().position(|g| g.id == *id)
+                } else {
+                    self.gestures.iter().position(|g| g.name == name)
+                };
+
+                if let Some(pos) = matched_pos {
+                    let existing = &mut self.gestures[pos];
                     if is_user {
                         existing.is_modified = true;
                     }
+                    if let Some(ref id) = gest_cfg.id {
+                        existing.id = id.clone();
+                    }
+                    existing.name = name;
                     existing.raw_movement = raw_movement;
                     existing.points = points;
                     existing.actions = actions;
                     existing.is_deleted = is_abort;
                 } else {
+                    let id = gest_cfg.id.clone().unwrap_or_else(|| {
+                        if is_user {
+                            generate_unique_id()
+                        } else {
+                            slugify(&name)
+                        }
+                    });
                     self.gestures.push(Gesture {
+                        id,
                         name,
                         raw_movement,
                         points,
@@ -442,6 +463,7 @@ impl Configuration {
                     if g.is_deleted {
                         lines.push("    do: disabled".to_string());
                     } else {
+                        lines.push(format!("    id: \"{}\"", g.id));
                         lines.push(format!("    move: \"{}\"", g.raw_movement));
                         if !g.actions.is_empty() {
                             let action_str = g.actions.iter()
@@ -471,4 +493,28 @@ impl Configuration {
         fs::write(&self.user_config_path, lines.join("\n"))?;
         Ok(())
     }
+}
+
+pub fn generate_unique_id() -> String {
+    if let Ok(mut file) = std::fs::File::open("/dev/urandom") {
+        use std::io::Read;
+        let mut bytes = [0u8; 8];
+        if file.read_exact(&mut bytes).is_ok() {
+            return bytes.iter().map(|b| format!("{:02x}", b)).collect();
+        }
+    }
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let start = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos();
+    format!("{:x}", start)
+}
+
+fn slugify(s: &str) -> String {
+    s.to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '-' })
+        .collect::<String>()
+        .split('-')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
 }
