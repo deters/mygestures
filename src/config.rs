@@ -276,6 +276,9 @@ impl Configuration {
         let sys_paths = vec![
             PathBuf::from("/etc/mygestures"),
             PathBuf::from("/usr/local/etc/mygestures"),
+            PathBuf::from("/usr/share/mygestures"),
+            PathBuf::from("/usr/local/share/mygestures"),
+            PathBuf::from("."),
         ];
 
         let suffix = get_environment_suffix();
@@ -313,6 +316,45 @@ impl Configuration {
         }
 
         // 2. Load user config
+        if !user_path.exists() {
+            // Auto-populate user's local configuration from the default/sample template if it doesn't exist
+            let mut default_content = None;
+            for base in &sys_paths {
+                let path = if let Some(s) = suffix {
+                    base.join(format!("mygestures_{}.yaml", s))
+                } else {
+                    base.join("mygestures.yaml")
+                };
+                if path.exists() {
+                    if let Ok(content) = fs::read_to_string(&path) {
+                        default_content = Some(content);
+                        break;
+                    }
+                }
+            }
+
+            if default_content.is_none() {
+                for base in &sys_paths {
+                    let path = base.join("mygestures.yaml");
+                    if path.exists() {
+                        if let Ok(content) = fs::read_to_string(&path) {
+                            default_content = Some(content);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if let Some(content) = default_content {
+                if let Some(parent) = user_path.parent() {
+                    let _ = fs::create_dir_all(parent);
+                }
+                if fs::write(&user_path, &content).is_ok() {
+                    println!("Initialized user configuration from template at: {}", user_path.display());
+                }
+            }
+        }
+
         if user_path.exists() {
             if let Ok(content) = fs::read_to_string(&user_path) {
                 config.parse_and_merge(&content, true);
