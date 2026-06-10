@@ -1816,7 +1816,7 @@ fn build_ui(app: &gtk::Application) {
     let search_entry = gtk::SearchEntry::new();
     search_entry.set_halign(gtk::Align::Center);
     search_entry.set_width_request(360);
-    search_entry.set_placeholder_text(Some("Search shortcuts..."));
+    search_entry.set_placeholder_text(Some("Search gestures..."));
     search_entry.set_margin_start(56);
     search_entry.set_margin_end(56);
     search_entry.set_margin_top(8);
