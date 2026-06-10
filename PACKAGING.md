@@ -46,7 +46,8 @@ rpmdev-setuptree
 ### Step 2: Create the source tarball
 Create a tarball of the current source tree and place it in the RPM sources directory:
 ```bash
-tar --exclude-vcs --transform 's,^\.,mygestures-4.0.0,' -czf ~/rpmbuild/SOURCES/mygestures-4.0.0.tar.gz .
+VERSION=$(grep '^Version:' mygestures.spec | awk '{print $2}')
+tar --exclude-vcs --transform "s,^\.,mygestures-$VERSION," -czf ~/rpmbuild/SOURCES/mygestures-$VERSION.tar.gz .
 ```
 
 ### Step 3: Build the Source RPM (SRPM)
