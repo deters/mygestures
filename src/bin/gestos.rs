@@ -627,11 +627,41 @@ fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height
     }
     cr.stroke().unwrap();
 
-    // Draw end indicator
-    let end = points.last().unwrap();
-    cr.set_source_rgba(0.49, 0.27, 0.90, 1.0);
-    cr.arc(end.x, end.y, 5.0 / scale, 0.0, 2.0 * std::f64::consts::PI);
-    cr.fill().unwrap();
+    // Draw end indicator (arrowhead pointing in the direction of the last segment)
+    if points.len() >= 2 {
+        let end = points.last().unwrap();
+        let prev = &points[points.len() - 2];
+        
+        let dy = end.y - prev.y;
+        let dx = end.x - prev.x;
+        
+        let len = (dx * dx + dy * dy).sqrt();
+        if len > 0.001 {
+            let angle = dy.atan2(dx);
+            
+            // Arrowhead size relative to scale
+            let arrow_length = 12.0 / scale;
+            let arrow_angle = 30.0_f64.to_radians(); // 30 degrees spread
+            
+            // Calculate the two back corners of the arrowhead
+            let x1 = end.x - arrow_length * (angle - arrow_angle).cos();
+            let y1 = end.y - arrow_length * (angle - arrow_angle).sin();
+            let x2 = end.x - arrow_length * (angle + arrow_angle).cos();
+            let y2 = end.y - arrow_length * (angle + arrow_angle).sin();
+            
+            cr.set_source_rgba(0.49, 0.27, 0.90, 1.0);
+            cr.move_to(end.x, end.y);
+            cr.line_to(x1, y1);
+            cr.line_to(x2, y2);
+            cr.close_path();
+            cr.fill().unwrap();
+        } else {
+            // Fallback: draw a simple circle if the last segment has zero length
+            cr.set_source_rgba(0.49, 0.27, 0.90, 1.0);
+            cr.arc(end.x, end.y, 5.0 / scale, 0.0, 2.0 * std::f64::consts::PI);
+            cr.fill().unwrap();
+        }
+    }
 
     cr.restore().unwrap();
 }
