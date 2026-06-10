@@ -51,29 +51,29 @@ fn check_permissions(device: &str) -> bool {
             }
         }
 
-        let mut step = 1;
         if !uinput_exists {
             eprintln!("\nTo resolve the missing kernel module:\n");
-            eprintln!("{}. Load the uinput kernel module:", step);
+            eprintln!("1. Load the uinput kernel module:");
             eprintln!("   sudo modprobe uinput");
             eprintln!("   (To load it automatically on boot, add 'uinput' to /etc/modules)\n");
-            step += 1;
+            eprintln!("=========================================================================\n");
+            return false;
         }
 
         eprintln!("\nTo resolve permissions, choose one of the following setups:\n");
         eprintln!("OPTION A: SECURE SETUP (Recommended - Only mygestures has access)");
-        eprintln!("  {}. Install the mygestures udev rules (restricts access to the 'input' group):", step);
+        eprintln!("  1. Install the mygestures udev rules (restricts access to the 'input' group):");
         eprintln!("     sudo cp 99-mygestures.rules /etc/udev/rules.d/");
         eprintln!("     sudo udevadm control --reload-rules && sudo udevadm trigger");
-        eprintln!("  {}. Configure the mygestures binary to run as Set-Group-ID (SGID) to 'input':", step + 1);
+        eprintln!("  2. Configure the mygestures binary to run as Set-Group-ID (SGID) to 'input':");
         eprintln!("     sudo chown root:input /usr/local/bin/mygestures");
         eprintln!("     sudo chmod 2755 /usr/local/bin/mygestures");
         eprintln!("     (Note: This allows only this binary to capture inputs/inject actions)");
         
         eprintln!("\nOPTION B: STANDARD SETUP (Allows all user applications to capture inputs)");
-        eprintln!("  {}. Add your user to the 'input' group:", step);
+        eprintln!("  1. Add your user to the 'input' group:");
         eprintln!("     sudo usermod -aG input $USER");
-        eprintln!("  {}. Install the udev rules:", step + 1);
+        eprintln!("  2. Install the udev rules:");
         eprintln!("     sudo cp 99-mygestures.rules /etc/udev/rules.d/");
         eprintln!("     sudo udevadm control --reload-rules && sudo udevadm trigger");
         eprintln!("=========================================================================\n");
