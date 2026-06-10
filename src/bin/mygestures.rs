@@ -34,21 +34,34 @@ fn check_permissions(device: &str) -> bool {
         drop(file);
     }
 
+    let uinput_exists = std::path::Path::new("/dev/uinput").exists() || std::path::Path::new("/dev/misc/uinput").exists();
     let dev_ok = std::fs::OpenOptions::new().read(true).open(device).is_ok();
 
     if !uinput_ok || !dev_ok {
         eprintln!("\n=========================================================================");
-        eprintln!("ERROR: Missing permissions to run mygestures.");
+        eprintln!("ERROR: Missing permissions or kernel module to run mygestures.");
         if !dev_ok {
             eprintln!(" - Cannot read mouse input device '{}'.", device);
         }
         if !uinput_ok {
-            eprintln!(" - Cannot write to /dev/uinput virtual device creator.");
+            if !uinput_exists {
+                eprintln!(" - /dev/uinput virtual device creator does not exist. The uinput kernel module is likely not loaded.");
+            } else {
+                eprintln!(" - Cannot write to /dev/uinput virtual device creator.");
+            }
         }
-        eprintln!("\nTo resolve this without running as root (via sudo), perform the following:\n");
-        eprintln!("1. Add your user to the 'input' group:");
+        eprintln!("\nTo resolve this, perform the following:\n");
+        let mut step = 1;
+        if !uinput_exists {
+            eprintln!("{}. Load the uinput kernel module:", step);
+            eprintln!("   sudo modprobe uinput");
+            eprintln!("   (To load it automatically on boot, e.g. on Alpine Linux, add 'uinput' to /etc/modules)\n");
+            step += 1;
+        }
+        eprintln!("{}. Add your user to the 'input' group:", step);
         eprintln!("   sudo usermod -aG input $USER\n");
-        eprintln!("2. Ensure the mygestures udev rules are installed to allow non-root uinput device creation:");
+        step += 1;
+        eprintln!("{}. Ensure the mygestures udev rules are installed to allow non-root uinput device creation:", step);
         eprintln!("   sudo cp 99-mygestures.rules /etc/udev/rules.d/");
         eprintln!("   sudo udevadm control --reload-rules && sudo udevadm trigger");
         eprintln!("=========================================================================\n");
