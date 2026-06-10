@@ -22,8 +22,8 @@ sudo dnf install pkgconf-pkg-config gtk4-devel libevdev-devel git meson ninja-bu
 
 #### Alpine:
 ```bash
-apk add git meson cargo sudo
-apk add glib-dev cairo-dev gdk-dev gdk-pixbuf-dev pango-dev gtk4.0-dev
+apk add git meson cargo sudo make
+apk add glib-dev cairo-dev gdk4 gdk-pixbuf-dev pango-dev gtk4.0-dev
 ```
 
 ### Build and Install:
