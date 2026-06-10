@@ -1708,7 +1708,6 @@ fn build_ui(app: &gtk::Application) {
          .icon-holder { padding: 4px; }\n\
          .gesture-preview-frame { border: 1px solid alpha(currentColor, 0.1); background: @view_bg_color; }\n\
          .action-label { font-size: 0.9em; opacity: 0.7; }\n\
-         .destructive-action { color: #ef4444; }\n\
          .status-dot-running { color: #10b981; }\n\
          .status-dot-stopped { color: #6b7280; }\n\
          .settings-row { padding: 8px; border-bottom: 1px solid alpha(currentColor, 0.1); }\n\
