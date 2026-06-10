@@ -679,6 +679,13 @@ fn get_default_gesture_name(opt: &EditorActionOption, detail: &str) -> String {
                 format!("{} ({})", opt.name, detail.trim())
             }
         }
+        ActionType::Click(_) => {
+            if detail.trim().is_empty() {
+                opt.name.clone()
+            } else {
+                format!("{} ({})", opt.name, detail.trim())
+            }
+        }
         _ => opt.name.clone(),
     }
 }
@@ -866,6 +873,10 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                             action_details_entry.set_text(cmd);
                         }
                     }
+                    ActionType::Click(btn) => {
+                        let btn_str = btn.map(|b| b.to_string()).unwrap_or_default();
+                        action_details_entry.set_text(&btn_str);
+                    }
                     _ => {}
                 }
             }
@@ -894,6 +905,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         let show_entry = match &opt.action_type {
             ActionType::Keypress(_) => true,
             ActionType::Execute(_) if opt.category == 7 => true,
+            ActionType::Click(_) => true,
             _ => false,
         };
         action_details_entry.set_visible(show_entry);
@@ -903,6 +915,9 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             }
             ActionType::Execute(_) => {
                 action_details_entry.set_placeholder_text(Some("e.g. firefox"));
+            }
+            ActionType::Click(_) => {
+                action_details_entry.set_placeholder_text(Some("e.g. 1 (Left), 2 (Middle), 3 (Right)"));
             }
             _ => {}
         }
@@ -995,6 +1010,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             let show_entry = match &opt.action_type {
                 ActionType::Keypress(_) => true,
                 ActionType::Execute(_) if opt.category == 7 => true,
+                ActionType::Click(_) => true,
                 _ => false,
             };
             entry_clone2.set_visible(show_entry);
@@ -1005,6 +1021,9 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 }
                 ActionType::Execute(_) => {
                     entry_clone2.set_placeholder_text(Some("e.g. firefox"));
+                }
+                ActionType::Click(_) => {
+                    entry_clone2.set_placeholder_text(Some("e.g. 1 (Left), 2 (Middle), 3 (Right)"));
                 }
                 _ => {}
             }
@@ -1070,6 +1089,14 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         let action = match &opt.action_type {
             ActionType::Keypress(_) => ActionType::Keypress(detail),
             ActionType::Execute(_) if opt.category == 7 => ActionType::Execute(detail),
+            ActionType::Click(_) => {
+                let btn = if detail.trim().is_empty() {
+                    None
+                } else {
+                    detail.trim().parse::<i32>().ok()
+                };
+                ActionType::Click(btn)
+            }
             other => other.clone(),
         };
 

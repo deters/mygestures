@@ -188,12 +188,18 @@ fn run_grabber(
                             if let Some(gesture) = config.gestures.iter().find(|g| g.name == matched_name) {
                                 println!("Matched gesture: {}", gesture.name);
                                 for action in &gesture.actions {
-                                    let ui_cell = std::cell::RefCell::new(uinput.as_mut());
-                                    wayland_ctx.execute_action(action, &|keys_str| {
-                                        if let Some(ref mut u) = *ui_cell.borrow_mut() {
-                                            u.keypress_string(keys_str);
+                                    if let ActionType::Click(btn) = action {
+                                        if let Some(ref mut u) = uinput {
+                                            u.click(btn.unwrap_or(1));
                                         }
-                                    });
+                                    } else {
+                                        let ui_cell = std::cell::RefCell::new(uinput.as_mut());
+                                        wayland_ctx.execute_action(action, &|keys_str| {
+                                            if let Some(ref mut u) = *ui_cell.borrow_mut() {
+                                                u.keypress_string(keys_str);
+                                            }
+                                        });
+                                    }
                                 }
                             }
                         } else {
