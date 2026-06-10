@@ -1,6 +1,6 @@
 # Packaging and Publishing mygestures
 
-This document explains how to build, test, and publish packages for Fedora.
+This document explains how to build, test, and publish packages for Fedora and Debian/Ubuntu.
 
 ---
 
