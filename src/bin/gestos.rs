@@ -446,10 +446,32 @@ fn show_error_dialog<W: IsA<gtk::Window>>(parent: &W, message: &str) {
     dialog.present();
 }
 
+fn is_systemd_available() -> bool {
+    std::path::Path::new("/run/systemd/system").exists()
+}
+
 fn start_daemon() -> Result<(), String> {
     if is_daemon_running() {
         return Ok(());
     }
+
+    if is_systemd_available() {
+        let status = Command::new("systemctl")
+            .arg("--user")
+            .arg("start")
+            .arg("mygestures")
+            .status();
+        match status {
+            Ok(s) if s.success() => {
+                std::thread::sleep(std::time::Duration::from_millis(200));
+                return Ok(());
+            }
+            _ => {
+                eprintln!("gestos: Warning: Failed to start mygestures via systemd, falling back to direct launch.");
+            }
+        }
+    }
+
     // Try local binary first, then path
     let cmd = if std::path::Path::new("./mygestures").exists() {
         "./mygestures"
@@ -512,7 +534,15 @@ fn stop_daemon() {
     };
 
     if stop_via_dbus().is_err() {
-        let uid = unsafe { libc::getuid() };
+        if is_systemd_available() {
+            let _ = Command::new("systemctl")
+                .arg("--user")
+                .arg("stop")
+                .arg("mygestures")
+                .status();
+        }
+        
+        let uid = nix::unistd::Uid::current();
         if let Ok(output) = Command::new("pgrep")
             .arg("-u")
             .arg(uid.to_string())
@@ -523,10 +553,11 @@ fn stop_daemon() {
             if output.status.success() {
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 for line in stdout.lines() {
-                    if let Ok(pid) = line.trim().parse::<libc::pid_t>() {
-                        unsafe {
-                            libc::kill(pid, libc::SIGTERM);
-                        }
+                    if let Ok(pid_val) = line.trim().parse::<i32>() {
+                        let _ = nix::sys::signal::kill(
+                            nix::unistd::Pid::from_raw(pid_val),
+                            nix::sys::signal::Signal::SIGTERM,
+                        );
                     }
                 }
             }
@@ -534,7 +565,7 @@ fn stop_daemon() {
     }
 }
 
-fn reload_daemon() {
+fn reload_daemon<W: IsA<gtk::Window>>(parent: Option<&W>) {
     let dbus_name = mygestures::config::get_dbus_name();
     let reload_via_dbus = || -> zbus::Result<()> {
         let conn = zbus::blocking::Connection::session()?;
@@ -548,7 +579,15 @@ fn reload_daemon() {
         Ok(())
     };
 
-    let _ = reload_via_dbus();
+    if let Err(e) = reload_via_dbus() {
+        if let zbus::Error::FDO(ref fdo_err) = e {
+            if let Some(p) = parent {
+                show_error_dialog(p, &fdo_err.to_string());
+            } else {
+                eprintln!("mygestures reload error: {}", fdo_err);
+            }
+        }
+    }
 }
 
 fn get_autostart_file_path() -> Option<std::path::PathBuf> {
@@ -561,7 +600,23 @@ fn get_autostart_file_path() -> Option<std::path::PathBuf> {
 }
 
 fn set_autostart_enabled(enabled: bool) {
-    if let Some(path) = get_autostart_file_path() {
+    if is_systemd_available() {
+        let action = if enabled { "enable" } else { "disable" };
+        let _ = Command::new("systemctl")
+            .arg("--user")
+            .arg(action)
+            .arg("mygestures")
+            .status();
+    }
+
+    if is_systemd_available() {
+        // Clear autostart desktop file to avoid double launching if systemd handles it
+        if let Some(path) = get_autostart_file_path() {
+            if path.exists() {
+                let _ = std::fs::remove_file(&path);
+            }
+        }
+    } else if let Some(path) = get_autostart_file_path() {
         if enabled {
             if let Some(parent) = path.parent() {
                 let _ = std::fs::create_dir_all(parent);
@@ -1759,7 +1814,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         if let Err(e) = state.config.save_to_file() {
             println!("Failed to save configuration to file: {}", e);
         }
-        reload_daemon();
+        reload_daemon(Some(&dialog_clone2));
         drop(state);
 
         refresh_gesture_list(&state_clone, Some(&name));
@@ -1784,7 +1839,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                     println!("Failed to save config to file on delete: {}", e);
                 }
                 println!("Gesture deleted successfully: {}", name_clone);
-                reload_daemon();
+                reload_daemon(Some(&dialog_clone3));
                 drop(state);
                 refresh_gesture_list(&state_clone, None);
                 dialog_clone3.destroy();

@@ -74,6 +74,34 @@ install_data('gestos.desktop', install_dir: datadir / 'applications')
 install_data('gestos.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
 install_data('mygestures.yaml', install_dir: datadir / 'mygestures')
 
+# D-Bus Activation Service
+dbus_service_dir = get_option('dbusservicedir')
+if dbus_service_dir == ''
+  dbus_service_dir = datadir / 'dbus-1' / 'services'
+endif
+
+conf_data = configuration_data()
+conf_data.set('bindir', bindir)
+
+configure_file(
+  input: 'build-aux/org.mygestures.Daemon.service.in',
+  output: 'org.mygestures.Daemon.service',
+  configuration: conf_data,
+  install_dir: dbus_service_dir
+)
+
+# systemd User Service
+systemd_user_dir = get_option('systemduserunitdir')
+if systemd_user_dir == ''
+  systemd_user_dir = prefix / 'lib' / 'systemd' / 'user'
+endif
+configure_file(
+  input: 'build-aux/mygestures.service.in',
+  output: 'mygestures.service',
+  configuration: conf_data,
+  install_dir: systemd_user_dir
+)
+
 # Run post-install script
 meson.add_install_script('build-aux/post-install.sh')
 

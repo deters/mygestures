@@ -1,0 +1,3 @@
+[D-Bus Service]
+Name=org.mygestures.Daemon
+Exec=@bindir@/mygestures

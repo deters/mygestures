@@ -255,11 +255,7 @@ pub fn get_environment_suffix() -> Option<&'static str> {
 }
 
 pub fn get_dbus_name() -> String {
-    if let Some(suffix) = get_environment_suffix() {
-        format!("org.mygestures.Daemon.{}", suffix)
-    } else {
-        "org.mygestures.Daemon".to_string()
-    }
+    "org.mygestures.Daemon".to_string()
 }
 
 pub fn get_default_config_path() -> PathBuf {

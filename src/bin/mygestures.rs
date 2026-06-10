@@ -12,7 +12,7 @@ static RELOAD_MANAGER: AtomicBool = AtomicBool::new(false);
 static CHILD_PIDS: once_cell::sync::Lazy<std::sync::Mutex<Vec<u32>>> =
     once_cell::sync::Lazy::new(|| std::sync::Mutex::new(Vec::new()));
 
-extern "C" fn sigusr1_handler(_sig: libc::c_int) {}
+extern "C" fn sigusr1_handler(_sig: std::os::raw::c_int) {}
 
 fn register_sigusr1() {
     unsafe {
@@ -24,9 +24,10 @@ fn register_sigusr1() {
 fn kill_children() {
     let pids = CHILD_PIDS.lock().unwrap();
     for &pid in pids.iter() {
-        unsafe {
-            libc::kill(pid as libc::pid_t, libc::SIGTERM);
-        }
+        let _ = nix::sys::signal::kill(
+            nix::unistd::Pid::from_raw(pid as i32),
+            nix::sys::signal::Signal::SIGTERM,
+        );
     }
 }
 
@@ -34,16 +35,26 @@ struct DaemonDbus;
 
 #[interface(name = "org.mygestures.Daemon")]
 impl DaemonDbus {
-    fn reload(&self) {
+    fn reload(&self) -> Result<(), zbus::fdo::Error> {
         if IS_MANAGER.load(Ordering::Relaxed) {
+            let path = mygestures::config::get_default_config_path();
+            if mygestures::config::Configuration::load_from_file(&path).is_none() {
+                return Err(zbus::fdo::Error::Failed("Invalid configuration file format".to_string()));
+            }
             RELOAD_MANAGER.store(true, Ordering::Relaxed);
             kill_children();
         } else {
-            RELOAD_REQUESTED.store(true, Ordering::Relaxed);
-            unsafe {
-                libc::kill(libc::getpid(), libc::SIGUSR1);
+            let path = mygestures::config::get_default_config_path();
+            if mygestures::config::Configuration::load_from_file(&path).is_none() {
+                return Err(zbus::fdo::Error::Failed("Invalid configuration file format".to_string()));
             }
+            RELOAD_REQUESTED.store(true, Ordering::Relaxed);
+            let _ = nix::sys::signal::kill(
+                nix::unistd::Pid::this(),
+                nix::sys::signal::Signal::SIGUSR1,
+            );
         }
+        Ok(())
     }
 
     fn stop(&self) {
@@ -196,15 +207,13 @@ fn run_grabber(
     };
 
     // Drop elevated GID privileges if running as setgid (SGID)
-    unsafe {
-        let rgid = libc::getgid();
-        let egid = libc::getegid();
-        if egid != rgid {
-            if libc::setregid(rgid, rgid) == 0 {
-                println!("mygestures: Successfully dropped elevated GID from {} to {}", egid, rgid);
-            } else {
-                eprintln!("mygestures: Warning: Failed to drop elevated GID.");
-            }
+    let rgid = nix::unistd::getgid();
+    let egid = nix::unistd::getegid();
+    if egid != rgid {
+        if nix::unistd::setegid(rgid).is_ok() {
+            println!("mygestures: Successfully dropped elevated GID from {} to {}", egid, rgid);
+        } else {
+            eprintln!("mygestures: Warning: Failed to drop elevated GID.");
         }
     }
 
