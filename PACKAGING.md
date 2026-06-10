@@ -18,14 +18,15 @@ The compiled packages are uploaded to the Action run page as downloadable artifa
 
 ### Creating a Release
 To automatically compile and publish a new release:
-1. Update the version number in `Cargo.toml`, `mygestures.spec`, `debian/changelog`, and `APKBUILD`.
-2. Commit and push the version updates.
-3. Tag the commit with the version prefix `v` (e.g. `v4.0.0`) and push the tag to GitHub:
+1. Run the `bump-version.sh` script to automatically bump the version in all descriptors (Cargo.toml, meson.build, RPM spec, APKBUILD, changelogs, GUI), commit the changes, and create the git tag:
    ```bash
-   git tag v4.0.0
-   git push origin v4.0.0
+   ./bump-version.sh minor   # Options: major | minor | patch | <version_string>
    ```
-4. The workflow will trigger, compile the `.rpm`, `.deb`, and `.apk` packages, create a new GitHub Release page, and attach all the package binaries as downloadable release assets automatically.
+2. Push the commit and the tag to GitHub:
+   ```bash
+   git push origin master --tags
+   ```
+3. The workflow will trigger, compile the `.rpm`, `.deb`, and `.apk` packages, create a new GitHub Release page, and attach all the package binaries as downloadable release assets automatically.
 
 ---
 
