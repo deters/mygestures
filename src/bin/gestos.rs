@@ -54,12 +54,6 @@ fn get_static_action_options() -> Vec<EditorActionOption> {
             name: "Keypress Shortcut".to_string(),
             tooltip: "Simulate keys like Control_L+Alt_L+t".to_string(),
         },
-        EditorActionOption {
-            category: 0,
-            action_type: ActionType::Click(None),
-            name: "Mouse Click".to_string(),
-            tooltip: "Simulate a mouse button click".to_string(),
-        },
         
         // Window Management (1)
         EditorActionOption {
