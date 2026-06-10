@@ -641,16 +641,21 @@ fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height
             
             // Arrowhead size relative to scale
             let arrow_length = 12.0 / scale;
-            let arrow_angle = 30.0_f64.to_radians(); // 30 degrees spread
             
-            // Calculate the two back corners of the arrowhead
-            let x1 = end.x - arrow_length * (angle - arrow_angle).cos();
-            let y1 = end.y - arrow_length * (angle - arrow_angle).sin();
-            let x2 = end.x - arrow_length * (angle + arrow_angle).cos();
-            let y2 = end.y - arrow_length * (angle + arrow_angle).sin();
+            // Calculate base corners perpendicular to the end of the line
+            let half_width = 5.0 / scale;
+            let perp_angle = angle + std::f64::consts::FRAC_PI_2;
+            let x1 = end.x + half_width * perp_angle.cos();
+            let y1 = end.y + half_width * perp_angle.sin();
+            let x2 = end.x - half_width * perp_angle.cos();
+            let y2 = end.y - half_width * perp_angle.sin();
+            
+            // Calculate the tip pointing forward from the end of the line
+            let tip_x = end.x + arrow_length * angle.cos();
+            let tip_y = end.y + arrow_length * angle.sin();
             
             cr.set_source_rgba(0.49, 0.27, 0.90, 1.0);
-            cr.move_to(end.x, end.y);
+            cr.move_to(tip_x, tip_y);
             cr.line_to(x1, y1);
             cr.line_to(x2, y2);
             cr.close_path();
