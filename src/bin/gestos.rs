@@ -1280,20 +1280,27 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
 
     let entry_container = gtk::Box::new(gtk::Orientation::Horizontal, 6);
     entry_container.set_halign(gtk::Align::End);
-
+ 
     let action_details_entry = gtk::Entry::new();
     action_details_entry.set_size_request(160, -1);
     entry_container.append(&action_details_entry);
-
+ 
+    // Add shortcut display box for keycaps representation
+    let shortcut_display_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+    shortcut_display_box.set_halign(gtk::Align::End);
+    shortcut_display_box.set_valign(gtk::Align::Center);
+    shortcut_display_box.set_visible(false);
+    entry_container.append(&shortcut_display_box);
+ 
     let record_btn = gtk::Button::from_icon_name("media-record-symbolic");
     record_btn.set_tooltip_text(Some("Record Keybinding"));
     entry_container.append(&record_btn);
-
+ 
     action_details_row.append(&entry_container);
     settings_list.append(&action_details_row);
-
+ 
     let current_options: Rc<RefCell<Vec<EditorActionOption>>> = Rc::new(RefCell::new(Vec::new()));
-
+ 
     // Helper to dynamically update the gesture name if not customized
     let update_default_name = Rc::new({
         let name_entry = name_entry.clone();
@@ -1302,7 +1309,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         let current_options = Rc::clone(&current_options);
         let is_name_customized = Rc::clone(&is_name_customized);
         let is_updating_programmatically = Rc::clone(&is_updating_programmatically);
-
+ 
         move || {
             if *is_name_customized.borrow() {
                 return;
@@ -1324,13 +1331,13 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             }
         }
     });
-
+ 
     // Setup record button to open the "Set Shortcut" modal dialog
     let entry_click = action_details_entry.clone();
     let dialog_parent = dialog.clone();
     let name_entry_click = name_entry.clone();
     let udn_click = Rc::clone(&update_default_name);
-
+ 
     record_btn.connect_clicked(move |_| {
         let gesture_name = name_entry_click.text().to_string();
         open_shortcut_recorder(
@@ -1340,32 +1347,63 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             Rc::clone(&udn_click) as Rc<dyn Fn()>
         );
     });
-
+ 
+    // Helper to update shortcut display box with keycaps
+    let update_shortcut_display = {
+        let entry = action_details_entry.clone();
+        let display_box = shortcut_display_box.clone();
+        Rc::new(move || {
+            // Clear previous children
+            while let Some(child) = display_box.first_child() {
+                display_box.remove(&child);
+            }
+ 
+            let text = entry.text().to_string();
+            if text.trim().is_empty() {
+                let label = gtk::Label::new(Some("None"));
+                label.set_opacity(0.5);
+                display_box.append(&label);
+            } else {
+                let parts: Vec<&str> = text.split('+').filter(|s| !s.trim().is_empty()).collect();
+                for (i, part) in parts.iter().enumerate() {
+                    if i > 0 {
+                        let plus = gtk::Label::new(Some("+"));
+                        plus.set_opacity(0.6);
+                        display_box.append(&plus);
+                    }
+                    let label = gtk::Label::new(Some(part));
+                    label.add_css_class("keycap");
+                    display_box.append(&label);
+                }
+            }
+        })
+    };
+ 
     // Build options list
     let mut all_options = get_static_action_options();
     all_options.extend(fetch_gnome_action_options());
-
+ 
     // Find initial matching option
     let mut selected_cat = 0;
     let mut selected_act = 0;
-
+ 
     if let Some(ref g) = target_gesture {
         if !g.actions.is_empty() {
             let a = &g.actions[0];
             if let Some(found_opt) = all_options.iter().find(|opt| action_matches(a, opt)) {
                 selected_cat = found_opt.category;
-
+ 
                 // Get the filtered options for this category
                 let filtered: Vec<EditorActionOption> = all_options.iter()
                     .filter(|opt| opt.category == selected_cat)
                     .cloned()
                     .collect();
-
+ 
                 // Find index of option within the filtered list
                 if let Some(act_idx) = filtered.iter().position(|opt| action_matches(a, opt)) {
                     selected_act = act_idx;
                 }
-
+ 
                 // If the action contains input text details, populate it
                 match a {
                     ActionType::Keypress(combo) => {
@@ -1385,23 +1423,23 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             }
         }
     }
-
+ 
     // Filter options for initial category and set model/selections
     let initial_filtered: Vec<EditorActionOption> = all_options.iter()
         .filter(|opt| opt.category == selected_cat)
         .cloned()
         .collect();
-
+ 
     let action_names: Vec<String> = initial_filtered.iter().map(|opt| opt.name.clone()).collect();
     let action_refs: Vec<&str> = action_names.iter().map(|s| s.as_str()).collect();
     let action_model = gtk::StringList::new(&action_refs);
     action_dropdown.set_model(Some(&action_model));
-
+ 
     *current_options.borrow_mut() = initial_filtered.clone();
-
+ 
     category_dropdown.set_selected(selected_cat as u32);
     action_dropdown.set_selected(selected_act as u32);
-
+ 
     // Initialize details entry visibility, label, placeholder, and record button
     if selected_act < initial_filtered.len() {
         let opt = &initial_filtered[selected_act];
@@ -1412,12 +1450,15 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             _ => false,
         };
         action_details_row.set_visible(show_entry);
-        let show_record = matches!(&opt.action_type, ActionType::Keypress(_));
-        record_btn.set_visible(show_record);
+        
+        let is_keypress = matches!(&opt.action_type, ActionType::Keypress(_));
+        action_details_entry.set_visible(!is_keypress);
+        shortcut_display_box.set_visible(is_keypress);
+        record_btn.set_visible(is_keypress);
+ 
         match &opt.action_type {
             ActionType::Keypress(_) => {
                 action_details_label.set_text("Keys to Send");
-                action_details_entry.set_placeholder_text(Some("e.g. Control_L+Alt_L+t"));
             }
             ActionType::Execute(_) => {
                 action_details_label.set_text("Command to Execute");
@@ -1430,19 +1471,22 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             _ => {}
         }
     }
-
-
-
+ 
+    let usd_init = Rc::clone(&update_shortcut_display);
+    usd_init(); // Set initial keycaps if keys exist
+ 
     let udn_clone = Rc::clone(&update_default_name);
     if target_gesture.is_none() {
         udn_clone();
     }
-
+ 
     let udn_clone4 = Rc::clone(&update_default_name);
+    let usd_clone_change = Rc::clone(&update_shortcut_display);
     action_details_entry.connect_changed(move |_| {
         udn_clone4();
+        usd_clone_change();
     });
-
+ 
     // Connect category changed signal
     let all_options_clone = all_options.clone();
     let current_opts_clone = Rc::clone(&current_options);
@@ -1452,7 +1496,8 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let row_clone = action_details_row.clone();
     let record_btn_clone_cat = record_btn.clone();
     let udn_clone3 = Rc::clone(&update_default_name);
-
+    let sdb_clone_cat = shortcut_display_box.clone();
+ 
     category_dropdown.connect_selected_notify(move |cat_dd| {
         let cat_idx = cat_dd.selected();
         if cat_idx == gtk::INVALID_LIST_POSITION {
@@ -1463,15 +1508,15 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             .filter(|opt| opt.category == cat_idx)
             .cloned()
             .collect();
-
+ 
         let action_names: Vec<String> = filtered.iter().map(|opt| opt.name.clone()).collect();
         let action_refs: Vec<&str> = action_names.iter().map(|s| s.as_str()).collect();
         let action_model = gtk::StringList::new(&action_refs);
         action_dropdown_clone.set_model(Some(&action_model));
-
+ 
         *current_opts_clone.borrow_mut() = filtered.clone();
         action_dropdown_clone.set_selected(0);
-
+ 
         // Manually update details entry visibility/placeholder/label/record_btn for index 0
         if !filtered.is_empty() {
             let opt = &filtered[0];
@@ -1482,13 +1527,15 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 _ => false,
             };
             row_clone.set_visible(show_entry);
-            let show_record = matches!(&opt.action_type, ActionType::Keypress(_));
-            record_btn_clone_cat.set_visible(show_record);
-
+            
+            let is_keypress = matches!(&opt.action_type, ActionType::Keypress(_));
+            entry_clone.set_visible(!is_keypress);
+            sdb_clone_cat.set_visible(is_keypress);
+            record_btn_clone_cat.set_visible(is_keypress);
+ 
             match &opt.action_type {
                 ActionType::Keypress(_) => {
                     label_clone.set_text("Keys to Send");
-                    entry_clone.set_placeholder_text(Some("e.g. Control_L+Alt_L+t"));
                 }
                 ActionType::Execute(_) => {
                     label_clone.set_text("Command to Execute");
@@ -1501,10 +1548,10 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 _ => {}
             }
         }
-
+ 
         udn_clone3();
     });
-
+ 
     // Connect action changed signal
     let current_opts_clone2 = Rc::clone(&current_options);
     let entry_clone2 = action_details_entry.clone();
@@ -1512,14 +1559,15 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let row_clone2 = action_details_row.clone();
     let record_btn_clone_act = record_btn.clone();
     let udn_clone2 = Rc::clone(&update_default_name);
-
+    let sdb_clone_act = shortcut_display_box.clone();
+ 
     action_dropdown.connect_selected_notify(move |act_dd| {
         let act_idx = act_dd.selected();
         if act_idx == gtk::INVALID_LIST_POSITION {
             return;
         }
         let act_idx = act_idx as usize;
-
+ 
         let opts = current_opts_clone2.borrow();
         if act_idx < opts.len() {
             let opt = &opts[act_idx];
@@ -1530,13 +1578,15 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 _ => false,
             };
             row_clone2.set_visible(show_entry);
-            let show_record = matches!(&opt.action_type, ActionType::Keypress(_));
-            record_btn_clone_act.set_visible(show_record);
-
+ 
+            let is_keypress = matches!(&opt.action_type, ActionType::Keypress(_));
+            entry_clone2.set_visible(!is_keypress);
+            sdb_clone_act.set_visible(is_keypress);
+            record_btn_clone_act.set_visible(is_keypress);
+ 
             match &opt.action_type {
                 ActionType::Keypress(_) => {
                     label_clone2.set_text("Keys to Send");
-                    entry_clone2.set_placeholder_text(Some("e.g. Control_L+Alt_L+t"));
                 }
                 ActionType::Execute(_) => {
                     label_clone2.set_text("Command to Execute");
@@ -1549,7 +1599,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 _ => {}
             }
         }
-
+ 
         udn_clone2();
     });
 
