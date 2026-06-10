@@ -267,6 +267,66 @@ pub fn get_default_config_path() -> PathBuf {
     }
 }
 
+pub fn initialize_user_config_if_missing() -> std::io::Result<PathBuf> {
+    let user_path = get_default_config_path();
+    if user_path.exists() {
+        return Ok(user_path);
+    }
+
+    let sys_paths = vec![
+        PathBuf::from("/etc/mygestures"),
+        PathBuf::from("/usr/local/etc/mygestures"),
+        PathBuf::from("/usr/share/mygestures"),
+        PathBuf::from("/usr/local/share/mygestures"),
+        PathBuf::from("."),
+    ];
+
+    let suffix = get_environment_suffix();
+    let mut default_content = None;
+
+    for base in &sys_paths {
+        let path = if let Some(s) = suffix {
+            base.join(format!("mygestures_{}.yaml", s))
+        } else {
+            base.join("mygestures.yaml")
+        };
+        if path.exists() {
+            if let Ok(content) = fs::read_to_string(&path) {
+                default_content = Some(content);
+                break;
+            }
+        }
+    }
+
+    if default_content.is_none() {
+        for base in &sys_paths {
+            let path = base.join("mygestures.yaml");
+            if path.exists() {
+                if let Ok(content) = fs::read_to_string(&path) {
+                    default_content = Some(content);
+                    break;
+                }
+            }
+        }
+    }
+
+    if let Some(content) = default_content {
+        if let Some(parent) = user_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(&user_path, &content)?;
+        println!("Initialized user configuration from template at: {}", user_path.display());
+    } else {
+        if let Some(parent) = user_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(&user_path, "# MyGestures Configuration\nglobal:\n")?;
+        println!("Initialized empty user configuration at: {}", user_path.display());
+    }
+
+    Ok(user_path)
+}
+
 impl Configuration {
     pub fn load_from_defaults() -> Self {
         let user_path = get_default_config_path();
@@ -275,90 +335,6 @@ impl Configuration {
             apps: Vec::new(),
             user_config_path: user_path.clone(),
         };
-
-        // 1. Try to load system defaults
-        // Normally stored in /etc/mygestures/mygestures.yaml or prefix path.
-        let sys_paths = vec![
-            PathBuf::from("/etc/mygestures"),
-            PathBuf::from("/usr/local/etc/mygestures"),
-            PathBuf::from("/usr/share/mygestures"),
-            PathBuf::from("/usr/local/share/mygestures"),
-            PathBuf::from("."),
-        ];
-
-        let suffix = get_environment_suffix();
-        let mut loaded_defaults = false;
-
-        for base in &sys_paths {
-            let path = if let Some(s) = suffix {
-                base.join(format!("mygestures_{}.yaml", s))
-            } else {
-                base.join("mygestures.yaml")
-            };
-
-            if path.exists() {
-                if let Ok(content) = fs::read_to_string(&path) {
-                    if config.parse_and_merge(&content, false) {
-                        loaded_defaults = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        // Try unsuffixed if suffixed default didn't load
-        if !loaded_defaults {
-            for base in &sys_paths {
-                let path = base.join("mygestures.yaml");
-                if path.exists() {
-                    if let Ok(content) = fs::read_to_string(&path) {
-                        if config.parse_and_merge(&content, false) {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        // 2. Load user config
-        if !user_path.exists() {
-            // Auto-populate user's local configuration from the default/sample template if it doesn't exist
-            let mut default_content = None;
-            for base in &sys_paths {
-                let path = if let Some(s) = suffix {
-                    base.join(format!("mygestures_{}.yaml", s))
-                } else {
-                    base.join("mygestures.yaml")
-                };
-                if path.exists() {
-                    if let Ok(content) = fs::read_to_string(&path) {
-                        default_content = Some(content);
-                        break;
-                    }
-                }
-            }
-
-            if default_content.is_none() {
-                for base in &sys_paths {
-                    let path = base.join("mygestures.yaml");
-                    if path.exists() {
-                        if let Ok(content) = fs::read_to_string(&path) {
-                            default_content = Some(content);
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if let Some(content) = default_content {
-                if let Some(parent) = user_path.parent() {
-                    let _ = fs::create_dir_all(parent);
-                }
-                if fs::write(&user_path, &content).is_ok() {
-                    println!("Initialized user configuration from template at: {}", user_path.display());
-                }
-            }
-        }
 
         if user_path.exists() {
             if let Ok(content) = fs::read_to_string(&user_path) {
@@ -376,7 +352,7 @@ impl Configuration {
             apps: Vec::new(),
             user_config_path: path.as_ref().to_path_buf(),
         };
-        config.parse_and_merge(&content, false);
+        config.parse_and_merge(&content, true);
         Some(config)
     }
 
@@ -453,26 +429,18 @@ impl Configuration {
         lines.push("# MyGestures Configuration - Generated by Gestos".to_string());
         lines.push("".to_string());
 
-        let has_overrides = self.gestures.iter().any(|g| g.is_custom || g.is_modified || g.is_deleted);
-
-        if has_overrides {
+        if !self.gestures.is_empty() {
             lines.push("global:".to_string());
             for g in &self.gestures {
-                if g.is_custom || g.is_modified || g.is_deleted {
-                    lines.push(format!("  \"{}\":", g.name));
-                    if g.is_deleted {
-                        lines.push("    do: disabled".to_string());
-                    } else {
-                        lines.push(format!("    id: \"{}\"", g.id));
-                        lines.push(format!("    move: \"{}\"", g.raw_movement));
-                        if !g.actions.is_empty() {
-                            let action_str = g.actions.iter()
-                                .map(|a| a.to_string())
-                                .collect::<Vec<_>>()
-                                .join(", "); // Wait, if there are multiple actions in UI we can join them or save as sequence
-                            lines.push(format!("    do: {}", action_str));
-                        }
-                    }
+                lines.push(format!("  \"{}\":", g.name));
+                lines.push(format!("    id: \"{}\"", g.id));
+                lines.push(format!("    move: \"{}\"", g.raw_movement));
+                if !g.actions.is_empty() {
+                    let action_str = g.actions.iter()
+                        .map(|a| a.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    lines.push(format!("    do: {}", action_str));
                 }
             }
             lines.push("".to_string());

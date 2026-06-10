@@ -1634,38 +1634,15 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                         println!("Gesture save failed: A gesture with the name '{}' already exists.", name);
                         return;
                     }
-                    let old_is_custom = state.config.gestures[pos].is_custom;
-                    if old_is_custom {
-                        state.config.gestures[pos].name = name.clone();
-                        state.config.gestures[pos].raw_movement = raw_movement;
-                        state.config.gestures[pos].points = pts.clone();
-                        state.config.gestures[pos].actions = vec![action];
-                        state.config.gestures[pos].is_modified = true;
-                        println!("Custom gesture renamed successfully: {} -> {}", lookup_name, name);
-                    } else {
-                        // Mark old default gesture as deleted
-                        state.config.gestures[pos].is_deleted = true;
-                        // Add new custom gesture with new name
-                        let new_id = generate_unique_id();
-                        state.config.gestures.push(Gesture {
-                            id: new_id,
-                            name: name.clone(),
-                            raw_movement,
-                            points: pts.clone(),
-                            actions: vec![action],
-                            is_custom: true,
-                            is_modified: false,
-                            is_deleted: false,
-                        });
-                        state.newly_added_gestures.push(name.clone());
-                        println!("Default gesture renamed successfully: {} -> {}", lookup_name, name);
-                    }
+                    state.config.gestures[pos].name = name.clone();
+                    state.config.gestures[pos].raw_movement = raw_movement;
+                    state.config.gestures[pos].points = pts.clone();
+                    state.config.gestures[pos].actions = vec![action];
+                    println!("Gesture renamed successfully: {} -> {}", lookup_name, name);
                 } else {
                     state.config.gestures[pos].raw_movement = raw_movement;
                     state.config.gestures[pos].points = pts.clone();
                     state.config.gestures[pos].actions = vec![action];
-                    state.config.gestures[pos].is_modified = true;
-                    state.config.gestures[pos].is_deleted = false;
                     println!("Gesture modified successfully: {}", name);
                 }
             } else {
@@ -1714,12 +1691,8 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         let dialog_clone3 = dialog.clone();
         delete_btn.connect_clicked(move |_| {
             let mut state = state_clone.borrow_mut();
-            if let Some(pos) = state.config.gestures.iter_mut().position(|g| g.id == target_id) {
-                if state.config.gestures[pos].is_custom {
-                    state.config.gestures.remove(pos);
-                } else {
-                    state.config.gestures[pos].is_deleted = true;
-                }
+            if let Some(pos) = state.config.gestures.iter().position(|g| g.id == target_id) {
+                state.config.gestures.remove(pos);
                 if let Err(e) = state.config.save_to_file() {
                     println!("Failed to save config to file on delete: {}", e);
                 }
@@ -1826,6 +1799,9 @@ fn build_ui(app: &gtk::Application) {
     main_list.set_selection_mode(gtk::SelectionMode::None);
     scrolled.set_child(Some(&main_list));
 
+    if let Err(e) = mygestures::config::initialize_user_config_if_missing() {
+        eprintln!("Warning: Failed to initialize configuration: {}", e);
+    }
     let config = Configuration::load_from_defaults();
 
     let state = Rc::new(RefCell::new(AppState {

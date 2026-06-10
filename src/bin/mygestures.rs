@@ -411,6 +411,10 @@ fn main() {
 
     // Load configuration
     let config = if let Some(ref path) = custom_config {
+        if !std::path::Path::new(path).exists() {
+            eprintln!("Error: Configuration file not found at {}.", path);
+            std::process::exit(1);
+        }
         if let Some(c) = Configuration::load_from_file(path) {
             c
         } else {
@@ -418,6 +422,12 @@ fn main() {
             std::process::exit(1);
         }
     } else {
+        let user_path = mygestures::config::get_default_config_path();
+        if !user_path.exists() {
+            eprintln!("Error: Configuration file not found at {}.", user_path.display());
+            eprintln!("Please run gestos first to initialize the configuration.");
+            std::process::exit(1);
+        }
         Configuration::load_from_defaults()
     };
 
