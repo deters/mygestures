@@ -1814,6 +1814,9 @@ fn build_ui(app: &gtk::Application) {
 
     // 4. Search Entry
     let search_entry = gtk::SearchEntry::new();
+    search_entry.set_halign(gtk::Align::Center);
+    search_entry.set_width_request(360);
+    search_entry.set_placeholder_text(Some("Search shortcuts..."));
     search_entry.set_margin_start(56);
     search_entry.set_margin_end(56);
     search_entry.set_margin_top(8);
@@ -1958,6 +1961,7 @@ fn build_ui(app: &gtk::Application) {
          .status-banner { padding: 12px 16px; background-color: @card_bg_color !important; border-radius: 8px; }\n\
          .boxed-list, .boxed-list row, .boxed-list listrow, row, listrow { background-color: @card_bg_color !important; }\n\
          .gesture-preview-frame { background: @window_bg_color; border-radius: 6px; }\n\
+         searchentry, entry.search { border-radius: 18px; }\n\
          .context-title { font-size: 1.5em; font-weight: bold; }\n\
          .gesture-row { padding: 6px; }\n\
          .icon-holder { padding: 4px; }\n\
