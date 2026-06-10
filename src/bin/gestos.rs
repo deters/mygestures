@@ -848,31 +848,11 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
 
     settings_list.append(&name_row);
 
-    // Row 2: Category
-    let category_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-    category_row.add_css_class("settings-row");
-
-    let category_label = gtk::Label::new(Some("Category"));
-    category_label.set_halign(gtk::Align::Start);
-    category_label.add_css_class("status-label");
-    category_row.append(&category_label);
-
-    let category_spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    category_spacer.set_hexpand(true);
-    category_row.append(&category_spacer);
-
-    let category_dropdown = gtk::DropDown::from_strings(CATEGORY_NAMES);
-    category_dropdown.set_halign(gtk::Align::End);
-    category_dropdown.set_size_request(220, -1);
-    category_row.append(&category_dropdown);
-
-    settings_list.append(&category_row);
-
-    // Row 3: Action
+    // Row 2: Action / Category
     let action_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
     action_row.add_css_class("settings-row");
 
-    let action_label = gtk::Label::new(Some("Action"));
+    let action_label = gtk::Label::new(Some("Action / Category"));
     action_label.set_halign(gtk::Align::Start);
     action_label.add_css_class("status-label");
     action_row.append(&action_label);
@@ -882,6 +862,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     action_row.append(&action_spacer);
 
     let action_dropdown = gtk::DropDown::new(None::<gtk::StringList>, None::<gtk::Expression>);
+    action_dropdown.set_enable_search(true);
     action_dropdown.set_halign(gtk::Align::End);
     action_dropdown.set_size_request(220, -1);
     action_row.append(&action_dropdown);
@@ -1004,29 +985,15 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let mut all_options = get_static_action_options();
     all_options.extend(fetch_gnome_action_options());
 
-    // Share current options filtered for category
-    let current_options: Rc<RefCell<Vec<EditorActionOption>>> = Rc::new(RefCell::new(Vec::new()));
-
-    // Find initial matching option
-    let mut selected_cat = 0;
+    // Find initial matching option index in the flat list
     let mut selected_act = 0;
 
     if let Some(ref g) = target_gesture {
         if !g.actions.is_empty() {
             let a = &g.actions[0];
-            if let Some(found_opt) = all_options.iter().find(|opt| action_matches(a, opt)) {
-                selected_cat = found_opt.category;
-
-                // Get the filtered options for this category
-                let filtered: Vec<EditorActionOption> = all_options.iter()
-                    .filter(|opt| opt.category == selected_cat)
-                    .cloned()
-                    .collect();
-
-                // Find index of option within the filtered list
-                if let Some(act_idx) = filtered.iter().position(|opt| action_matches(a, opt)) {
-                    selected_act = act_idx;
-                }
+            if let Some(act_idx) = all_options.iter().position(|opt| action_matches(a, opt)) {
+                selected_act = act_idx;
+                let found_opt = &all_options[act_idx];
 
                 // If the action contains input text details, populate it
                 match a {
@@ -1034,7 +1001,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                         action_details_entry.set_text(combo);
                     }
                     ActionType::Execute(cmd) => {
-                        if selected_cat == 7 {
+                        if found_opt.category == 7 {
                             action_details_entry.set_text(cmd);
                         }
                     }
@@ -1048,25 +1015,22 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         }
     }
 
-    // Filter options for initial category and set model/selections
-    let initial_filtered: Vec<EditorActionOption> = all_options.iter()
-        .filter(|opt| opt.category == selected_cat)
-        .cloned()
+    // Format strings: "Category: Action"
+    let action_names: Vec<String> = all_options.iter()
+        .map(|opt| {
+            let cat_name = CATEGORY_NAMES.get(opt.category).unwrap_or(&"Other");
+            format!("{}: {}", cat_name, opt.name)
+        })
         .collect();
-
-    let action_names: Vec<String> = initial_filtered.iter().map(|opt| opt.name.clone()).collect();
     let action_refs: Vec<&str> = action_names.iter().map(|s| s.as_str()).collect();
     let action_model = gtk::StringList::new(&action_refs);
     action_dropdown.set_model(Some(&action_model));
 
-    *current_options.borrow_mut() = initial_filtered.clone();
-
-    category_dropdown.set_selected(selected_cat as u32);
     action_dropdown.set_selected(selected_act as u32);
 
     // Initialize details entry visibility, label, placeholder, and record button
-    if selected_act < initial_filtered.len() {
-        let opt = &initial_filtered[selected_act];
+    if selected_act < all_options.len() {
+        let opt = &all_options[selected_act];
         let show_entry = match &opt.action_type {
             ActionType::Keypress(_) => true,
             ActionType::Execute(_) if opt.category == 7 => true,
@@ -1098,7 +1062,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         let name_entry = name_entry.clone();
         let action_dropdown = action_dropdown.clone();
         let action_details_entry = action_details_entry.clone();
-        let current_options = Rc::clone(&current_options);
+        let all_options_clone = all_options.clone();
         let is_name_customized = Rc::clone(&is_name_customized);
         let is_updating_programmatically = Rc::clone(&is_updating_programmatically);
 
@@ -1111,9 +1075,8 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 return;
             }
             let act_idx = act_idx as usize;
-            let opts = current_options.borrow();
-            if act_idx < opts.len() {
-                let opt = &opts[act_idx];
+            if act_idx < all_options_clone.len() {
+                let opt = &all_options_clone[act_idx];
                 let detail = action_details_entry.text().to_string();
                 let default_name = get_default_gesture_name(opt, &detail);
                 
@@ -1134,70 +1097,8 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         udn_clone4();
     });
 
-    // Connect category changed signal
-    let all_options_clone = all_options.clone();
-    let current_opts_clone = Rc::clone(&current_options);
-    let action_dropdown_clone = action_dropdown.clone();
-    let entry_clone = action_details_entry.clone();
-    let label_clone = action_details_label.clone();
-    let row_clone = action_details_row.clone();
-    let record_btn_clone_cat = record_btn.clone();
-    let udn_clone3 = Rc::clone(&update_default_name);
-
-    category_dropdown.connect_selected_notify(move |cat_dd| {
-        let cat_idx = cat_dd.selected();
-        if cat_idx == gtk::INVALID_LIST_POSITION {
-            return;
-        }
-        let cat_idx = cat_idx as usize;
-        let filtered: Vec<EditorActionOption> = all_options_clone.iter()
-            .filter(|opt| opt.category == cat_idx)
-            .cloned()
-            .collect();
-
-        let action_names: Vec<String> = filtered.iter().map(|opt| opt.name.clone()).collect();
-        let action_refs: Vec<&str> = action_names.iter().map(|s| s.as_str()).collect();
-        let action_model = gtk::StringList::new(&action_refs);
-        action_dropdown_clone.set_model(Some(&action_model));
-
-        *current_opts_clone.borrow_mut() = filtered.clone();
-        action_dropdown_clone.set_selected(0);
-
-        // Manually update details entry visibility/placeholder/label/record_btn for index 0
-        if !filtered.is_empty() {
-            let opt = &filtered[0];
-            let show_entry = match &opt.action_type {
-                ActionType::Keypress(_) => true,
-                ActionType::Execute(_) if opt.category == 7 => true,
-                ActionType::Click(_) => true,
-                _ => false,
-            };
-            row_clone.set_visible(show_entry);
-            let show_record = matches!(&opt.action_type, ActionType::Keypress(_));
-            record_btn_clone_cat.set_visible(show_record);
-
-            match &opt.action_type {
-                ActionType::Keypress(_) => {
-                    label_clone.set_text("Keys to Send");
-                    entry_clone.set_placeholder_text(Some("e.g. Control_L+Alt_L+t"));
-                }
-                ActionType::Execute(_) => {
-                    label_clone.set_text("Command to Execute");
-                    entry_clone.set_placeholder_text(Some("e.g. firefox"));
-                }
-                ActionType::Click(_) => {
-                    label_clone.set_text("Mouse Button");
-                    entry_clone.set_placeholder_text(Some("e.g. 1 (Left), 2 (Middle), 3 (Right)"));
-                }
-                _ => {}
-            }
-        }
-
-        udn_clone3();
-    });
-
     // Connect action changed signal
-    let current_opts_clone2 = Rc::clone(&current_options);
+    let all_options_clone2 = all_options.clone();
     let entry_clone2 = action_details_entry.clone();
     let label_clone2 = action_details_label.clone();
     let row_clone2 = action_details_row.clone();
@@ -1211,9 +1112,8 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         }
         let act_idx = act_idx as usize;
 
-        let opts = current_opts_clone2.borrow();
-        if act_idx < opts.len() {
-            let opt = &opts[act_idx];
+        if act_idx < all_options_clone2.len() {
+            let opt = &all_options_clone2[act_idx];
             let show_entry = match &opt.action_type {
                 ActionType::Keypress(_) => true,
                 ActionType::Execute(_) if opt.category == 7 => true,
@@ -1263,7 +1163,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let original_name = target_gesture.as_ref().map(|g| g.name.clone());
     let dialog_clone2 = dialog.clone();
     
-    let current_opts_save = Rc::clone(&current_options);
+    let all_options_save = all_options.clone();
     save_btn.connect_clicked(move |_| {
         let name = name_entry.text().to_string();
         if name.trim().is_empty() {
@@ -1290,12 +1190,11 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         }
         let act_idx = act_idx as usize;
 
-        let opts = current_opts_save.borrow();
-        if act_idx >= opts.len() {
+        if act_idx >= all_options_save.len() {
             println!("Gesture save failed: Selected action index out of bounds.");
             return;
         }
-        let opt = &opts[act_idx];
+        let opt = &all_options_save[act_idx];
         let detail = action_details_entry.text().to_string();
 
         let action = match &opt.action_type {
