@@ -697,35 +697,6 @@ fn create_gesture_row(state_rc: &Rc<RefCell<AppState>>, gesture: &Gesture) -> gt
     });
     preview_frame.set_child(Some(&preview_canvas));
     main_hbox.append(&preview_frame);
-
-    // 4. Delete button
-    let del_btn = gtk::Button::from_icon_name("user-trash-symbolic");
-    del_btn.add_css_class("destructive-action");
-    del_btn.set_valign(gtk::Align::Center);
-    
-    let state_clone = Rc::clone(state_rc);
-    let name_clone = gesture.name.clone();
-    del_btn.connect_clicked(move |_| {
-        let mut state = state_clone.borrow_mut();
-        if let Some(pos) = state.config.gestures.iter_mut().position(|g| g.name == name_clone) {
-            if state.config.gestures[pos].is_custom {
-                state.config.gestures.remove(pos);
-            } else {
-                state.config.gestures[pos].is_deleted = true;
-            }
-            if let Err(e) = state.config.save_to_file() {
-                println!("Failed to save config to file on delete: {}", e);
-            }
-            println!("Gesture deleted successfully: {}", name_clone);
-            reload_daemon();
-            drop(state);
-            refresh_gesture_list(&state_clone, None);
-        } else {
-            println!("Gesture deletion failed: Could not find gesture '{}'", name_clone);
-        }
-    });
-    main_hbox.append(&del_btn);
-
     row.set_child(Some(&main_hbox));
     row
 }
@@ -1393,7 +1364,38 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
 
     // Save and Cancel buttons
     let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-    button_box.set_halign(gtk::Align::End);
+
+    if let Some(ref gest) = target_gesture {
+        let delete_btn = gtk::Button::with_label("Delete Gesture");
+        delete_btn.add_css_class("destructive-action");
+
+        let state_clone = Rc::clone(state_rc);
+        let name_clone = gest.name.clone();
+        let dialog_clone = dialog.clone();
+        delete_btn.connect_clicked(move |_| {
+            let mut state = state_clone.borrow_mut();
+            if let Some(pos) = state.config.gestures.iter_mut().position(|g| g.name == name_clone) {
+                if state.config.gestures[pos].is_custom {
+                    state.config.gestures.remove(pos);
+                } else {
+                    state.config.gestures[pos].is_deleted = true;
+                }
+                if let Err(e) = state.config.save_to_file() {
+                    println!("Failed to save config to file on delete: {}", e);
+                }
+                println!("Gesture deleted successfully: {}", name_clone);
+                reload_daemon();
+                drop(state);
+                refresh_gesture_list(&state_clone, None);
+                dialog_clone.destroy();
+            }
+        });
+        button_box.append(&delete_btn);
+    }
+
+    let spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    spacer.set_hexpand(true);
+    button_box.append(&spacer);
 
     let cancel_btn = gtk::Button::with_label("Cancel");
     let dialog_clone = dialog.clone();
