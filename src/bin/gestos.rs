@@ -2006,11 +2006,11 @@ fn build_ui(app: &gtk::Application) {
          .status-banner { padding: 12px 16px; background-color: #ffffff !important; border-radius: 8px; }\n\
          .boxed-list, .boxed-list row, .boxed-list listrow, row, listrow { background-color: #ffffff !important; }\n\
          .gesture-preview-frame { background: #f6f6f6; border-radius: 6px; }\n\
-         .dark-mode .main-window-content, .dark-mode .dialog-content, .dark .main-window-content, .dark .dialog-content { background-color: #1e1e1e; }\n\
-         .dark-mode headerbar, .dark headerbar { background: #1e1e1e; }\n\
-         .dark-mode .status-banner, .dark .status-banner { background-color: #303030 !important; }\n\
-         .dark-mode .boxed-list, .dark-mode .boxed-list row, .dark-mode .boxed-list listrow, .dark-mode row, .dark-mode listrow, .dark .boxed-list, .dark .boxed-list row, .dark .boxed-list listrow, .dark row, .dark listrow { background-color: #303030 !important; }\n\
-         .dark-mode .gesture-preview-frame, .dark .gesture-preview-frame { background: #1e1e1e; }\n\
+         window.dark-mode .main-window-content, window.dark-mode .dialog-content, window.dark .main-window-content, window.dark .dialog-content { background-color: #1e1e1e; }\n\
+         window.dark-mode headerbar, window.dark headerbar { background: #1e1e1e; }\n\
+         window.dark-mode .status-banner, window.dark .status-banner { background-color: #303030 !important; }\n\
+         window.dark-mode .boxed-list, window.dark-mode .boxed-list row, window.dark-mode .boxed-list listrow, window.dark-mode row, window.dark-mode listrow, window.dark .boxed-list, window.dark .boxed-list row, window.dark .boxed-list listrow, window.dark row, window.dark listrow { background-color: #303030 !important; }\n\
+         window.dark-mode .gesture-preview-frame, window.dark .gesture-preview-frame { background: #1e1e1e; }\n\
          .context-title { font-size: 1.5em; font-weight: bold; }\n\
          .gesture-row { padding: 6px; }\n\
          .icon-holder { padding: 4px; }\n\
