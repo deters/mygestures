@@ -81,7 +81,7 @@ jobs:
           
           # Run abuild as builder user
           su builder -c "abuild-keygen -i -a -n"
-          su builder -c "cd packaging && abuild -r"
+          su builder -c "cd packaging && abuild checksum && abuild -r"
 
       - name: Upload Alpine Artifacts
         uses: actions/upload-artifact@v4
