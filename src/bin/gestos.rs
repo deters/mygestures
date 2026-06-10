@@ -596,7 +596,7 @@ fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height
     let max_dim = w.max(h);
     let scale = if fit_to_canvas {
         let size = width.min(height);
-        if max_dim > 1.0 { (size * 0.7) / max_dim } else { 1.0 }
+        if max_dim > 1.0 { (size * 0.62) / max_dim } else { 1.0 }
     } else {
         1.0
     };
