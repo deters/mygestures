@@ -517,7 +517,7 @@ dependencies = [
 
 [[package]]
 name = "mygestures"
-version = "4.1.7"
+version = "4.1.8"
 dependencies = [
  "env_logger",
  "evdev",
