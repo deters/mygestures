@@ -2006,10 +2006,10 @@ fn build_ui(app: &gtk::Application) {
          .status-banner { padding: 12px 16px; background-color: @view_bg_color !important; border-radius: 8px; }\n\
          .boxed-list, .boxed-list row, .boxed-list listrow, row, listrow { background-color: @view_bg_color !important; }\n\
          .gesture-preview-frame { background: @window_bg_color; border-radius: 6px; }\n\
-         .dark-mode .main-window-content, .dark-mode .dialog-content { background-color: @view_bg_color; }\n\
-         .dark-mode .status-banner { background-color: @window_bg_color !important; }\n\
-         .dark-mode .boxed-list, .dark-mode .boxed-list row, .dark-mode .boxed-list listrow, .dark-mode row, .dark-mode listrow { background-color: @window_bg_color !important; }\n\
-         .dark-mode .gesture-preview-frame { background: @view_bg_color; }\n\
+         .dark-mode .main-window-content, .dark-mode .dialog-content, .dark .main-window-content, .dark .dialog-content { background-color: @view_bg_color; }\n\
+         .dark-mode .status-banner, .dark .status-banner { background-color: @window_bg_color !important; }\n\
+         .dark-mode .boxed-list, .dark-mode .boxed-list row, .dark-mode .boxed-list listrow, .dark-mode row, .dark-mode listrow, .dark .boxed-list, .dark .boxed-list row, .dark .boxed-list listrow, .dark row, .dark listrow { background-color: @window_bg_color !important; }\n\
+         .dark-mode .gesture-preview-frame, .dark .gesture-preview-frame { background: @view_bg_color; }\n\
          .context-title { font-size: 1.5em; font-weight: bold; }\n\
          .gesture-row { padding: 6px; }\n\
          .icon-holder { padding: 4px; }\n\
