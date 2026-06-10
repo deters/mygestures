@@ -630,7 +630,7 @@ fn create_gesture_row(state_rc: &Rc<RefCell<AppState>>, gesture: &Gesture) -> gt
             println!("Gesture deleted successfully: {}", name_clone);
             reload_daemon();
             drop(state);
-            refresh_gesture_list(&state_clone);
+            refresh_gesture_list(&state_clone, None);
         } else {
             println!("Gesture deletion failed: Could not find gesture '{}'", name_clone);
         }
@@ -641,7 +641,7 @@ fn create_gesture_row(state_rc: &Rc<RefCell<AppState>>, gesture: &Gesture) -> gt
     row
 }
 
-fn refresh_gesture_list(state_rc: &Rc<RefCell<AppState>>) {
+fn refresh_gesture_list(state_rc: &Rc<RefCell<AppState>>, select_name: Option<&str>) {
     let state = state_rc.borrow();
     
     // Clear list
@@ -660,6 +660,12 @@ fn refresh_gesture_list(state_rc: &Rc<RefCell<AppState>>) {
         }
         let row = create_gesture_row(state_rc, gesture);
         state.main_list.append(&row);
+        
+        if let Some(name) = select_name {
+            if gesture.name == name {
+                state.main_list.select_row(Some(&row));
+            }
+        }
     }
 }
 
@@ -1354,7 +1360,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         reload_daemon();
         drop(state);
 
-        refresh_gesture_list(&state_clone);
+        refresh_gesture_list(&state_clone, Some(&name));
         dialog_clone2.destroy();
     });
     
@@ -1444,12 +1450,12 @@ fn build_ui(app: &gtk::Application) {
     }));
 
     // Refresh initially
-    refresh_gesture_list(&state);
+    refresh_gesture_list(&state, None);
 
     // Connect search entry
     let state_clone = Rc::clone(&state);
     state.borrow().search_entry.connect_search_changed(move |_| {
-        refresh_gesture_list(&state_clone);
+        refresh_gesture_list(&state_clone, None);
     });
 
     // Connect Add button
