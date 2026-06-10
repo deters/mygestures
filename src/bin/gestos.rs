@@ -1602,6 +1602,29 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
 }
 
 fn build_ui(app: &gtk::Application) {
+    // Dynamically track and follow the system dark mode preference
+    let schema_id = "org.gnome.desktop.interface";
+    if let Some(source) = gio::SettingsSchemaSource::default() {
+        if source.lookup(schema_id, true).is_some() {
+            let settings = gio::Settings::new(schema_id);
+            let update_theme = |s: &gio::Settings| {
+                let scheme: String = s.get("color-scheme");
+                let prefer_dark = scheme.contains("dark");
+                if let Some(gtk_settings) = gtk::Settings::default() {
+                    gtk_settings.set_gtk_application_prefer_dark_theme(prefer_dark);
+                }
+            };
+            
+            // Initial theme application
+            update_theme(&settings);
+            
+            // Connect signal to handle dynamic changes
+            settings.connect_changed(Some("color-scheme"), move |s, _| {
+                update_theme(s);
+            });
+        }
+    }
+
     let window = gtk::ApplicationWindow::new(app);
     window.set_title(Some("Gestos"));
     window.set_default_size(650, 700);
