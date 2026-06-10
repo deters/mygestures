@@ -1,8 +1,58 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use mygestures::config::{Configuration, ActionType};
 use mygestures::wayland::WaylandContext;
 use mygestures::ipc::DaemonIpc;
+use zbus::interface;
+
+static RELOAD_REQUESTED: AtomicBool = AtomicBool::new(false);
+static IS_MANAGER: AtomicBool = AtomicBool::new(false);
+static RELOAD_MANAGER: AtomicBool = AtomicBool::new(false);
+static CHILD_PIDS: once_cell::sync::Lazy<std::sync::Mutex<Vec<u32>>> =
+    once_cell::sync::Lazy::new(|| std::sync::Mutex::new(Vec::new()));
+
+extern "C" fn sigusr1_handler(_sig: libc::c_int) {}
+
+fn register_sigusr1() {
+    unsafe {
+        let handler = nix::sys::signal::SigHandler::Handler(sigusr1_handler);
+        let _ = nix::sys::signal::signal(nix::sys::signal::Signal::SIGUSR1, handler);
+    }
+}
+
+fn kill_children() {
+    let pids = CHILD_PIDS.lock().unwrap();
+    for &pid in pids.iter() {
+        unsafe {
+            libc::kill(pid as libc::pid_t, libc::SIGTERM);
+        }
+    }
+}
+
+struct DaemonDbus;
+
+#[interface(name = "org.mygestures.Daemon")]
+impl DaemonDbus {
+    fn reload(&self) {
+        if IS_MANAGER.load(Ordering::Relaxed) {
+            RELOAD_MANAGER.store(true, Ordering::Relaxed);
+            kill_children();
+        } else {
+            RELOAD_REQUESTED.store(true, Ordering::Relaxed);
+            unsafe {
+                libc::kill(libc::getpid(), libc::SIGUSR1);
+            }
+        }
+    }
+
+    fn stop(&self) {
+        if IS_MANAGER.load(Ordering::Relaxed) {
+            kill_children();
+        }
+        std::process::exit(0);
+    }
+}
 
 fn find_mouse_device() -> Option<PathBuf> {
     let input_dir = Path::new("/dev/input/by-path");
@@ -87,7 +137,7 @@ fn run_grabber(
     device_path: &str,
     trigger_button: i32,
     sensitivity: i32,
-    config: mygestures::config::Configuration,
+    mut config: mygestures::config::Configuration,
     wayland_ctx: mygestures::wayland::WaylandContext,
     ipc: mygestures::ipc::DaemonIpc,
 ) -> Result<(), std::io::Error> {
@@ -167,13 +217,27 @@ fn run_grabber(
     let mut moved = false;
 
     // Convert templates for matching
-    let templates: Vec<(String, Vec<Point2D>)> = config.gestures.iter()
+    let mut templates: Vec<(String, Vec<Point2D>)> = config.gestures.iter()
         .filter(|g| !g.is_deleted)
         .map(|g| (g.name.clone(), g.points.clone()))
         .collect();
 
     // Event loop
     loop {
+        if RELOAD_REQUESTED.swap(false, Ordering::Relaxed) {
+            println!("mygestures: Reloading configuration dynamically...");
+            if let Some(new_config) = mygestures::config::Configuration::load_from_file(&config.user_config_path) {
+                config = new_config;
+                templates = config.gestures.iter()
+                    .filter(|g| !g.is_deleted)
+                    .map(|g| (g.name.clone(), g.points.clone()))
+                    .collect();
+                println!("mygestures: Configuration reloaded successfully.");
+            } else {
+                eprintln!("mygestures: Failed to reload configuration from {}", config.user_config_path.display());
+            }
+        }
+
         // Check if another instance requested us to exit via shared memory
         if ipc.is_kill_requested() {
             println!("Mygestures asked me to exit via IPC.");
@@ -373,32 +437,74 @@ fn main() {
         }
     }
 
-    // If multiple devices are specified, run process manager
-    if devices.len() > 1 {
-        let exe = std::env::current_exe().unwrap();
-        let mut children = Vec::new();
-
-        for dev in &devices {
-            let mut cmd = std::process::Command::new(&exe);
-            cmd.arg("-d").arg(dev);
-            cmd.arg("-b").arg(button.to_string());
-            cmd.arg("-s").arg(sensitivity.to_string());
-            if let Some(ref cfg) = custom_config {
-                cmd.arg(cfg);
-            }
-
-            match cmd.spawn() {
-                Ok(child) => {
-                    children.push(child);
+    // If NOT spawned as a child process of the manager, run D-Bus registration
+    if std::env::var("MYGESTURES_CHILD").is_err() {
+        register_sigusr1();
+        std::thread::spawn(move || {
+            let dbus_name = mygestures::config::get_dbus_name();
+            match zbus::blocking::connection::Builder::session()
+                .and_then(|b| b.name(dbus_name))
+                .and_then(|b| b.serve_at("/org/mygestures/Daemon", DaemonDbus))
+                .and_then(|b| b.build())
+            {
+                Ok(_conn) => {
+                    println!("mygestures: Registered D-Bus service.");
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_secs(3600));
+                    }
                 }
                 Err(e) => {
-                    eprintln!("Failed to spawn listener process for {}: {}", dev, e);
+                    eprintln!("mygestures: D-Bus initialization error: {}", e);
                 }
             }
-        }
+        });
+    }
 
-        for mut child in children {
-            let _ = child.wait();
+    // If multiple devices are specified, run process manager
+    if devices.len() > 1 {
+        IS_MANAGER.store(true, Ordering::Relaxed);
+        
+        loop {
+            let exe = std::env::current_exe().unwrap();
+            let mut children = Vec::new();
+
+            for dev in &devices {
+                let mut cmd = std::process::Command::new(&exe);
+                cmd.env("MYGESTURES_CHILD", "1");
+                cmd.arg("-d").arg(dev);
+                cmd.arg("-b").arg(button.to_string());
+                cmd.arg("-s").arg(sensitivity.to_string());
+                if let Some(ref cfg) = custom_config {
+                    cmd.arg(cfg);
+                }
+
+                match cmd.spawn() {
+                    Ok(child) => {
+                        children.push(child);
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to spawn listener process for {}: {}", dev, e);
+                    }
+                }
+            }
+
+            {
+                let mut pids = CHILD_PIDS.lock().unwrap();
+                pids.clear();
+                for child in &children {
+                    pids.push(child.id());
+                }
+            }
+
+            for mut child in children {
+                let _ = child.wait();
+            }
+
+            if RELOAD_MANAGER.swap(false, Ordering::Relaxed) {
+                println!("mygestures parent: Config reload triggered. Restarting child processes...");
+                continue;
+            }
+            break;
         }
         return;
     }

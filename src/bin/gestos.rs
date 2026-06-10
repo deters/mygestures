@@ -378,19 +378,17 @@ struct AppState {
 }
 
 fn is_daemon_running() -> bool {
-    let uid = unsafe { libc::getuid() };
-    let output = Command::new("pgrep")
-        .arg("-u")
-        .arg(uid.to_string())
-        .arg("-x")
-        .arg("mygestures")
-        .output();
-    
-    if let Ok(out) = output {
-        out.status.success() && !out.stdout.is_empty()
-    } else {
-        false
+    let dbus_name = mygestures::config::get_dbus_name();
+    if let Ok(conn) = zbus::blocking::Connection::session() {
+        if let Ok(dbus_proxy) = zbus::blocking::fdo::DBusProxy::new(&conn) {
+            if let Ok(bus_name) = zbus::names::BusName::try_from(dbus_name) {
+                if let Ok(has_owner) = dbus_proxy.name_has_owner(bus_name) {
+                    return has_owner;
+                }
+            }
+        }
     }
+    false
 }
 
 fn show_error_dialog<W: IsA<gtk::Window>>(parent: &W, message: &str) {
@@ -500,21 +498,57 @@ fn start_daemon() -> Result<(), String> {
 }
 
 fn stop_daemon() {
-    let uid = unsafe { libc::getuid() };
-    let _ = Command::new("pkill")
-        .arg("-u")
-        .arg(uid.to_string())
-        .arg("-x")
-        .arg("mygestures")
-        .status();
+    let dbus_name = mygestures::config::get_dbus_name();
+    let stop_via_dbus = || -> zbus::Result<()> {
+        let conn = zbus::blocking::Connection::session()?;
+        let proxy = zbus::blocking::Proxy::new(
+            &conn,
+            dbus_name,
+            "/org/mygestures/Daemon",
+            "org.mygestures.Daemon",
+        )?;
+        let _: () = proxy.call("Stop", &())?;
+        Ok(())
+    };
+
+    if stop_via_dbus().is_err() {
+        let uid = unsafe { libc::getuid() };
+        if let Ok(output) = Command::new("pgrep")
+            .arg("-u")
+            .arg(uid.to_string())
+            .arg("-x")
+            .arg("mygestures")
+            .output()
+        {
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                for line in stdout.lines() {
+                    if let Ok(pid) = line.trim().parse::<libc::pid_t>() {
+                        unsafe {
+                            libc::kill(pid, libc::SIGTERM);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn reload_daemon() {
-    if is_daemon_running() {
-        stop_daemon();
-        std::thread::sleep(std::time::Duration::from_millis(150));
-        let _ = start_daemon();
-    }
+    let dbus_name = mygestures::config::get_dbus_name();
+    let reload_via_dbus = || -> zbus::Result<()> {
+        let conn = zbus::blocking::Connection::session()?;
+        let proxy = zbus::blocking::Proxy::new(
+            &conn,
+            dbus_name,
+            "/org/mygestures/Daemon",
+            "org.mygestures.Daemon",
+        )?;
+        let _: () = proxy.call("Reload", &())?;
+        Ok(())
+    };
+
+    let _ = reload_via_dbus();
 }
 
 fn get_autostart_file_path() -> Option<std::path::PathBuf> {

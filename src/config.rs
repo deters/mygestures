@@ -233,7 +233,7 @@ pub fn parse_points(expr: &str) -> Vec<Point2D> {
     points
 }
 
-fn get_environment_suffix() -> Option<&'static str> {
+pub fn get_environment_suffix() -> Option<&'static str> {
     if std::env::var("SWAYSOCK").is_ok() {
         return Some("sway");
     }
@@ -252,6 +252,14 @@ fn get_environment_suffix() -> Option<&'static str> {
         }
     }
     None
+}
+
+pub fn get_dbus_name() -> String {
+    if let Some(suffix) = get_environment_suffix() {
+        format!("org.mygestures.Daemon.{}", suffix)
+    } else {
+        "org.mygestures.Daemon".to_string()
+    }
 }
 
 pub fn get_default_config_path() -> PathBuf {
