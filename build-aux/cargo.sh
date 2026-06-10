@@ -18,6 +18,9 @@ else
 fi
 
 # Compile using cargo
+if [ -n "$OVERRIDE_CARGO_TARGET_DIR" ]; then
+    CARGO_TARGET_DIR="$OVERRIDE_CARGO_TARGET_DIR"
+fi
 export CARGO_TARGET_DIR="$CARGO_TARGET_DIR"
 cargo build --manifest-path "$CARGO_MANIFEST_PATH" $CARGO_ARGS
 

@@ -14,15 +14,27 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cargo
+            target-fedora
+          key: ${{ runner.os }}-fedora-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-fedora-cargo-
+
       - name: Install dependencies
         run: |
           dnf install -y meson ninja-build cargo rust gtk4-devel libevdev-devel gcc rpm-build rpmdevtools git
 
       - name: Build RPM
         run: |
+          export CARGO_HOME=$GITHUB_WORKSPACE/.cargo
+          export OVERRIDE_CARGO_TARGET_DIR=$GITHUB_WORKSPACE/target-fedora
           rpmdev-setuptree
           VERSION=$(grep '^Version:' packaging/mygestures.spec | awk '{print $2}')
-          tar --exclude-vcs --transform "s,^\.,mygestures-$VERSION," -czf ~/rpmbuild/SOURCES/mygestures-$VERSION.tar.gz .
+          tar --exclude-vcs --exclude='.cargo' --exclude='target-fedora' --transform "s,^\.,mygestures-$VERSION," -czf ~/rpmbuild/SOURCES/mygestures-$VERSION.tar.gz .
           rpmbuild -ba packaging/mygestures.spec
 
       - name: Upload RPM Artifacts
@@ -41,18 +53,36 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cargo
+            target
+          key: ${{ runner.os }}-debian-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-debian-cargo-
+
       - name: Install dependencies
         run: |
           apt-get update
-          apt-get install -y build-essential devscripts debhelper cargo rustc libevdev-dev libgtk-4-dev libc6-dev pkg-config git curl
-          # Install rustup to get the latest Cargo compiler (supporting lockfile v4 and edition 2024)
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          apt-get install -y build-essential devscripts debhelper libevdev-dev libgtk-4-dev libc6-dev pkg-config git curl
+          
+          # Ensure 'input' group exists in the build container (required for chgrp during packaging)
+          getent group input >/dev/null || groupadd -r input
+          
+          # Set CARGO_HOME to a workspace-relative directory so it can be cached
+          export CARGO_HOME=$GITHUB_WORKSPACE/.cargo
+          
+          # Install rustup only if not already cached
+          if [ ! -f "$CARGO_HOME/bin/cargo" ]; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          fi
+          echo "$CARGO_HOME/bin" >> $GITHUB_PATH
 
       - name: Build Debian Package
         run: |
-          # Prepend rustup cargo to path and build
-          export PATH="$HOME/.cargo/bin:$PATH"
+          export CARGO_HOME=$GITHUB_WORKSPACE/.cargo
           dpkg-buildpackage -us -uc -b
 
       - name: Upload Debian Artifacts
@@ -71,6 +101,16 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cargo
+            target-alpine
+          key: ${{ runner.os }}-alpine-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-alpine-cargo-
+
       - name: Install dependencies
         run: |
           apk update
@@ -85,7 +125,7 @@ jobs:
           
           # Run abuild as builder user
           su builder -c "abuild-keygen -i -a -n"
-          su builder -c "cd packaging && abuild checksum && abuild -r"
+          su builder -c "export CARGO_HOME=$GITHUB_WORKSPACE/.cargo && export OVERRIDE_CARGO_TARGET_DIR=$GITHUB_WORKSPACE/target-alpine && cd packaging && abuild checksum && abuild -r"
 
       - name: Upload Alpine Artifacts
         uses: actions/upload-artifact@v4

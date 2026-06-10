@@ -3,7 +3,10 @@
 PREFIX ?= /usr/local
 BUILDDIR = build
 
-.PHONY: all build install uninstall clean
+.PHONY: all build install uninstall clean setup
+
+setup:
+	meson setup $(BUILDDIR) --prefix=$(PREFIX)
 
 all: build
 
