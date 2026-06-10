@@ -172,7 +172,7 @@ pub fn match_gesture(
         return None;
     }
     let n = 64;
-    let threshold_score = 0.95;
+    let threshold_score = 0.90;
     let max_angle = 15.0 * (std::f64::consts::PI / 180.0);
 
     let mut input_vector = resample_path(captured_points, n);
