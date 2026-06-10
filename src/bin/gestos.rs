@@ -1975,15 +1975,15 @@ fn build_ui(app: &gtk::Application) {
     // Stylesheet injection
     let provider = gtk::CssProvider::new();
     provider.load_from_data(
-        "headerbar { background: @view_bg_color; border: none; box-shadow: none; }\n\
-         .main-window-content, .dialog-content { background-color: @view_bg_color; }\n\
-         scrolledwindow, viewport { background: transparent; }\n\
-         .status-banner { padding: 12px 16px; background-color: @window_bg_color; border-radius: 8px; }\n\
-         .boxed-list, .boxed-list row, .boxed-list listrow { background-color: @window_bg_color; }\n\
+        "headerbar { background: transparent; border: none; box-shadow: none; }\n\
+         .main-window-content, .dialog-content { background-color: @window_bg_color; }\n\
+         scrolledwindow, viewport { background-color: transparent !important; background-image: none !important; }\n\
+         .status-banner { padding: 12px 16px; background-color: @view_bg_color; border-radius: 8px; }\n\
+         .boxed-list, .boxed-list row, .boxed-list listrow { background-color: @view_bg_color; }\n\
          .context-title { font-size: 1.5em; font-weight: bold; }\n\
          .gesture-row { padding: 6px; }\n\
          .icon-holder { padding: 4px; }\n\
-         .gesture-preview-frame { background: @view_bg_color; border-radius: 6px; }\n\
+         .gesture-preview-frame { background: @window_bg_color; border-radius: 6px; }\n\
          .action-label { font-size: 0.9em; opacity: 0.7; }\n\
          .status-dot-running { color: #10b981; }\n\
          .status-dot-stopped { color: #6b7280; }\n\
