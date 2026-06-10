@@ -1802,7 +1802,7 @@ fn build_ui(app: &gtk::Application) {
     // Dynamically track GTK Settings changes
     if let Some(gtk_settings) = gtk::Settings::default() {
         let window_clone = window.clone();
-        gtk_settings.connect_notify(Some("gtk-application-prefer-dark-theme"), move |s, _| {
+        gtk_settings.connect_notify_local(Some("gtk-application-prefer-dark-theme"), move |s, _| {
             let prefer_dark = s.property::<bool>("gtk-application-prefer-dark-theme");
             if prefer_dark {
                 window_clone.add_css_class("dark-mode");
