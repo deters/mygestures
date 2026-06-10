@@ -840,7 +840,6 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     name_entry.set_placeholder_text(Some("e.g. Back Action"));
     if let Some(ref g) = target_gesture {
         name_entry.set_text(&g.name);
-        name_entry.set_sensitive(false); // Can't change name of existing gesture
     }
 
     let is_name_customized = Rc::new(RefCell::new(target_gesture.is_some()));
@@ -1519,20 +1518,48 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         let mut state = state_clone.borrow_mut();
         if is_edit {
             let lookup_name = original_name.as_ref().unwrap_or(&name);
-            if name != *lookup_name && state.config.gestures.iter().any(|g| g.name == name) {
-                println!("Gesture save failed: A gesture with the name '{}' already exists.", name);
-                return;
-            }
-            if let Some(existing) = state.config.gestures.iter_mut().find(|g| g.name == *lookup_name) {
-                existing.name = name.clone();
-                existing.raw_movement = raw_movement;
-                existing.points = pts.clone();
-                existing.actions = vec![action];
-                existing.is_modified = true;
-                existing.is_deleted = false;
-                println!("Gesture modified successfully: {}", existing.name);
+            if name != *lookup_name {
+                if state.config.gestures.iter().any(|g| g.name == name) {
+                    println!("Gesture save failed: A gesture with the name '{}' already exists.", name);
+                    return;
+                }
+                if let Some(pos) = state.config.gestures.iter().position(|g| g.name == *lookup_name) {
+                    let old_is_custom = state.config.gestures[pos].is_custom;
+                    if old_is_custom {
+                        state.config.gestures[pos].name = name.clone();
+                        state.config.gestures[pos].raw_movement = raw_movement;
+                        state.config.gestures[pos].points = pts.clone();
+                        state.config.gestures[pos].actions = vec![action];
+                        state.config.gestures[pos].is_modified = true;
+                        println!("Custom gesture renamed successfully: {} -> {}", lookup_name, name);
+                    } else {
+                        // Mark old default gesture as deleted
+                        state.config.gestures[pos].is_deleted = true;
+                        // Add new custom gesture with new name
+                        state.config.gestures.push(Gesture {
+                            name: name.clone(),
+                            raw_movement,
+                            points: pts.clone(),
+                            actions: vec![action],
+                            is_custom: true,
+                            is_modified: false,
+                            is_deleted: false,
+                        });
+                        state.newly_added_gestures.push(name.clone());
+                        println!("Default gesture renamed successfully: {} -> {}", lookup_name, name);
+                    }
+                }
             } else {
-                println!("Gesture modification failed: Could not find existing gesture '{}'", lookup_name);
+                if let Some(existing) = state.config.gestures.iter_mut().find(|g| g.name == *lookup_name) {
+                    existing.raw_movement = raw_movement;
+                    existing.points = pts.clone();
+                    existing.actions = vec![action];
+                    existing.is_modified = true;
+                    existing.is_deleted = false;
+                    println!("Gesture modified successfully: {}", existing.name);
+                } else {
+                    println!("Gesture modification failed: Could not find existing gesture '{}'", lookup_name);
+                }
             }
         } else {
             // Check if name conflict
