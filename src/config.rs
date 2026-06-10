@@ -397,7 +397,7 @@ impl Configuration {
                 let points = parse_points(&raw_movement);
 
                 let matched_pos = if let Some(ref id) = gest_cfg.id {
-                    self.gestures.iter().position(|g| g.id == *id)
+                    self.gestures.iter().position(|g| &g.id == id)
                 } else {
                     self.gestures.iter().position(|g| g.name == name)
                 };

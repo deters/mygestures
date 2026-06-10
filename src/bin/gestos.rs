@@ -748,8 +748,8 @@ fn get_visible_gestures(state: &AppState) -> Vec<Gesture> {
         .collect();
         
     gestures.sort_by(|a, b| {
-        let a_new_idx = newly_added.iter().position(|name| *name == a.name);
-        let b_new_idx = newly_added.iter().position(|name| *name == b.name);
+        let a_new_idx = newly_added.iter().position(|name| name == &a.name);
+        let b_new_idx = newly_added.iter().position(|name| name == &b.name);
         
         match (a_new_idx, b_new_idx) {
             (Some(a_idx), Some(b_idx)) => b_idx.cmp(&a_idx), // most recently added first
