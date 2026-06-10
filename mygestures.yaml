@@ -89,31 +89,3 @@ global:
   "Next Tab":
     move: "0,100 100,0 100,100"
     do: keypress Control_L+Tab
-
-# App-specific overrides
-apps:
-  - name: Terminal
-    match: { class: ".*(Term|term).*" }
-    gestures:
-      "New tab":
-        move: "0,0 100,0 50,0 50,100"
-        do: keypress Control_L+Shift_L+T
-      "New window":
-        move: "0,100 0,0 100,100 100,0"
-        do: keypress Control_L+Shift_L+N
-      "Copy":
-        move: "100,0 0,0 0,100 100,100"
-        do: keypress Control_L+Shift_L+C
-      "Paste":
-        move: "0,0 50,100 100,0"
-        do: keypress Control_L+Shift_L+V
-      "Close current tab":
-        move: "0,0 100,0 100,100"
-        do: keypress Control_L+Shift_L+W
-
-  - name: Chrome
-    match: { class: "Google-chrome" }
-    gestures:
-      "Close tab":
-        move: "0,0 100,0 100,100"
-        do: keypress Control_L+F4
