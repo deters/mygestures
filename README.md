@@ -19,6 +19,13 @@ sudo apt install pkg-config libgtk-4-dev libevdev-dev git meson ninja-build carg
 sudo dnf install pkgconf-pkg-config gtk4-devel libevdev-devel git meson ninja-build cargo
 ```
 
+
+#### Alpine:
+```bash
+apk add git meson cargo sudo
+apk add glib-dev cairo-dev gdk-dev gdk-pixbuf-dev pango-dev gtk4.0-dev
+```
+
 ### Build and Install:
 
 You can compile and install `mygestures` either using the compatibility wrapper `Makefile` or directly using `meson`.
