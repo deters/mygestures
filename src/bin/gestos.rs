@@ -1326,7 +1326,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 return;
             }
             if let Some(existing) = state.config.gestures.iter_mut().find(|g| g.name == *lookup_name) {
-                existing.name = name;
+                existing.name = name.clone();
                 existing.raw_movement = raw_movement;
                 existing.points = pts.clone();
                 existing.actions = vec![action];
