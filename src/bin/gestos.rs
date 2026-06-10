@@ -400,9 +400,24 @@ fn is_daemon_running() -> bool {
     }
 }
 
-fn start_daemon() {
+fn show_error_dialog<W: IsA<gtk::Window>>(parent: &W, message: &str) {
+    let dialog = gtk::MessageDialog::new(
+        Some(parent),
+        gtk::DialogFlags::MODAL,
+        gtk::MessageType::Error,
+        gtk::ButtonsType::Ok,
+        message,
+    );
+    dialog.set_title(Some("Daemon Startup Error"));
+    dialog.connect_response(|dialog, _| {
+        dialog.destroy();
+    });
+    dialog.present();
+}
+
+fn start_daemon() -> Result<(), String> {
     if is_daemon_running() {
-        return;
+        return Ok(());
     }
     // Try local binary first, then path
     let cmd = if std::path::Path::new("./mygestures").exists() {
@@ -410,10 +425,45 @@ fn start_daemon() {
     } else {
         "mygestures"
     };
-    let _ = Command::new("sh")
-        .arg("-c")
-        .arg(format!("{} &", cmd))
-        .spawn();
+    
+    // Spawn the daemon process and pipe stderr
+    let mut child = Command::new(cmd)
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn daemon: {}", e))?;
+        
+    // Wait a short duration to see if the process exits immediately
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    
+    match child.try_wait() {
+        Ok(Some(status)) => {
+            // Process has exited, read stderr
+            let mut stderr_str = String::new();
+            if let Some(mut stderr) = child.stderr.take() {
+                use std::io::Read;
+                let _ = stderr.read_to_string(&mut stderr_str);
+            }
+            if stderr_str.trim().is_empty() {
+                Err(format!("Daemon exited immediately with status {}", status))
+            } else {
+                Err(format!("Daemon startup error:\n{}", stderr_str.trim()))
+            }
+        }
+        Ok(None) => {
+            // Still running, which is good!
+            // Spawn a background thread to forward stderr to the console so it doesn't block the child process
+            if let Some(mut stderr) = child.stderr.take() {
+                std::thread::spawn(move || {
+                    let mut writer = std::io::stderr();
+                    let _ = std::io::copy(&mut stderr, &mut writer);
+                });
+            }
+            Ok(())
+        }
+        Err(e) => {
+            Err(format!("Failed to query daemon status: {}", e))
+        }
+    }
 }
 
 fn stop_daemon() {
@@ -430,7 +480,7 @@ fn reload_daemon() {
     if is_daemon_running() {
         stop_daemon();
         std::thread::sleep(std::time::Duration::from_millis(150));
-        start_daemon();
+        let _ = start_daemon();
     }
 }
 
@@ -1553,7 +1603,9 @@ fn build_ui(app: &gtk::Application) {
     let state_clone4 = Rc::clone(&state);
     let handler_id = state.borrow().daemon_switch.connect_state_set(move |_, state| {
         if state {
-            start_daemon();
+            if let Err(err) = start_daemon() {
+                show_error_dialog(&state_clone4.borrow().window, &err);
+            }
             set_autostart_enabled(true);
         } else {
             stop_daemon();
@@ -1570,6 +1622,12 @@ fn build_ui(app: &gtk::Application) {
             state_borrow.status_label.set_text("Daemon Off");
             state_borrow.status_dot.remove_css_class("status-dot-running");
             state_borrow.status_dot.add_css_class("status-dot-stopped");
+            // Toggle the switch back off immediately if daemon startup failed
+            if let Some(ref hid) = state_borrow.switch_handler_id {
+                state_borrow.daemon_switch.block_signal(hid);
+                state_borrow.daemon_switch.set_active(false);
+                state_borrow.daemon_switch.unblock_signal(hid);
+            }
         }
         glib::Propagation::Proceed
     });
