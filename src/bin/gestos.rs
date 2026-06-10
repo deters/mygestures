@@ -397,28 +397,6 @@ fn is_daemon_running() -> bool {
 
 fn show_error_dialog<W: IsA<gtk::Window>>(parent: &W, message: &str) {
     let dialog = gtk::Window::new();
-    dialog.add_css_class("gestos-window");
-
-    // Initialize dark-mode class based on initial GTK settings
-    let prefer_dark_initial = gtk::Settings::default()
-        .map(|s| s.property::<bool>("gtk-application-prefer-dark-theme"))
-        .unwrap_or(false);
-    if prefer_dark_initial {
-        dialog.add_css_class("dark-mode");
-    }
-
-    // Dynamically track GTK Settings changes for the dialog
-    if let Some(gtk_settings) = gtk::Settings::default() {
-        let dialog_clone = dialog.clone();
-        gtk_settings.connect_notify_local(Some("gtk-application-prefer-dark-theme"), move |s, _| {
-            let prefer_dark = s.property::<bool>("gtk-application-prefer-dark-theme");
-            if prefer_dark {
-                dialog_clone.add_css_class("dark-mode");
-            } else {
-                dialog_clone.remove_css_class("dark-mode");
-            }
-        });
-    }
     dialog.set_transient_for(Some(parent));
     dialog.set_modal(true);
     dialog.set_title(Some("Daemon Startup Error"));
@@ -831,28 +809,6 @@ fn open_shortcut_recorder(
     udn: Rc<dyn Fn() + 'static>
 ) {
     let dialog = gtk::Window::new();
-    dialog.add_css_class("gestos-window");
-
-    // Initialize dark-mode class based on initial GTK settings
-    let prefer_dark_initial = gtk::Settings::default()
-        .map(|s| s.property::<bool>("gtk-application-prefer-dark-theme"))
-        .unwrap_or(false);
-    if prefer_dark_initial {
-        dialog.add_css_class("dark-mode");
-    }
-
-    // Dynamically track GTK Settings changes for the dialog
-    if let Some(gtk_settings) = gtk::Settings::default() {
-        let dialog_clone = dialog.clone();
-        gtk_settings.connect_notify_local(Some("gtk-application-prefer-dark-theme"), move |s, _| {
-            let prefer_dark = s.property::<bool>("gtk-application-prefer-dark-theme");
-            if prefer_dark {
-                dialog_clone.add_css_class("dark-mode");
-            } else {
-                dialog_clone.remove_css_class("dark-mode");
-            }
-        });
-    }
     dialog.set_transient_for(Some(parent));
     dialog.set_modal(true);
     dialog.set_default_size(440, 300);
@@ -1065,28 +1021,6 @@ fn open_shortcut_recorder(
 fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<Gesture>) {
     let state = state_rc.borrow();
     let dialog = gtk::Window::new();
-    dialog.add_css_class("gestos-window");
-
-    // Initialize dark-mode class based on initial GTK settings
-    let prefer_dark_initial = gtk::Settings::default()
-        .map(|s| s.property::<bool>("gtk-application-prefer-dark-theme"))
-        .unwrap_or(false);
-    if prefer_dark_initial {
-        dialog.add_css_class("dark-mode");
-    }
-
-    // Dynamically track GTK Settings changes for the dialog
-    if let Some(gtk_settings) = gtk::Settings::default() {
-        let dialog_clone = dialog.clone();
-        gtk_settings.connect_notify_local(Some("gtk-application-prefer-dark-theme"), move |s, _| {
-            let prefer_dark = s.property::<bool>("gtk-application-prefer-dark-theme");
-            if prefer_dark {
-                dialog_clone.add_css_class("dark-mode");
-            } else {
-                dialog_clone.remove_css_class("dark-mode");
-            }
-        });
-    }
     dialog.set_transient_for(Some(&state.window));
     dialog.set_modal(true);
     dialog.set_title(Some(if target_gesture.is_some() { "Edit Gesture" } else { "Add Gesture" }));
@@ -1834,45 +1768,17 @@ fn build_ui(app: &gtk::Application) {
     let window = gtk::ApplicationWindow::new(app);
     window.set_title(Some("Gestos"));
     window.set_default_size(650, 700);
-    window.add_css_class("gestos-window");
-
-    // Initialize dark-mode class based on initial GTK settings
-    let prefer_dark_initial = gtk::Settings::default()
-        .map(|s| s.property::<bool>("gtk-application-prefer-dark-theme"))
-        .unwrap_or(false);
-    if prefer_dark_initial {
-        window.add_css_class("dark-mode");
-    }
-
-    // Dynamically track GTK Settings changes
-    if let Some(gtk_settings) = gtk::Settings::default() {
-        let window_clone = window.clone();
-        gtk_settings.connect_notify_local(Some("gtk-application-prefer-dark-theme"), move |s, _| {
-            let prefer_dark = s.property::<bool>("gtk-application-prefer-dark-theme");
-            if prefer_dark {
-                window_clone.add_css_class("dark-mode");
-            } else {
-                window_clone.remove_css_class("dark-mode");
-            }
-        });
-    }
 
     // Dynamically track and follow the system dark mode preference via GNOME GSettings
     let schema_id = "org.gnome.desktop.interface";
     if let Some(source) = gio::SettingsSchemaSource::default() {
         if source.lookup(schema_id, true).is_some() {
             let settings = gio::Settings::new(schema_id);
-            let window_clone = window.clone();
             let update_theme = move |s: &gio::Settings| {
                 let scheme: String = s.get("color-scheme");
                 let prefer_dark = scheme.contains("dark");
                 if let Some(gtk_settings) = gtk::Settings::default() {
                     gtk_settings.set_gtk_application_prefer_dark_theme(prefer_dark);
-                }
-                if prefer_dark {
-                    window_clone.add_css_class("dark-mode");
-                } else {
-                    window_clone.remove_css_class("dark-mode");
                 }
             };
             
@@ -2076,11 +1982,18 @@ fn build_ui(app: &gtk::Application) {
          .status-banner { padding: 12px 16px; background-color: #ffffff !important; border-radius: 8px; }\n\
          .boxed-list, .boxed-list row, .boxed-list listrow, row, listrow { background-color: #ffffff !important; }\n\
          .gesture-preview-frame { background: #f6f6f6; border-radius: 6px; }\n\
-         .gestos-window.dark-mode .main-window-content, .gestos-window.dark-mode .dialog-content, .gestos-window.dark .main-window-content, .gestos-window.dark .dialog-content { background-color: #1e1e1e; }\n\
-         .gestos-window.dark-mode headerbar, .gestos-window.dark headerbar { background: #1e1e1e; }\n\
-         .gestos-window.dark-mode .status-banner, .gestos-window.dark .status-banner { background-color: #303030 !important; }\n\
-         .gestos-window.dark-mode .boxed-list, .gestos-window.dark-mode .boxed-list row, .gestos-window.dark-mode .boxed-list listrow, .gestos-window.dark-mode row, .gestos-window.dark-mode listrow, .gestos-window.dark .boxed-list, .gestos-window.dark .boxed-list row, .gestos-window.dark .boxed-list listrow, .gestos-window.dark row, .gestos-window.dark listrow { background-color: #303030 !important; }\n\
-         .gestos-window.dark-mode .gesture-preview-frame, .gestos-window.dark .gesture-preview-frame { background: #1e1e1e; }\n\
+         @media (prefers-color-scheme: dark) {\n\
+           headerbar { background: #1e1e1e; }\n\
+           .main-window-content, .dialog-content { background-color: #1e1e1e; }\n\
+           .status-banner { background-color: #303030 !important; }\n\
+           .boxed-list, .boxed-list row, .boxed-list listrow, row, listrow { background-color: #303030 !important; }\n\
+           .gesture-preview-frame { background: #1e1e1e; }\n\
+         }\n\
+         .dark headerbar { background: #1e1e1e; }\n\
+         .dark .main-window-content, .dark .dialog-content { background-color: #1e1e1e; }\n\
+         .dark .status-banner { background-color: #303030 !important; }\n\
+         .dark .boxed-list, .dark .boxed-list row, .dark .boxed-list listrow, .dark row, .dark listrow { background-color: #303030 !important; }\n\
+         .dark .gesture-preview-frame { background: #1e1e1e; }\n\
          .context-title { font-size: 1.5em; font-weight: bold; }\n\
          .gesture-row { padding: 6px; }\n\
          .icon-holder { padding: 4px; }\n\
