@@ -2006,11 +2006,11 @@ fn build_ui(app: &gtk::Application) {
          .status-banner { padding: 12px 16px; background-color: #ffffff !important; border-radius: 8px; }\n\
          .boxed-list, .boxed-list row, .boxed-list listrow, row, listrow { background-color: #ffffff !important; }\n\
          .gesture-preview-frame { background: #f6f6f6; border-radius: 6px; }\n\
-         window.dark-mode .main-window-content, window.dark-mode .dialog-content, window.dark .main-window-content, window.dark .dialog-content { background-color: #1e1e1e; }\n\
-         window.dark-mode headerbar, window.dark headerbar { background: #1e1e1e; }\n\
-         window.dark-mode .status-banner, window.dark .status-banner { background-color: #303030 !important; }\n\
-         window.dark-mode .boxed-list, window.dark-mode .boxed-list row, window.dark-mode .boxed-list listrow, window.dark-mode row, window.dark-mode listrow, window.dark .boxed-list, window.dark .boxed-list row, window.dark .boxed-list listrow, window.dark row, window.dark listrow { background-color: #303030 !important; }\n\
-         window.dark-mode .gesture-preview-frame, window.dark .gesture-preview-frame { background: #1e1e1e; }\n\
+         .background.dark-mode .main-window-content, .background.dark-mode .dialog-content, .background.dark .main-window-content, .background.dark .dialog-content { background-color: #1e1e1e; }\n\
+         .background.dark-mode headerbar, .background.dark headerbar { background: #1e1e1e; }\n\
+         .background.dark-mode .status-banner, .background.dark .status-banner { background-color: #303030 !important; }\n\
+         .background.dark-mode .boxed-list, .background.dark-mode .boxed-list row, .background.dark-mode .boxed-list listrow, .background.dark-mode row, .background.dark-mode listrow, .background.dark .boxed-list, .background.dark .boxed-list row, .background.dark .boxed-list listrow, .background.dark row, .background.dark listrow { background-color: #303030 !important; }\n\
+         .background.dark-mode .gesture-preview-frame, .background.dark .gesture-preview-frame { background: #1e1e1e; }\n\
          .context-title { font-size: 1.5em; font-weight: bold; }\n\
          .gesture-row { padding: 6px; }\n\
          .icon-holder { padding: 4px; }\n\
