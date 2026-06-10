@@ -819,6 +819,13 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     dialog.set_title(Some(if target_gesture.is_some() { "Edit Gesture" } else { "Add Gesture" }));
     dialog.set_default_size(450, 580);
 
+    let dialog_header = gtk::HeaderBar::new();
+    dialog_header.set_show_title_buttons(false);
+    let dialog_title = gtk::Label::new(Some(if target_gesture.is_some() { "Edit Gesture" } else { "Add Gesture" }));
+    dialog_title.add_css_class("title");
+    dialog_header.set_title_widget(Some(&dialog_title));
+    dialog.set_titlebar(Some(&dialog_header));
+
     let main_box = gtk::Box::new(gtk::Orientation::Vertical, 12);
     main_box.set_margin_start(20);
     main_box.set_margin_end(20);
@@ -1417,47 +1424,12 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     });
 
     // Save and Cancel buttons
-    let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-
-    if let Some(ref gest) = target_gesture {
-        let delete_btn = gtk::Button::with_label("Delete Gesture");
-        delete_btn.add_css_class("destructive-action");
-
-        let state_clone = Rc::clone(state_rc);
-        let target_id = gest.id.clone();
-        let name_clone = gest.name.clone();
-        let dialog_clone = dialog.clone();
-        delete_btn.connect_clicked(move |_| {
-            let mut state = state_clone.borrow_mut();
-            if let Some(pos) = state.config.gestures.iter_mut().position(|g| g.id == target_id) {
-                if state.config.gestures[pos].is_custom {
-                    state.config.gestures.remove(pos);
-                } else {
-                    state.config.gestures[pos].is_deleted = true;
-                }
-                if let Err(e) = state.config.save_to_file() {
-                    println!("Failed to save config to file on delete: {}", e);
-                }
-                println!("Gesture deleted successfully: {}", name_clone);
-                reload_daemon();
-                drop(state);
-                refresh_gesture_list(&state_clone, None);
-                dialog_clone.destroy();
-            }
-        });
-        button_box.append(&delete_btn);
-    }
-
-    let spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    spacer.set_hexpand(true);
-    button_box.append(&spacer);
-
     let cancel_btn = gtk::Button::with_label("Cancel");
     let dialog_clone = dialog.clone();
     cancel_btn.connect_clicked(move |_| {
         dialog_clone.destroy();
     });
-    button_box.append(&cancel_btn);
+    dialog_header.pack_start(&cancel_btn);
 
     let save_btn = gtk::Button::with_label("Save");
     save_btn.add_css_class("suggested-action");
@@ -1593,9 +1565,37 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         refresh_gesture_list(&state_clone, Some(&name));
         dialog_clone2.destroy();
     });
-    
-    button_box.append(&save_btn);
-    main_box.append(&button_box);
+    dialog_header.pack_end(&save_btn);
+
+    if let Some(ref gest) = target_gesture {
+        let delete_btn = gtk::Button::with_label("Delete Gesture");
+        delete_btn.add_css_class("destructive-action");
+        delete_btn.set_margin_top(8);
+
+        let state_clone = Rc::clone(state_rc);
+        let target_id = gest.id.clone();
+        let name_clone = gest.name.clone();
+        let dialog_clone3 = dialog.clone();
+        delete_btn.connect_clicked(move |_| {
+            let mut state = state_clone.borrow_mut();
+            if let Some(pos) = state.config.gestures.iter_mut().position(|g| g.id == target_id) {
+                if state.config.gestures[pos].is_custom {
+                    state.config.gestures.remove(pos);
+                } else {
+                    state.config.gestures[pos].is_deleted = true;
+                }
+                if let Err(e) = state.config.save_to_file() {
+                    println!("Failed to save config to file on delete: {}", e);
+                }
+                println!("Gesture deleted successfully: {}", name_clone);
+                reload_daemon();
+                drop(state);
+                refresh_gesture_list(&state_clone, None);
+                dialog_clone3.destroy();
+            }
+        });
+        main_box.append(&delete_btn);
+    }
 
     dialog.present();
 }
@@ -1606,32 +1606,17 @@ fn build_ui(app: &gtk::Application) {
     window.set_default_size(650, 700);
 
     let header = gtk::HeaderBar::new();
+    let title_label = gtk::Label::new(Some("Gestures"));
+    title_label.add_css_class("title");
+    header.set_title_widget(Some(&title_label));
     window.set_titlebar(Some(&header));
 
-    // 1. Add gesture button
+    // 1. Add gesture button (Primary action on the left)
     let add_gest_btn = gtk::Button::from_icon_name("list-add-symbolic");
     add_gest_btn.set_tooltip_text(Some("Add Gesture"));
-    header.pack_end(&add_gest_btn);
+    header.pack_start(&add_gest_btn);
 
-    // 2. Status controller box
-    let ctrl_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    ctrl_box.set_valign(gtk::Align::Center);
-    ctrl_box.set_margin_start(12);
-    ctrl_box.set_margin_end(12);
-
-    let status_dot = gtk::Image::from_icon_name("media-record-symbolic");
-    status_dot.add_css_class("status-dot-stopped");
-    ctrl_box.append(&status_dot);
-
-    let status_label = gtk::Label::new(Some("Daemon Off"));
-    status_label.add_css_class("status-label");
-    ctrl_box.append(&status_label);
-
-    let daemon_switch = gtk::Switch::new();
-    ctrl_box.append(&daemon_switch);
-    header.pack_end(&ctrl_box);
-
-    // 3. About button
+    // 2. About button (Secondary action on the right)
     let about_btn = gtk::Button::from_icon_name("help-about-symbolic");
     header.pack_end(&about_btn);
 
@@ -1639,21 +1624,36 @@ fn build_ui(app: &gtk::Application) {
     let content_vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
     window.set_child(Some(&content_vbox));
 
-    let content_header = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-    content_header.set_margin_top(24);
-    content_header.set_margin_bottom(24);
-    content_header.set_margin_start(24);
-    content_header.set_margin_end(24);
-    content_vbox.append(&content_header);
+    // 3. Status Banner (for daemon status controls)
+    let banner_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    banner_box.set_margin_start(24);
+    banner_box.set_margin_end(24);
+    banner_box.set_margin_top(16);
+    banner_box.set_margin_bottom(8);
+    banner_box.add_css_class("status-banner");
 
-    let gestos_title = gtk::Label::new(Some("Gestures"));
-    gestos_title.add_css_class("context-title");
-    gestos_title.set_hexpand(true);
-    gestos_title.set_halign(gtk::Align::Start);
-    content_header.append(&gestos_title);
+    let status_dot = gtk::Image::from_icon_name("media-record-symbolic");
+    status_dot.add_css_class("status-dot-stopped");
+    banner_box.append(&status_dot);
 
+    let status_label = gtk::Label::new(Some("Daemon Off"));
+    status_label.add_css_class("status-label");
+    status_label.set_hexpand(true);
+    status_label.set_halign(gtk::Align::Start);
+    banner_box.append(&status_label);
+
+    let daemon_switch = gtk::Switch::new();
+    daemon_switch.set_valign(gtk::Align::Center);
+    banner_box.append(&daemon_switch);
+    content_vbox.append(&banner_box);
+
+    // 4. Search Entry
     let search_entry = gtk::SearchEntry::new();
-    content_header.append(&search_entry);
+    search_entry.set_margin_start(24);
+    search_entry.set_margin_end(24);
+    search_entry.set_margin_top(8);
+    search_entry.set_margin_bottom(12);
+    content_vbox.append(&search_entry);
 
     let scrolled = gtk::ScrolledWindow::new();
     scrolled.set_vexpand(true);
@@ -1662,6 +1662,7 @@ fn build_ui(app: &gtk::Application) {
     let main_list = gtk::ListBox::new();
     main_list.set_margin_start(24);
     main_list.set_margin_end(24);
+    main_list.set_margin_bottom(24);
     main_list.add_css_class("boxed-list");
     main_list.set_selection_mode(gtk::SelectionMode::None);
     scrolled.set_child(Some(&main_list));
@@ -1783,7 +1784,8 @@ fn build_ui(app: &gtk::Application) {
     // Stylesheet injection
     let provider = gtk::CssProvider::new();
     provider.load_from_data(
-        ".context-title { font-size: 1.5em; font-weight: bold; }\n\
+        ".status-banner { padding: 12px 16px; background-color: alpha(currentColor, 0.05); border: 1px solid alpha(currentColor, 0.08); border-radius: 8px; }\n\
+         .context-title { font-size: 1.5em; font-weight: bold; }\n\
          .boxed-list { background: @view_bg_color; border: 1px solid alpha(currentColor, 0.1); border-radius: 8px; }\n\
          .gesture-row { padding: 6px; border-bottom: 1px solid alpha(currentColor, 0.1); }\n\
          .gesture-row:last-child { border-bottom: none; }\n\
