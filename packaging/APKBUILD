@@ -1,7 +1,7 @@
 # Contributor: Lucas Augusto Deters <lucasdeters@gmail.com>
 # Maintainer: Lucas Augusto Deters <lucasdeters@gmail.com>
 pkgname=mygestures
-pkgver=4.1.8
+pkgver=4.1.9
 pkgrel=0
 pkgdesc="Pure Wayland/Evdev mouse gestures for Linux"
 url="https://github.com/deters/mygestures"
