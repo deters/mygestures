@@ -696,7 +696,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     dialog.set_transient_for(Some(&state.window));
     dialog.set_modal(true);
     dialog.set_title(Some(if target_gesture.is_some() { "Edit Gesture" } else { "Add Gesture" }));
-    dialog.set_default_size(420, 560);
+    dialog.set_default_size(480, 640);
 
     let main_box = gtk::Box::new(gtk::Orientation::Vertical, 16);
     main_box.set_margin_start(24);
