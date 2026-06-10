@@ -568,12 +568,8 @@ fn get_action_category_icon(action: &ActionType) -> (&'static str, &'static str)
     }
 }
 
-fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height: f64, draw_bg: bool, fit_to_canvas: bool) {
-    if draw_bg {
-        // Subtle background
-        cr.set_source_rgba(0.95, 0.96, 0.98, 0.5);
-        cr.paint().unwrap();
-    }
+fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height: f64, _draw_bg: bool, fit_to_canvas: bool) {
+    // Background is transparent to naturally display the theme-dependent container background (e.g. @view_bg_color)
 
     if points.len() < 2 {
         return;
@@ -1650,8 +1646,8 @@ fn build_ui(app: &gtk::Application) {
 
     // 3. Status Banner (for daemon status controls)
     let banner_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-    banner_box.set_margin_start(24);
-    banner_box.set_margin_end(24);
+    banner_box.set_margin_start(56);
+    banner_box.set_margin_end(56);
     banner_box.set_margin_top(16);
     banner_box.set_margin_bottom(8);
     banner_box.add_css_class("status-banner");
@@ -1673,8 +1669,8 @@ fn build_ui(app: &gtk::Application) {
 
     // 4. Search Entry
     let search_entry = gtk::SearchEntry::new();
-    search_entry.set_margin_start(24);
-    search_entry.set_margin_end(24);
+    search_entry.set_margin_start(56);
+    search_entry.set_margin_end(56);
     search_entry.set_margin_top(8);
     search_entry.set_margin_bottom(12);
     content_vbox.append(&search_entry);
@@ -1684,9 +1680,9 @@ fn build_ui(app: &gtk::Application) {
     content_vbox.append(&scrolled);
 
     let main_list = gtk::ListBox::new();
-    main_list.set_margin_start(24);
-    main_list.set_margin_end(24);
-    main_list.set_margin_bottom(24);
+    main_list.set_margin_start(56);
+    main_list.set_margin_end(56);
+    main_list.set_margin_bottom(56);
     main_list.add_css_class("boxed-list");
     main_list.set_selection_mode(gtk::SelectionMode::None);
     scrolled.set_child(Some(&main_list));
@@ -1808,13 +1804,13 @@ fn build_ui(app: &gtk::Application) {
     // Stylesheet injection
     let provider = gtk::CssProvider::new();
     provider.load_from_data(
-        ".status-banner { padding: 12px 16px; background-color: alpha(currentColor, 0.05); border: 1px solid alpha(currentColor, 0.08); border-radius: 8px; }\n\
+        ".status-banner { padding: 12px 16px; background-color: @card_bg_color; border: 1px solid @card_border_color; border-radius: 8px; }\n\
          .context-title { font-size: 1.5em; font-weight: bold; }\n\
-         .boxed-list { background: @view_bg_color; border: 1px solid alpha(currentColor, 0.1); border-radius: 8px; }\n\
-         .gesture-row { padding: 6px; border-bottom: 1px solid alpha(currentColor, 0.1); }\n\
+         .boxed-list { background: @card_bg_color; border: 1px solid @card_border_color; border-radius: 8px; }\n\
+         .gesture-row { padding: 6px; border-bottom: 1px solid @card_border_color; }\n\
          .gesture-row:last-child { border-bottom: none; }\n\
          .icon-holder { padding: 4px; }\n\
-         .gesture-preview-frame { border: 1px solid alpha(currentColor, 0.1); background: @view_bg_color; }\n\
+         .gesture-preview-frame { border: 1px solid @card_border_color; background: @view_bg_color; border-radius: 6px; }\n\
          .action-label { font-size: 0.9em; opacity: 0.7; }\n\
          .status-dot-running { color: #10b981; }\n\
          .status-dot-stopped { color: #6b7280; }\n\
