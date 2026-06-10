@@ -16,11 +16,11 @@ global:
 
   "Previous page":
     move: "100,50 0,50"
-    do: keypress Alt_L+Left
+    do: keypress Alt+Left
 
   "Next page":
     move: "0,50 100,50"
-    do: keypress Alt_L+Right
+    do: keypress Alt+Right
 
   "Workspace Left":
     move: "100,100 0,0"
@@ -40,27 +40,27 @@ global:
 
   "Copy":
     move: "100,0 0,0 0,100 100,100"
-    do: keypress Control_L+C
+    do: keypress Control+C
 
   "Paste":
     move: "0,0 50,100 100,0"
-    do: keypress Control_L+V
+    do: keypress Control+V
 
   "New":
     move: "0,100 0,0 100,100 100,0"
-    do: keypress Control_L+N
+    do: keypress Control+N
 
   "Open":
     move: "50,0 0,50 50,100 100,50 50,0"
-    do: keypress Control_L+O
+    do: keypress Control+O
 
   "Print":
     move: "0,100 0,0 100,0 100,50 0,50"
-    do: keypress Control_L+P
+    do: keypress Control+P
 
   "Save":
     move: "100,0 0,0 0,50 100,50 100,100 0,100"
-    do: keypress Control_L+S
+    do: keypress Control+S
 
   "Escape":
     move: "50,100 50,0"
@@ -68,11 +68,11 @@ global:
 
   "New tab":
     move: "0,0 100,0 50,0 50,100"
-    do: keypress Control_L+T
+    do: keypress Control+T
 
   "Close tab":
     move: "0,0 100,0 100,100"
-    do: keypress Control_L+W
+    do: keypress Control+W
 
   "Run default browser":
     move: "0,0 25,100 50,50 75,100 100,0"
@@ -84,8 +84,8 @@ global:
 
   "Previous Tab":
     move: "100,100 0,0 0,100"
-    do: keypress Control_L+Shift_L+Tab
+    do: keypress Control+Shift+Tab
 
   "Next Tab":
     move: "0,100 100,0 100,100"
-    do: keypress Control_L+Tab
+    do: keypress Control+Tab

@@ -922,19 +922,19 @@ fn open_shortcut_recorder(
         let mut mods = Vec::new();
         let mut display_mods = Vec::new();
         if state.contains(gdk::ModifierType::CONTROL_MASK) {
-            mods.push("Control_L");
+            mods.push("Control");
             display_mods.push("Ctrl");
         }
         if state.contains(gdk::ModifierType::ALT_MASK) {
-            mods.push("Alt_L");
+            mods.push("Alt");
             display_mods.push("Alt");
         }
         if state.contains(gdk::ModifierType::SHIFT_MASK) {
-            mods.push("Shift_L");
+            mods.push("Shift");
             display_mods.push("Shift");
         }
         if state.contains(gdk::ModifierType::SUPER_MASK) {
-            mods.push("Super_L");
+            mods.push("Super");
             display_mods.push("Super");
         }
 

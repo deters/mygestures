@@ -61,7 +61,10 @@ impl ActionType {
             "maximize" => Some(ActionType::Maximize),
             "restore" => Some(ActionType::Restore),
             "toggle-maximized" => Some(ActionType::ToggleMaximized),
-            "keypress" | "keys" => Some(ActionType::Keypress(arg)),
+            "keypress" | "keys" => {
+                let normalized = arg.replace("_L", "").replace("_R", "");
+                Some(ActionType::Keypress(normalized))
+            }
             "exec" => Some(ActionType::Execute(arg)),
             "workspace-left" => Some(ActionType::WorkspaceLeft),
             "workspace-right" => Some(ActionType::WorkspaceRight),
