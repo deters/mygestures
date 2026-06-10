@@ -1544,35 +1544,20 @@ fn build_ui(app: &gtk::Application) {
     // Stylesheet injection
     let provider = gtk::CssProvider::new();
     provider.load_from_data(
-        "window { background-color: @theme_bg_color; }\n\
-         .context-title { font-size: 2.2em; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }\n\
-         entry { border-radius: 10px; padding: 8px 12px; border: 1px solid alpha(currentColor, 0.15); background: @view_bg_color; transition: all 0.2s ease; }\n\
-         entry:focus { border-color: #6366f1; }\n\
-         dropdown { border-radius: 10px; padding: 6px 12px; border: 1px solid alpha(currentColor, 0.15); background: @view_bg_color; transition: all 0.2s ease; }\n\
-         dropdown:focus { border-color: #6366f1; }\n\
-         scrolledwindow { border: none; }\n\
-         .boxed-list { background: @view_bg_color; border: 1px solid alpha(currentColor, 0.08); border-radius: 16px; }\n\
-         .gesture-row { background: transparent; border-bottom: 1px solid alpha(currentColor, 0.06); }\n\
+        ".context-title { font-size: 1.5em; font-weight: bold; }\n\
+         .boxed-list { background: @view_bg_color; border: 1px solid alpha(currentColor, 0.1); border-radius: 8px; }\n\
+         .gesture-row { padding: 6px; border-bottom: 1px solid alpha(currentColor, 0.1); }\n\
          .gesture-row:last-child { border-bottom: none; }\n\
-         .gesture-row:hover { background: alpha(currentColor, 0.03); }\n\
-         .icon-holder { border-radius: 10px; padding: 6px; }\n\
-         .icon-bg-purple { background: rgba(139, 92, 246, 0.12); color: #8b5cf6; }\n\
-         .icon-bg-orange { background: rgba(249, 115, 22, 0.12); color: #f97316; }\n\
-         .icon-bg-blue { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }\n\
-         .icon-bg-green { background: rgba(16, 185, 129, 0.12); color: #10b981; }\n\
-         .gesture-preview-frame { border: 1px solid alpha(currentColor, 0.08); border-radius: 8px; overflow: hidden; background: transparent; }\n\
-         .action-label { font-size: 0.82em; opacity: 0.6; }\n\
-         headerbar { background: @theme_bg_color; border-bottom: 1px solid alpha(currentColor, 0.06); padding: 8px 12px; }\n\
-         button { border-radius: 8px; padding: 6px 12px; }\n\
-         .suggested-action { background: linear-gradient(135deg, #6366f1, #4f46e5) !important; color: white !important; border: none !important; font-weight: 600 !important; }\n\
-         .destructive-action { color: alpha(currentColor, 0.4); }\n\
-         .destructive-action:hover { color: #ef4444 !important; background: rgba(239, 68, 68, 0.08) !important; }\n\
-         .status-dot-running { color: #10b981 !important; }\n\
-         .status-dot-stopped { color: #6b7280 !important; opacity: 0.6; }\n\
-         .settings-row { background: transparent; border-bottom: 1px solid alpha(currentColor, 0.06); padding: 8px 16px; }\n\
+         .icon-holder { padding: 4px; }\n\
+         .gesture-preview-frame { border: 1px solid alpha(currentColor, 0.1); background: @view_bg_color; }\n\
+         .action-label { font-size: 0.9em; opacity: 0.7; }\n\
+         .destructive-action { color: #ef4444; }\n\
+         .status-dot-running { color: #10b981; }\n\
+         .status-dot-stopped { color: #6b7280; }\n\
+         .settings-row { padding: 8px; border-bottom: 1px solid alpha(currentColor, 0.1); }\n\
          .settings-row:last-child { border-bottom: none; }\n\
-         .section-header { font-size: 0.78em; font-weight: 700; text-transform: uppercase; opacity: 0.6; margin-top: 12px; margin-bottom: 4px; margin-left: 4px; }\n\
-         .status-label { font-size: 0.85em; font-weight: 600; }\n"
+         .section-header { font-weight: bold; margin-top: 8px; margin-bottom: 4px; }\n\
+         .status-label { font-weight: bold; }\n"
     );
 
     if let Some(display) = gdk::Display::default() {
