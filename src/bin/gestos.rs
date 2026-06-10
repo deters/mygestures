@@ -371,8 +371,6 @@ struct AppState {
     config: Configuration,
     main_list: gtk::ListBox,
     search_entry: gtk::SearchEntry,
-    status_label: gtk::Label,
-    status_dot: gtk::Image,
     daemon_switch: gtk::Switch,
     window: gtk::ApplicationWindow,
     switch_handler_id: Option<glib::SignalHandlerId>,
@@ -1789,28 +1787,45 @@ fn build_ui(app: &gtk::Application) {
     content_vbox.add_css_class("main-window-content");
     window.set_child(Some(&content_vbox));
 
-    // 3. Status Banner (for daemon status controls)
-    let banner_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-    banner_box.set_margin_start(56);
-    banner_box.set_margin_end(56);
-    banner_box.set_margin_top(16);
-    banner_box.set_margin_bottom(8);
-    banner_box.add_css_class("status-banner");
+    // 3. Status Boxed List (for daemon status controls, styled exactly like GNOME's Do Not Disturb row)
+    let daemon_list = gtk::ListBox::new();
+    daemon_list.set_margin_start(56);
+    daemon_list.set_margin_end(56);
+    daemon_list.set_margin_top(16);
+    daemon_list.set_margin_bottom(8);
+    daemon_list.add_css_class("boxed-list");
+    daemon_list.set_selection_mode(gtk::SelectionMode::None);
 
-    let status_dot = gtk::Image::from_icon_name("media-record-symbolic");
-    status_dot.add_css_class("status-dot-stopped");
-    banner_box.append(&status_dot);
+    let daemon_row = gtk::ListBoxRow::new();
+    let row_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    row_box.set_margin_start(16);
+    row_box.set_margin_end(16);
+    row_box.set_margin_top(12);
+    row_box.set_margin_bottom(12);
 
-    let status_label = gtk::Label::new(Some("Daemon Off"));
-    status_label.add_css_class("status-label");
-    status_label.set_hexpand(true);
-    status_label.set_halign(gtk::Align::Start);
-    banner_box.append(&status_label);
+    let text_vbox = gtk::Box::new(gtk::Orientation::Vertical, 2);
+    text_vbox.set_hexpand(true);
+    text_vbox.set_halign(gtk::Align::Start);
+
+    let title_label = gtk::Label::new(Some("MyGestures Daemon"));
+    title_label.add_css_class("status-label");
+    title_label.set_halign(gtk::Align::Start);
+    text_vbox.append(&title_label);
+
+    let subtitle_label = gtk::Label::new(Some("Run background daemon service to monitor mouse gestures"));
+    subtitle_label.add_css_class("action-label");
+    subtitle_label.set_halign(gtk::Align::Start);
+    text_vbox.append(&subtitle_label);
+
+    row_box.append(&text_vbox);
 
     let daemon_switch = gtk::Switch::new();
     daemon_switch.set_valign(gtk::Align::Center);
-    banner_box.append(&daemon_switch);
-    content_vbox.append(&banner_box);
+    row_box.append(&daemon_switch);
+
+    daemon_row.set_child(Some(&row_box));
+    daemon_list.append(&daemon_row);
+    content_vbox.append(&daemon_list);
 
     // 4. Search Entry
     let search_entry = gtk::SearchEntry::new();
@@ -1844,8 +1859,6 @@ fn build_ui(app: &gtk::Application) {
         config,
         main_list,
         search_entry,
-        status_label,
-        status_dot,
         daemon_switch,
         window,
         switch_handler_id: None,
@@ -1909,14 +1922,7 @@ fn build_ui(app: &gtk::Application) {
         
         let state_borrow = state_clone4.borrow();
         let running = is_daemon_running();
-        if running {
-            state_borrow.status_label.set_text("Daemon Active");
-            state_borrow.status_dot.remove_css_class("status-dot-stopped");
-            state_borrow.status_dot.add_css_class("status-dot-running");
-        } else {
-            state_borrow.status_label.set_text("Daemon Off");
-            state_borrow.status_dot.remove_css_class("status-dot-running");
-            state_borrow.status_dot.add_css_class("status-dot-stopped");
+        if !running {
             // Toggle the switch back off immediately if daemon startup failed
             if let Some(ref hid) = state_borrow.switch_handler_id {
                 state_borrow.daemon_switch.block_signal(hid);
@@ -1939,16 +1945,6 @@ fn build_ui(app: &gtk::Application) {
             state_borrow.daemon_switch.set_active(running);
             state_borrow.daemon_switch.unblock_signal(hid);
         }
-
-        if running {
-            state_borrow.status_label.set_text("Daemon Active");
-            state_borrow.status_dot.remove_css_class("status-dot-stopped");
-            state_borrow.status_dot.add_css_class("status-dot-running");
-        } else {
-            state_borrow.status_label.set_text("Daemon Off");
-            state_borrow.status_dot.remove_css_class("status-dot-running");
-            state_borrow.status_dot.add_css_class("status-dot-stopped");
-        }
         glib::ControlFlow::Continue
     });
 
@@ -1958,7 +1954,6 @@ fn build_ui(app: &gtk::Application) {
         "headerbar { background: @window_bg_color; border: none; box-shadow: none; }\n\
          .main-window-content, .dialog-content { background-color: @window_bg_color; }\n\
          scrolledwindow, viewport { background-color: transparent !important; background-image: none !important; }\n\
-         .status-banner { padding: 12px 16px; background-color: @card_bg_color !important; border-radius: 8px; }\n\
          .boxed-list, .boxed-list row, .boxed-list listrow, row, listrow { background-color: @card_bg_color !important; }\n\
          .gesture-preview-frame { background: @window_bg_color; border-radius: 6px; }\n\
          searchentry, entry.search { border-radius: 18px; }\n\
