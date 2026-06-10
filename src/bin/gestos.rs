@@ -1978,8 +1978,8 @@ fn build_ui(app: &gtk::Application) {
         "headerbar { background: transparent; border: none; box-shadow: none; }\n\
          .main-window-content, .dialog-content { background-color: @window_bg_color; }\n\
          scrolledwindow, viewport { background-color: transparent !important; background-image: none !important; }\n\
-         .status-banner { padding: 12px 16px; background-color: @view_bg_color; border-radius: 8px; }\n\
-         .boxed-list, .boxed-list row, .boxed-list listrow { background-color: @view_bg_color; }\n\
+         .status-banner { padding: 12px 16px; background-color: @view_bg_color !important; border-radius: 8px; }\n\
+         .boxed-list, .boxed-list row, .boxed-list listrow, row, listrow { background-color: @view_bg_color !important; }\n\
          .context-title { font-size: 1.5em; font-weight: bold; }\n\
          .gesture-row { padding: 6px; }\n\
          .icon-holder { padding: 4px; }\n\
