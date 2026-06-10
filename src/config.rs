@@ -433,7 +433,6 @@ impl Configuration {
             lines.push("global:".to_string());
             for g in &self.gestures {
                 lines.push(format!("  \"{}\":", g.name));
-                lines.push(format!("    id: \"{}\"", g.id));
                 lines.push(format!("    move: \"{}\"", g.raw_movement));
                 if !g.actions.is_empty() {
                     let action_str = g.actions.iter()
