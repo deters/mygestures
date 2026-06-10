@@ -944,11 +944,11 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         }
 
         let is_modifier = match keyval {
-            gdk::Keyval::Control_L | gdk::Keyval::Control_R |
-            gdk::Keyval::Alt_L | gdk::Keyval::Alt_R |
-            gdk::Keyval::Shift_L | gdk::Keyval::Shift_R |
-            gdk::Keyval::Super_L | gdk::Keyval::Super_R |
-            gdk::Keyval::Meta_L | gdk::Keyval::Meta_R => true,
+            gdk::Key::Control_L | gdk::Key::Control_R |
+            gdk::Key::Alt_L | gdk::Key::Alt_R |
+            gdk::Key::Shift_L | gdk::Key::Shift_R |
+            gdk::Key::Super_L | gdk::Key::Super_R |
+            gdk::Key::Meta_L | gdk::Key::Meta_R => true,
             _ => false,
         };
 
@@ -959,7 +959,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             return glib::Propagation::Stop;
         }
 
-        let mut key_name = gdk::keyval_name(keyval).map(|s| s.to_string()).unwrap_or_default();
+        let mut key_name = keyval.name().map(|s| s.to_string()).unwrap_or_default();
         if key_name.len() == 1 {
             key_name = key_name.to_uppercase();
         }
