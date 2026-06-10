@@ -398,11 +398,26 @@ fn is_daemon_running() -> bool {
 fn show_error_dialog<W: IsA<gtk::Window>>(parent: &W, message: &str) {
     let dialog = gtk::Window::new();
     dialog.add_css_class("gestos-window");
-    let prefer_dark = gtk::Settings::default()
+
+    // Initialize dark-mode class based on initial GTK settings
+    let prefer_dark_initial = gtk::Settings::default()
         .map(|s| s.property::<bool>("gtk-application-prefer-dark-theme"))
         .unwrap_or(false);
-    if prefer_dark {
+    if prefer_dark_initial {
         dialog.add_css_class("dark-mode");
+    }
+
+    // Dynamically track GTK Settings changes for the dialog
+    if let Some(gtk_settings) = gtk::Settings::default() {
+        let dialog_clone = dialog.clone();
+        gtk_settings.connect_notify_local(Some("gtk-application-prefer-dark-theme"), move |s, _| {
+            let prefer_dark = s.property::<bool>("gtk-application-prefer-dark-theme");
+            if prefer_dark {
+                dialog_clone.add_css_class("dark-mode");
+            } else {
+                dialog_clone.remove_css_class("dark-mode");
+            }
+        });
     }
     dialog.set_transient_for(Some(parent));
     dialog.set_modal(true);
@@ -817,11 +832,26 @@ fn open_shortcut_recorder(
 ) {
     let dialog = gtk::Window::new();
     dialog.add_css_class("gestos-window");
-    let prefer_dark = gtk::Settings::default()
+
+    // Initialize dark-mode class based on initial GTK settings
+    let prefer_dark_initial = gtk::Settings::default()
         .map(|s| s.property::<bool>("gtk-application-prefer-dark-theme"))
         .unwrap_or(false);
-    if prefer_dark {
+    if prefer_dark_initial {
         dialog.add_css_class("dark-mode");
+    }
+
+    // Dynamically track GTK Settings changes for the dialog
+    if let Some(gtk_settings) = gtk::Settings::default() {
+        let dialog_clone = dialog.clone();
+        gtk_settings.connect_notify_local(Some("gtk-application-prefer-dark-theme"), move |s, _| {
+            let prefer_dark = s.property::<bool>("gtk-application-prefer-dark-theme");
+            if prefer_dark {
+                dialog_clone.add_css_class("dark-mode");
+            } else {
+                dialog_clone.remove_css_class("dark-mode");
+            }
+        });
     }
     dialog.set_transient_for(Some(parent));
     dialog.set_modal(true);
@@ -1036,11 +1066,26 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let state = state_rc.borrow();
     let dialog = gtk::Window::new();
     dialog.add_css_class("gestos-window");
-    let prefer_dark = gtk::Settings::default()
+
+    // Initialize dark-mode class based on initial GTK settings
+    let prefer_dark_initial = gtk::Settings::default()
         .map(|s| s.property::<bool>("gtk-application-prefer-dark-theme"))
         .unwrap_or(false);
-    if prefer_dark {
+    if prefer_dark_initial {
         dialog.add_css_class("dark-mode");
+    }
+
+    // Dynamically track GTK Settings changes for the dialog
+    if let Some(gtk_settings) = gtk::Settings::default() {
+        let dialog_clone = dialog.clone();
+        gtk_settings.connect_notify_local(Some("gtk-application-prefer-dark-theme"), move |s, _| {
+            let prefer_dark = s.property::<bool>("gtk-application-prefer-dark-theme");
+            if prefer_dark {
+                dialog_clone.add_css_class("dark-mode");
+            } else {
+                dialog_clone.remove_css_class("dark-mode");
+            }
+        });
     }
     dialog.set_transient_for(Some(&state.window));
     dialog.set_modal(true);
