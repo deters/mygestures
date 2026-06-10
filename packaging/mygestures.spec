@@ -1,5 +1,5 @@
 Name:           mygestures
-Version:        4.1.1
+Version:        4.1.2
 Release:        1%{?dist}
 Summary:        Pure Wayland/Evdev mouse gestures for Linux
 License:        GPL-2.0-or-later
@@ -53,6 +53,8 @@ getent group input >/dev/null || groupadd -r input
 %{_datadir}/mygestures/mygestures.yaml
 
 %changelog
+* Wed Jun 10 2026 Lucas Augusto Deters <lucasdeters@gmail.com> - 4.1.2-1
+- New release 4.1.2.
 * Wed Jun 10 2026 Lucas Augusto Deters <lucasdeters@gmail.com> - 4.1.1-1
 - New release 4.1.1.
 * Wed Jun 10 2026 Lucas Augusto Deters <lucasdeters@gmail.com> - 4.1.0-1
