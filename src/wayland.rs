@@ -9,6 +9,7 @@ pub struct WaylandContext {
     pub is_kde: bool,
     pub is_sway: bool,
     pub is_hypr: bool,
+    pub is_xfce: bool,
     pub sway_sock: String,
     pub hypr_sig: String,
     pub uid: u32,
@@ -24,6 +25,8 @@ impl WaylandContext {
             ctx.is_gnome = true;
         } else if desktop.contains("KDE") || desktop.contains("kde") {
             ctx.is_kde = true;
+        } else if desktop.contains("XFCE") || desktop.contains("xfce") {
+            ctx.is_xfce = true;
         }
 
         if std::env::var("SWAYSOCK").is_ok() {
@@ -35,11 +38,13 @@ impl WaylandContext {
         }
 
         // Fallback checks using pgrep if env variables are missing
-        if !ctx.is_gnome && !ctx.is_kde {
+        if !ctx.is_gnome && !ctx.is_kde && !ctx.is_xfce {
             if Command::new("pgrep").arg("-x").arg("gnome-shell").stdout(Stdio::null()).status().map(|s| s.success()).unwrap_or(false) {
                 ctx.is_gnome = true;
             } else if Command::new("pgrep").arg("-x").arg("kwin_wayland").stdout(Stdio::null()).status().map(|s| s.success()).unwrap_or(false) {
                 ctx.is_kde = true;
+            } else if Command::new("pgrep").arg("-x").arg("xfwm4").stdout(Stdio::null()).status().map(|s| s.success()).unwrap_or(false) {
+                ctx.is_xfce = true;
             }
         }
 
@@ -166,6 +171,8 @@ impl WaylandContext {
                     self.execute_gnome(action, uinput_handler);
                 } else if self.is_kde {
                     self.execute_kde(action, uinput_handler);
+                } else if self.is_xfce {
+                    self.execute_xfce(action, uinput_handler);
                 } else {
                     log::warn!("No active desktop compositor detected. Action ignored.");
                 }
@@ -307,6 +314,48 @@ impl WaylandContext {
             ActionType::ToggleFullscreen => uinput_handler("F11"),
             ActionType::ShowDesktop => uinput_handler("Super_L+d"),
             ActionType::LockScreen => uinput_handler("Super_L+l"),
+            ActionType::Terminal => uinput_handler("Control_L+Alt_L+t"),
+            ActionType::VolumeUp => uinput_handler("XF86AudioRaiseVolume"),
+            ActionType::VolumeDown => uinput_handler("XF86AudioLowerVolume"),
+            ActionType::VolumeMute => uinput_handler("XF86AudioMute"),
+            ActionType::MediaPlay => uinput_handler("XF86AudioPlay"),
+            ActionType::MediaNext => uinput_handler("XF86AudioNext"),
+            ActionType::MediaPrev => uinput_handler("XF86AudioPrev"),
+            ActionType::Www => uinput_handler("XF86WWW"),
+            ActionType::Home => uinput_handler("XF86Explorer"),
+            ActionType::Email => uinput_handler("XF86Mail"),
+            ActionType::Search => uinput_handler("XF86Search"),
+            ActionType::Calculator => uinput_handler("XF86Calculator"),
+            ActionType::ControlCenter => uinput_handler("XF86ControlPanel"),
+            ActionType::Logout => uinput_handler("Control_L+Alt_L+Delete"),
+            ActionType::Screenshot => uinput_handler("Print"),
+            ActionType::ScreenshotWindow => uinput_handler("Alt_L+Print"),
+            ActionType::ScreenshotArea => uinput_handler("Shift_L+Print"),
+            _ => {}
+        }
+    }
+
+    fn execute_xfce(&self, action: &ActionType, uinput_handler: &dyn Fn(&str)) {
+        match action {
+            ActionType::Iconify => uinput_handler("Alt_L+F9"),
+            ActionType::Kill => uinput_handler("Alt_L+F4"),
+            ActionType::Lower => uinput_handler("Alt_L+Escape"),
+            ActionType::Maximize | ActionType::ToggleMaximized => uinput_handler("Alt_L+F10"),
+            ActionType::Restore => uinput_handler("Alt_L+F5"),
+            ActionType::WorkspaceLeft => uinput_handler("Control_L+Alt_L+Left"),
+            ActionType::WorkspaceRight => uinput_handler("Control_L+Alt_L+Right"),
+            ActionType::WorkspaceUp => uinput_handler("Control_L+Alt_L+Up"),
+            ActionType::WorkspaceDown => uinput_handler("Control_L+Alt_L+Down"),
+            ActionType::ShowOverview => uinput_handler("Super_L"),
+            ActionType::ShowAppGrid => uinput_handler("Super_L"),
+            ActionType::ToggleFullscreen => uinput_handler("Alt_L+F11"),
+            ActionType::ShowDesktop => uinput_handler("Control_L+Alt_L+d"),
+            ActionType::LockScreen => {
+                let self_clone = self.clone();
+                std::thread::spawn(move || {
+                    self_clone.run_shell_cmd("xflock4");
+                });
+            }
             ActionType::Terminal => uinput_handler("Control_L+Alt_L+t"),
             ActionType::VolumeUp => uinput_handler("XF86AudioRaiseVolume"),
             ActionType::VolumeDown => uinput_handler("XF86AudioLowerVolume"),

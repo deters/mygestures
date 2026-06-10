@@ -242,6 +242,9 @@ fn get_environment_suffix() -> Option<&'static str> {
         if desktop.contains("KDE") || desktop.contains("kde") {
             return Some("kde");
         }
+        if desktop.contains("XFCE") || desktop.contains("xfce") {
+            return Some("xfce");
+        }
     }
     None
 }
