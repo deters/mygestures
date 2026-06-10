@@ -1804,18 +1804,15 @@ fn build_ui(app: &gtk::Application) {
     // Stylesheet injection
     let provider = gtk::CssProvider::new();
     provider.load_from_data(
-        ".status-banner { padding: 12px 16px; background-color: @card_bg_color; border: 1px solid @card_border_color; border-radius: 8px; }\n\
+        ".status-banner { padding: 12px 16px; background-color: @card_bg_color; border-radius: 8px; }\n\
          .context-title { font-size: 1.5em; font-weight: bold; }\n\
-         .boxed-list { background: @card_bg_color; border: 1px solid @card_border_color; border-radius: 8px; }\n\
-         .gesture-row { padding: 6px; border-bottom: 1px solid @card_border_color; }\n\
-         .gesture-row:last-child { border-bottom: none; }\n\
+         .gesture-row { padding: 6px; }\n\
          .icon-holder { padding: 4px; }\n\
-         .gesture-preview-frame { border: 1px solid @card_border_color; background: @view_bg_color; border-radius: 6px; }\n\
+         .gesture-preview-frame { background: @view_bg_color; border-radius: 6px; }\n\
          .action-label { font-size: 0.9em; opacity: 0.7; }\n\
          .status-dot-running { color: #10b981; }\n\
          .status-dot-stopped { color: #6b7280; }\n\
-         .settings-row { padding: 8px; border-bottom: 1px solid alpha(currentColor, 0.1); }\n\
-         .settings-row:last-child { border-bottom: none; }\n\
+         .settings-row { padding: 8px; }\n\
          .section-header { font-weight: bold; margin-top: 8px; margin-bottom: 4px; }\n\
          .status-label { font-weight: bold; }\n\
          .warning-box { padding: 8px; background-color: alpha(@warning_color, 0.15); border: 1px solid alpha(@warning_color, 0.3); border-radius: 6px; }\n\
