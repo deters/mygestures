@@ -29,7 +29,7 @@ uninstall:
 clean:
 	rm -rf $(BUILDDIR)
 
-.PHONY: version version-major version-minor version-patch
+.PHONY: version major minor patch
 
 version:
 	@if [ -z "$(VERSION)" ]; then \
@@ -38,11 +38,11 @@ version:
 		./bump-version.sh $(VERSION); \
 	fi
 
-version-major:
+major:
 	./bump-version.sh major
 
-version-minor:
+minor:
 	./bump-version.sh minor
 
-version-patch:
+patch:
 	./bump-version.sh patch

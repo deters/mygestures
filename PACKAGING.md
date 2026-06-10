@@ -20,8 +20,8 @@ The compiled packages are uploaded to the Action run page as downloadable artifa
 To automatically compile and publish a new release:
 1. Run one of the Makefile targets to automatically bump the version in all descriptors (Cargo.toml, meson.build, RPM spec, APKBUILD, changelogs, GUI), commit the changes, and create the git tag:
    ```bash
-   make version-patch   # Bumps patch version (e.g. 4.0.0 -> 4.0.1)
-   make version-minor   # Bumps minor version (e.g. 4.0.0 -> 4.1.0)
+   make patch   # Bumps patch version (e.g. 4.0.0 -> 4.0.1)
+   make minor   # Bumps minor version (e.g. 4.0.0 -> 4.1.0)
    # Or for a specific version: make version VERSION=4.1.0
    ```
 2. Push the commit and the tag to GitHub:
