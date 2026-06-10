@@ -10,6 +10,16 @@ if [ -z "$DESTDIR" ]; then
     # Set Set-Group-ID (SGID) on mygestures to securely access input devices
     MYGESTURES_BIN="${MESON_INSTALL_PREFIX:-/usr/local}/bin/mygestures"
     if [ -f "$MYGESTURES_BIN" ]; then
+        # Create 'input' group if it doesn't exist
+        if ! grep -q "^input:" /etc/group 2>/dev/null; then
+            echo "Creating 'input' group..."
+            if command -v groupadd >/dev/null 2>&1; then
+                groupadd -r input 2>/dev/null || true
+            elif command -v addgroup >/dev/null 2>&1; then
+                addgroup -S input 2>/dev/null || addgroup input 2>/dev/null || true
+            fi
+        fi
+
         echo "Setting Set-Group-ID (SGID) to 'input' group on $MYGESTURES_BIN..."
         if chown root:input "$MYGESTURES_BIN" 2>/dev/null && chmod 2755 "$MYGESTURES_BIN" 2>/dev/null; then
             echo "Successfully configured secure SGID permissions for mygestures."
