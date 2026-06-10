@@ -12,7 +12,7 @@ override_dh_auto_install:
 	install -D -m 755 target/release/gestos debian/mygestures/usr/bin/gestos
 
 	# Install udev rules
-	install -D -m 644 99-mygestures.rules debian/mygestures/lib/udev/rules.d/99-mygestures.rules
+	install -D -m 644 packaging/99-mygestures.rules debian/mygestures/lib/udev/rules.d/99-mygestures.rules
 
 	# Install desktop application shortcut, icon, and default configuration
 	install -D -m 644 gestos.desktop debian/mygestures/usr/share/applications/gestos.desktop

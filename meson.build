@@ -59,7 +59,7 @@ udevdir = get_option('udevdir')
 if udevdir == ''
   udevdir = '/etc/udev/rules.d'
 endif
-install_data('99-mygestures.rules', install_dir: udevdir)
+install_data('packaging/99-mygestures.rules', install_dir: udevdir)
 
 # Install desktop entry, icon and default configuration
 datadir = prefix / get_option('datadir')

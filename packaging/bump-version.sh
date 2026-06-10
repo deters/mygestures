@@ -49,14 +49,14 @@ perl -i -pe "s/^(version\s*=\s*\")[^\"]+/\${1}$NEW_VERSION/ if \$. < 10" Cargo.t
 perl -i -pe "s/(version:\s*')[^']+(\s*,\s*\n\s*meson_version)/\${1}$NEW_VERSION\${2}/if \$. < 5" meson.build
 
 # 3. mygestures.spec
-perl -i -pe "s/^(Version:\s*)\S+/\${1}$NEW_VERSION/g" mygestures.spec
+perl -i -pe "s/^(Version:\s*)\S+/\${1}$NEW_VERSION/g" packaging/mygestures.spec
 SPEC_DATE=$(date +"%a %b %d %Y")
 # Prepend changelog entry in RPM spec
-perl -i -pe "s/(\%changelog)/\${1}\n* $SPEC_DATE Lucas Augusto Deters <lucasdeters\@gmail.com> - $NEW_VERSION-1\n- New release $NEW_VERSION./g" mygestures.spec
+perl -i -pe "s/(\%changelog)/\${1}\n* $SPEC_DATE Lucas Augusto Deters <lucasdeters\@gmail.com> - $NEW_VERSION-1\n- New release $NEW_VERSION./g" packaging/mygestures.spec
 
 # 4. APKBUILD
-perl -i -pe "s/^(pkgver=)\S+/\${1}$NEW_VERSION/g" APKBUILD
-perl -i -pe "s/^(pkgrel=)\S+/\${1}0/g" APKBUILD
+perl -i -pe "s/^(pkgver=)\S+/\${1}$NEW_VERSION/g" packaging/APKBUILD
+perl -i -pe "s/^(pkgrel=)\S+/\${1}0/g" packaging/APKBUILD
 
 # 5. src/bin/gestos.rs
 perl -i -pe "s/(dialog\.set_version\(Some\(\")[^\"]+/\${1}$NEW_VERSION/g" src/bin/gestos.rs
@@ -83,7 +83,7 @@ cargo check >/dev/null 2>&1 || true
 
 # Commit and tag
 echo "Staging version changes in Git..."
-git add Cargo.toml Cargo.lock meson.build mygestures.spec APKBUILD src/bin/gestos.rs debian/changelog
+git add Cargo.toml Cargo.lock meson.build packaging/mygestures.spec packaging/APKBUILD src/bin/gestos.rs debian/changelog
 
 git commit -m "Bump version to $NEW_VERSION"
 git tag "v$NEW_VERSION"

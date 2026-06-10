@@ -24,9 +24,9 @@ jobs:
       - name: Build RPM
         run: |
           rpmdev-setuptree
-          VERSION=$(grep '^Version:' mygestures.spec | awk '{print $2}')
+          VERSION=$(grep '^Version:' packaging/mygestures.spec | awk '{print $2}')
           tar --exclude-vcs --transform "s,^\.,mygestures-$VERSION," -czf ~/rpmbuild/SOURCES/mygestures-$VERSION.tar.gz .
-          rpmbuild -ba mygestures.spec
+          rpmbuild -ba packaging/mygestures.spec
 
       - name: Upload RPM Artifacts
         uses: actions/upload-artifact@v4
@@ -84,7 +84,7 @@ jobs:
           
           # Run abuild as builder user
           su builder -c "abuild-keygen -i -a -n"
-          su builder -c "abuild -r"
+          su builder -c "cd packaging && abuild -r"
 
       - name: Upload Alpine Artifacts
         uses: actions/upload-artifact@v4

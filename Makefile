@@ -33,16 +33,16 @@ clean:
 
 version:
 	@if [ -z "$(VERSION)" ]; then \
-		./bump-version.sh; \
+		./packaging/bump-version.sh; \
 	else \
-		./bump-version.sh $(VERSION); \
+		./packaging/bump-version.sh $(VERSION); \
 	fi
 
 major:
-	./bump-version.sh major
+	./packaging/bump-version.sh major
 
 minor:
-	./bump-version.sh minor
+	./packaging/bump-version.sh minor
 
 patch:
-	./bump-version.sh patch
+	./packaging/bump-version.sh patch
