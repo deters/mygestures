@@ -44,11 +44,15 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update
-          apt-get install -y build-essential devscripts debhelper cargo rustc libevdev-dev libgtk-4-dev libc6-dev pkg-config git
+          apt-get install -y build-essential devscripts debhelper cargo rustc libevdev-dev libgtk-4-dev libc6-dev pkg-config git curl
+          # Install rustup to get the latest Cargo compiler (supporting lockfile v4 and edition 2024)
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Build Debian Package
         run: |
-          # Allow building as root inside the container
+          # Prepend rustup cargo to path and build
+          export PATH="$HOME/.cargo/bin:$PATH"
           dpkg-buildpackage -us -uc -b
 
       - name: Upload Debian Artifacts

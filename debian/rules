@@ -4,8 +4,6 @@
 	dh $@
 
 override_dh_auto_build:
-	# Delete Cargo.lock so older Cargo versions can regenerate it
-	rm -f Cargo.lock
 	cargo build --release
 
 override_dh_auto_install:
