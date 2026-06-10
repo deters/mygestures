@@ -1963,7 +1963,8 @@ fn build_ui(app: &gtk::Application) {
     // Stylesheet injection
     let provider = gtk::CssProvider::new();
     provider.load_from_data(
-        ".status-banner { padding: 12px 16px; background-color: @card_bg_color; border-radius: 8px; }\n\
+        "headerbar { background: transparent; border: none; box-shadow: none; }\n\
+         .status-banner { padding: 12px 16px; background-color: @card_bg_color; border-radius: 8px; }\n\
          .context-title { font-size: 1.5em; font-weight: bold; }\n\
          .gesture-row { padding: 6px; }\n\
          .icon-holder { padding: 4px; }\n\
