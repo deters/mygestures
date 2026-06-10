@@ -791,7 +791,6 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             };
             if add {
                 pts.push(Point2D { x: cx, y: cy });
-                println!("GUI: Gesture point added: ({:.1}, {:.1}), total points: {}", cx, cy, pts.len());
                 canvas_clone2.queue_draw();
             }
         }

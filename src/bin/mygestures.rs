@@ -168,7 +168,6 @@ fn run_grabber(
                     // Final coordinate
                     if moved {
                         captured_points.push(Point2D { x: virtual_x, y: virtual_y });
-                        println!("Gesture point added: ({:.1}, {:.1}), total points: {}", virtual_x, virtual_y, captured_points.len());
                     }
 
                     println!("Gesture drawing finished. Path points: {}", captured_points.len());
@@ -241,7 +240,6 @@ fn run_grabber(
                         };
                         if add_point {
                             captured_points.push(Point2D { x: virtual_x, y: virtual_y });
-                            println!("Gesture point added: ({:.1}, {:.1}), total points: {}", virtual_x, virtual_y, captured_points.len());
                         }
                     }
                     moved = false;
