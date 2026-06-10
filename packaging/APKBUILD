@@ -11,6 +11,7 @@ depends="gtk4.0 libevdev"
 makedepends="meson ninja cargo rust gtk4.0-dev libevdev-dev pkgconfig"
 install="$pkgname.pre-install $pkgname.post-install"
 subpackages=""
+options="suid !check"
 source="$pkgname-$pkgver.tar.gz::https://github.com/deters/mygestures/archive/v$pkgver.tar.gz"
 
 build() {
