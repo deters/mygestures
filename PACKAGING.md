@@ -4,7 +4,32 @@ This document explains how to build, test, and publish packages for Fedora, Debi
 
 ---
 
-## 1. Building RPMs Locally (Fedora)
+## 1. Automated Build and Release (Recommended)
+
+This repository includes a pre-configured GitHub Actions workflow in [.github/workflows/package.yml](file:///.github/workflows/package.yml) that automates package creation in clean environments.
+
+### Pull Requests and Pushes to master
+On every Pull Request and push to the `master` branch, GitHub Actions will:
+* Build the Fedora `.rpm` package inside a Fedora container.
+* Build the Debian/Ubuntu `.deb` package inside a Debian container.
+* Build the Alpine `.apk` package inside an Alpine container.
+
+The compiled packages are uploaded to the Action run page as downloadable artifacts for testing.
+
+### Creating a Release
+To automatically compile and publish a new release:
+1. Update the version number in `Cargo.toml`, `mygestures.spec`, `debian/changelog`, and `APKBUILD`.
+2. Commit and push the version updates.
+3. Tag the commit with the version prefix `v` (e.g. `v4.0.0`) and push the tag to GitHub:
+   ```bash
+   git tag v4.0.0
+   git push origin v4.0.0
+   ```
+4. The workflow will trigger, compile the `.rpm`, `.deb`, and `.apk` packages, create a new GitHub Release page, and attach all the package binaries as downloadable release assets automatically.
+
+---
+
+## 2. Building RPMs Locally (Fedora)
 
 To test the package build locally on a Fedora system, install the development tools and build dependencies:
 
@@ -37,7 +62,7 @@ The resulting RPM file will be generated under `~/rpmbuild/RPMS/`.
 
 ---
 
-## 2. Publishing to Fedora COPR (Recommended)
+## 3. Publishing to Fedora COPR (Recommended)
 
 [COPR (Cool Other Package Repo)](https://copr.fedorainfracloud.org/) is Fedora's automated build service for personal repositories (similar to Ubuntu PPAs). It is the easiest way to distribute your package.
 
@@ -57,7 +82,7 @@ The resulting RPM file will be generated under `~/rpmbuild/RPMS/`.
 
 ---
 
-## 3. Submitting to Official Fedora Repositories
+## 4. Submitting to Official Fedora Repositories
 
 To get `mygestures` included in the official Fedora distribution:
 
@@ -73,7 +98,7 @@ To get `mygestures` included in the official Fedora distribution:
 
 ---
 
-## 4. Building Debian Packages Locally (Ubuntu / Debian)
+## 5. Building Debian Packages Locally (Ubuntu / Debian)
 
 To build a Debian package (`.deb`) locally:
 
@@ -100,7 +125,7 @@ sudo apt install ../mygestures_*.deb
 
 ---
 
-## 5. Publishing to Ubuntu PPA (Launchpad)
+## 6. Publishing to Ubuntu PPA (Launchpad)
 
 To distribute Debian/Ubuntu packages via a PPA (Personal Package Archive):
 
@@ -127,7 +152,7 @@ Launchpad will automatically compile it for your target Ubuntu releases and make
 
 ---
 
-## 6. Building Alpine Linux Packages Locally
+## 7. Building Alpine Linux Packages Locally
 
 To build an Alpine package (`.apk`) locally:
 
@@ -153,7 +178,7 @@ The compiled `.apk` packages will be placed under `~/packages/`.
 
 ---
 
-## 7. Publishing to Alpine Repositories
+## 8. Publishing to Alpine Repositories
 
 ### Personal Repository (Hosting your own repo)
 To host your own Alpine repository:
