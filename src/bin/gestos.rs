@@ -401,17 +401,56 @@ fn is_daemon_running() -> bool {
 }
 
 fn show_error_dialog<W: IsA<gtk::Window>>(parent: &W, message: &str) {
-    let dialog = gtk::MessageDialog::new(
-        Some(parent),
-        gtk::DialogFlags::MODAL,
-        gtk::MessageType::Error,
-        gtk::ButtonsType::Ok,
-        message,
-    );
+    let dialog = gtk::Window::new();
+    dialog.set_transient_for(Some(parent));
+    dialog.set_modal(true);
     dialog.set_title(Some("Daemon Startup Error"));
-    dialog.connect_response(|dialog, _| {
-        dialog.destroy();
+    dialog.set_default_size(420, -1);
+
+    let vbox = gtk::Box::new(gtk::Orientation::Vertical, 16);
+    vbox.set_margin_top(16);
+    vbox.set_margin_bottom(16);
+    vbox.set_margin_start(16);
+    vbox.set_margin_end(16);
+
+    let content_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+
+    let error_icon = gtk::Image::from_icon_name("dialog-error-symbolic");
+    error_icon.set_pixel_size(32);
+    error_icon.set_valign(gtk::Align::Start);
+    content_box.append(&error_icon);
+
+    let text_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
+    text_box.set_hexpand(true);
+
+    let title_label = gtk::Label::new(None);
+    title_label.set_markup("<b>Failed to start MyGestures daemon</b>");
+    title_label.set_halign(gtk::Align::Start);
+    text_box.append(&title_label);
+
+    let label = gtk::Label::new(Some(message));
+    label.set_wrap(true);
+    label.set_selectable(true);
+    label.set_halign(gtk::Align::Start);
+    label.set_hexpand(true);
+    text_box.append(&label);
+
+    content_box.append(&text_box);
+    vbox.append(&content_box);
+
+    let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    button_box.set_halign(gtk::Align::End);
+    let ok_button = gtk::Button::with_label("OK");
+    ok_button.set_width_request(80);
+    
+    let dialog_clone = dialog.clone();
+    ok_button.connect_clicked(move |_| {
+        dialog_clone.destroy();
     });
+    button_box.append(&ok_button);
+    vbox.append(&button_box);
+
+    dialog.set_child(Some(&vbox));
     dialog.present();
 }
 
