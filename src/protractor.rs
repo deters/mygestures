@@ -164,6 +164,39 @@ pub fn simplify_points(points: &[Point2D], epsilon: f64) -> Vec<Point2D> {
         .collect()
 }
 
+pub fn scale_to_square(points: &mut [Point2D], size: f64) {
+    if points.is_empty() {
+        return;
+    }
+    let mut min_x = points[0].x;
+    let mut max_x = points[0].x;
+    let mut min_y = points[0].y;
+    let mut max_y = points[0].y;
+    for p in points.iter() {
+        if p.x < min_x { min_x = p.x; }
+        if p.x > max_x { max_x = p.x; }
+        if p.y < min_y { min_y = p.y; }
+        if p.y > max_y { max_y = p.y; }
+    }
+    let w = max_x - min_x;
+    let h = max_y - min_y;
+
+    let aspect_ratio = if h.abs() > 1e-6 { w / h } else { 100.0 };
+    if aspect_ratio > 5.0 || aspect_ratio < 0.2 {
+        let max_dim = w.max(h);
+        let scale = if max_dim > 1e-6 { size / max_dim } else { 1.0 };
+        for p in points.iter_mut() {
+            p.x *= scale;
+            p.y *= scale;
+        }
+    } else {
+        for p in points.iter_mut() {
+            p.x *= size / w;
+            p.y *= size / h;
+        }
+    }
+}
+
 pub fn match_gesture(
     captured_points: &[Point2D],
     templates: &[(String, Vec<Point2D>)],
@@ -176,6 +209,7 @@ pub fn match_gesture(
     let max_angle = 15.0 * (std::f64::consts::PI / 180.0);
 
     let mut input_vector = resample_path(captured_points, n);
+    scale_to_square(&mut input_vector, 250.0);
     vectorize_path(&mut input_vector);
 
     let mut best_name = None;
@@ -186,6 +220,7 @@ pub fn match_gesture(
             continue;
         }
         let mut temp_vector = resample_path(template_points, n);
+        scale_to_square(&mut temp_vector, 250.0);
         vectorize_path(&mut temp_vector);
 
         let score = compute_protractor_similarity(&input_vector, &temp_vector, max_angle);
