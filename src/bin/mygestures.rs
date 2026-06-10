@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use mygestures::config::Configuration;
+use mygestures::config::{Configuration, ActionType};
 use mygestures::wayland::WaylandContext;
 use mygestures::ipc::DaemonIpc;
 
