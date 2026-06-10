@@ -5,7 +5,7 @@ use gtk4 as gtk;
 use gtk::prelude::*;
 use gtk::{cairo, glib, gdk, gio};
 use mygestures::config::{Configuration, Gesture, ActionType};
-use mygestures::protractor::Point2D;
+use mygestures::protractor::{Point2D, match_gesture};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -771,10 +771,27 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
 
     // GestureDrag controller for recording drawing
     let drag = gtk::GestureDrag::new();
-    
+
+    let conflict_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    conflict_box.add_css_class("warning-box");
+    conflict_box.set_visible(false);
+    conflict_box.set_margin_top(4);
+    conflict_box.set_margin_bottom(4);
+
+    let conflict_icon = gtk::Image::from_icon_name("dialog-warning-symbolic");
+    conflict_icon.set_icon_size(gtk::IconSize::Normal);
+    conflict_box.append(&conflict_icon);
+
+    let conflict_label = gtk::Label::new(None);
+    conflict_label.set_halign(gtk::Align::Start);
+    conflict_label.add_css_class("warning-label");
+    conflict_label.set_wrap(true);
+    conflict_box.append(&conflict_label);
+
     let canvas_clone = canvas.clone();
     let pts_drag = Rc::clone(&recorded_points);
     let rec_drag = Rc::clone(&is_recording);
+    let conflict_box_begin = conflict_box.clone();
     drag.connect_drag_begin(move |_, start_x, start_y| {
         *rec_drag.borrow_mut() = true;
         let mut pts = pts_drag.borrow_mut();
@@ -782,6 +799,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         pts.push(Point2D { x: start_x, y: start_y });
         println!("GUI: Gesture drawing started at ({:.1}, {:.1})", start_x, start_y);
         canvas_clone.queue_draw();
+        conflict_box_begin.set_visible(false);
     });
 
     let canvas_clone2 = canvas.clone();
@@ -814,15 +832,49 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
 
     let canvas_clone3 = canvas.clone();
     let rec_drag3 = Rc::clone(&is_recording);
+    let pts_drag_end = Rc::clone(&recorded_points);
+    let state_clone_drag = Rc::clone(state_rc);
+    let edited_gesture_name = target_gesture.as_ref().map(|g| g.name.clone());
+    let conflict_box_end = conflict_box.clone();
+    let conflict_label_end = conflict_label.clone();
     drag.connect_drag_end(move |_, _, _| {
         *rec_drag3.borrow_mut() = false;
         canvas_clone3.queue_draw();
         println!("GUI: Gesture drawing finished.");
+
+        let pts = pts_drag_end.borrow();
+        if pts.len() >= 2 {
+            let state = state_clone_drag.borrow();
+            let templates: Vec<(String, Vec<Point2D>)> = state.config.gestures.iter()
+                .filter(|g| !g.is_deleted)
+                .filter(|g| {
+                    if let Some(ref name) = edited_gesture_name {
+                        g.name != *name
+                    } else {
+                        true
+                    }
+                })
+                .map(|g| (g.name.clone(), g.points.clone()))
+                .collect();
+            
+            if let Some(matched_name) = match_gesture(&pts[..], &templates) {
+                conflict_label_end.set_text(&format!(
+                    "Warning: This path is very similar to the existing gesture '{}'.",
+                    matched_name
+                ));
+                conflict_box_end.set_visible(true);
+            } else {
+                conflict_box_end.set_visible(false);
+            }
+        } else {
+            conflict_box_end.set_visible(false);
+        }
     });
 
     canvas.add_controller(drag);
     canvas_frame.set_child(Some(&canvas));
     scroll_content.append(&canvas_frame);
+    scroll_content.append(&conflict_box);
 
     // --- ACTION SETTINGS SECTION ---
     let settings_section_label = gtk::Label::new(Some("Action Settings"));
@@ -1563,7 +1615,9 @@ fn build_ui(app: &gtk::Application) {
          .settings-row { padding: 8px; border-bottom: 1px solid alpha(currentColor, 0.1); }\n\
          .settings-row:last-child { border-bottom: none; }\n\
          .section-header { font-weight: bold; margin-top: 8px; margin-bottom: 4px; }\n\
-         .status-label { font-weight: bold; }\n"
+         .status-label { font-weight: bold; }\n\
+         .warning-box { padding: 8px; background-color: alpha(@warning_color, 0.15); border: 1px solid alpha(@warning_color, 0.3); border-radius: 6px; }\n\
+         .warning-label { color: @warning_color; font-size: 0.95em; }\n"
     );
 
     if let Some(display) = gdk::Display::default() {
