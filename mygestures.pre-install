@@ -1,0 +1,7 @@
+#!/bin/sh
+# pre-install script for mygestures on Alpine Linux
+
+# Ensure the 'input' group exists
+getent group input >/dev/null || addgroup -S input 2>/dev/null || addgroup input 2>/dev/null || true
+
+exit 0

@@ -1,0 +1,27 @@
+# Contributor: Lucas Augusto Deters <lucasdeters@gmail.com>
+# Maintainer: Lucas Augusto Deters <lucasdeters@gmail.com>
+pkgname=mygestures
+pkgver=4.0.0
+pkgrel=0
+pkgdesc="Pure Wayland/Evdev mouse gestures for Linux"
+url="https://github.com/deters/mygestures"
+arch="all"
+license="GPL-2.0-or-later"
+depends="gtk4.0 libevdev"
+makedepends="meson ninja cargo rust gtk4.0-dev libevdev-dev pkgconfig"
+install="$pkgname.pre-install $pkgname.post-install"
+subpackages=""
+source="$pkgname-$pkgver.tar.gz::https://github.com/deters/mygestures/archive/v$pkgver.tar.gz"
+
+build() {
+	abuild-meson . build
+	meson compile -C build
+}
+
+package() {
+	DESTDIR="$pkgdir" meson install -C build
+
+	# Set Set-Group-ID (SGID) permission on mygestures binary securely
+	chgrp input "$pkgdir"/usr/bin/mygestures
+	chmod 2755 "$pkgdir"/usr/bin/mygestures
+}

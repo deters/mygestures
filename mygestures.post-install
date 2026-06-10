@@ -1,0 +1,10 @@
+#!/bin/sh
+# post-install script for mygestures on Alpine Linux
+
+# Reload udev rules to apply the new uinput rule immediately
+if [ -x /sbin/udevadm ] || [ -x /usr/bin/udevadm ]; then
+    udevadm control --reload-rules || true
+    udevadm trigger || true
+fi
+
+exit 0
