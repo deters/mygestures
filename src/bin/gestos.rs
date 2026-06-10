@@ -382,6 +382,7 @@ struct AppState {
     daemon_switch: gtk::Switch,
     window: gtk::ApplicationWindow,
     switch_handler_id: Option<glib::SignalHandlerId>,
+    newly_added_gestures: Vec<String>,
 }
 
 fn is_daemon_running() -> bool {
@@ -736,6 +737,31 @@ fn create_gesture_row(gesture: &Gesture) -> gtk::ListBoxRow {
     row
 }
 
+fn get_visible_gestures(state: &AppState) -> Vec<Gesture> {
+    let filter = state.search_entry.text().to_lowercase();
+    let newly_added = &state.newly_added_gestures;
+    
+    let mut gestures: Vec<Gesture> = state.config.gestures.iter()
+        .filter(|g| !g.is_deleted)
+        .filter(|g| filter.is_empty() || g.name.to_lowercase().contains(&filter))
+        .cloned()
+        .collect();
+        
+    gestures.sort_by(|a, b| {
+        let a_new_idx = newly_added.iter().position(|name| *name == a.name);
+        let b_new_idx = newly_added.iter().position(|name| *name == b.name);
+        
+        match (a_new_idx, b_new_idx) {
+            (Some(a_idx), Some(b_idx)) => b_idx.cmp(&a_idx), // most recently added first
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+        }
+    });
+    
+    gestures
+}
+
 fn refresh_gesture_list(state_rc: &Rc<RefCell<AppState>>, select_name: Option<&str>) {
     let state = state_rc.borrow();
     
@@ -744,15 +770,9 @@ fn refresh_gesture_list(state_rc: &Rc<RefCell<AppState>>, select_name: Option<&s
         state.main_list.remove(&child);
     }
 
-    let filter = state.search_entry.text().to_lowercase();
+    let visible = get_visible_gestures(&state);
 
-    for gesture in &state.config.gestures {
-        if gesture.is_deleted {
-            continue;
-        }
-        if !filter.is_empty() && !gesture.name.to_lowercase().contains(&filter) {
-            continue;
-        }
+    for gesture in &visible {
         let row = create_gesture_row(gesture);
         state.main_list.append(&row);
         
@@ -1530,6 +1550,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 is_modified: false,
                 is_deleted: false,
             });
+            state.newly_added_gestures.push(name.clone());
         }
 
         if let Err(e) = state.config.save_to_file() {
@@ -1625,6 +1646,7 @@ fn build_ui(app: &gtk::Application) {
         daemon_switch,
         window,
         switch_handler_id: None,
+        newly_added_gestures: Vec::new(),
     }));
 
     // Refresh initially
@@ -1648,13 +1670,7 @@ fn build_ui(app: &gtk::Application) {
         let idx = row.index();
         let state_borrow = state_clone3.borrow();
         
-        // Find matched gesture matching filter
-        let filter = state_borrow.search_entry.text().to_lowercase();
-        let visible_gestures: Vec<Gesture> = state_borrow.config.gestures.iter()
-            .filter(|g| !g.is_deleted)
-            .filter(|g| filter.is_empty() || g.name.to_lowercase().contains(&filter))
-            .cloned()
-            .collect();
+        let visible_gestures = get_visible_gestures(&state_borrow);
 
         if idx >= 0 && (idx as usize) < visible_gestures.len() {
             let gesture = visible_gestures[idx as usize].clone();
