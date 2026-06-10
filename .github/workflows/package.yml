@@ -80,7 +80,7 @@ jobs:
           # Create builder user (abuild cannot run as root)
           adduser -D builder -G abuild
           echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-          chown -R builder:abuild /github/workspace
+          chown -R builder:abuild .
           
           # Run abuild as builder user
           su builder -c "abuild-keygen -i -a -n"
