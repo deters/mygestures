@@ -46,7 +46,7 @@ echo "Bumping version from $CURRENT_VERSION to $NEW_VERSION..."
 perl -i -pe "s/^(version\s*=\s*\")[^\"]+/\${1}$NEW_VERSION/ if \$. < 10" Cargo.toml
 
 # 2. meson.build
-perl -i -pe "s/(version:\s*')[^']+(\s*,\s*\n\s*meson_version)/\${1}$NEW_VERSION\${2}/if \$. < 5" meson.build
+perl -i -pe "s/(version:\s*')[^']+(\s*,\s*\n\s*meson_version)/\${1}$NEW_VERSION\${2}/ if \$. < 5" meson.build
 
 # 3. mygestures.spec
 perl -i -pe "s/^(Version:\s*)\S+/\${1}$NEW_VERSION/g" packaging/mygestures.spec
