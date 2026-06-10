@@ -715,19 +715,12 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let scroll_content = gtk::Box::new(gtk::Orientation::Vertical, 16);
     scrolled.set_child(Some(&scroll_content));
 
-    // Name entry
-    let name_label = gtk::Label::new(Some("Gesture Name"));
-    name_label.set_halign(gtk::Align::Start);
-    name_label.add_css_class("status-label");
-    scroll_content.append(&name_label);
-
     let name_entry = gtk::Entry::new();
     name_entry.set_placeholder_text(Some("e.g. Back Action"));
     if let Some(ref g) = target_gesture {
         name_entry.set_text(&g.name);
         name_entry.set_sensitive(false); // Can't change name of existing gesture
     }
-    scroll_content.append(&name_entry);
 
     let is_name_customized = Rc::new(RefCell::new(target_gesture.is_some()));
     let is_updating_programmatically = Rc::new(RefCell::new(false));
@@ -745,11 +738,11 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         }
     });
 
-    // Canvas Frame and Drawing area
-    let canvas_label = gtk::Label::new(Some("Draw gesture below"));
-    canvas_label.set_halign(gtk::Align::Start);
-    canvas_label.add_css_class("status-label");
-    scroll_content.append(&canvas_label);
+    // --- GESTURE PATH SECTION ---
+    let path_section_label = gtk::Label::new(Some("Gesture Path"));
+    path_section_label.set_halign(gtk::Align::Start);
+    path_section_label.add_css_class("section-header");
+    scroll_content.append(&path_section_label);
 
     let canvas_frame = gtk::Frame::new(None);
     canvas_frame.add_css_class("gesture-preview-frame");
@@ -825,30 +818,187 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     canvas_frame.set_child(Some(&canvas));
     scroll_content.append(&canvas_frame);
 
-    // Action config dropdowns and text entries
+    // --- ACTION SETTINGS SECTION ---
+    let settings_section_label = gtk::Label::new(Some("Action Settings"));
+    settings_section_label.set_halign(gtk::Align::Start);
+    settings_section_label.add_css_class("section-header");
+    scroll_content.append(&settings_section_label);
+
+    let settings_list = gtk::ListBox::new();
+    settings_list.add_css_class("boxed-list");
+    settings_list.set_selection_mode(gtk::SelectionMode::None);
+    scroll_content.append(&settings_list);
+
+    // Row 1: Name
+    let name_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    name_row.add_css_class("settings-row");
+
+    let name_label = gtk::Label::new(Some("Gesture Name"));
+    name_label.set_halign(gtk::Align::Start);
+    name_label.add_css_class("status-label");
+    name_row.append(&name_label);
+
+    let name_spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    name_spacer.set_hexpand(true);
+    name_row.append(&name_spacer);
+
+    name_entry.set_halign(gtk::Align::End);
+    name_entry.set_size_request(220, -1);
+    name_row.append(&name_entry);
+
+    settings_list.append(&name_row);
+
+    // Row 2: Category
+    let category_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    category_row.add_css_class("settings-row");
+
     let category_label = gtk::Label::new(Some("Category"));
     category_label.set_halign(gtk::Align::Start);
     category_label.add_css_class("status-label");
-    scroll_content.append(&category_label);
+    category_row.append(&category_label);
+
+    let category_spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    category_spacer.set_hexpand(true);
+    category_row.append(&category_spacer);
 
     let category_dropdown = gtk::DropDown::from_strings(CATEGORY_NAMES);
-    scroll_content.append(&category_dropdown);
+    category_dropdown.set_halign(gtk::Align::End);
+    category_dropdown.set_size_request(220, -1);
+    category_row.append(&category_dropdown);
+
+    settings_list.append(&category_row);
+
+    // Row 3: Action
+    let action_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    action_row.add_css_class("settings-row");
 
     let action_label = gtk::Label::new(Some("Action"));
     action_label.set_halign(gtk::Align::Start);
     action_label.add_css_class("status-label");
-    scroll_content.append(&action_label);
+    action_row.append(&action_label);
+
+    let action_spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    action_spacer.set_hexpand(true);
+    action_row.append(&action_spacer);
 
     let action_dropdown = gtk::DropDown::new(None::<gtk::StringList>, None::<gtk::Expression>);
-    scroll_content.append(&action_dropdown);
+    action_dropdown.set_halign(gtk::Align::End);
+    action_dropdown.set_size_request(220, -1);
+    action_row.append(&action_dropdown);
+
+    settings_list.append(&action_row);
+
+    // Row 4: Action Details Parameter
+    let action_details_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    action_details_row.add_css_class("settings-row");
 
     let action_details_label = gtk::Label::new(None);
     action_details_label.set_halign(gtk::Align::Start);
     action_details_label.add_css_class("status-label");
-    scroll_content.append(&action_details_label);
+    action_details_row.append(&action_details_label);
+
+    let action_details_spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    action_details_spacer.set_hexpand(true);
+    action_details_row.append(&action_details_spacer);
+
+    let entry_container = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+    entry_container.set_halign(gtk::Align::End);
 
     let action_details_entry = gtk::Entry::new();
-    scroll_content.append(&action_details_entry);
+    action_details_entry.set_size_request(160, -1);
+    entry_container.append(&action_details_entry);
+
+    let record_btn = gtk::Button::from_icon_name("media-record-symbolic");
+    record_btn.set_tooltip_text(Some("Record Keybinding"));
+    entry_container.append(&record_btn);
+
+    action_details_row.append(&entry_container);
+    settings_list.append(&action_details_row);
+
+    // Setup EventControllerKey to capture keypress shortcuts
+    let is_recording_keys = Rc::new(RefCell::new(false));
+
+    let key_controller = gtk::EventControllerKey::new();
+    let entry_key_clone = action_details_entry.clone();
+    let is_recording_key_clone = Rc::clone(&is_recording_keys);
+    let record_btn_key_clone = record_btn.clone();
+
+    key_controller.connect_key_pressed(move |_, keyval, _keycode, state| {
+        if !*is_recording_key_clone.borrow() {
+            return glib::Propagation::Proceed;
+        }
+
+        // Identify modifiers
+        let mut mods = Vec::new();
+        if state.contains(gdk::ModifierType::CONTROL_MASK) {
+            mods.push("Control_L");
+        }
+        if state.contains(gdk::ModifierType::ALT_MASK) {
+            mods.push("Alt_L");
+        }
+        if state.contains(gdk::ModifierType::SHIFT_MASK) {
+            mods.push("Shift_L");
+        }
+        if state.contains(gdk::ModifierType::SUPER_MASK) {
+            mods.push("Super_L");
+        }
+
+        let is_modifier = match keyval {
+            gdk::Keyval::Control_L | gdk::Keyval::Control_R |
+            gdk::Keyval::Alt_L | gdk::Keyval::Alt_R |
+            gdk::Keyval::Shift_L | gdk::Keyval::Shift_R |
+            gdk::Keyval::Super_L | gdk::Keyval::Super_R |
+            gdk::Keyval::Meta_L | gdk::Keyval::Meta_R => true,
+            _ => false,
+        };
+
+        if is_modifier {
+            if !mods.is_empty() {
+                entry_key_clone.set_text(&format!("{}+", mods.join("+")));
+            }
+            return glib::Propagation::Stop;
+        }
+
+        let mut key_name = gdk::keyval_name(keyval).map(|s| s.to_string()).unwrap_or_default();
+        if key_name.len() == 1 {
+            key_name = key_name.to_uppercase();
+        }
+
+        let mut combo = mods;
+        if !key_name.is_empty() {
+            combo.push(&key_name);
+        }
+
+        let combo_str = combo.join("+");
+        entry_key_clone.set_text(&combo_str);
+
+        *is_recording_key_clone.borrow_mut() = false;
+        record_btn_key_clone.set_icon_name("media-record-symbolic");
+        entry_key_clone.set_placeholder_text(Some("e.g. Control_L+Alt_L+t"));
+
+        glib::Propagation::Stop
+    });
+
+    action_details_entry.add_controller(key_controller);
+
+    // Setup record button action
+    let rec_btn_click = record_btn.clone();
+    let entry_click = action_details_entry.clone();
+    let is_recording_click = Rc::clone(&is_recording_keys);
+    record_btn.connect_clicked(move |_| {
+        let mut rec = is_recording_click.borrow_mut();
+        if *rec {
+            *rec = false;
+            rec_btn_click.set_icon_name("media-record-symbolic");
+            entry_click.set_placeholder_text(Some("e.g. Control_L+Alt_L+t"));
+        } else {
+            *rec = true;
+            rec_btn_click.set_icon_name("media-playback-stop-symbolic");
+            entry_click.set_placeholder_text(Some("Press keys now..."));
+            entry_click.set_text("");
+            entry_click.grab_focus();
+        }
+    });
 
     // Build options list
     let mut all_options = get_static_action_options();
@@ -914,7 +1064,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     category_dropdown.set_selected(selected_cat as u32);
     action_dropdown.set_selected(selected_act as u32);
 
-    // Initialize details entry visibility, label, and placeholder
+    // Initialize details entry visibility, label, placeholder, and record button
     if selected_act < initial_filtered.len() {
         let opt = &initial_filtered[selected_act];
         let show_entry = match &opt.action_type {
@@ -923,8 +1073,9 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             ActionType::Click(_) => true,
             _ => false,
         };
-        action_details_entry.set_visible(show_entry);
-        action_details_label.set_visible(show_entry);
+        action_details_row.set_visible(show_entry);
+        let show_record = matches!(&opt.action_type, ActionType::Keypress(_));
+        record_btn.set_visible(show_record);
         match &opt.action_type {
             ActionType::Keypress(_) => {
                 action_details_label.set_text("Keys to Send");
@@ -989,6 +1140,8 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let action_dropdown_clone = action_dropdown.clone();
     let entry_clone = action_details_entry.clone();
     let label_clone = action_details_label.clone();
+    let row_clone = action_details_row.clone();
+    let record_btn_clone_cat = record_btn.clone();
     let udn_clone3 = Rc::clone(&update_default_name);
 
     category_dropdown.connect_selected_notify(move |cat_dd| {
@@ -1010,7 +1163,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         *current_opts_clone.borrow_mut() = filtered.clone();
         action_dropdown_clone.set_selected(0);
 
-        // Manually update details entry visibility/placeholder/label for index 0
+        // Manually update details entry visibility/placeholder/label/record_btn for index 0
         if !filtered.is_empty() {
             let opt = &filtered[0];
             let show_entry = match &opt.action_type {
@@ -1019,8 +1172,9 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 ActionType::Click(_) => true,
                 _ => false,
             };
-            entry_clone.set_visible(show_entry);
-            label_clone.set_visible(show_entry);
+            row_clone.set_visible(show_entry);
+            let show_record = matches!(&opt.action_type, ActionType::Keypress(_));
+            record_btn_clone_cat.set_visible(show_record);
 
             match &opt.action_type {
                 ActionType::Keypress(_) => {
@@ -1046,6 +1200,8 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let current_opts_clone2 = Rc::clone(&current_options);
     let entry_clone2 = action_details_entry.clone();
     let label_clone2 = action_details_label.clone();
+    let row_clone2 = action_details_row.clone();
+    let record_btn_clone_act = record_btn.clone();
     let udn_clone2 = Rc::clone(&update_default_name);
 
     action_dropdown.connect_selected_notify(move |act_dd| {
@@ -1064,8 +1220,9 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 ActionType::Click(_) => true,
                 _ => false,
             };
-            entry_clone2.set_visible(show_entry);
-            label_clone2.set_visible(show_entry);
+            row_clone2.set_visible(show_entry);
+            let show_record = matches!(&opt.action_type, ActionType::Keypress(_));
+            record_btn_clone_act.set_visible(show_record);
 
             match &opt.action_type {
                 ActionType::Keypress(_) => {
@@ -1412,6 +1569,9 @@ fn build_ui(app: &gtk::Application) {
          .destructive-action:hover { color: #ef4444 !important; background: rgba(239, 68, 68, 0.08) !important; }\n\
          .status-dot-running { color: #10b981 !important; }\n\
          .status-dot-stopped { color: #6b7280 !important; opacity: 0.6; }\n\
+         .settings-row { background: transparent; border-bottom: 1px solid alpha(currentColor, 0.06); padding: 10px 16px; }\n\
+         .settings-row:last-child { border-bottom: none; }\n\
+         .section-header { font-size: 0.78em; font-weight: 700; text-transform: uppercase; opacity: 0.6; margin-top: 16px; margin-bottom: 4px; margin-left: 4px; }\n\
          .status-label { font-size: 0.85em; font-weight: 600; }\n"
     );
 
