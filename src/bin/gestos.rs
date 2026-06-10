@@ -712,7 +712,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     }
     main_box.append(&name_entry);
 
-    let is_name_customized = Rc::new(RefCell::new(false));
+    let is_name_customized = Rc::new(RefCell::new(target_gesture.is_some()));
     let is_updating_programmatically = Rc::new(RefCell::new(false));
 
     let cust_clone = Rc::clone(&is_name_customized);
@@ -1030,6 +1030,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     
     let state_clone = Rc::clone(state_rc);
     let is_edit = target_gesture.is_some();
+    let original_name = target_gesture.as_ref().map(|g| g.name.clone());
     let dialog_clone2 = dialog.clone();
     
     let current_opts_save = Rc::clone(&current_options);
@@ -1075,15 +1076,21 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
 
         let mut state = state_clone.borrow_mut();
         if is_edit {
-            if let Some(existing) = state.config.gestures.iter_mut().find(|g| g.name == name) {
+            let lookup_name = original_name.as_ref().unwrap_or(&name);
+            if name != *lookup_name && state.config.gestures.iter().any(|g| g.name == name) {
+                println!("Gesture save failed: A gesture with the name '{}' already exists.", name);
+                return;
+            }
+            if let Some(existing) = state.config.gestures.iter_mut().find(|g| g.name == *lookup_name) {
+                existing.name = name;
                 existing.raw_movement = raw_movement;
                 existing.points = pts.clone();
                 existing.actions = vec![action];
                 existing.is_modified = true;
                 existing.is_deleted = false;
-                println!("Gesture modified successfully: {}", name);
+                println!("Gesture modified successfully: {}", existing.name);
             } else {
-                println!("Gesture modification failed: Could not find existing gesture '{}'", name);
+                println!("Gesture modification failed: Could not find existing gesture '{}'", lookup_name);
             }
         } else {
             // Check if name conflict
