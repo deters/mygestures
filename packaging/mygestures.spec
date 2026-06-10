@@ -43,7 +43,7 @@ getent group input >/dev/null || groupadd -r input
 
 %files
 %license COPYING
-%doc README.md ChangeLog AUTHORS NEWS
+%doc README.md
 # Set secure Set-Group-ID (SGID) permission on mygestures binary
 %attr(2755, root, input) %{_bindir}/mygestures
 %{_bindir}/gestos
