@@ -1,6 +1,6 @@
 [package]
 name = "mygestures"
-version = "4.1.4"
+version = "4.1.5"
 edition = "2021"
 authors = ["Lucas Augusto Deters <lucasdeters@gmail.com>"]
 
