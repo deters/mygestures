@@ -636,7 +636,7 @@ fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height
     cr.restore().unwrap();
 }
 
-fn create_gesture_row(state_rc: &Rc<RefCell<AppState>>, gesture: &Gesture) -> gtk::ListBoxRow {
+fn create_gesture_row(gesture: &Gesture) -> gtk::ListBoxRow {
     let row = gtk::ListBoxRow::new();
     row.add_css_class("gesture-row");
     
@@ -718,7 +718,7 @@ fn refresh_gesture_list(state_rc: &Rc<RefCell<AppState>>, select_name: Option<&s
         if !filter.is_empty() && !gesture.name.to_lowercase().contains(&filter) {
             continue;
         }
-        let row = create_gesture_row(state_rc, gesture);
+        let row = create_gesture_row(gesture);
         state.main_list.append(&row);
         
         if let Some(name) = select_name {
