@@ -1783,8 +1783,7 @@ fn build_ui(app: &gtk::Application) {
     // Stylesheet injection
     let provider = gtk::CssProvider::new();
     provider.load_from_data(
-        "window, .background { background-color: #cffafe; }\n\
-         .context-title { font-size: 1.5em; font-weight: bold; }\n\
+        ".context-title { font-size: 1.5em; font-weight: bold; }\n\
          .boxed-list { background: @view_bg_color; border: 1px solid alpha(currentColor, 0.1); border-radius: 8px; }\n\
          .gesture-row { padding: 6px; border-bottom: 1px solid alpha(currentColor, 0.1); }\n\
          .gesture-row:last-child { border-bottom: none; }\n\
