@@ -5,10 +5,10 @@ BUILDDIR = build
 
 .PHONY: all build install uninstall clean setup
 
+all: build
+
 setup:
 	meson setup $(BUILDDIR) --prefix=$(PREFIX)
-
-all: build
 
 build:
 	@if [ ! -d "$(BUILDDIR)" ]; then \
