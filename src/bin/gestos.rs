@@ -2070,7 +2070,7 @@ fn build_ui(app: &gtk::Application) {
         let dialog = gtk::AboutDialog::new();
         dialog.set_transient_for(Some(&window_clone));
         dialog.set_program_name(Some("Gestos"));
-        dialog.set_version(Some("4.1.10"));
+        dialog.set_version(Some("4.1.11"));
         dialog.set_comments(Some(
             "A modern mouse gestures editor for Wayland desktop environments.",
         ));
