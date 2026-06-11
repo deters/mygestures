@@ -456,59 +456,9 @@ fn show_error_dialog<W: IsA<gtk::Window>>(parent: &W, message: &str) {
     dialog.present();
 }
 
-fn is_systemd_available() -> bool {
-    std::path::Path::new("/run/systemd/system").exists()
-}
-
-fn systemd_daemon_reload() {
-    if is_systemd_available() {
-        // Import environment variables so systemd user services have access to XDG_CURRENT_DESKTOP, etc.
-        let _ = Command::new("systemctl")
-            .arg("--user")
-            .arg("import-environment")
-            .arg("XDG_CURRENT_DESKTOP")
-            .arg("SWAYSOCK")
-            .arg("HYPRLAND_INSTANCE_SIGNATURE")
-            .arg("WAYLAND_DISPLAY")
-            .arg("DISPLAY")
-            .status();
-
-        let _ = Command::new("systemctl")
-            .arg("--user")
-            .arg("daemon-reload")
-            .status();
-    }
-}
-
 fn start_daemon(conn: Option<&zbus::blocking::Connection>) -> Result<(), String> {
     if is_daemon_running(conn) {
         return Ok(());
-    }
-
-    if is_systemd_available() {
-        systemd_daemon_reload();
-        let status = Command::new("systemctl")
-            .arg("--user")
-            .arg("start")
-            .arg("mygestures")
-            .status();
-        match status {
-            Ok(s) if s.success() => {
-                std::thread::sleep(std::time::Duration::from_millis(300));
-                if is_daemon_running(conn) {
-                    return Ok(());
-                }
-                eprintln!("gestos: Warning: mygestures systemd service did not start running properly. Stopping and falling back.");
-                let _ = Command::new("systemctl")
-                    .arg("--user")
-                    .arg("stop")
-                    .arg("mygestures")
-                    .status();
-            }
-            _ => {
-                eprintln!("gestos: Warning: Failed to start mygestures via systemd, falling back to direct launch.");
-            }
-        }
     }
 
     // Try local binary first, then path
@@ -572,15 +522,6 @@ fn stop_daemon(conn: Option<&zbus::blocking::Connection>) {
     };
 
     if stop_via_dbus().is_err() {
-        if is_systemd_available() {
-            systemd_daemon_reload();
-            let _ = Command::new("systemctl")
-                .arg("--user")
-                .arg("stop")
-                .arg("mygestures")
-                .status();
-        }
-        
         let uid = nix::unistd::Uid::current();
         if let Ok(output) = Command::new("pgrep")
             .arg("-u")
@@ -638,24 +579,7 @@ fn get_autostart_file_path() -> Option<std::path::PathBuf> {
 }
 
 fn set_autostart_enabled(enabled: bool) {
-    if is_systemd_available() {
-        systemd_daemon_reload();
-        let action = if enabled { "enable" } else { "disable" };
-        let _ = Command::new("systemctl")
-            .arg("--user")
-            .arg(action)
-            .arg("mygestures")
-            .status();
-    }
-
-    if is_systemd_available() {
-        // Clear autostart desktop file to avoid double launching if systemd handles it
-        if let Some(path) = get_autostart_file_path() {
-            if path.exists() {
-                let _ = std::fs::remove_file(&path);
-            }
-        }
-    } else if let Some(path) = get_autostart_file_path() {
+    if let Some(path) = get_autostart_file_path() {
         if enabled {
             if let Some(parent) = path.parent() {
                 let _ = std::fs::create_dir_all(parent);
@@ -1981,7 +1905,6 @@ fn build_ui(app: &gtk::Application) {
     if let Err(e) = mygestures::config::initialize_user_config_if_missing() {
         eprintln!("Warning: Failed to initialize configuration: {}", e);
     }
-    systemd_daemon_reload();
     let config = Configuration::load_from_defaults();
     let dbus_conn = zbus::blocking::Connection::session().ok();
 
