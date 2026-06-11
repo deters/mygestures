@@ -52,6 +52,8 @@ getent group input >/dev/null || groupadd -r input
 %{_datadir}/applications/gestos.desktop
 %{_datadir}/icons/hicolor/scalable/apps/gestos.svg
 %{_datadir}/mygestures/mygestures.yaml
+/usr/lib/systemd/user/mygestures.service
+/usr/share/dbus-1/services/org.mygestures.Daemon.service
 
 %changelog
 * Thu Jun 11 2026 Lucas Augusto Deters <lucasdeters@gmail.com> - 4.2.0-1
