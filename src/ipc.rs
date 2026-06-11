@@ -15,16 +15,14 @@ pub struct DaemonIpc {
 impl DaemonIpc {
     pub fn new(device_name: &str) -> Result<Self, std::io::Error> {
         let sanitized = device_name.replace('/', "%");
-        let shm_name = format!("/mygestures_uid_{}_dev_{}", unsafe { libc::getuid() }, sanitized);
+        let shm_name = format!(
+            "/mygestures_uid_{}_dev_{}",
+            unsafe { libc::getuid() },
+            sanitized
+        );
         let c_name = CString::new(shm_name.clone()).unwrap();
 
-        let fd = unsafe {
-            libc::shm_open(
-                c_name.as_ptr(),
-                libc::O_CREAT | libc::O_RDWR,
-                0o600,
-            )
-        };
+        let fd = unsafe { libc::shm_open(c_name.as_ptr(), libc::O_CREAT | libc::O_RDWR, 0o600) };
         if fd < 0 {
             return Err(std::io::Error::last_os_error());
         }
@@ -32,7 +30,9 @@ impl DaemonIpc {
         let size = std::mem::size_of::<ShmMessage>();
         if unsafe { libc::ftruncate(fd, size as libc::off_t) } < 0 {
             let err = std::io::Error::last_os_error();
-            unsafe { libc::close(fd); }
+            unsafe {
+                libc::close(fd);
+            }
             return Err(err);
         }
 
@@ -46,7 +46,9 @@ impl DaemonIpc {
                 0,
             )
         };
-        unsafe { libc::close(fd); }
+        unsafe {
+            libc::close(fd);
+        }
 
         if ptr == libc::MAP_FAILED {
             return Err(std::io::Error::last_os_error());
