@@ -16,8 +16,12 @@ extern "C" fn sigusr1_handler(_sig: std::os::raw::c_int) {}
 
 fn register_sigusr1() {
     unsafe {
-        let handler = nix::sys::signal::SigHandler::Handler(sigusr1_handler);
-        let _ = nix::sys::signal::signal(nix::sys::signal::Signal::SIGUSR1, handler);
+        let sig_action = nix::sys::signal::SigAction::new(
+            nix::sys::signal::SigHandler::Handler(sigusr1_handler),
+            nix::sys::signal::SaFlags::empty(),
+            nix::sys::signal::SigSet::empty(),
+        );
+        let _ = nix::sys::signal::sigaction(nix::sys::signal::Signal::SIGUSR1, &sig_action);
     }
 }
 

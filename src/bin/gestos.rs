@@ -375,17 +375,27 @@ struct AppState {
     window: gtk::ApplicationWindow,
     switch_handler_id: Option<glib::SignalHandlerId>,
     newly_added_gestures: Vec<String>,
+    dbus_conn: Option<zbus::blocking::Connection>,
 }
 
-fn is_daemon_running() -> bool {
+fn is_daemon_running(conn: Option<&zbus::blocking::Connection>) -> bool {
     let dbus_name = mygestures::config::get_dbus_name();
-    if let Ok(conn) = zbus::blocking::Connection::session() {
-        if let Ok(dbus_proxy) = zbus::blocking::fdo::DBusProxy::new(&conn) {
-            if let Ok(bus_name) = zbus::names::BusName::try_from(dbus_name) {
-                if let Ok(has_owner) = dbus_proxy.name_has_owner(bus_name) {
-                    return has_owner;
-                }
-            }
+    
+    let check_status = |c: &zbus::blocking::Connection| -> Option<bool> {
+        let dbus_proxy = zbus::blocking::fdo::DBusProxy::new(c).ok()?;
+        let bus_name = zbus::names::BusName::try_from(dbus_name.clone()).ok()?;
+        dbus_proxy.name_has_owner(bus_name).ok()
+    };
+
+    if let Some(c) = conn {
+        if let Some(running) = check_status(c) {
+            return running;
+        }
+    }
+    
+    if let Ok(new_conn) = zbus::blocking::Connection::session() {
+        if let Some(running) = check_status(&new_conn) {
+            return running;
         }
     }
     false
@@ -450,8 +460,8 @@ fn is_systemd_available() -> bool {
     std::path::Path::new("/run/systemd/system").exists()
 }
 
-fn start_daemon() -> Result<(), String> {
-    if is_daemon_running() {
+fn start_daemon(conn: Option<&zbus::blocking::Connection>) -> Result<(), String> {
+    if is_daemon_running(conn) {
         return Ok(());
     }
 
@@ -519,16 +529,15 @@ fn start_daemon() -> Result<(), String> {
     }
 }
 
-fn stop_daemon() {
+fn stop_daemon(conn: Option<&zbus::blocking::Connection>) {
     let dbus_name = mygestures::config::get_dbus_name();
     let stop_via_dbus = || -> zbus::Result<()> {
-        let conn = zbus::blocking::Connection::session()?;
-        let proxy = zbus::blocking::Proxy::new(
-            &conn,
-            dbus_name,
-            "/org/mygestures/Daemon",
-            "org.mygestures.Daemon",
-        )?;
+        let proxy = if let Some(c) = conn {
+            zbus::blocking::Proxy::new(c, dbus_name.clone(), "/org/mygestures/Daemon", "org.mygestures.Daemon")
+        } else {
+            let new_conn = zbus::blocking::Connection::session()?;
+            zbus::blocking::Proxy::new(&new_conn, dbus_name.clone(), "/org/mygestures/Daemon", "org.mygestures.Daemon")
+        }?;
         let _: () = proxy.call("Stop", &())?;
         Ok(())
     };
@@ -565,16 +574,15 @@ fn stop_daemon() {
     }
 }
 
-fn reload_daemon<W: IsA<gtk::Window>>(parent: Option<&W>) {
+fn reload_daemon<W: IsA<gtk::Window>>(conn: Option<&zbus::blocking::Connection>, parent: Option<&W>) {
     let dbus_name = mygestures::config::get_dbus_name();
     let reload_via_dbus = || -> zbus::Result<()> {
-        let conn = zbus::blocking::Connection::session()?;
-        let proxy = zbus::blocking::Proxy::new(
-            &conn,
-            dbus_name,
-            "/org/mygestures/Daemon",
-            "org.mygestures.Daemon",
-        )?;
+        let proxy = if let Some(c) = conn {
+            zbus::blocking::Proxy::new(c, dbus_name.clone(), "/org/mygestures/Daemon", "org.mygestures.Daemon")
+        } else {
+            let new_conn = zbus::blocking::Connection::session()?;
+            zbus::blocking::Proxy::new(&new_conn, dbus_name.clone(), "/org/mygestures/Daemon", "org.mygestures.Daemon")
+        }?;
         let _: () = proxy.call("Reload", &())?;
         Ok(())
     };
@@ -1814,7 +1822,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         if let Err(e) = state.config.save_to_file() {
             println!("Failed to save configuration to file: {}", e);
         }
-        reload_daemon(Some(&dialog_clone2));
+        reload_daemon(state.dbus_conn.as_ref(), Some(&dialog_clone2));
         drop(state);
 
         refresh_gesture_list(&state_clone, Some(&name));
@@ -1839,7 +1847,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                     println!("Failed to save config to file on delete: {}", e);
                 }
                 println!("Gesture deleted successfully: {}", name_clone);
-                reload_daemon(Some(&dialog_clone3));
+                reload_daemon(state.dbus_conn.as_ref(), Some(&dialog_clone3));
                 drop(state);
                 refresh_gesture_list(&state_clone, None);
                 dialog_clone3.destroy();
@@ -1943,6 +1951,7 @@ fn build_ui(app: &gtk::Application) {
         eprintln!("Warning: Failed to initialize configuration: {}", e);
     }
     let config = Configuration::load_from_defaults();
+    let dbus_conn = zbus::blocking::Connection::session().ok();
 
     let state = Rc::new(RefCell::new(AppState {
         config,
@@ -1952,6 +1961,7 @@ fn build_ui(app: &gtk::Application) {
         window,
         switch_handler_id: None,
         newly_added_gestures: Vec::new(),
+        dbus_conn,
     }));
 
     // Refresh initially
@@ -2000,17 +2010,17 @@ fn build_ui(app: &gtk::Application) {
     let state_clone4 = Rc::clone(&state);
     let handler_id = state.borrow().daemon_switch.connect_state_set(move |_, state| {
         if state {
-            if let Err(err) = start_daemon() {
+            if let Err(err) = start_daemon(state_clone4.borrow().dbus_conn.as_ref()) {
                 show_error_dialog(&state_clone4.borrow().window, &err);
             }
             set_autostart_enabled(true);
         } else {
-            stop_daemon();
+            stop_daemon(state_clone4.borrow().dbus_conn.as_ref());
             set_autostart_enabled(false);
         }
         
         let state_borrow = state_clone4.borrow();
-        let running = is_daemon_running();
+        let running = is_daemon_running(state_borrow.dbus_conn.as_ref());
         if !running {
             // Toggle the switch back off immediately if daemon startup failed
             if let Some(ref hid) = state_borrow.switch_handler_id {
@@ -2027,7 +2037,7 @@ fn build_ui(app: &gtk::Application) {
     let state_clone5 = Rc::clone(&state);
     glib::timeout_add_local(std::time::Duration::from_secs(1), move || {
         let state_borrow = state_clone5.borrow();
-        let running = is_daemon_running();
+        let running = is_daemon_running(state_borrow.dbus_conn.as_ref());
 
         if let Some(ref hid) = state_borrow.switch_handler_id {
             state_borrow.daemon_switch.block_signal(hid);
