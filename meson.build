@@ -1,5 +1,5 @@
 project('mygestures',
-  version: '4.0.0',
+  version: '4.1.9',
   meson_version: '>= 0.56.0'
 )
 
