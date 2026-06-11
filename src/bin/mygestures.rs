@@ -214,7 +214,7 @@ fn run_grabber(
     let rgid = nix::unistd::getgid();
     let egid = nix::unistd::getegid();
     if egid != rgid {
-        if nix::unistd::setegid(rgid).is_ok() {
+        if nix::unistd::setresgid(rgid, rgid, rgid).is_ok() {
             println!("mygestures: Successfully dropped elevated GID from {} to {}", egid, rgid);
         } else {
             eprintln!("mygestures: Warning: Failed to drop elevated GID.");
