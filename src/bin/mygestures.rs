@@ -1,9 +1,9 @@
+use mygestures::config::{ActionType, Configuration};
+use mygestures::ipc::DaemonIpc;
+use mygestures::wayland::WaylandContext;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use mygestures::config::{Configuration, ActionType};
-use mygestures::wayland::WaylandContext;
-use mygestures::ipc::DaemonIpc;
 use zbus::interface;
 
 static RELOAD_REQUESTED: AtomicBool = AtomicBool::new(false);
@@ -43,20 +43,22 @@ impl DaemonDbus {
         if IS_MANAGER.load(Ordering::Relaxed) {
             let path = mygestures::config::get_default_config_path();
             if mygestures::config::Configuration::load_from_file(&path).is_none() {
-                return Err(zbus::fdo::Error::Failed("Invalid configuration file format".to_string()));
+                return Err(zbus::fdo::Error::Failed(
+                    "Invalid configuration file format".to_string(),
+                ));
             }
             RELOAD_MANAGER.store(true, Ordering::Relaxed);
             kill_children();
         } else {
             let path = mygestures::config::get_default_config_path();
             if mygestures::config::Configuration::load_from_file(&path).is_none() {
-                return Err(zbus::fdo::Error::Failed("Invalid configuration file format".to_string()));
+                return Err(zbus::fdo::Error::Failed(
+                    "Invalid configuration file format".to_string(),
+                ));
             }
             RELOAD_REQUESTED.store(true, Ordering::Relaxed);
-            let _ = nix::sys::signal::kill(
-                nix::unistd::Pid::this(),
-                nix::sys::signal::Signal::SIGUSR1,
-            );
+            let _ =
+                nix::sys::signal::kill(nix::unistd::Pid::this(), nix::sys::signal::Signal::SIGUSR1);
         }
         Ok(())
     }
@@ -94,12 +96,16 @@ fn check_permissions(device: &str) -> bool {
     if let Ok(file) = std::fs::OpenOptions::new().write(true).open("/dev/uinput") {
         uinput_ok = true;
         drop(file);
-    } else if let Ok(file) = std::fs::OpenOptions::new().write(true).open("/dev/misc/uinput") {
+    } else if let Ok(file) = std::fs::OpenOptions::new()
+        .write(true)
+        .open("/dev/misc/uinput")
+    {
         uinput_ok = true;
         drop(file);
     }
 
-    let uinput_exists = std::path::Path::new("/dev/uinput").exists() || std::path::Path::new("/dev/misc/uinput").exists();
+    let uinput_exists = std::path::Path::new("/dev/uinput").exists()
+        || std::path::Path::new("/dev/misc/uinput").exists();
     let dev_ok = std::fs::OpenOptions::new().read(true).open(device).is_ok();
 
     if !uinput_ok || !dev_ok {
@@ -121,20 +127,24 @@ fn check_permissions(device: &str) -> bool {
             eprintln!("1. Load the uinput kernel module:");
             eprintln!("   sudo modprobe uinput");
             eprintln!("   (To load it automatically on boot, add 'uinput' to /etc/modules)\n");
-            eprintln!("=========================================================================\n");
+            eprintln!(
+                "=========================================================================\n"
+            );
             return false;
         }
 
         eprintln!("\nTo resolve permissions, choose one of the following setups:\n");
         eprintln!("OPTION A: SECURE SETUP (Recommended - Only mygestures has access)");
-        eprintln!("  1. Install the mygestures udev rules (restricts access to the 'input' group):");
+        eprintln!(
+            "  1. Install the mygestures udev rules (restricts access to the 'input' group):"
+        );
         eprintln!("     sudo cp 99-mygestures.rules /etc/udev/rules.d/");
         eprintln!("     sudo udevadm control --reload-rules && sudo udevadm trigger");
         eprintln!("  2. Configure the mygestures binary to run as Set-Group-ID (SGID) to 'input':");
         eprintln!("     sudo chown root:input /usr/local/bin/mygestures");
         eprintln!("     sudo chmod 2755 /usr/local/bin/mygestures");
         eprintln!("     (Note: This allows only this binary to capture inputs/inject actions)");
-        
+
         eprintln!("\nOPTION B: STANDARD SETUP (Allows all user applications to capture inputs)");
         eprintln!("  1. Add your user to the 'input' group:");
         eprintln!("     sudo usermod -aG input $USER");
@@ -157,7 +167,7 @@ fn run_grabber(
     ipc: mygestures::ipc::DaemonIpc,
 ) -> Result<(), std::io::Error> {
     use evdev::{Device, EventType, KeyCode};
-    use mygestures::protractor::{Point2D, match_gesture};
+    use mygestures::protractor::{match_gesture, Point2D};
     use mygestures::uinput::UinputDevice;
 
     println!("Attempting to open device: {}", device_path);
@@ -165,7 +175,9 @@ fn run_grabber(
 
     // Adjust sensitivity threshold if relative device vs absolute device
     let mut threshold = sensitivity as f64;
-    let abs_x = dev.get_absinfo().ok()
+    let abs_x = dev
+        .get_absinfo()
+        .ok()
         .and_then(|mut iter| iter.find(|(code, _)| *code == evdev::AbsoluteAxisCode::ABS_X))
         .map(|(_, info)| info);
     if let Some(abs_info) = abs_x {
@@ -214,14 +226,20 @@ fn run_grabber(
     let rgid = nix::unistd::getgid();
     let egid = nix::unistd::getegid();
     if egid != rgid {
-        if nix::unistd::setresgid(rgid, rgid, rgid).is_ok() {
-            println!("mygestures: Successfully dropped elevated GID from {} to {}", egid, rgid);
+        if nix::unistd::setegid(rgid).is_ok() {
+            println!(
+                "mygestures: Successfully dropped elevated GID from {} to {}",
+                egid, rgid
+            );
         } else {
             eprintln!("mygestures: Warning: Failed to drop elevated GID.");
         }
     }
 
-    println!("Listening for events from device using libevdev (button {})", trigger_button);
+    println!(
+        "Listening for events from device using libevdev (button {})",
+        trigger_button
+    );
 
     let mut is_drawing = false;
     let mut captured_points = Vec::new();
@@ -230,7 +248,9 @@ fn run_grabber(
     let mut moved = false;
 
     // Convert templates for matching
-    let mut templates: Vec<(String, Vec<Point2D>)> = config.gestures.iter()
+    let mut templates: Vec<(String, Vec<Point2D>)> = config
+        .gestures
+        .iter()
         .filter(|g| !g.is_deleted)
         .map(|g| (g.name.clone(), g.points.clone()))
         .collect();
@@ -239,15 +259,22 @@ fn run_grabber(
     loop {
         if RELOAD_REQUESTED.swap(false, Ordering::Relaxed) {
             println!("mygestures: Reloading configuration dynamically...");
-            if let Some(new_config) = mygestures::config::Configuration::load_from_file(&config.user_config_path) {
+            if let Some(new_config) =
+                mygestures::config::Configuration::load_from_file(&config.user_config_path)
+            {
                 config = new_config;
-                templates = config.gestures.iter()
+                templates = config
+                    .gestures
+                    .iter()
                     .filter(|g| !g.is_deleted)
                     .map(|g| (g.name.clone(), g.points.clone()))
                     .collect();
                 println!("mygestures: Configuration reloaded successfully.");
             } else {
-                eprintln!("mygestures: Failed to reload configuration from {}", config.user_config_path.display());
+                eprintln!(
+                    "mygestures: Failed to reload configuration from {}",
+                    config.user_config_path.display()
+                );
             }
         }
 
@@ -274,18 +301,30 @@ fn run_grabber(
                     // Start gesture movement
                     is_drawing = true;
                     captured_points.clear();
-                    captured_points.push(Point2D { x: virtual_x, y: virtual_y });
-                    println!("Gesture drawing started at ({:.1}, {:.1})", virtual_x, virtual_y);
+                    captured_points.push(Point2D {
+                        x: virtual_x,
+                        y: virtual_y,
+                    });
+                    println!(
+                        "Gesture drawing started at ({:.1}, {:.1})",
+                        virtual_x, virtual_y
+                    );
                 } else if ev_value == 0 {
                     // End gesture movement
                     is_drawing = false;
-                    
+
                     // Final coordinate
                     if moved {
-                        captured_points.push(Point2D { x: virtual_x, y: virtual_y });
+                        captured_points.push(Point2D {
+                            x: virtual_x,
+                            y: virtual_y,
+                        });
                     }
 
-                    println!("Gesture drawing finished. Path points: {}", captured_points.len());
+                    println!(
+                        "Gesture drawing finished. Path points: {}",
+                        captured_points.len()
+                    );
 
                     // Calculate path length
                     let len = mygestures::protractor::path_length(&captured_points);
@@ -300,7 +339,9 @@ fn run_grabber(
                     } else {
                         // Match gesture
                         if let Some(matched_name) = match_gesture(&captured_points, &templates) {
-                            if let Some(gesture) = config.gestures.iter().find(|g| g.name == matched_name) {
+                            if let Some(gesture) =
+                                config.gestures.iter().find(|g| g.name == matched_name)
+                            {
                                 println!("Matched gesture: {}", gesture.name);
                                 for action in &gesture.actions {
                                     if let ActionType::Click(btn) = action {
@@ -333,34 +374,43 @@ fn run_grabber(
 
                 // Update coordinate tracking
                 if ev_type == EventType::RELATIVE {
-                    if ev_code == 0 { // REL_X
+                    if ev_code == 0 {
+                        // REL_X
                         virtual_x += ev_value as f64;
                         moved = true;
-                    } else if ev_code == 1 { // REL_Y
+                    } else if ev_code == 1 {
+                        // REL_Y
                         virtual_y += ev_value as f64;
                         moved = true;
                     }
                 } else if ev_type == EventType::ABSOLUTE {
-                    if ev_code == 0 { // ABS_X
+                    if ev_code == 0 {
+                        // ABS_X
                         virtual_x = ev_value as f64;
                         moved = true;
-                    } else if ev_code == 1 { // ABS_Y
+                    } else if ev_code == 1 {
+                        // ABS_Y
                         virtual_y = ev_value as f64;
                         moved = true;
                     }
-                } else if ev_type == EventType::SYNCHRONIZATION && ev_code == 0 { // SYN_REPORT
+                } else if ev_type == EventType::SYNCHRONIZATION && ev_code == 0 {
+                    // SYN_REPORT
                     if moved && is_drawing {
                         let last = captured_points.last();
                         let add_point = match last {
                             Some(lp) => {
                                 let dx = virtual_x - lp.x;
                                 let dy = virtual_y - lp.y;
-                                dx * dx + dy * dy >= threshold * threshold / 100.0 // check sensitivity threshold
+                                dx * dx + dy * dy >= threshold * threshold / 100.0
+                                // check sensitivity threshold
                             }
                             None => true,
                         };
                         if add_point {
-                            captured_points.push(Point2D { x: virtual_x, y: virtual_y });
+                            captured_points.push(Point2D {
+                                x: virtual_x,
+                                y: virtual_y,
+                            });
                         }
                     }
                     moved = false;
@@ -416,9 +466,15 @@ fn main() {
         } else if arg.starts_with("--device=") {
             devices.push(arg.trim_start_matches("--device=").to_string());
         } else if arg.starts_with("--button=") {
-            button = arg.trim_start_matches("--button=").parse::<i32>().unwrap_or(3);
+            button = arg
+                .trim_start_matches("--button=")
+                .parse::<i32>()
+                .unwrap_or(3);
         } else if arg.starts_with("--sensitivity=") {
-            sensitivity = arg.trim_start_matches("--sensitivity=").parse::<i32>().unwrap_or(30);
+            sensitivity = arg
+                .trim_start_matches("--sensitivity=")
+                .parse::<i32>()
+                .unwrap_or(30);
         } else if !arg.starts_with('-') {
             custom_config = Some(arg);
         }
@@ -428,7 +484,10 @@ fn main() {
         println!("Usage: mygestures [OPTIONS] [CONFIG_FILE]");
         println!();
         println!("CONFIG_FILE:");
-        println!("  Default: {}", mygestures::config::get_default_config_path().display());
+        println!(
+            "  Default: {}",
+            mygestures::config::get_default_config_path().display()
+        );
         println!();
         println!("OPTIONS:");
         println!("  -d, --device <DEVICENAME>  : Device to grab (can specify multiple times)");
@@ -476,7 +535,7 @@ fn main() {
     // If multiple devices are specified, run process manager
     if devices.len() > 1 {
         IS_MANAGER.store(true, Ordering::Relaxed);
-        
+
         loop {
             let exe = std::env::current_exe().unwrap();
             let mut children = Vec::new();
@@ -514,7 +573,9 @@ fn main() {
             }
 
             if RELOAD_MANAGER.swap(false, Ordering::Relaxed) {
-                println!("mygestures parent: Config reload triggered. Restarting child processes...");
+                println!(
+                    "mygestures parent: Config reload triggered. Restarting child processes..."
+                );
                 continue;
             }
             break;
@@ -543,7 +604,10 @@ fn main() {
     } else {
         let user_path = mygestures::config::get_default_config_path();
         if !user_path.exists() {
-            eprintln!("Error: Configuration file not found at {}.", user_path.display());
+            eprintln!(
+                "Error: Configuration file not found at {}.",
+                user_path.display()
+            );
             eprintln!("Please run gestos first to initialize the configuration.");
             std::process::exit(1);
         }

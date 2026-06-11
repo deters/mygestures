@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Point2D {
@@ -28,7 +28,11 @@ pub fn resample_path(points: &[Point2D], n: usize) -> Vec<Point2D> {
     }
 
     let len = path_length(points);
-    let interval = if len > 1e-4 { len / (n - 1) as f64 } else { 0.0 };
+    let interval = if len > 1e-4 {
+        len / (n - 1) as f64
+    } else {
+        0.0
+    };
     let mut resampled = Vec::with_capacity(n);
     resampled.push(points[0]);
 
@@ -106,7 +110,11 @@ pub fn compute_protractor_similarity(u: &[Point2D], w: &[Point2D], max_angle_rad
     if theta.abs() <= max_angle_rad {
         (a * a + b * b).sqrt()
     } else {
-        let phi = if theta > 0.0 { max_angle_rad } else { -max_angle_rad };
+        let phi = if theta > 0.0 {
+            max_angle_rad
+        } else {
+            -max_angle_rad
+        };
         a * phi.cos() + b * phi.sin()
     }
 }
@@ -129,7 +137,13 @@ fn perpendicular_distance(p: Point2D, line_start: Point2D, line_end: Point2D) ->
     (diff_x * diff_x + diff_y * diff_y).sqrt()
 }
 
-fn douglas_peucker_recursive(points: &[Point2D], start: usize, end: usize, epsilon: f64, keep: &mut [bool]) {
+fn douglas_peucker_recursive(
+    points: &[Point2D],
+    start: usize,
+    end: usize,
+    epsilon: f64,
+    keep: &mut [bool],
+) {
     if end <= start + 1 {
         return;
     }
@@ -157,8 +171,10 @@ pub fn simplify_points(points: &[Point2D], epsilon: f64) -> Vec<Point2D> {
     keep[0] = true;
     keep[points.len() - 1] = true;
     douglas_peucker_recursive(points, 0, points.len() - 1, epsilon, &mut keep);
-    
-    points.iter().enumerate()
+
+    points
+        .iter()
+        .enumerate()
         .filter(|(idx, _)| keep[*idx])
         .map(|(_, &p)| p)
         .collect()
@@ -173,16 +189,24 @@ pub fn scale_to_square(points: &mut [Point2D], size: f64) {
     let mut min_y = points[0].y;
     let mut max_y = points[0].y;
     for p in points.iter() {
-        if p.x < min_x { min_x = p.x; }
-        if p.x > max_x { max_x = p.x; }
-        if p.y < min_y { min_y = p.y; }
-        if p.y > max_y { max_y = p.y; }
+        if p.x < min_x {
+            min_x = p.x;
+        }
+        if p.x > max_x {
+            max_x = p.x;
+        }
+        if p.y < min_y {
+            min_y = p.y;
+        }
+        if p.y > max_y {
+            max_y = p.y;
+        }
     }
     let w = max_x - min_x;
     let h = max_y - min_y;
 
     let aspect_ratio = if h.abs() > 1e-6 { w / h } else { 100.0 };
-    if aspect_ratio > 5.0 || aspect_ratio < 0.2 {
+    if !(0.2..=5.0).contains(&aspect_ratio) {
         let max_dim = w.max(h);
         let scale = if max_dim > 1e-6 { size / max_dim } else { 1.0 };
         for p in points.iter_mut() {
@@ -243,19 +267,13 @@ mod tests {
 
     #[test]
     fn test_path_length() {
-        let pts = vec![
-            Point2D { x: 0.0, y: 0.0 },
-            Point2D { x: 3.0, y: 4.0 },
-        ];
+        let pts = vec![Point2D { x: 0.0, y: 0.0 }, Point2D { x: 3.0, y: 4.0 }];
         assert_eq!(path_length(&pts), 5.0);
     }
 
     #[test]
     fn test_resample_path() {
-        let pts = vec![
-            Point2D { x: 0.0, y: 0.0 },
-            Point2D { x: 10.0, y: 0.0 },
-        ];
+        let pts = vec![Point2D { x: 0.0, y: 0.0 }, Point2D { x: 10.0, y: 0.0 }];
         let resampled = resample_path(&pts, 5);
         assert_eq!(resampled.len(), 5);
         assert_eq!(resampled[0], Point2D { x: 0.0, y: 0.0 });

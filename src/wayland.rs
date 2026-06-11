@@ -1,7 +1,7 @@
+use crate::config::ActionType;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use crate::config::ActionType;
 
 #[derive(Debug, Clone, Default)]
 pub struct WaylandContext {
@@ -39,17 +39,40 @@ impl WaylandContext {
 
         // Fallback checks using pgrep if env variables are missing
         if !ctx.is_gnome && !ctx.is_kde && !ctx.is_xfce {
-            if Command::new("pgrep").arg("-x").arg("gnome-shell").stdout(Stdio::null()).status().map(|s| s.success()).unwrap_or(false) {
+            if Command::new("pgrep")
+                .arg("-x")
+                .arg("gnome-shell")
+                .stdout(Stdio::null())
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false)
+            {
                 ctx.is_gnome = true;
-            } else if Command::new("pgrep").arg("-x").arg("kwin_wayland").stdout(Stdio::null()).status().map(|s| s.success()).unwrap_or(false) {
+            } else if Command::new("pgrep")
+                .arg("-x")
+                .arg("kwin_wayland")
+                .stdout(Stdio::null())
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false)
+            {
                 ctx.is_kde = true;
-            } else if Command::new("pgrep").arg("-x").arg("xfwm4").stdout(Stdio::null()).status().map(|s| s.success()).unwrap_or(false) {
+            } else if Command::new("pgrep")
+                .arg("-x")
+                .arg("xfwm4")
+                .stdout(Stdio::null())
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false)
+            {
                 ctx.is_xfce = true;
             }
         }
 
         // Resolve target user UID and username (handles running as root/sudo)
-        let sudo_uid = std::env::var("SUDO_UID").ok().and_then(|s| s.parse::<u32>().ok());
+        let sudo_uid = std::env::var("SUDO_UID")
+            .ok()
+            .and_then(|s| s.parse::<u32>().ok());
         let sudo_user = std::env::var("SUDO_USER").ok();
 
         if let (Some(uid), Some(user)) = (sudo_uid, sudo_user) {
@@ -105,13 +128,14 @@ impl WaylandContext {
                     if let Ok(d_uid) = d_name.parse::<u32>() {
                         if d_uid >= 1000 {
                             let user_run_dir = PathBuf::from(format!("/run/user/{}", d_uid));
-                            
+
                             // Check Sway socket
                             if let Ok(sub_entries) = fs::read_dir(&user_run_dir) {
                                 for sub_entry in sub_entries.flatten() {
                                     let name = sub_entry.file_name().to_string_lossy().into_owned();
                                     if name.contains("sway-ipc") && name.contains(".sock") {
-                                        ctx.sway_sock = user_run_dir.join(name).to_string_lossy().into_owned();
+                                        ctx.sway_sock =
+                                            user_run_dir.join(name).to_string_lossy().into_owned();
                                         ctx.is_sway = true;
                                         break;
                                     }
@@ -124,7 +148,10 @@ impl WaylandContext {
                                 if hypr_dir.exists() {
                                     if let Ok(sub_entries) = fs::read_dir(hypr_dir) {
                                         for sub_entry in sub_entries.flatten() {
-                                            let name = sub_entry.file_name().to_string_lossy().into_owned();
+                                            let name = sub_entry
+                                                .file_name()
+                                                .to_string_lossy()
+                                                .into_owned();
                                             if name.len() >= 40 {
                                                 ctx.hypr_sig = name;
                                                 ctx.is_hypr = true;
@@ -186,7 +213,9 @@ impl WaylandContext {
             ActionType::Kill => self.run_swaymsg("kill"),
             ActionType::Maximize => self.run_swaymsg("fullscreen enable"),
             ActionType::Restore => self.run_swaymsg("fullscreen disable"),
-            ActionType::ToggleMaximized | ActionType::ToggleFullscreen => self.run_swaymsg("fullscreen toggle"),
+            ActionType::ToggleMaximized | ActionType::ToggleFullscreen => {
+                self.run_swaymsg("fullscreen toggle")
+            }
             ActionType::WorkspaceLeft => self.run_swaymsg("workspace prev_on_output"),
             ActionType::WorkspaceRight => self.run_swaymsg("workspace next_on_output"),
             ActionType::WorkspaceUp => self.run_swaymsg("workspace prev"),
@@ -220,11 +249,15 @@ impl WaylandContext {
 
     fn execute_hypr(&self, action: &ActionType, uinput_handler: &dyn Fn(&str)) {
         match action {
-            ActionType::Iconify => self.run_hyprctl("dispatch movetoworkspacesilent special:minimized"),
+            ActionType::Iconify => {
+                self.run_hyprctl("dispatch movetoworkspacesilent special:minimized")
+            }
             ActionType::Kill => self.run_hyprctl("dispatch killactive"),
             ActionType::Raise => self.run_hyprctl("dispatch alterzorder top"),
             ActionType::Lower => self.run_hyprctl("dispatch alterzorder bottom"),
-            ActionType::Maximize | ActionType::Restore | ActionType::ToggleMaximized => self.run_hyprctl("dispatch fullscreen 1"),
+            ActionType::Maximize | ActionType::Restore | ActionType::ToggleMaximized => {
+                self.run_hyprctl("dispatch fullscreen 1")
+            }
             ActionType::ToggleFullscreen => self.run_hyprctl("dispatch fullscreen 0"),
             ActionType::WorkspaceLeft => self.run_hyprctl("dispatch workspace e-1"),
             ActionType::WorkspaceRight => self.run_hyprctl("dispatch workspace e+1"),
@@ -262,35 +295,93 @@ impl WaylandContext {
             ActionType::Iconify => self.run_gnome_shortcut("minimize", "Super_L+h", uinput_handler),
             ActionType::Kill => self.run_gnome_shortcut("close", "Alt_L+F4", uinput_handler),
             ActionType::Lower => uinput_handler("Alt_L+Escape"),
-            ActionType::Maximize => self.run_gnome_shortcut("maximize", "Super_L+Up", uinput_handler),
-            ActionType::Restore => self.run_gnome_shortcut("unmaximize", "Super_L+Down", uinput_handler),
-            ActionType::ToggleMaximized => self.run_gnome_shortcut("toggle-maximized", "Alt_L+F10", uinput_handler),
-            ActionType::WorkspaceLeft => self.run_gnome_shortcut("switch-to-workspace-left", "Control_L+Alt_L+Left", uinput_handler),
-            ActionType::WorkspaceRight => self.run_gnome_shortcut("switch-to-workspace-right", "Control_L+Alt_L+Right", uinput_handler),
-            ActionType::WorkspaceUp => self.run_gnome_shortcut("switch-to-workspace-up", "Control_L+Alt_L+Up", uinput_handler),
-            ActionType::WorkspaceDown => self.run_gnome_shortcut("switch-to-workspace-down", "Control_L+Alt_L+Down", uinput_handler),
-            ActionType::ShowOverview => self.run_gnome_shortcut("toggle-overview", "Super_L", uinput_handler),
-            ActionType::ShowAppGrid => self.run_gnome_shortcut("toggle-application-view", "Super_L+a", uinput_handler),
-            ActionType::ToggleFullscreen => self.run_gnome_shortcut("toggle-fullscreen", "F11", uinput_handler),
-            ActionType::ShowDesktop => self.run_gnome_shortcut("show-desktop", "Super_L+d", uinput_handler),
-            ActionType::LockScreen => self.run_gnome_shortcut("screensaver", "Super_L+l", uinput_handler),
-            ActionType::Terminal => self.run_gnome_shortcut("terminal", "Control_L+Alt_L+t", uinput_handler),
-            ActionType::VolumeUp => self.run_gnome_shortcut("volume-up", "XF86AudioRaiseVolume", uinput_handler),
-            ActionType::VolumeDown => self.run_gnome_shortcut("volume-down", "XF86AudioLowerVolume", uinput_handler),
-            ActionType::VolumeMute => self.run_gnome_shortcut("volume-mute", "XF86AudioMute", uinput_handler),
-            ActionType::MediaPlay => self.run_gnome_shortcut("play", "XF86AudioPlay", uinput_handler),
-            ActionType::MediaNext => self.run_gnome_shortcut("next", "XF86AudioNext", uinput_handler),
-            ActionType::MediaPrev => self.run_gnome_shortcut("previous", "XF86AudioPrev", uinput_handler),
+            ActionType::Maximize => {
+                self.run_gnome_shortcut("maximize", "Super_L+Up", uinput_handler)
+            }
+            ActionType::Restore => {
+                self.run_gnome_shortcut("unmaximize", "Super_L+Down", uinput_handler)
+            }
+            ActionType::ToggleMaximized => {
+                self.run_gnome_shortcut("toggle-maximized", "Alt_L+F10", uinput_handler)
+            }
+            ActionType::WorkspaceLeft => self.run_gnome_shortcut(
+                "switch-to-workspace-left",
+                "Control_L+Alt_L+Left",
+                uinput_handler,
+            ),
+            ActionType::WorkspaceRight => self.run_gnome_shortcut(
+                "switch-to-workspace-right",
+                "Control_L+Alt_L+Right",
+                uinput_handler,
+            ),
+            ActionType::WorkspaceUp => self.run_gnome_shortcut(
+                "switch-to-workspace-up",
+                "Control_L+Alt_L+Up",
+                uinput_handler,
+            ),
+            ActionType::WorkspaceDown => self.run_gnome_shortcut(
+                "switch-to-workspace-down",
+                "Control_L+Alt_L+Down",
+                uinput_handler,
+            ),
+            ActionType::ShowOverview => {
+                self.run_gnome_shortcut("toggle-overview", "Super_L", uinput_handler)
+            }
+            ActionType::ShowAppGrid => {
+                self.run_gnome_shortcut("toggle-application-view", "Super_L+a", uinput_handler)
+            }
+            ActionType::ToggleFullscreen => {
+                self.run_gnome_shortcut("toggle-fullscreen", "F11", uinput_handler)
+            }
+            ActionType::ShowDesktop => {
+                self.run_gnome_shortcut("show-desktop", "Super_L+d", uinput_handler)
+            }
+            ActionType::LockScreen => {
+                self.run_gnome_shortcut("screensaver", "Super_L+l", uinput_handler)
+            }
+            ActionType::Terminal => {
+                self.run_gnome_shortcut("terminal", "Control_L+Alt_L+t", uinput_handler)
+            }
+            ActionType::VolumeUp => {
+                self.run_gnome_shortcut("volume-up", "XF86AudioRaiseVolume", uinput_handler)
+            }
+            ActionType::VolumeDown => {
+                self.run_gnome_shortcut("volume-down", "XF86AudioLowerVolume", uinput_handler)
+            }
+            ActionType::VolumeMute => {
+                self.run_gnome_shortcut("volume-mute", "XF86AudioMute", uinput_handler)
+            }
+            ActionType::MediaPlay => {
+                self.run_gnome_shortcut("play", "XF86AudioPlay", uinput_handler)
+            }
+            ActionType::MediaNext => {
+                self.run_gnome_shortcut("next", "XF86AudioNext", uinput_handler)
+            }
+            ActionType::MediaPrev => {
+                self.run_gnome_shortcut("previous", "XF86AudioPrev", uinput_handler)
+            }
             ActionType::Www => self.run_gnome_shortcut("www", "XF86WWW", uinput_handler),
             ActionType::Home => self.run_gnome_shortcut("home", "XF86Explorer", uinput_handler),
             ActionType::Email => self.run_gnome_shortcut("email", "XF86Mail", uinput_handler),
             ActionType::Search => self.run_gnome_shortcut("search", "XF86Search", uinput_handler),
-            ActionType::Calculator => self.run_gnome_shortcut("calculator", "XF86Calculator", uinput_handler),
-            ActionType::ControlCenter => self.run_gnome_shortcut("control-center", "XF86ControlPanel", uinput_handler),
-            ActionType::Logout => self.run_gnome_shortcut("logout", "Control_L+Alt_L+Delete", uinput_handler),
-            ActionType::Screenshot => self.run_gnome_shortcut("screenshot", "Print", uinput_handler),
-            ActionType::ScreenshotWindow => self.run_gnome_shortcut("window-screenshot", "Alt_L+Print", uinput_handler),
-            ActionType::ScreenshotArea => self.run_gnome_shortcut("area-screenshot", "Shift_L+Print", uinput_handler),
+            ActionType::Calculator => {
+                self.run_gnome_shortcut("calculator", "XF86Calculator", uinput_handler)
+            }
+            ActionType::ControlCenter => {
+                self.run_gnome_shortcut("control-center", "XF86ControlPanel", uinput_handler)
+            }
+            ActionType::Logout => {
+                self.run_gnome_shortcut("logout", "Control_L+Alt_L+Delete", uinput_handler)
+            }
+            ActionType::Screenshot => {
+                self.run_gnome_shortcut("screenshot", "Print", uinput_handler)
+            }
+            ActionType::ScreenshotWindow => {
+                self.run_gnome_shortcut("window-screenshot", "Alt_L+Print", uinput_handler)
+            }
+            ActionType::ScreenshotArea => {
+                self.run_gnome_shortcut("area-screenshot", "Shift_L+Print", uinput_handler)
+            }
             ActionType::Gnome(gkey) => {
                 self.run_gnome_shortcut(gkey, "", uinput_handler);
             }
@@ -406,10 +497,10 @@ impl WaylandContext {
             if let Some(orig_val) = self.gsettings_get(schema, key) {
                 self.gsettings_set(schema, key, "['<Super><Shift><Control><Alt>F12']");
                 std::thread::sleep(std::time::Duration::from_millis(50));
-                
+
                 uinput_handler("Super_L+Shift_L+Control_L+Alt_L+F12");
                 std::thread::sleep(std::time::Duration::from_millis(50));
-                
+
                 self.gsettings_set(schema, key, &orig_val);
                 return;
             }
@@ -469,7 +560,11 @@ impl WaylandContext {
         let cmd = format!("gsettings get {} {}", schema, key);
         let output = self.run_user_cmd_output(&cmd)?;
         let clean = output.trim().to_string();
-        if clean.is_empty() { None } else { Some(clean) }
+        if clean.is_empty() {
+            None
+        } else {
+            Some(clean)
+        }
     }
 
     fn gsettings_set(&self, schema: &str, key: &str, value: &str) {
@@ -483,7 +578,12 @@ impl WaylandContext {
 
     // Runs a command in the user session's DBUS environment
     fn run_user_cmd(&self, cmd: &str) {
-        if let Some(mut child) = self.build_user_command(cmd).stdout(Stdio::null()).stderr(Stdio::null()).spawn().ok() {
+        if let Ok(mut child) = self
+            .build_user_command(cmd)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+        {
             let _ = child.wait();
         }
     }
@@ -504,22 +604,33 @@ impl WaylandContext {
         let current_uid = unsafe { libc::getuid() };
         let mut prefix = String::new();
 
-        let dbus_env = if Path::new(&format!("/run/user/{}/bus", self.uid)).exists() && std::env::var("DBUS_SESSION_BUS_ADDRESS").is_err() {
-            format!("DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/{}/bus ", self.uid)
+        let dbus_env = if Path::new(&format!("/run/user/{}/bus", self.uid)).exists()
+            && std::env::var("DBUS_SESSION_BUS_ADDRESS").is_err()
+        {
+            format!(
+                "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/{}/bus ",
+                self.uid
+            )
         } else {
             String::new()
         };
 
         if current_uid == 0 && !self.username.is_empty() {
             if self.is_sway {
-                prefix = format!("sudo -u {} env {}XDG_RUNTIME_DIR=/run/user/{} SWAYSOCK={} ", 
-                                 self.username, dbus_env, self.uid, self.sway_sock);
+                prefix = format!(
+                    "sudo -u {} env {}XDG_RUNTIME_DIR=/run/user/{} SWAYSOCK={} ",
+                    self.username, dbus_env, self.uid, self.sway_sock
+                );
             } else if self.is_hypr {
-                prefix = format!("sudo -u {} env {}XDG_RUNTIME_DIR=/run/user/{} HYPRLAND_INSTANCE_SIGNATURE={} ", 
-                                 self.username, dbus_env, self.uid, self.hypr_sig);
+                prefix = format!(
+                    "sudo -u {} env {}XDG_RUNTIME_DIR=/run/user/{} HYPRLAND_INSTANCE_SIGNATURE={} ",
+                    self.username, dbus_env, self.uid, self.hypr_sig
+                );
             } else {
-                prefix = format!("sudo -u {} env {}XDG_RUNTIME_DIR=/run/user/{} ", 
-                                 self.username, dbus_env, self.uid);
+                prefix = format!(
+                    "sudo -u {} env {}XDG_RUNTIME_DIR=/run/user/{} ",
+                    self.username, dbus_env, self.uid
+                );
             }
         } else if !dbus_env.is_empty() {
             prefix = dbus_env;

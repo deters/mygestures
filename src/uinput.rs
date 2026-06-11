@@ -4,14 +4,42 @@ use evdev::uinput::VirtualDevice;
 pub fn name_to_keycode(name: &str) -> Option<u16> {
     let lower = name.to_lowercase();
     match lower.as_str() {
-        "a" => Some(30), "b" => Some(48), "c" => Some(46), "d" => Some(32), "e" => Some(18),
-        "f" => Some(33), "g" => Some(34), "h" => Some(35), "i" => Some(23), "j" => Some(36),
-        "k" => Some(37), "l" => Some(38), "m" => Some(50), "n" => Some(49), "o" => Some(24),
-        "p" => Some(25), "q" => Some(16), "r" => Some(19), "s" => Some(31), "t" => Some(20),
-        "u" => Some(22), "v" => Some(47), "w" => Some(17), "x" => Some(45), "y" => Some(21),
+        "a" => Some(30),
+        "b" => Some(48),
+        "c" => Some(46),
+        "d" => Some(32),
+        "e" => Some(18),
+        "f" => Some(33),
+        "g" => Some(34),
+        "h" => Some(35),
+        "i" => Some(23),
+        "j" => Some(36),
+        "k" => Some(37),
+        "l" => Some(38),
+        "m" => Some(50),
+        "n" => Some(49),
+        "o" => Some(24),
+        "p" => Some(25),
+        "q" => Some(16),
+        "r" => Some(19),
+        "s" => Some(31),
+        "t" => Some(20),
+        "u" => Some(22),
+        "v" => Some(47),
+        "w" => Some(17),
+        "x" => Some(45),
+        "y" => Some(21),
         "z" => Some(44),
-        "0" => Some(11), "1" => Some(2), "2" => Some(3), "3" => Some(4), "4" => Some(5),
-        "5" => Some(6), "6" => Some(7), "7" => Some(8), "8" => Some(9), "9" => Some(10),
+        "0" => Some(11),
+        "1" => Some(2),
+        "2" => Some(3),
+        "3" => Some(4),
+        "4" => Some(5),
+        "5" => Some(6),
+        "6" => Some(7),
+        "7" => Some(8),
+        "8" => Some(9),
+        "9" => Some(10),
         "return" | "enter" => Some(28),
         "escape" | "esc" => Some(1),
         "backspace" => Some(14),
@@ -34,9 +62,18 @@ pub fn name_to_keycode(name: &str) -> Option<u16> {
         "alt_r" => Some(100),
         "super_l" | "super" | "win" | "meta" => Some(125),
         "super_r" => Some(126),
-        "f1" => Some(59), "f2" => Some(60), "f3" => Some(61), "f4" => Some(62),
-        "f5" => Some(63), "f6" => Some(64), "f7" => Some(65), "f8" => Some(66),
-        "f9" => Some(67), "f10" => Some(68), "f11" => Some(87), "f12" => Some(88),
+        "f1" => Some(59),
+        "f2" => Some(60),
+        "f3" => Some(61),
+        "f4" => Some(62),
+        "f5" => Some(63),
+        "f6" => Some(64),
+        "f7" => Some(65),
+        "f8" => Some(66),
+        "f9" => Some(67),
+        "f10" => Some(68),
+        "f11" => Some(87),
+        "f12" => Some(88),
         "mute" | "audiomute" | "xf86audiomute" => Some(113),
         "volumedown" | "audiolowervolume" | "xf86audiolowervolume" => Some(114),
         "volumeup" | "audioraisevolume" | "xf86audioraisevolume" => Some(115),
@@ -67,7 +104,7 @@ impl UinputDevice {
         let mut keys = evdev::AttributeSet::<evdev::KeyCode>::new();
         // Enable standard keyboard keys so virtual device can type shortcuts
         for code in 1..255 {
-            if code >= 0x110 && code <= 0x11f {
+            if (0x110..=0x11f).contains(&code) {
                 continue; // Skip mouse button range to preserve source bindings
             }
             keys.insert(evdev::KeyCode(code));
@@ -126,7 +163,7 @@ impl UinputDevice {
 
     pub fn keypress_string(&mut self, keys: &str) {
         let mut codes = Vec::new();
-        for token in keys.split(|c| c == '+' || c == ' ') {
+        for token in keys.split(['+', ' ']) {
             if token.is_empty() {
                 continue;
             }

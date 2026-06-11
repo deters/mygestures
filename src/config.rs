@@ -1,8 +1,8 @@
+use crate::protractor::Point2D;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use serde::{Serialize, Deserialize};
-use crate::protractor::Point2D;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ActionType {
@@ -49,7 +49,7 @@ pub enum ActionType {
 impl ActionType {
     pub fn from_string(s: &str) -> Option<Self> {
         let s = s.trim();
-        let mut parts = s.splitn(2, |c| c == ' ' || c == '\t');
+        let mut parts = s.splitn(2, [' ', '\t']);
         let cmd = parts.next()?.to_lowercase();
         let arg = parts.next().unwrap_or("").trim().to_string();
 
@@ -101,53 +101,55 @@ impl ActionType {
             _ => None,
         }
     }
+}
 
-    pub fn to_string(&self) -> String {
+impl std::fmt::Display for ActionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ActionType::Iconify => "iconify".to_string(),
-            ActionType::Kill => "kill".to_string(),
-            ActionType::Lower => "lower".to_string(),
-            ActionType::Raise => "raise".to_string(),
-            ActionType::Maximize => "maximize".to_string(),
-            ActionType::Restore => "restore".to_string(),
-            ActionType::ToggleMaximized => "toggle-maximized".to_string(),
-            ActionType::Keypress(arg) => format!("keypress {}", arg),
-            ActionType::Execute(arg) => format!("exec {}", arg),
-            ActionType::WorkspaceLeft => "workspace-left".to_string(),
-            ActionType::WorkspaceRight => "workspace-right".to_string(),
-            ActionType::WorkspaceUp => "workspace-up".to_string(),
-            ActionType::WorkspaceDown => "workspace-down".to_string(),
-            ActionType::ShowOverview => "show-overview".to_string(),
-            ActionType::ShowAppGrid => "show-app-grid".to_string(),
+            ActionType::Iconify => write!(f, "iconify"),
+            ActionType::Kill => write!(f, "kill"),
+            ActionType::Lower => write!(f, "lower"),
+            ActionType::Raise => write!(f, "raise"),
+            ActionType::Maximize => write!(f, "maximize"),
+            ActionType::Restore => write!(f, "restore"),
+            ActionType::ToggleMaximized => write!(f, "toggle-maximized"),
+            ActionType::Keypress(arg) => write!(f, "keypress {}", arg),
+            ActionType::Execute(arg) => write!(f, "exec {}", arg),
+            ActionType::WorkspaceLeft => write!(f, "workspace-left"),
+            ActionType::WorkspaceRight => write!(f, "workspace-right"),
+            ActionType::WorkspaceUp => write!(f, "workspace-up"),
+            ActionType::WorkspaceDown => write!(f, "workspace-down"),
+            ActionType::ShowOverview => write!(f, "show-overview"),
+            ActionType::ShowAppGrid => write!(f, "show-app-grid"),
             ActionType::Click(btn) => {
                 if let Some(b) = btn {
-                    format!("click {}", b)
+                    write!(f, "click {}", b)
                 } else {
-                    "click".to_string()
+                    write!(f, "click")
                 }
             }
-            ActionType::ToggleFullscreen => "toggle-fullscreen".to_string(),
-            ActionType::ShowDesktop => "show-desktop".to_string(),
-            ActionType::LockScreen => "lock-screen".to_string(),
-            ActionType::Terminal => "terminal".to_string(),
-            ActionType::VolumeUp => "volume-up".to_string(),
-            ActionType::VolumeDown => "volume-down".to_string(),
-            ActionType::VolumeMute => "volume-mute".to_string(),
-            ActionType::MediaPlay => "media-play".to_string(),
-            ActionType::MediaNext => "media-next".to_string(),
-            ActionType::MediaPrev => "media-prev".to_string(),
-            ActionType::Www => "www".to_string(),
-            ActionType::Home => "home".to_string(),
-            ActionType::Email => "email".to_string(),
-            ActionType::Search => "search".to_string(),
-            ActionType::Calculator => "calculator".to_string(),
-            ActionType::ControlCenter => "control-center".to_string(),
-            ActionType::Logout => "logout".to_string(),
-            ActionType::Screenshot => "screenshot".to_string(),
-            ActionType::ScreenshotWindow => "screenshot-window".to_string(),
-            ActionType::ScreenshotArea => "screenshot-area".to_string(),
-            ActionType::Gnome(arg) => format!("gnome {}", arg),
-            ActionType::Abort => "abort".to_string(),
+            ActionType::ToggleFullscreen => write!(f, "toggle-fullscreen"),
+            ActionType::ShowDesktop => write!(f, "show-desktop"),
+            ActionType::LockScreen => write!(f, "lock-screen"),
+            ActionType::Terminal => write!(f, "terminal"),
+            ActionType::VolumeUp => write!(f, "volume-up"),
+            ActionType::VolumeDown => write!(f, "volume-down"),
+            ActionType::VolumeMute => write!(f, "volume-mute"),
+            ActionType::MediaPlay => write!(f, "media-play"),
+            ActionType::MediaNext => write!(f, "media-next"),
+            ActionType::MediaPrev => write!(f, "media-prev"),
+            ActionType::Www => write!(f, "www"),
+            ActionType::Home => write!(f, "home"),
+            ActionType::Email => write!(f, "email"),
+            ActionType::Search => write!(f, "search"),
+            ActionType::Calculator => write!(f, "calculator"),
+            ActionType::ControlCenter => write!(f, "control-center"),
+            ActionType::Logout => write!(f, "logout"),
+            ActionType::Screenshot => write!(f, "screenshot"),
+            ActionType::ScreenshotWindow => write!(f, "screenshot-window"),
+            ActionType::ScreenshotArea => write!(f, "screenshot-area"),
+            ActionType::Gnome(arg) => write!(f, "gnome {}", arg),
+            ActionType::Abort => write!(f, "abort"),
         }
     }
 }
@@ -162,12 +164,11 @@ pub enum ActionsVecOrString {
 impl ActionsVecOrString {
     pub fn to_actions(&self) -> Vec<ActionType> {
         match self {
-            ActionsVecOrString::Single(s) => {
-                ActionType::from_string(s).into_iter().collect()
-            }
-            ActionsVecOrString::Multiple(v) => {
-                v.iter().filter_map(|s| ActionType::from_string(s)).collect()
-            }
+            ActionsVecOrString::Single(s) => ActionType::from_string(s).into_iter().collect(),
+            ActionsVecOrString::Multiple(v) => v
+                .iter()
+                .filter_map(|s| ActionType::from_string(s))
+                .collect(),
         }
     }
 }
@@ -322,13 +323,19 @@ pub fn initialize_user_config_if_missing() -> std::io::Result<PathBuf> {
             fs::create_dir_all(parent)?;
         }
         fs::write(&user_path, &content)?;
-        println!("Initialized user configuration from template at: {}", user_path.display());
+        println!(
+            "Initialized user configuration from template at: {}",
+            user_path.display()
+        );
     } else {
         if let Some(parent) = user_path.parent() {
             fs::create_dir_all(parent)?;
         }
         fs::write(&user_path, "# MyGestures Configuration\nglobal:\n")?;
-        println!("Initialized empty user configuration at: {}", user_path.display());
+        println!(
+            "Initialized empty user configuration at: {}",
+            user_path.display()
+        );
     }
 
     Ok(user_path)
@@ -376,7 +383,9 @@ impl Configuration {
             for (name, gest_cfg) in global {
                 let actions = gest_cfg.action_expr.to_actions();
                 let is_abort = actions.contains(&ActionType::Abort);
-                let raw_movement = gest_cfg.movement_expr.unwrap_or_else(|| "0,0 0,0".to_string());
+                let raw_movement = gest_cfg
+                    .movement_expr
+                    .unwrap_or_else(|| "0,0 0,0".to_string());
                 let points = parse_points(&raw_movement);
 
                 let matched_pos = if let Some(ref id) = gest_cfg.id {
@@ -442,7 +451,9 @@ impl Configuration {
                 lines.push(format!("  \"{}\":", g.name));
                 lines.push(format!("    move: \"{}\"", g.raw_movement));
                 if !g.actions.is_empty() {
-                    let action_str = g.actions.iter()
+                    let action_str = g
+                        .actions
+                        .iter()
                         .map(|a| a.to_string())
                         .collect::<Vec<_>>()
                         .join(", ");
@@ -478,7 +489,10 @@ pub fn generate_unique_id() -> String {
         }
     }
     use std::time::{SystemTime, UNIX_EPOCH};
-    let start = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos();
+    let start = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
     format!("{:x}", start)
 }
 
