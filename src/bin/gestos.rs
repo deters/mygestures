@@ -1,11 +1,11 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::process::Command;
-use gtk4 as gtk;
 use gtk::prelude::*;
-use gtk::{cairo, glib, gdk, gio};
-use mygestures::config::{Configuration, Gesture, ActionType, generate_unique_id};
-use mygestures::protractor::{Point2D, match_gesture};
+use gtk::{cairo, gdk, gio, glib};
+use gtk4 as gtk;
+use mygestures::config::{generate_unique_id, ActionType, Configuration, Gesture};
+use mygestures::protractor::{match_gesture, Point2D};
+use std::cell::RefCell;
+use std::process::Command;
+use std::rc::Rc;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -54,7 +54,6 @@ fn get_static_action_options() -> Vec<EditorActionOption> {
             name: "Keypress Shortcut".to_string(),
             tooltip: "Simulate keys like Control_L+Alt_L+t".to_string(),
         },
-        
         // Window Management (1)
         EditorActionOption {
             category: 1,
@@ -110,7 +109,6 @@ fn get_static_action_options() -> Vec<EditorActionOption> {
             name: "Show Desktop".to_string(),
             tooltip: "Minimize all windows or toggle show desktop".to_string(),
         },
-
         // Workspaces & Overview (2)
         EditorActionOption {
             category: 2,
@@ -148,7 +146,6 @@ fn get_static_action_options() -> Vec<EditorActionOption> {
             name: "Show App Grid".to_string(),
             tooltip: "Toggle applications menu/grid".to_string(),
         },
-
         // Media & Audio (3)
         EditorActionOption {
             category: 3,
@@ -186,7 +183,6 @@ fn get_static_action_options() -> Vec<EditorActionOption> {
             name: "Previous Track".to_string(),
             tooltip: "Skip to previous track".to_string(),
         },
-
         // System & Settings (4)
         EditorActionOption {
             category: 4,
@@ -230,7 +226,6 @@ fn get_static_action_options() -> Vec<EditorActionOption> {
             name: "Screenshot Area".to_string(),
             tooltip: "Take screenshot of selection area".to_string(),
         },
-
         // Applications (5)
         EditorActionOption {
             category: 5,
@@ -262,7 +257,6 @@ fn get_static_action_options() -> Vec<EditorActionOption> {
             name: "Calculator".to_string(),
             tooltip: "Open calculator application".to_string(),
         },
-
         // Other/Internal (7)
         EditorActionOption {
             category: 7,
@@ -300,7 +294,10 @@ fn fetch_gnome_action_options() -> Vec<EditorActionOption> {
         let schema = match source.lookup(schema_id, true) {
             Some(s) => s,
             None => {
-                eprintln!("Info: GSettings schema '{}' not found, skipping.", schema_id);
+                eprintln!(
+                    "Info: GSettings schema '{}' not found, skipping.",
+                    schema_id
+                );
                 continue;
             }
         };
@@ -311,7 +308,10 @@ fn fetch_gnome_action_options() -> Vec<EditorActionOption> {
             let skey = schema.key(&key);
             let mut summary = skey.summary().map(|s| s.to_string()).unwrap_or_default();
             if summary.is_empty() {
-                summary = skey.description().map(|s| s.to_string()).unwrap_or_default();
+                summary = skey
+                    .description()
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
             }
             if summary.is_empty() {
                 summary = key.to_string();
@@ -342,28 +342,34 @@ fn fetch_gnome_action_options() -> Vec<EditorActionOption> {
         }
 
         // Handle custom keybindings
-        if schema_id == "org.gnome.settings-daemon.plugins.media-keys" {
-            if schema.has_key("custom-keybindings") {
-                let paths: Vec<String> = settings.get("custom-keybindings");
-                for path in paths {
-                    let custom = gio::Settings::with_path("org.gnome.settings-daemon.plugins.media-keys.custom-keybinding", &path);
-                    let c_name: String = custom.get("name");
-                    let c_cmd: String = custom.get("command");
+        if schema_id == "org.gnome.settings-daemon.plugins.media-keys"
+            && schema.has_key("custom-keybindings")
+        {
+            let paths: Vec<String> = settings.get("custom-keybindings");
+            for path in paths {
+                let custom = gio::Settings::with_path(
+                    "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding",
+                    &path,
+                );
+                let c_name: String = custom.get("name");
+                let c_cmd: String = custom.get("command");
 
-                    if !c_name.is_empty() {
-                        options.push(EditorActionOption {
-                            category: 6, // CAT_GNOME
-                            action_type: ActionType::Execute(c_cmd.clone()),
-                            name: c_name,
-                            tooltip: format!("Custom GNOME shortcut: {}", c_cmd),
-                        });
-                    }
+                if !c_name.is_empty() {
+                    options.push(EditorActionOption {
+                        category: 6, // CAT_GNOME
+                        action_type: ActionType::Execute(c_cmd.clone()),
+                        name: c_name,
+                        tooltip: format!("Custom GNOME shortcut: {}", c_cmd),
+                    });
                 }
             }
         }
     }
 
-    println!("Fetched {} GNOME action options from GSettings.", options.len());
+    println!(
+        "Fetched {} GNOME action options from GSettings.",
+        options.len()
+    );
     options
 }
 
@@ -380,7 +386,7 @@ struct AppState {
 
 fn is_daemon_running(conn: Option<&zbus::blocking::Connection>) -> bool {
     let dbus_name = mygestures::config::get_dbus_name();
-    
+
     let check_status = |c: &zbus::blocking::Connection| -> Option<bool> {
         let dbus_proxy = zbus::blocking::fdo::DBusProxy::new(c).ok()?;
         let bus_name = zbus::names::BusName::try_from(dbus_name.clone()).ok()?;
@@ -392,7 +398,7 @@ fn is_daemon_running(conn: Option<&zbus::blocking::Connection>) -> bool {
             return running;
         }
     }
-    
+
     if let Ok(new_conn) = zbus::blocking::Connection::session() {
         if let Some(running) = check_status(&new_conn) {
             return running;
@@ -444,7 +450,7 @@ fn show_error_dialog<W: IsA<gtk::Window>>(parent: &W, message: &str) {
     button_box.set_halign(gtk::Align::End);
     let ok_button = gtk::Button::with_label("OK");
     ok_button.set_width_request(80);
-    
+
     let dialog_clone = dialog.clone();
     ok_button.connect_clicked(move |_| {
         dialog_clone.destroy();
@@ -467,16 +473,16 @@ fn start_daemon(conn: Option<&zbus::blocking::Connection>) -> Result<(), String>
     } else {
         "mygestures"
     };
-    
+
     // Spawn the daemon process and pipe stderr
     let mut child = Command::new(cmd)
         .stderr(std::process::Stdio::piped())
         .spawn()
         .map_err(|e| format!("Failed to spawn daemon: {}", e))?;
-        
+
     // Wait a short duration to see if the process exits immediately
     std::thread::sleep(std::time::Duration::from_millis(300));
-    
+
     match child.try_wait() {
         Ok(Some(status)) => {
             // Process has exited, read stderr
@@ -502,9 +508,7 @@ fn start_daemon(conn: Option<&zbus::blocking::Connection>) -> Result<(), String>
             }
             Ok(())
         }
-        Err(e) => {
-            Err(format!("Failed to query daemon status: {}", e))
-        }
+        Err(e) => Err(format!("Failed to query daemon status: {}", e)),
     }
 }
 
@@ -512,10 +516,20 @@ fn stop_daemon(conn: Option<&zbus::blocking::Connection>) {
     let dbus_name = mygestures::config::get_dbus_name();
     let stop_via_dbus = || -> zbus::Result<()> {
         let proxy = if let Some(c) = conn {
-            zbus::blocking::Proxy::new(c, dbus_name.clone(), "/org/mygestures/Daemon", "org.mygestures.Daemon")
+            zbus::blocking::Proxy::new(
+                c,
+                dbus_name.clone(),
+                "/org/mygestures/Daemon",
+                "org.mygestures.Daemon",
+            )
         } else {
             let new_conn = zbus::blocking::Connection::session()?;
-            zbus::blocking::Proxy::new(&new_conn, dbus_name.clone(), "/org/mygestures/Daemon", "org.mygestures.Daemon")
+            zbus::blocking::Proxy::new(
+                &new_conn,
+                dbus_name.clone(),
+                "/org/mygestures/Daemon",
+                "org.mygestures.Daemon",
+            )
         }?;
         let _: () = proxy.call("Stop", &())?;
         Ok(())
@@ -545,26 +559,37 @@ fn stop_daemon(conn: Option<&zbus::blocking::Connection>) {
     }
 }
 
-fn reload_daemon<W: IsA<gtk::Window>>(conn: Option<&zbus::blocking::Connection>, parent: Option<&W>) {
+fn reload_daemon<W: IsA<gtk::Window>>(
+    conn: Option<&zbus::blocking::Connection>,
+    parent: Option<&W>,
+) {
     let dbus_name = mygestures::config::get_dbus_name();
     let reload_via_dbus = || -> zbus::Result<()> {
         let proxy = if let Some(c) = conn {
-            zbus::blocking::Proxy::new(c, dbus_name.clone(), "/org/mygestures/Daemon", "org.mygestures.Daemon")
+            zbus::blocking::Proxy::new(
+                c,
+                dbus_name.clone(),
+                "/org/mygestures/Daemon",
+                "org.mygestures.Daemon",
+            )
         } else {
             let new_conn = zbus::blocking::Connection::session()?;
-            zbus::blocking::Proxy::new(&new_conn, dbus_name.clone(), "/org/mygestures/Daemon", "org.mygestures.Daemon")
+            zbus::blocking::Proxy::new(
+                &new_conn,
+                dbus_name.clone(),
+                "/org/mygestures/Daemon",
+                "org.mygestures.Daemon",
+            )
         }?;
         let _: () = proxy.call("Reload", &())?;
         Ok(())
     };
 
-    if let Err(e) = reload_via_dbus() {
-        if let zbus::Error::FDO(ref fdo_err) = e {
-            if let Some(p) = parent {
-                show_error_dialog(p, &fdo_err.to_string());
-            } else {
-                eprintln!("mygestures reload error: {}", fdo_err);
-            }
+    if let Err(zbus::Error::FDO(ref fdo_err)) = reload_via_dbus() {
+        if let Some(p) = parent {
+            show_error_dialog(p, &fdo_err.to_string());
+        } else {
+            eprintln!("mygestures reload error: {}", fdo_err);
         }
     }
 }
@@ -602,18 +627,33 @@ fn set_autostart_enabled(enabled: bool) {
 fn get_action_category_icon(action: &ActionType) -> (&'static str, &'static str) {
     match action {
         ActionType::Execute(_) => ("utilities-terminal-symbolic", "icon-bg-purple"),
-        ActionType::Keypress(_) => ("preferences-desktop-keyboard-shortcuts-symbolic", "icon-bg-orange"),
+        ActionType::Keypress(_) => (
+            "preferences-desktop-keyboard-shortcuts-symbolic",
+            "icon-bg-orange",
+        ),
         ActionType::Gnome(_) => ("preferences-system-symbolic", "icon-bg-blue"),
-        ActionType::WorkspaceLeft | ActionType::WorkspaceRight | ActionType::WorkspaceUp | ActionType::WorkspaceDown => {
-            ("go-next-symbolic", "icon-bg-blue")
+        ActionType::WorkspaceLeft
+        | ActionType::WorkspaceRight
+        | ActionType::WorkspaceUp
+        | ActionType::WorkspaceDown => ("go-next-symbolic", "icon-bg-blue"),
+        ActionType::VolumeUp | ActionType::VolumeDown | ActionType::VolumeMute => {
+            ("audio-volume-high-symbolic", "icon-bg-green")
         }
-        ActionType::VolumeUp | ActionType::VolumeDown | ActionType::VolumeMute => ("audio-volume-high-symbolic", "icon-bg-green"),
-        ActionType::MediaPlay | ActionType::MediaNext | ActionType::MediaPrev => ("media-playback-start-symbolic", "icon-bg-green"),
+        ActionType::MediaPlay | ActionType::MediaNext | ActionType::MediaPrev => {
+            ("media-playback-start-symbolic", "icon-bg-green")
+        }
         _ => ("system-run-symbolic", "icon-bg-blue"),
     }
 }
 
-fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height: f64, _draw_bg: bool, fit_to_canvas: bool) {
+fn draw_gesture_path(
+    cr: &cairo::Context,
+    points: &[Point2D],
+    width: f64,
+    height: f64,
+    _draw_bg: bool,
+    fit_to_canvas: bool,
+) {
     // Background is transparent to naturally display the theme-dependent container background (e.g. @view_bg_color)
 
     if points.len() < 2 {
@@ -627,10 +667,18 @@ fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height
     let mut max_y = points[0].y;
 
     for p in points {
-        if p.x < min_x { min_x = p.x; }
-        if p.x > max_x { max_x = p.x; }
-        if p.y < min_y { min_y = p.y; }
-        if p.y > max_y { max_y = p.y; }
+        if p.x < min_x {
+            min_x = p.x;
+        }
+        if p.x > max_x {
+            max_x = p.x;
+        }
+        if p.y < min_y {
+            min_y = p.y;
+        }
+        if p.y > max_y {
+            max_y = p.y;
+        }
     }
 
     let w = max_x - min_x;
@@ -638,7 +686,11 @@ fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height
     let max_dim = w.max(h);
     let scale = if fit_to_canvas {
         let size = width.min(height);
-        if max_dim > 1.0 { (size * 0.62) / max_dim } else { 1.0 }
+        if max_dim > 1.0 {
+            (size * 0.62) / max_dim
+        } else {
+            1.0
+        }
     } else {
         1.0
     };
@@ -673,17 +725,17 @@ fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height
     if points.len() >= 2 {
         let end = points.last().unwrap();
         let prev = &points[points.len() - 2];
-        
+
         let dy = end.y - prev.y;
         let dx = end.x - prev.x;
-        
+
         let len = (dx * dx + dy * dy).sqrt();
         if len > 0.001 {
             let angle = dy.atan2(dx);
-            
+
             // Arrowhead size relative to scale
             let arrow_length = 12.0 / scale;
-            
+
             // Calculate base corners perpendicular to the end of the line
             let half_width = 5.0 / scale;
             let perp_angle = angle + std::f64::consts::FRAC_PI_2;
@@ -691,11 +743,11 @@ fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height
             let y1 = end.y + half_width * perp_angle.sin();
             let x2 = end.x - half_width * perp_angle.cos();
             let y2 = end.y - half_width * perp_angle.sin();
-            
+
             // Calculate the tip pointing forward from the end of the line
             let tip_x = end.x + arrow_length * angle.cos();
             let tip_y = end.y + arrow_length * angle.sin();
-            
+
             cr.set_source_rgba(0.49, 0.27, 0.90, 1.0);
             cr.move_to(tip_x, tip_y);
             cr.line_to(x1, y1);
@@ -716,7 +768,7 @@ fn draw_gesture_path(cr: &cairo::Context, points: &[Point2D], width: f64, height
 fn create_gesture_row(gesture: &Gesture) -> gtk::ListBoxRow {
     let row = gtk::ListBoxRow::new();
     row.add_css_class("gesture-row");
-    
+
     let main_hbox = gtk::Box::new(gtk::Orientation::Horizontal, 16);
     main_hbox.set_margin_start(16);
     main_hbox.set_margin_end(16);
@@ -729,7 +781,7 @@ fn create_gesture_row(gesture: &Gesture) -> gtk::ListBoxRow {
     } else {
         ("system-run-symbolic", "icon-bg-blue")
     };
-    
+
     let icon_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     icon_box.add_css_class("icon-holder");
     icon_box.add_css_class(bg_class);
@@ -758,7 +810,7 @@ fn create_gesture_row(gesture: &Gesture) -> gtk::ListBoxRow {
     action_label.set_halign(gtk::Align::Start);
     action_label.add_css_class("action-label");
     vbox.append(&action_label);
-    
+
     main_hbox.append(&vbox);
 
     // 3. Mini Cairo preview canvas
@@ -766,7 +818,7 @@ fn create_gesture_row(gesture: &Gesture) -> gtk::ListBoxRow {
     preview_frame.add_css_class("gesture-preview-frame");
     preview_frame.set_size_request(60, 60);
     preview_frame.set_valign(gtk::Align::Center);
-    
+
     let preview_canvas = gtk::DrawingArea::new();
     let pts_clone = gesture.points.clone();
     preview_canvas.set_draw_func(move |_, cr, width, height| {
@@ -781,17 +833,20 @@ fn create_gesture_row(gesture: &Gesture) -> gtk::ListBoxRow {
 fn get_visible_gestures(state: &AppState) -> Vec<Gesture> {
     let filter = state.search_entry.text().to_lowercase();
     let newly_added = &state.newly_added_gestures;
-    
-    let mut gestures: Vec<Gesture> = state.config.gestures.iter()
+
+    let mut gestures: Vec<Gesture> = state
+        .config
+        .gestures
+        .iter()
         .filter(|g| !g.is_deleted)
         .filter(|g| filter.is_empty() || g.name.to_lowercase().contains(&filter))
         .cloned()
         .collect();
-        
+
     gestures.sort_by(|a, b| {
         let a_new_idx = newly_added.iter().position(|name| name == &a.name);
         let b_new_idx = newly_added.iter().position(|name| name == &b.name);
-        
+
         match (a_new_idx, b_new_idx) {
             (Some(a_idx), Some(b_idx)) => b_idx.cmp(&a_idx), // most recently added first
             (Some(_), None) => std::cmp::Ordering::Less,
@@ -799,13 +854,13 @@ fn get_visible_gestures(state: &AppState) -> Vec<Gesture> {
             (None, None) => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
         }
     });
-    
+
     gestures
 }
 
 fn refresh_gesture_list(state_rc: &Rc<RefCell<AppState>>, select_name: Option<&str>) {
     let state = state_rc.borrow();
-    
+
     // Clear list
     while let Some(child) = state.main_list.first_child() {
         state.main_list.remove(&child);
@@ -816,7 +871,7 @@ fn refresh_gesture_list(state_rc: &Rc<RefCell<AppState>>, select_name: Option<&s
     for gesture in &visible {
         let row = create_gesture_row(gesture);
         state.main_list.append(&row);
-        
+
         if let Some(name) = select_name {
             if gesture.name == name {
                 state.main_list.select_row(Some(&row));
@@ -853,10 +908,10 @@ fn get_default_gesture_name(opt: &EditorActionOption, detail: &str) -> String {
 }
 
 fn open_shortcut_recorder(
-    parent: &gtk::Window, 
-    gesture_name: &str, 
-    entry: &gtk::Entry, 
-    udn: Rc<dyn Fn() + 'static>
+    parent: &gtk::Window,
+    gesture_name: &str,
+    entry: &gtk::Entry,
+    udn: Rc<dyn Fn() + 'static>,
 ) {
     let dialog = gtk::Window::new();
     dialog.set_transient_for(Some(parent));
@@ -905,7 +960,10 @@ fn open_shortcut_recorder(
 
     let prompt_label = gtk::Label::new(None);
     let escaped_name = glib::markup_escape_text(gesture_name);
-    prompt_label.set_markup(&format!("Enter new shortcut to change <b>{}</b>", escaped_name));
+    prompt_label.set_markup(&format!(
+        "Enter new shortcut to change <b>{}</b>",
+        escaped_name
+    ));
     prompt_label.set_wrap(true);
     prompt_label.set_justify(gtk::Justification::Center);
     vbox.append(&prompt_label);
@@ -927,7 +985,9 @@ fn open_shortcut_recorder(
     shortcut_display_box.set_visible(false);
     vbox.append(&shortcut_display_box);
 
-    let hint_label = gtk::Label::new(Some("Press Esc to cancel or Backspace to reset the shortcut"));
+    let hint_label = gtk::Label::new(Some(
+        "Press Esc to cancel or Backspace to reset the shortcut",
+    ));
     hint_label.add_css_class("action-label");
     hint_label.set_justify(gtk::Justification::Center);
     vbox.append(&hint_label);
@@ -998,14 +1058,19 @@ fn open_shortcut_recorder(
             display_mods.push("Super");
         }
 
-        let is_modifier = match keyval {
-            gdk::Key::Control_L | gdk::Key::Control_R |
-            gdk::Key::Alt_L | gdk::Key::Alt_R |
-            gdk::Key::Shift_L | gdk::Key::Shift_R |
-            gdk::Key::Super_L | gdk::Key::Super_R |
-            gdk::Key::Meta_L | gdk::Key::Meta_R => true,
-            _ => false,
-        };
+        let is_modifier = matches!(
+            keyval,
+            gdk::Key::Control_L
+                | gdk::Key::Control_R
+                | gdk::Key::Alt_L
+                | gdk::Key::Alt_R
+                | gdk::Key::Shift_L
+                | gdk::Key::Shift_R
+                | gdk::Key::Super_L
+                | gdk::Key::Super_R
+                | gdk::Key::Meta_L
+                | gdk::Key::Meta_R
+        );
 
         if is_modifier {
             return glib::Propagation::Stop;
@@ -1073,12 +1138,20 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let dialog = gtk::Window::new();
     dialog.set_transient_for(Some(&state.window));
     dialog.set_modal(true);
-    dialog.set_title(Some(if target_gesture.is_some() { "Edit Gesture" } else { "Add Gesture" }));
+    dialog.set_title(Some(if target_gesture.is_some() {
+        "Edit Gesture"
+    } else {
+        "Add Gesture"
+    }));
     dialog.set_default_size(480, 620);
 
     let dialog_header = gtk::HeaderBar::new();
     dialog_header.set_show_title_buttons(false);
-    let dialog_title = gtk::Label::new(Some(if target_gesture.is_some() { "Edit Gesture" } else { "Add Gesture" }));
+    let dialog_title = gtk::Label::new(Some(if target_gesture.is_some() {
+        "Edit Gesture"
+    } else {
+        "Add Gesture"
+    }));
     dialog_title.add_css_class("title");
     dialog_header.set_title_widget(Some(&dialog_title));
     dialog.set_titlebar(Some(&dialog_header));
@@ -1117,11 +1190,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         if *prog_clone.borrow() {
             return;
         }
-        if entry.text().trim().is_empty() {
-            *cust_clone.borrow_mut() = false;
-        } else {
-            *cust_clone.borrow_mut() = true;
-        }
+        *cust_clone.borrow_mut() = !entry.text().trim().is_empty();
     });
 
     // --- GESTURE PATH SECTION ---
@@ -1137,7 +1206,10 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
 
     let canvas = gtk::DrawingArea::new();
     let recorded_points: Rc<RefCell<Vec<Point2D>>> = Rc::new(RefCell::new(
-        target_gesture.as_ref().map(|g| g.points.clone()).unwrap_or_default()
+        target_gesture
+            .as_ref()
+            .map(|g| g.points.clone())
+            .unwrap_or_default(),
     ));
     let is_recording = Rc::new(RefCell::new(false));
 
@@ -1176,8 +1248,14 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         *rec_drag.borrow_mut() = true;
         let mut pts = pts_drag.borrow_mut();
         pts.clear();
-        pts.push(Point2D { x: start_x, y: start_y });
-        println!("GUI: Gesture drawing started at ({:.1}, {:.1})", start_x, start_y);
+        pts.push(Point2D {
+            x: start_x,
+            y: start_y,
+        });
+        println!(
+            "GUI: Gesture drawing started at ({:.1}, {:.1})",
+            start_x, start_y
+        );
         canvas_clone.queue_draw();
         conflict_box_begin.set_visible(false);
     });
@@ -1193,7 +1271,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             let cx = start_x + offset_x;
             let cy = start_y + offset_y;
             let mut pts = pts_drag2.borrow_mut();
-            
+
             // Filter jitter
             let add = match pts.last() {
                 Some(lp) => {
@@ -1225,7 +1303,10 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         let pts = pts_drag_end.borrow();
         if pts.len() >= 2 {
             let state = state_clone_drag.borrow();
-            let templates: Vec<(String, Vec<Point2D>)> = state.config.gestures.iter()
+            let templates: Vec<(String, Vec<Point2D>)> = state
+                .config
+                .gestures
+                .iter()
                 .filter(|g| !g.is_deleted)
                 .filter(|g| {
                     if let Some(ref name) = edited_gesture_name {
@@ -1236,7 +1317,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 })
                 .map(|g| (g.name.clone(), g.points.clone()))
                 .collect();
-            
+
             if let Some(matched_name) = match_gesture(&pts[..], &templates) {
                 conflict_label_end.set_text(&format!(
                     "Warning: This path is very similar to the existing gesture '{}'.",
@@ -1341,27 +1422,27 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
 
     let entry_container = gtk::Box::new(gtk::Orientation::Horizontal, 6);
     entry_container.set_halign(gtk::Align::End);
- 
+
     let action_details_entry = gtk::Entry::new();
     action_details_entry.set_size_request(160, -1);
     entry_container.append(&action_details_entry);
- 
+
     // Add shortcut display box for keycaps representation
     let shortcut_display_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
     shortcut_display_box.set_halign(gtk::Align::End);
     shortcut_display_box.set_valign(gtk::Align::Center);
     shortcut_display_box.set_visible(false);
     entry_container.append(&shortcut_display_box);
- 
+
     let record_btn = gtk::Button::from_icon_name("media-record-symbolic");
     record_btn.set_tooltip_text(Some("Record Keybinding"));
     entry_container.append(&record_btn);
- 
+
     action_details_row.append(&entry_container);
     settings_list.append(&action_details_row);
- 
+
     let current_options: Rc<RefCell<Vec<EditorActionOption>>> = Rc::new(RefCell::new(Vec::new()));
- 
+
     // Helper to dynamically update the gesture name if not customized
     let update_default_name = Rc::new({
         let name_entry = name_entry.clone();
@@ -1370,7 +1451,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         let current_options = Rc::clone(&current_options);
         let is_name_customized = Rc::clone(&is_name_customized);
         let is_updating_programmatically = Rc::clone(&is_updating_programmatically);
- 
+
         move || {
             if *is_name_customized.borrow() {
                 return;
@@ -1385,30 +1466,34 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 let opt = &opts[act_idx];
                 let detail = action_details_entry.text().to_string();
                 let default_name = get_default_gesture_name(opt, &detail);
-                
+
                 *is_updating_programmatically.borrow_mut() = true;
                 name_entry.set_text(&default_name);
                 *is_updating_programmatically.borrow_mut() = false;
             }
         }
     });
- 
+
     // Setup record button to open the "Set Shortcut" modal dialog
     let entry_click = action_details_entry.clone();
     let dialog_parent = dialog.clone();
     let name_entry_click = name_entry.clone();
     let udn_click = Rc::clone(&update_default_name);
- 
+
     record_btn.connect_clicked(move |_| {
         let gesture_name = name_entry_click.text().to_string();
         open_shortcut_recorder(
-            &dialog_parent, 
-            if gesture_name.trim().is_empty() { "Gesture" } else { &gesture_name }, 
-            &entry_click, 
-            Rc::clone(&udn_click) as Rc<dyn Fn()>
+            &dialog_parent,
+            if gesture_name.trim().is_empty() {
+                "Gesture"
+            } else {
+                &gesture_name
+            },
+            &entry_click,
+            Rc::clone(&udn_click) as Rc<dyn Fn()>,
         );
     });
- 
+
     // Helper to update shortcut display box with keycaps
     let update_shortcut_display = {
         let entry = action_details_entry.clone();
@@ -1418,7 +1503,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             while let Some(child) = display_box.first_child() {
                 display_box.remove(&child);
             }
- 
+
             let text = entry.text().to_string();
             if text.trim().is_empty() {
                 let label = gtk::Label::new(Some("None"));
@@ -1439,32 +1524,33 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             }
         })
     };
- 
+
     // Build options list
     let mut all_options = get_static_action_options();
     all_options.extend(fetch_gnome_action_options());
- 
+
     // Find initial matching option
     let mut selected_cat = 0;
     let mut selected_act = 0;
- 
+
     if let Some(ref g) = target_gesture {
         if !g.actions.is_empty() {
             let a = &g.actions[0];
             if let Some(found_opt) = all_options.iter().find(|opt| action_matches(a, opt)) {
                 selected_cat = found_opt.category;
- 
+
                 // Get the filtered options for this category
-                let filtered: Vec<EditorActionOption> = all_options.iter()
+                let filtered: Vec<EditorActionOption> = all_options
+                    .iter()
                     .filter(|opt| opt.category == selected_cat)
                     .cloned()
                     .collect();
- 
+
                 // Find index of option within the filtered list
                 if let Some(act_idx) = filtered.iter().position(|opt| action_matches(a, opt)) {
                     selected_act = act_idx;
                 }
- 
+
                 // If the action contains input text details, populate it
                 match a {
                     ActionType::Keypress(combo) => {
@@ -1484,23 +1570,27 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             }
         }
     }
- 
+
     // Filter options for initial category and set model/selections
-    let initial_filtered: Vec<EditorActionOption> = all_options.iter()
+    let initial_filtered: Vec<EditorActionOption> = all_options
+        .iter()
         .filter(|opt| opt.category == selected_cat)
         .cloned()
         .collect();
- 
-    let action_names: Vec<String> = initial_filtered.iter().map(|opt| opt.name.clone()).collect();
+
+    let action_names: Vec<String> = initial_filtered
+        .iter()
+        .map(|opt| opt.name.clone())
+        .collect();
     let action_refs: Vec<&str> = action_names.iter().map(|s| s.as_str()).collect();
     let action_model = gtk::StringList::new(&action_refs);
     action_dropdown.set_model(Some(&action_model));
- 
+
     *current_options.borrow_mut() = initial_filtered.clone();
- 
+
     category_dropdown.set_selected(selected_cat as u32);
     action_dropdown.set_selected(selected_act as u32);
- 
+
     // Initialize details entry visibility, label, placeholder, and record button
     if selected_act < initial_filtered.len() {
         let opt = &initial_filtered[selected_act];
@@ -1511,12 +1601,12 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             _ => false,
         };
         action_details_row.set_visible(show_entry);
-        
+
         let is_keypress = matches!(&opt.action_type, ActionType::Keypress(_));
         action_details_entry.set_visible(!is_keypress);
         shortcut_display_box.set_visible(is_keypress);
         record_btn.set_visible(is_keypress);
- 
+
         match &opt.action_type {
             ActionType::Keypress(_) => {
                 action_details_label.set_text("Keys to Send");
@@ -1527,27 +1617,28 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             }
             ActionType::Click(_) => {
                 action_details_label.set_text("Mouse Button");
-                action_details_entry.set_placeholder_text(Some("e.g. 1 (Left), 2 (Middle), 3 (Right)"));
+                action_details_entry
+                    .set_placeholder_text(Some("e.g. 1 (Left), 2 (Middle), 3 (Right)"));
             }
             _ => {}
         }
     }
- 
+
     let usd_init = Rc::clone(&update_shortcut_display);
     usd_init(); // Set initial keycaps if keys exist
- 
+
     let udn_clone = Rc::clone(&update_default_name);
     if target_gesture.is_none() {
         udn_clone();
     }
- 
+
     let udn_clone4 = Rc::clone(&update_default_name);
     let usd_clone_change = Rc::clone(&update_shortcut_display);
     action_details_entry.connect_changed(move |_| {
         udn_clone4();
         usd_clone_change();
     });
- 
+
     // Connect category changed signal
     let all_options_clone = all_options.clone();
     let current_opts_clone = Rc::clone(&current_options);
@@ -1558,26 +1649,27 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let record_btn_clone_cat = record_btn.clone();
     let udn_clone3 = Rc::clone(&update_default_name);
     let sdb_clone_cat = shortcut_display_box.clone();
- 
+
     category_dropdown.connect_selected_notify(move |cat_dd| {
         let cat_idx = cat_dd.selected();
         if cat_idx == gtk::INVALID_LIST_POSITION {
             return;
         }
         let cat_idx = cat_idx as usize;
-        let filtered: Vec<EditorActionOption> = all_options_clone.iter()
+        let filtered: Vec<EditorActionOption> = all_options_clone
+            .iter()
             .filter(|opt| opt.category == cat_idx)
             .cloned()
             .collect();
- 
+
         let action_names: Vec<String> = filtered.iter().map(|opt| opt.name.clone()).collect();
         let action_refs: Vec<&str> = action_names.iter().map(|s| s.as_str()).collect();
         let action_model = gtk::StringList::new(&action_refs);
         action_dropdown_clone.set_model(Some(&action_model));
- 
+
         *current_opts_clone.borrow_mut() = filtered.clone();
         action_dropdown_clone.set_selected(0);
- 
+
         // Manually update details entry visibility/placeholder/label/record_btn for index 0
         if !filtered.is_empty() {
             let opt = &filtered[0];
@@ -1588,12 +1680,12 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 _ => false,
             };
             row_clone.set_visible(show_entry);
-            
+
             let is_keypress = matches!(&opt.action_type, ActionType::Keypress(_));
             entry_clone.set_visible(!is_keypress);
             sdb_clone_cat.set_visible(is_keypress);
             record_btn_clone_cat.set_visible(is_keypress);
- 
+
             match &opt.action_type {
                 ActionType::Keypress(_) => {
                     label_clone.set_text("Keys to Send");
@@ -1609,10 +1701,10 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 _ => {}
             }
         }
- 
+
         udn_clone3();
     });
- 
+
     // Connect action changed signal
     let current_opts_clone2 = Rc::clone(&current_options);
     let entry_clone2 = action_details_entry.clone();
@@ -1621,14 +1713,14 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let record_btn_clone_act = record_btn.clone();
     let udn_clone2 = Rc::clone(&update_default_name);
     let sdb_clone_act = shortcut_display_box.clone();
- 
+
     action_dropdown.connect_selected_notify(move |act_dd| {
         let act_idx = act_dd.selected();
         if act_idx == gtk::INVALID_LIST_POSITION {
             return;
         }
         let act_idx = act_idx as usize;
- 
+
         let opts = current_opts_clone2.borrow();
         if act_idx < opts.len() {
             let opt = &opts[act_idx];
@@ -1639,12 +1731,12 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 _ => false,
             };
             row_clone2.set_visible(show_entry);
- 
+
             let is_keypress = matches!(&opt.action_type, ActionType::Keypress(_));
             entry_clone2.set_visible(!is_keypress);
             sdb_clone_act.set_visible(is_keypress);
             record_btn_clone_act.set_visible(is_keypress);
- 
+
             match &opt.action_type {
                 ActionType::Keypress(_) => {
                     label_clone2.set_text("Keys to Send");
@@ -1660,7 +1752,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 _ => {}
             }
         }
- 
+
         udn_clone2();
     });
 
@@ -1674,12 +1766,12 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
 
     let save_btn = gtk::Button::with_label("Save");
     save_btn.add_css_class("suggested-action");
-    
+
     let state_clone = Rc::clone(state_rc);
     let is_edit = target_gesture.is_some();
     let target_id = target_gesture.as_ref().map(|g| g.id.clone());
     let dialog_clone2 = dialog.clone();
-    
+
     let current_opts_save = Rc::clone(&current_options);
     save_btn.connect_clicked(move |_| {
         let name = name_entry.text().to_string();
@@ -1695,7 +1787,8 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         }
 
         // Convert recorded points back to string coords representation
-        let raw_movement = pts.iter()
+        let raw_movement = pts
+            .iter()
             .map(|p| format!("{},{}", p.x as i32, p.y as i32))
             .collect::<Vec<_>>()
             .join(" ");
@@ -1732,11 +1825,19 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         let mut state = state_clone.borrow_mut();
         if is_edit {
             let lookup_id = target_id.as_ref().unwrap();
-            if let Some(pos) = state.config.gestures.iter().position(|g| g.id == *lookup_id) {
+            if let Some(pos) = state
+                .config
+                .gestures
+                .iter()
+                .position(|g| g.id == *lookup_id)
+            {
                 let lookup_name = state.config.gestures[pos].name.clone();
                 if name != lookup_name {
                     if state.config.gestures.iter().any(|g| g.name == name) {
-                        println!("Gesture save failed: A gesture with the name '{}' already exists.", name);
+                        println!(
+                            "Gesture save failed: A gesture with the name '{}' already exists.",
+                            name
+                        );
                         return;
                     }
                     state.config.gestures[pos].name = name.clone();
@@ -1751,12 +1852,18 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                     println!("Gesture modified successfully: {}", name);
                 }
             } else {
-                println!("Gesture modification failed: Could not find gesture with ID '{}'", lookup_id);
+                println!(
+                    "Gesture modification failed: Could not find gesture with ID '{}'",
+                    lookup_id
+                );
             }
         } else {
             // Check if name conflict
             if state.config.gestures.iter().any(|g| g.name == name) {
-                println!("Gesture save failed: A gesture with the name '{}' already exists.", name);
+                println!(
+                    "Gesture save failed: A gesture with the name '{}' already exists.",
+                    name
+                );
                 return;
             }
             println!("Gesture added successfully: {}", name);
@@ -1864,7 +1971,9 @@ fn build_ui(app: &gtk::Application) {
     title_label.set_halign(gtk::Align::Start);
     text_vbox.append(&title_label);
 
-    let subtitle_label = gtk::Label::new(Some("Run background daemon service to monitor mouse gestures"));
+    let subtitle_label = gtk::Label::new(Some(
+        "Run background daemon service to monitor mouse gestures",
+    ));
     subtitle_label.add_css_class("action-label");
     subtitle_label.set_halign(gtk::Align::Start);
     text_vbox.append(&subtitle_label);
@@ -1924,9 +2033,12 @@ fn build_ui(app: &gtk::Application) {
 
     // Connect search entry
     let state_clone = Rc::clone(&state);
-    state.borrow().search_entry.connect_search_changed(move |_| {
-        refresh_gesture_list(&state_clone, None);
-    });
+    state
+        .borrow()
+        .search_entry
+        .connect_search_changed(move |_| {
+            refresh_gesture_list(&state_clone, None);
+        });
 
     // Connect Add button
     let state_clone2 = Rc::clone(&state);
@@ -1936,18 +2048,21 @@ fn build_ui(app: &gtk::Application) {
 
     // Connect row activation for editing
     let state_clone3 = Rc::clone(&state);
-    state.borrow().main_list.connect_row_activated(move |_, row| {
-        let idx = row.index();
-        let state_borrow = state_clone3.borrow();
-        
-        let visible_gestures = get_visible_gestures(&state_borrow);
+    state
+        .borrow()
+        .main_list
+        .connect_row_activated(move |_, row| {
+            let idx = row.index();
+            let state_borrow = state_clone3.borrow();
 
-        if idx >= 0 && (idx as usize) < visible_gestures.len() {
-            let gesture = visible_gestures[idx as usize].clone();
-            drop(state_borrow);
-            open_gesture_editor(&state_clone3, Some(gesture));
-        }
-    });
+            let visible_gestures = get_visible_gestures(&state_borrow);
+
+            if idx >= 0 && (idx as usize) < visible_gestures.len() {
+                let gesture = visible_gestures[idx as usize].clone();
+                drop(state_borrow);
+                open_gesture_editor(&state_clone3, Some(gesture));
+            }
+        });
 
     // Connect about button
     let window_clone = state.borrow().window.clone();
@@ -1956,36 +2071,41 @@ fn build_ui(app: &gtk::Application) {
         dialog.set_transient_for(Some(&window_clone));
         dialog.set_program_name(Some("Gestos"));
         dialog.set_version(Some("4.1.9"));
-        dialog.set_comments(Some("A modern mouse gestures editor for Wayland desktop environments."));
+        dialog.set_comments(Some(
+            "A modern mouse gestures editor for Wayland desktop environments.",
+        ));
         dialog.set_authors(&["Lucas Augusto Deters <lucasdeters@gmail.com>"]);
         dialog.present();
     });
 
     // Connect daemon switch state controller
     let state_clone4 = Rc::clone(&state);
-    let handler_id = state.borrow().daemon_switch.connect_state_set(move |_, state| {
-        if state {
-            if let Err(err) = start_daemon(state_clone4.borrow().dbus_conn.as_ref()) {
-                show_error_dialog(&state_clone4.borrow().window, &err);
+    let handler_id = state
+        .borrow()
+        .daemon_switch
+        .connect_state_set(move |_, state| {
+            if state {
+                if let Err(err) = start_daemon(state_clone4.borrow().dbus_conn.as_ref()) {
+                    show_error_dialog(&state_clone4.borrow().window, &err);
+                }
+                set_autostart_enabled(true);
+            } else {
+                stop_daemon(state_clone4.borrow().dbus_conn.as_ref());
+                set_autostart_enabled(false);
             }
-            set_autostart_enabled(true);
-        } else {
-            stop_daemon(state_clone4.borrow().dbus_conn.as_ref());
-            set_autostart_enabled(false);
-        }
-        
-        let state_borrow = state_clone4.borrow();
-        let running = is_daemon_running(state_borrow.dbus_conn.as_ref());
-        if !running {
-            // Toggle the switch back off immediately if daemon startup failed
-            if let Some(ref hid) = state_borrow.switch_handler_id {
-                state_borrow.daemon_switch.block_signal(hid);
-                state_borrow.daemon_switch.set_active(false);
-                state_borrow.daemon_switch.unblock_signal(hid);
+
+            let state_borrow = state_clone4.borrow();
+            let running = is_daemon_running(state_borrow.dbus_conn.as_ref());
+            if !running {
+                // Toggle the switch back off immediately if daemon startup failed
+                if let Some(ref hid) = state_borrow.switch_handler_id {
+                    state_borrow.daemon_switch.block_signal(hid);
+                    state_borrow.daemon_switch.set_active(false);
+                    state_borrow.daemon_switch.unblock_signal(hid);
+                }
             }
-        }
-        glib::Propagation::Proceed
-    });
+            glib::Propagation::Proceed
+        });
     state.borrow_mut().switch_handler_id = Some(handler_id);
 
     // Setup periodic status check timer (every 1 second)
