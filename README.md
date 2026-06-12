@@ -1,8 +1,7 @@
-MyGestures - Pure Wayland/Evdev mouse gestures for Linux
-========================================================
+MyGestures - Simple mouse gestures for Linux
+============================================
 
-Mouse gestures - "draw" commands using your mouse/touchscreen/touchpad.
-Now written in Rust and completely independent of X11 and legacy drivers.
+Mouse gestures - "draw" commands using your mouse.
 
 Installing from source:
 -----------------------
