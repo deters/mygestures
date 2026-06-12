@@ -90,18 +90,6 @@ configure_file(
   install_dir: dbus_service_dir
 )
 
-# systemd User Service
-systemd_user_dir = get_option('systemduserunitdir')
-if systemd_user_dir == ''
-  systemd_user_dir = prefix / 'lib' / 'systemd' / 'user'
-endif
-configure_file(
-  input: 'build-aux/mygestures.service.in',
-  output: 'mygestures.service',
-  configuration: conf_data,
-  install_dir: systemd_user_dir
-)
-
 # Run post-install script
 meson.add_install_script('build-aux/post-install.sh')
 

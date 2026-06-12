@@ -22,6 +22,11 @@ override_dh_auto_install:
 	install -D -m 644 gestos.svg debian/mygestures/usr/share/icons/hicolor/scalable/apps/gestos.svg
 	install -D -m 644 mygestures.yaml debian/mygestures/usr/share/mygestures/mygestures.yaml
 
+	# Install D-Bus service file
+	mkdir -p debian/mygestures/usr/share/dbus-1/services
+	sed 's|@bindir@|/usr/bin|g' build-aux/org.mygestures.Daemon.service.in > debian/mygestures/usr/share/dbus-1/services/org.mygestures.Daemon.service
+	chmod 644 debian/mygestures/usr/share/dbus-1/services/org.mygestures.Daemon.service
+
 override_dh_fixperms:
 	dh_fixperms
 	# Set Set-Group-ID (SGID) permission on mygestures binary
