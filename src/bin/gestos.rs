@@ -876,34 +876,24 @@ fn create_gesture_row(gesture: &Gesture) -> gtk::ListBoxRow {
     };
 
     if let Some(keys) = has_keypress {
-        let row_hbox = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        let row_hbox = gtk::Box::new(gtk::Orientation::Horizontal, 6);
         row_hbox.set_halign(gtk::Align::Start);
         row_hbox.set_valign(gtk::Align::Center);
 
-        let label = gtk::Label::new(None);
-        label.set_markup("<b>Keypress Shortcut</b>");
-        label.set_valign(gtk::Align::Center);
-        row_hbox.append(&label);
-
         if !keys.is_empty() {
-            let keycaps_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-            keycaps_box.set_valign(gtk::Align::Center);
-            keycaps_box.set_margin_start(8);
-
             let parts: Vec<&str> = keys.split('+').filter(|s| !s.trim().is_empty()).collect();
             for (i, part) in parts.iter().enumerate() {
                 if i > 0 {
                     let plus = gtk::Label::new(Some("+"));
                     plus.set_opacity(0.6);
                     plus.set_valign(gtk::Align::Center);
-                    keycaps_box.append(&plus);
+                    row_hbox.append(&plus);
                 }
                 let keycap_label = gtk::Label::new(Some(part));
                 keycap_label.add_css_class("keycap");
                 keycap_label.set_valign(gtk::Align::Center);
-                keycaps_box.append(&keycap_label);
+                row_hbox.append(&keycap_label);
             }
-            row_hbox.append(&keycaps_box);
         } else {
             let none_label = gtk::Label::new(Some("None"));
             none_label.set_opacity(0.5);
