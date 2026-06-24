@@ -1249,6 +1249,19 @@ fn open_shortcut_recorder(
     dialog.present();
 }
 
+fn get_category_icon(category: usize) -> &'static str {
+    match category {
+        0 => "preferences-desktop-keyboard-shortcuts-symbolic", // Input Emulation
+        1 => "window-new-symbolic",                              // Window Management
+        2 => "view-grid-symbolic",                               // Workspaces & Overview
+        3 => "audio-volume-high-symbolic",                       // Media & Audio
+        4 => "preferences-system-symbolic",                      // System & Settings
+        5 => "application-x-executable-symbolic",                // Applications
+        6 => "preferences-system-symbolic",                      // GNOME Actions
+        _ => "system-run-symbolic",                              // Other/Internal
+    }
+}
+
 fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<Gesture>) {
     let state = state_rc.borrow();
     let dialog = gtk::Window::new();
@@ -1574,6 +1587,144 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     settings_list.append(&action_details_row);
 
     let current_options: Rc<RefCell<Vec<EditorActionOption>>> = Rc::new(RefCell::new(Vec::new()));
+
+    // Custom List Item Factories for Category Dropdown
+    let cat_list_factory = gtk::SignalListItemFactory::new();
+    cat_list_factory.connect_setup(|_, list_item| {
+        let box_ = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        box_.set_margin_start(4);
+        box_.set_margin_end(4);
+        box_.set_margin_top(4);
+        box_.set_margin_bottom(4);
+
+        let img = gtk::Image::new();
+        img.set_icon_size(gtk::IconSize::Normal);
+        img.set_valign(gtk::Align::Center);
+
+        let label = gtk::Label::new(None);
+        label.set_valign(gtk::Align::Center);
+
+        box_.append(&img);
+        box_.append(&label);
+        list_item.set_child(Some(&box_));
+    });
+    cat_list_factory.connect_bind(|_, list_item| {
+        let child = list_item.child().unwrap();
+        let box_ = child.downcast::<gtk::Box>().unwrap();
+        let img = box_.first_child().unwrap().downcast::<gtk::Image>().unwrap();
+        let label = img.next_sibling().unwrap().downcast::<gtk::Label>().unwrap();
+
+        let pos = list_item.position() as usize;
+        let icon_name = get_category_icon(pos);
+        img.set_icon_name(Some(icon_name));
+        if pos < CATEGORY_NAMES.len() {
+            label.set_text(CATEGORY_NAMES[pos]);
+        }
+    });
+
+    let cat_button_factory = gtk::SignalListItemFactory::new();
+    cat_button_factory.connect_setup(|_, list_item| {
+        let box_ = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        let img = gtk::Image::new();
+        img.set_icon_size(gtk::IconSize::Normal);
+        img.set_valign(gtk::Align::Center);
+
+        let label = gtk::Label::new(None);
+        label.set_valign(gtk::Align::Center);
+
+        box_.append(&img);
+        box_.append(&label);
+        list_item.set_child(Some(&box_));
+    });
+    cat_button_factory.connect_bind(|_, list_item| {
+        let child = list_item.child().unwrap();
+        let box_ = child.downcast::<gtk::Box>().unwrap();
+        let img = box_.first_child().unwrap().downcast::<gtk::Image>().unwrap();
+        let label = img.next_sibling().unwrap().downcast::<gtk::Label>().unwrap();
+
+        let pos = list_item.position() as usize;
+        let icon_name = get_category_icon(pos);
+        img.set_icon_name(Some(icon_name));
+        if pos < CATEGORY_NAMES.len() {
+            label.set_text(CATEGORY_NAMES[pos]);
+        }
+    });
+
+    category_dropdown.set_list_factory(Some(&cat_list_factory));
+    category_dropdown.set_factory(Some(&cat_button_factory));
+
+    // Custom List Item Factories for Action Dropdown
+    let act_list_factory = gtk::SignalListItemFactory::new();
+    act_list_factory.connect_setup(|_, list_item| {
+        let box_ = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        box_.set_margin_start(4);
+        box_.set_margin_end(4);
+        box_.set_margin_top(4);
+        box_.set_margin_bottom(4);
+
+        let img = gtk::Image::new();
+        img.set_icon_size(gtk::IconSize::Normal);
+        img.set_valign(gtk::Align::Center);
+
+        let label = gtk::Label::new(None);
+        label.set_valign(gtk::Align::Center);
+
+        box_.append(&img);
+        box_.append(&label);
+        list_item.set_child(Some(&box_));
+    });
+
+    let current_opts_bind = Rc::clone(&current_options);
+    act_list_factory.connect_bind(move |_, list_item| {
+        let child = list_item.child().unwrap();
+        let box_ = child.downcast::<gtk::Box>().unwrap();
+        let img = box_.first_child().unwrap().downcast::<gtk::Image>().unwrap();
+        let label = img.next_sibling().unwrap().downcast::<gtk::Label>().unwrap();
+
+        let pos = list_item.position() as usize;
+        let opts = current_opts_bind.borrow();
+        if pos < opts.len() {
+            let opt = &opts[pos];
+            let (icon_name, _) = get_action_category_icon(&opt.action_type);
+            img.set_icon_name(Some(icon_name));
+            label.set_text(&opt.name);
+        }
+    });
+
+    let act_button_factory = gtk::SignalListItemFactory::new();
+    act_button_factory.connect_setup(|_, list_item| {
+        let box_ = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        let img = gtk::Image::new();
+        img.set_icon_size(gtk::IconSize::Normal);
+        img.set_valign(gtk::Align::Center);
+
+        let label = gtk::Label::new(None);
+        label.set_valign(gtk::Align::Center);
+
+        box_.append(&img);
+        box_.append(&label);
+        list_item.set_child(Some(&box_));
+    });
+
+    let current_opts_btn_bind = Rc::clone(&current_options);
+    act_button_factory.connect_bind(move |_, list_item| {
+        let child = list_item.child().unwrap();
+        let box_ = child.downcast::<gtk::Box>().unwrap();
+        let img = box_.first_child().unwrap().downcast::<gtk::Image>().unwrap();
+        let label = img.next_sibling().unwrap().downcast::<gtk::Label>().unwrap();
+
+        let pos = list_item.position() as usize;
+        let opts = current_opts_btn_bind.borrow();
+        if pos < opts.len() {
+            let opt = &opts[pos];
+            let (icon_name, _) = get_action_category_icon(&opt.action_type);
+            img.set_icon_name(Some(icon_name));
+            label.set_text(&opt.name);
+        }
+    });
+
+    action_dropdown.set_list_factory(Some(&act_list_factory));
+    action_dropdown.set_factory(Some(&act_button_factory));
 
     // Helper to dynamically update the gesture name if not customized
     let update_default_name = Rc::new({
