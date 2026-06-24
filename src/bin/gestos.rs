@@ -865,15 +865,63 @@ fn create_gesture_row(gesture: &Gesture) -> gtk::ListBoxRow {
     vbox.set_hexpand(true);
     vbox.set_valign(gtk::Align::Center);
 
-    let action_desc = if !gesture.actions.is_empty() {
-        get_action_human_readable(&gesture.actions[0])
+    let has_keypress = if !gesture.actions.is_empty() {
+        if let ActionType::Keypress(ref keys) = gesture.actions[0] {
+            Some(keys)
+        } else {
+            None
+        }
     } else {
-        "No Action Configured".to_string()
+        None
     };
-    let title_label = gtk::Label::new(Some(&action_desc));
-    title_label.set_halign(gtk::Align::Start);
-    title_label.set_markup(&format!("<b>{}</b>", action_desc));
-    vbox.append(&title_label);
+
+    if let Some(keys) = has_keypress {
+        let row_hbox = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        row_hbox.set_halign(gtk::Align::Start);
+        row_hbox.set_valign(gtk::Align::Center);
+
+        let label = gtk::Label::new(None);
+        label.set_markup("<b>Keypress Shortcut</b>");
+        label.set_valign(gtk::Align::Center);
+        row_hbox.append(&label);
+
+        if !keys.is_empty() {
+            let keycaps_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+            keycaps_box.set_valign(gtk::Align::Center);
+            keycaps_box.set_margin_start(8);
+
+            let parts: Vec<&str> = keys.split('+').filter(|s| !s.trim().is_empty()).collect();
+            for (i, part) in parts.iter().enumerate() {
+                if i > 0 {
+                    let plus = gtk::Label::new(Some("+"));
+                    plus.set_opacity(0.6);
+                    plus.set_valign(gtk::Align::Center);
+                    keycaps_box.append(&plus);
+                }
+                let keycap_label = gtk::Label::new(Some(part));
+                keycap_label.add_css_class("keycap");
+                keycap_label.set_valign(gtk::Align::Center);
+                keycaps_box.append(&keycap_label);
+            }
+            row_hbox.append(&keycaps_box);
+        } else {
+            let none_label = gtk::Label::new(Some("None"));
+            none_label.set_opacity(0.5);
+            none_label.set_valign(gtk::Align::Center);
+            row_hbox.append(&none_label);
+        }
+        vbox.append(&row_hbox);
+    } else {
+        let action_desc = if !gesture.actions.is_empty() {
+            get_action_human_readable(&gesture.actions[0])
+        } else {
+            "No Action Configured".to_string()
+        };
+        let title_label = gtk::Label::new(Some(&action_desc));
+        title_label.set_halign(gtk::Align::Start);
+        title_label.set_markup(&format!("<b>{}</b>", action_desc));
+        vbox.append(&title_label);
+    }
 
     main_hbox.append(&vbox);
 
