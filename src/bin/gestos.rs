@@ -382,6 +382,7 @@ struct AppState {
     switch_handler_id: Option<glib::SignalHandlerId>,
     newly_added_gestures: Vec<String>,
     dbus_conn: Option<zbus::blocking::Connection>,
+    empty_state_box: gtk::Box,
 }
 
 fn is_daemon_running(conn: Option<&zbus::blocking::Connection>) -> bool {
@@ -1020,13 +1021,21 @@ fn refresh_gesture_list(state_rc: &Rc<RefCell<AppState>>, select_name: Option<&s
 
     let visible = get_visible_gestures(&state);
 
-    for gesture in &visible {
-        let row = create_gesture_row(gesture, state_rc);
-        state.main_list.append(&row);
+    if visible.is_empty() {
+        state.empty_state_box.set_visible(true);
+        state.main_list.set_visible(false);
+    } else {
+        state.empty_state_box.set_visible(false);
+        state.main_list.set_visible(true);
 
-        if let Some(name) = select_name {
-            if gesture.name == name {
-                state.main_list.select_row(Some(&row));
+        for gesture in &visible {
+            let row = create_gesture_row(gesture, state_rc);
+            state.main_list.append(&row);
+
+            if let Some(name) = select_name {
+                if gesture.name == name {
+                    state.main_list.select_row(Some(&row));
+                }
             }
         }
     }
@@ -2377,13 +2386,37 @@ fn build_ui(app: &gtk::Application) {
     scrolled.set_vexpand(true);
     content_vbox.append(&scrolled);
 
+    let list_container = gtk::Box::new(gtk::Orientation::Vertical, 0);
+
     let main_list = gtk::ListBox::new();
     main_list.set_margin_start(56);
     main_list.set_margin_end(56);
     main_list.set_margin_bottom(56);
     main_list.add_css_class("boxed-list");
     main_list.set_selection_mode(gtk::SelectionMode::None);
-    scrolled.set_child(Some(&main_list));
+    list_container.append(&main_list);
+
+    let empty_state_box = gtk::Box::new(gtk::Orientation::Vertical, 16);
+    empty_state_box.set_valign(gtk::Align::Center);
+    empty_state_box.set_halign(gtk::Align::Center);
+    empty_state_box.set_margin_top(80);
+    empty_state_box.set_margin_bottom(80);
+
+    let empty_icon = gtk::Image::from_icon_name("view-list-bullet-symbolic");
+    empty_icon.set_pixel_size(80);
+    empty_icon.set_opacity(0.4);
+    empty_state_box.append(&empty_icon);
+
+    let empty_title = gtk::Label::new(None);
+    empty_title.set_markup("<span size='large' weight='bold'>No Gestures Found</span>");
+    empty_state_box.append(&empty_title);
+
+    let empty_subtitle = gtk::Label::new(Some("Configure some gestures or add a new one to get started."));
+    empty_subtitle.set_opacity(0.65);
+    empty_state_box.append(&empty_subtitle);
+
+    list_container.append(&empty_state_box);
+    scrolled.set_child(Some(&list_container));
 
     if let Err(e) = mygestures::config::initialize_user_config_if_missing() {
         eprintln!("Warning: Failed to initialize configuration: {}", e);
@@ -2400,6 +2433,7 @@ fn build_ui(app: &gtk::Application) {
         switch_handler_id: None,
         newly_added_gestures: Vec::new(),
         dbus_conn,
+        empty_state_box,
     }));
 
     // Refresh initially
@@ -2522,7 +2556,8 @@ fn build_ui(app: &gtk::Application) {
          .warning-label { color: @warning_color; font-size: 0.95em; }\n\
          .keycap { padding: 6px 12px; background-color: alpha(currentColor, 0.08); border: 1px solid alpha(currentColor, 0.15); border-radius: 6px; font-weight: bold; font-size: 1.1em; }\n\
          .drag-handle { opacity: 0.35; cursor: grab; margin-right: 4px; }\n\
-         .drag-handle:hover { opacity: 0.85; }\n"
+         .drag-handle:hover { opacity: 0.85; }\n\
+         .drag-handle:active { cursor: grabbing; }\n"
     );
 
     if let Some(display) = gdk::Display::default() {
