@@ -1468,6 +1468,10 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let name_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
     name_row.add_css_class("settings-row");
 
+    let name_icon = gtk::Image::from_icon_name("document-edit-symbolic");
+    name_icon.set_valign(gtk::Align::Center);
+    name_row.append(&name_icon);
+
     let name_label = gtk::Label::new(Some("Gesture Name"));
     name_label.set_halign(gtk::Align::Start);
     name_label.add_css_class("status-label");
@@ -1486,6 +1490,10 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     // Row 2: Category
     let category_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
     category_row.add_css_class("settings-row");
+
+    let category_icon = gtk::Image::from_icon_name("open-menu-symbolic");
+    category_icon.set_valign(gtk::Align::Center);
+    category_row.append(&category_icon);
 
     let category_label = gtk::Label::new(Some("Category"));
     category_label.set_halign(gtk::Align::Start);
@@ -1507,6 +1515,10 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let action_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
     action_row.add_css_class("settings-row");
 
+    let action_icon = gtk::Image::from_icon_name("system-run-symbolic");
+    action_icon.set_valign(gtk::Align::Center);
+    action_row.append(&action_icon);
+
     let action_label = gtk::Label::new(Some("Action"));
     action_label.set_halign(gtk::Align::Start);
     action_label.add_css_class("status-label");
@@ -1526,6 +1538,10 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     // Row 4: Action Details Parameter
     let action_details_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
     action_details_row.add_css_class("settings-row");
+
+    let action_details_icon = gtk::Image::from_icon_name("system-run-symbolic");
+    action_details_icon.set_valign(gtk::Align::Center);
+    action_details_row.append(&action_details_icon);
 
     let action_details_label = gtk::Label::new(None);
     action_details_label.set_halign(gtk::Align::Start);
@@ -1718,6 +1734,17 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         };
         action_details_row.set_visible(show_entry);
 
+        let (act_icon, _) = get_action_category_icon(&opt.action_type);
+        action_icon.set_from_icon_name(Some(act_icon));
+
+        let details_icon_name = match &opt.action_type {
+            ActionType::Keypress(_) => "preferences-desktop-keyboard-shortcuts-symbolic",
+            ActionType::Execute(_) => "utilities-terminal-symbolic",
+            ActionType::Click(_) => "input-mouse-symbolic",
+            _ => "system-run-symbolic",
+        };
+        action_details_icon.set_from_icon_name(Some(details_icon_name));
+
         let is_keypress = matches!(&opt.action_type, ActionType::Keypress(_));
         action_details_entry.set_visible(!is_keypress);
         shortcut_display_box.set_visible(is_keypress);
@@ -1765,6 +1792,8 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let record_btn_clone_cat = record_btn.clone();
     let udn_clone3 = Rc::clone(&update_default_name);
     let sdb_clone_cat = shortcut_display_box.clone();
+    let action_icon_cat = action_icon.clone();
+    let action_details_icon_cat = action_details_icon.clone();
 
     category_dropdown.connect_selected_notify(move |cat_dd| {
         let cat_idx = cat_dd.selected();
@@ -1796,6 +1825,17 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 _ => false,
             };
             row_clone.set_visible(show_entry);
+
+            let (act_icon, _) = get_action_category_icon(&opt.action_type);
+            action_icon_cat.set_from_icon_name(Some(act_icon));
+
+            let details_icon_name = match &opt.action_type {
+                ActionType::Keypress(_) => "preferences-desktop-keyboard-shortcuts-symbolic",
+                ActionType::Execute(_) => "utilities-terminal-symbolic",
+                ActionType::Click(_) => "input-mouse-symbolic",
+                _ => "system-run-symbolic",
+            };
+            action_details_icon_cat.set_from_icon_name(Some(details_icon_name));
 
             let is_keypress = matches!(&opt.action_type, ActionType::Keypress(_));
             entry_clone.set_visible(!is_keypress);
@@ -1829,6 +1869,8 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let record_btn_clone_act = record_btn.clone();
     let udn_clone2 = Rc::clone(&update_default_name);
     let sdb_clone_act = shortcut_display_box.clone();
+    let action_icon_act = action_icon.clone();
+    let action_details_icon_act = action_details_icon.clone();
 
     action_dropdown.connect_selected_notify(move |act_dd| {
         let act_idx = act_dd.selected();
@@ -1847,6 +1889,17 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 _ => false,
             };
             row_clone2.set_visible(show_entry);
+
+            let (act_icon, _) = get_action_category_icon(&opt.action_type);
+            action_icon_act.set_from_icon_name(Some(act_icon));
+
+            let details_icon_name = match &opt.action_type {
+                ActionType::Keypress(_) => "preferences-desktop-keyboard-shortcuts-symbolic",
+                ActionType::Execute(_) => "utilities-terminal-symbolic",
+                ActionType::Click(_) => "input-mouse-symbolic",
+                _ => "system-run-symbolic",
+            };
+            action_details_icon_act.set_from_icon_name(Some(details_icon_name));
 
             let is_keypress = matches!(&opt.action_type, ActionType::Keypress(_));
             entry_clone2.set_visible(!is_keypress);
