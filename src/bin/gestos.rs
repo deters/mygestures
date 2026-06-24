@@ -58,7 +58,7 @@ fn get_static_action_options() -> Vec<EditorActionOption> {
         EditorActionOption {
             category: 1,
             action_type: ActionType::Kill,
-            name: "Close Window (Kill)".to_string(),
+            name: "Close Window".to_string(),
             tooltip: "Close the active application window".to_string(),
         },
         EditorActionOption {
@@ -82,7 +82,7 @@ fn get_static_action_options() -> Vec<EditorActionOption> {
         EditorActionOption {
             category: 1,
             action_type: ActionType::Iconify,
-            name: "Minimize Window (Iconify)".to_string(),
+            name: "Minimize Window".to_string(),
             tooltip: "Minimize active window".to_string(),
         },
         EditorActionOption {
@@ -767,8 +767,8 @@ fn draw_gesture_path(
 
 fn get_action_human_readable(action: &ActionType) -> String {
     match action {
-        ActionType::Iconify => "Minimize Window (Iconify)".to_string(),
-        ActionType::Kill => "Close Window (Kill)".to_string(),
+        ActionType::Iconify => "Minimize Window".to_string(),
+        ActionType::Kill => "Close Window".to_string(),
         ActionType::Lower => "Lower Window".to_string(),
         ActionType::Raise => "Raise Window".to_string(),
         ActionType::Maximize => "Maximize Window".to_string(),
