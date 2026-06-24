@@ -632,6 +632,14 @@ fn get_action_category_icon(action: &ActionType) -> (&'static str, &'static str)
             "icon-bg-orange",
         ),
         ActionType::Gnome(_) => ("preferences-system-symbolic", "icon-bg-blue"),
+        ActionType::Iconify
+        | ActionType::Kill
+        | ActionType::Lower
+        | ActionType::Raise
+        | ActionType::Maximize
+        | ActionType::Restore
+        | ActionType::ToggleMaximized
+        | ActionType::ToggleFullscreen => ("preferences-system-windows-symbolic", "icon-bg-blue"),
         ActionType::WorkspaceLeft
         | ActionType::WorkspaceRight
         | ActionType::WorkspaceUp
