@@ -1861,6 +1861,8 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         .cloned()
         .collect();
 
+    *current_options.borrow_mut() = initial_filtered.clone();
+
     let action_names: Vec<String> = initial_filtered
         .iter()
         .map(|opt| opt.name.clone())
@@ -1868,8 +1870,6 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let action_refs: Vec<&str> = action_names.iter().map(|s| s.as_str()).collect();
     let action_model = gtk::StringList::new(&action_refs);
     action_dropdown.set_model(Some(&action_model));
-
-    *current_options.borrow_mut() = initial_filtered.clone();
 
     category_dropdown.set_selected(selected_cat as u32);
     action_dropdown.set_selected(selected_act as u32);
@@ -1958,12 +1958,13 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             .cloned()
             .collect();
 
+        *current_opts_clone.borrow_mut() = filtered.clone();
+
         let action_names: Vec<String> = filtered.iter().map(|opt| opt.name.clone()).collect();
         let action_refs: Vec<&str> = action_names.iter().map(|s| s.as_str()).collect();
         let action_model = gtk::StringList::new(&action_refs);
         action_dropdown_clone.set_model(Some(&action_model));
 
-        *current_opts_clone.borrow_mut() = filtered.clone();
         action_dropdown_clone.set_selected(0);
 
         // Manually update details entry visibility/placeholder/label/record_btn for index 0
