@@ -2510,7 +2510,7 @@ fn build_ui(app: &gtk::Application) {
          .gesture-preview-frame { background: @window_bg_color; border-radius: 6px; }\n\
          searchentry, entry.search { border-radius: 18px; }\n\
          .context-title { font-size: 1.5em; font-weight: bold; }\n\
-         .gesture-row { padding: 6px; background-color: @card_bg_color; border-radius: 12px; }\n\
+         .gesture-row { padding: 6px; }\n\
          .icon-holder { padding: 4px; }\n\
          .action-label { font-size: 0.9em; opacity: 0.7; }\n\
          .status-dot-running { color: #10b981; }\n\
