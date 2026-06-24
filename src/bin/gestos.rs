@@ -1735,7 +1735,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         action_details_row.set_visible(show_entry);
 
         let (act_icon, _) = get_action_category_icon(&opt.action_type);
-        action_icon.set_from_icon_name(Some(act_icon));
+        action_icon.set_icon_name(Some(act_icon));
 
         let details_icon_name = match &opt.action_type {
             ActionType::Keypress(_) => "preferences-desktop-keyboard-shortcuts-symbolic",
@@ -1743,7 +1743,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             ActionType::Click(_) => "input-mouse-symbolic",
             _ => "system-run-symbolic",
         };
-        action_details_icon.set_from_icon_name(Some(details_icon_name));
+        action_details_icon.set_icon_name(Some(details_icon_name));
 
         let is_keypress = matches!(&opt.action_type, ActionType::Keypress(_));
         action_details_entry.set_visible(!is_keypress);
@@ -1827,7 +1827,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             row_clone.set_visible(show_entry);
 
             let (act_icon, _) = get_action_category_icon(&opt.action_type);
-            action_icon_cat.set_from_icon_name(Some(act_icon));
+            action_icon_cat.set_icon_name(Some(act_icon));
 
             let details_icon_name = match &opt.action_type {
                 ActionType::Keypress(_) => "preferences-desktop-keyboard-shortcuts-symbolic",
@@ -1835,7 +1835,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 ActionType::Click(_) => "input-mouse-symbolic",
                 _ => "system-run-symbolic",
             };
-            action_details_icon_cat.set_from_icon_name(Some(details_icon_name));
+            action_details_icon_cat.set_icon_name(Some(details_icon_name));
 
             let is_keypress = matches!(&opt.action_type, ActionType::Keypress(_));
             entry_clone.set_visible(!is_keypress);
@@ -1891,7 +1891,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             row_clone2.set_visible(show_entry);
 
             let (act_icon, _) = get_action_category_icon(&opt.action_type);
-            action_icon_act.set_from_icon_name(Some(act_icon));
+            action_icon_act.set_icon_name(Some(act_icon));
 
             let details_icon_name = match &opt.action_type {
                 ActionType::Keypress(_) => "preferences-desktop-keyboard-shortcuts-symbolic",
@@ -1899,7 +1899,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 ActionType::Click(_) => "input-mouse-symbolic",
                 _ => "system-run-symbolic",
             };
-            action_details_icon_act.set_from_icon_name(Some(details_icon_name));
+            action_details_icon_act.set_icon_name(Some(details_icon_name));
 
             let is_keypress = matches!(&opt.action_type, ActionType::Keypress(_));
             entry_clone2.set_visible(!is_keypress);
