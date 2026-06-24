@@ -198,7 +198,7 @@ pub struct AppConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct YamlConfig {
-    pub global: Option<HashMap<String, GestureConfig>>,
+    pub global: Option<serde_yaml::Mapping>,
     pub apps: Option<Vec<AppConfig>>,
 }
 
@@ -380,7 +380,18 @@ impl Configuration {
         };
 
         if let Some(global) = parsed.global {
-            for (name, gest_cfg) in global {
+            for (key, val) in global {
+                let name = match key.as_str() {
+                    Some(s) => s.to_string(),
+                    None => continue,
+                };
+                let gest_cfg: GestureConfig = match serde_yaml::from_value(val) {
+                    Ok(cfg) => cfg,
+                    Err(e) => {
+                        log::warn!("Failed to parse gesture config for {}: {}", name, e);
+                        continue;
+                    }
+                };
                 let actions = gest_cfg.action_expr.to_actions();
                 let is_abort = actions.contains(&ActionType::Abort);
                 let raw_movement = gest_cfg
