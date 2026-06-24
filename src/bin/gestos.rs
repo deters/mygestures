@@ -1477,28 +1477,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     settings_list.set_selection_mode(gtk::SelectionMode::None);
     scroll_content.append(&settings_list);
 
-    // Row 1: Name
-    let name_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-    name_row.add_css_class("settings-row");
 
-    let name_icon = gtk::Image::from_icon_name("document-edit-symbolic");
-    name_icon.set_valign(gtk::Align::Center);
-    name_row.append(&name_icon);
-
-    let name_label = gtk::Label::new(Some("Gesture Name"));
-    name_label.set_halign(gtk::Align::Start);
-    name_label.add_css_class("status-label");
-    name_row.append(&name_label);
-
-    let name_spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    name_spacer.set_hexpand(true);
-    name_row.append(&name_spacer);
-
-    name_entry.set_halign(gtk::Align::End);
-    name_entry.set_size_request(220, -1);
-    name_row.append(&name_entry);
-
-    settings_list.append(&name_row);
 
     // Row 2: Category
     let category_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
