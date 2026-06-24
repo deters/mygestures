@@ -950,6 +950,11 @@ fn create_gesture_row(gesture: &Gesture, state_rc: &Rc<RefCell<AppState>>) -> gt
         let provider = gdk::ContentProvider::for_value(&value);
         Some(provider)
     });
+    let row_clone = row.clone();
+    drag_source.connect_drag_begin(move |source, _| {
+        let paintable = gtk::WidgetPaintable::new(Some(&row_clone));
+        source.set_icon(Some(&paintable), 0, 0);
+    });
     drag_handle.add_controller(drag_source);
 
     let drop_target = gtk::DropTarget::new(glib::Type::STRING, gdk::DragAction::MOVE);
