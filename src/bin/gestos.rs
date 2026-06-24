@@ -765,6 +765,75 @@ fn draw_gesture_path(
     cr.restore().unwrap();
 }
 
+fn get_action_human_readable(action: &ActionType) -> String {
+    match action {
+        ActionType::Iconify => "Minimize Window (Iconify)".to_string(),
+        ActionType::Kill => "Close Window (Kill)".to_string(),
+        ActionType::Lower => "Lower Window".to_string(),
+        ActionType::Raise => "Raise Window".to_string(),
+        ActionType::Maximize => "Maximize Window".to_string(),
+        ActionType::Restore => "Restore Window".to_string(),
+        ActionType::ToggleMaximized => "Toggle Maximized".to_string(),
+        ActionType::Keypress(keys) => {
+            if keys.is_empty() {
+                "Keypress Shortcut".to_string()
+            } else {
+                format!("Keypress Shortcut ({})", keys)
+            }
+        }
+        ActionType::Execute(cmd) => {
+            if cmd.is_empty() {
+                "Run Command (Execute)".to_string()
+            } else {
+                format!("Run Command: {}", cmd)
+            }
+        }
+        ActionType::WorkspaceLeft => "Workspace Left".to_string(),
+        ActionType::WorkspaceRight => "Workspace Right".to_string(),
+        ActionType::WorkspaceUp => "Workspace Up".to_string(),
+        ActionType::WorkspaceDown => "Workspace Down".to_string(),
+        ActionType::ShowOverview => "Show Overview".to_string(),
+        ActionType::ShowAppGrid => "Show App Grid".to_string(),
+        ActionType::Click(btn) => {
+            if let Some(b) = btn {
+                format!("Click Mouse Button {}", b)
+            } else {
+                "Click Mouse Button 1".to_string()
+            }
+        }
+        ActionType::ToggleFullscreen => "Toggle Fullscreen".to_string(),
+        ActionType::ShowDesktop => "Show Desktop".to_string(),
+        ActionType::LockScreen => "Lock Screen".to_string(),
+        ActionType::Terminal => "Open Terminal".to_string(),
+        ActionType::VolumeUp => "Volume Up".to_string(),
+        ActionType::VolumeDown => "Volume Down".to_string(),
+        ActionType::VolumeMute => "Volume Mute".to_string(),
+        ActionType::MediaPlay => "Play/Pause Media".to_string(),
+        ActionType::MediaNext => "Next Track".to_string(),
+        ActionType::MediaPrev => "Previous Track".to_string(),
+        ActionType::Www => "Web Browser".to_string(),
+        ActionType::Home => "Home Folder".to_string(),
+        ActionType::Email => "Email Client".to_string(),
+        ActionType::Search => "System Search".to_string(),
+        ActionType::Calculator => "Calculator".to_string(),
+        ActionType::ControlCenter => "Control Center".to_string(),
+        ActionType::Logout => "Log Out".to_string(),
+        ActionType::Screenshot => "Take Screenshot".to_string(),
+        ActionType::ScreenshotWindow => "Screenshot Window".to_string(),
+        ActionType::ScreenshotArea => "Screenshot Area".to_string(),
+        ActionType::Gnome(key) => {
+            let last_part = key.split('.').last().unwrap_or(key);
+            let cleaned = last_part.replace('-', " ");
+            let mut chars = cleaned.chars();
+            match chars.next() {
+                None => "GNOME Action".to_string(),
+                Some(c) => c.to_uppercase().collect::<String>() + chars.as_str()
+            }
+        }
+        ActionType::Abort => "Abort Gesture".to_string(),
+    }
+}
+
 fn create_gesture_row(gesture: &Gesture) -> gtk::ListBoxRow {
     let row = gtk::ListBoxRow::new();
     row.add_css_class("gesture-row");
@@ -802,7 +871,7 @@ fn create_gesture_row(gesture: &Gesture) -> gtk::ListBoxRow {
     vbox.append(&title_label);
 
     let action_desc = if !gesture.actions.is_empty() {
-        gesture.actions[0].to_string()
+        get_action_human_readable(&gesture.actions[0])
     } else {
         "No Action Configured".to_string()
     };
