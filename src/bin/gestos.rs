@@ -861,24 +861,19 @@ fn create_gesture_row(gesture: &Gesture) -> gtk::ListBoxRow {
     main_hbox.append(&icon_box);
 
     // 2. Info text label
-    let vbox = gtk::Box::new(gtk::Orientation::Vertical, 4);
+    let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
     vbox.set_hexpand(true);
     vbox.set_valign(gtk::Align::Center);
-
-    let title_label = gtk::Label::new(Some(&gesture.name));
-    title_label.set_halign(gtk::Align::Start);
-    title_label.set_markup(&format!("<b>{}</b>", gesture.name));
-    vbox.append(&title_label);
 
     let action_desc = if !gesture.actions.is_empty() {
         get_action_human_readable(&gesture.actions[0])
     } else {
         "No Action Configured".to_string()
     };
-    let action_label = gtk::Label::new(Some(&action_desc));
-    action_label.set_halign(gtk::Align::Start);
-    action_label.add_css_class("action-label");
-    vbox.append(&action_label);
+    let title_label = gtk::Label::new(Some(&action_desc));
+    title_label.set_halign(gtk::Align::Start);
+    title_label.set_markup(&format!("<b>{}</b>", action_desc));
+    vbox.append(&title_label);
 
     main_hbox.append(&vbox);
 
@@ -908,7 +903,15 @@ fn get_visible_gestures(state: &AppState) -> Vec<Gesture> {
         .gestures
         .iter()
         .filter(|g| !g.is_deleted)
-        .filter(|g| filter.is_empty() || g.name.to_lowercase().contains(&filter))
+        .filter(|g| {
+            if filter.is_empty() {
+                true
+            } else {
+                g.name.to_lowercase().contains(&filter) || (
+                    !g.actions.is_empty() && get_action_human_readable(&g.actions[0]).to_lowercase().contains(&filter)
+                )
+            }
+        })
         .cloned()
         .collect();
 
