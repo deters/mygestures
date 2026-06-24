@@ -840,7 +840,7 @@ fn get_action_human_readable(action: &ActionType) -> String {
     }
 }
 
-fn create_gesture_row(gesture: &Gesture) -> gtk::ListBoxRow {
+fn create_gesture_row(gesture: &Gesture, state_rc: &Rc<RefCell<AppState>>) -> gtk::ListBoxRow {
     let row = gtk::ListBoxRow::new();
     row.add_css_class("gesture-row");
 
@@ -935,14 +935,51 @@ fn create_gesture_row(gesture: &Gesture) -> gtk::ListBoxRow {
     preview_frame.set_child(Some(&preview_canvas));
     main_hbox.append(&preview_frame);
     row.set_child(Some(&main_hbox));
+
+    // 4. Drag and Drop Controllers for reordering
+    let drag_source = gtk::DragSource::new();
+    let id_str = gesture.id.clone();
+    drag_source.connect_prepare(move |_, _, _| {
+        let value = id_str.to_value();
+        let provider = gdk::ContentProvider::for_value(&value);
+        Some(provider)
+    });
+    row.add_controller(drag_source);
+
+    let drop_target = gtk::DropTarget::new(glib::Type::STRING, gdk::DragAction::MOVE);
+    let state_clone = Rc::clone(state_rc);
+    let target_id = gesture.id.clone();
+    drop_target.connect_drop(move |_, value, _, _| {
+        if let Ok(dragged_id) = value.get::<String>() {
+            if dragged_id != target_id {
+                let mut state = state_clone.borrow_mut();
+                let source_idx = state.config.gestures.iter().position(|g| g.id == dragged_id);
+                let dest_idx = state.config.gestures.iter().position(|g| g.id == target_id);
+                if let (Some(s_idx), Some(d_idx)) = (source_idx, dest_idx) {
+                    let item = state.config.gestures.remove(s_idx);
+                    let name_clone = item.name.clone();
+                    state.config.gestures.insert(d_idx, item);
+                    if let Err(e) = state.config.save_to_file() {
+                        println!("Failed to save config on reorder: {}", e);
+                    }
+                    let state_clone_inner = Rc::clone(&state_clone);
+                    glib::idle_add_local_once(move || {
+                        refresh_gesture_list(&state_clone_inner, Some(&name_clone));
+                    });
+                }
+            }
+        }
+        true
+    });
+    row.add_controller(drop_target);
+
     row
 }
 
 fn get_visible_gestures(state: &AppState) -> Vec<Gesture> {
     let filter = state.search_entry.text().to_lowercase();
-    let newly_added = &state.newly_added_gestures;
 
-    let mut gestures: Vec<Gesture> = state
+    let gestures: Vec<Gesture> = state
         .config
         .gestures
         .iter()
@@ -959,18 +996,6 @@ fn get_visible_gestures(state: &AppState) -> Vec<Gesture> {
         .cloned()
         .collect();
 
-    gestures.sort_by(|a, b| {
-        let a_new_idx = newly_added.iter().position(|name| name == &a.name);
-        let b_new_idx = newly_added.iter().position(|name| name == &b.name);
-
-        match (a_new_idx, b_new_idx) {
-            (Some(a_idx), Some(b_idx)) => b_idx.cmp(&a_idx), // most recently added first
-            (Some(_), None) => std::cmp::Ordering::Less,
-            (None, Some(_)) => std::cmp::Ordering::Greater,
-            (None, None) => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-        }
-    });
-
     gestures
 }
 
@@ -985,7 +1010,7 @@ fn refresh_gesture_list(state_rc: &Rc<RefCell<AppState>>, select_name: Option<&s
     let visible = get_visible_gestures(&state);
 
     for gesture in &visible {
-        let row = create_gesture_row(gesture);
+        let row = create_gesture_row(gesture, state_rc);
         state.main_list.append(&row);
 
         if let Some(name) = select_name {
