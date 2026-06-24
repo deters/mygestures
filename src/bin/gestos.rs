@@ -850,6 +850,11 @@ fn create_gesture_row(gesture: &Gesture, state_rc: &Rc<RefCell<AppState>>) -> gt
     main_hbox.set_margin_top(12);
     main_hbox.set_margin_bottom(12);
 
+    let drag_handle = gtk::Image::from_icon_name("drag-handle-symbolic");
+    drag_handle.add_css_class("drag-handle");
+    drag_handle.set_valign(gtk::Align::Center);
+    main_hbox.append(&drag_handle);
+
     // 1. Icon Category Holder
     let (icon_name, bg_class) = if !gesture.actions.is_empty() {
         get_action_category_icon(&gesture.actions[0])
@@ -938,13 +943,14 @@ fn create_gesture_row(gesture: &Gesture, state_rc: &Rc<RefCell<AppState>>) -> gt
 
     // 4. Drag and Drop Controllers for reordering
     let drag_source = gtk::DragSource::new();
+    drag_source.set_actions(gdk::DragAction::MOVE);
     let id_str = gesture.id.clone();
     drag_source.connect_prepare(move |_, _, _| {
         let value = id_str.to_value();
         let provider = gdk::ContentProvider::for_value(&value);
         Some(provider)
     });
-    row.add_controller(drag_source);
+    drag_handle.add_controller(drag_source);
 
     let drop_target = gtk::DropTarget::new(glib::Type::STRING, gdk::DragAction::MOVE);
     let state_clone = Rc::clone(state_rc);
@@ -2509,7 +2515,9 @@ fn build_ui(app: &gtk::Application) {
          .status-label { font-weight: bold; }\n\
          .warning-box { padding: 8px; background-color: alpha(@warning_color, 0.15); border: 1px solid alpha(@warning_color, 0.3); border-radius: 6px; }\n\
          .warning-label { color: @warning_color; font-size: 0.95em; }\n\
-         .keycap { padding: 6px 12px; background-color: alpha(currentColor, 0.08); border: 1px solid alpha(currentColor, 0.15); border-radius: 6px; font-weight: bold; font-size: 1.1em; }\n"
+         .keycap { padding: 6px 12px; background-color: alpha(currentColor, 0.08); border: 1px solid alpha(currentColor, 0.15); border-radius: 6px; font-weight: bold; font-size: 1.1em; }\n\
+         .drag-handle { opacity: 0.35; cursor: grab; margin-right: 4px; }\n\
+         .drag-handle:hover { opacity: 0.85; }\n"
     );
 
     if let Some(display) = gdk::Display::default() {
