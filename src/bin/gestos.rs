@@ -2221,6 +2221,75 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     dialog.present();
 }
 
+fn open_settings_window<W: IsA<gtk::Window>>(parent: &W) {
+    let dialog = gtk::Window::new();
+    dialog.set_transient_for(Some(parent));
+    dialog.set_modal(true);
+    dialog.set_title(Some("Settings"));
+    dialog.set_default_size(360, -1);
+
+    let header = gtk::HeaderBar::new();
+    header.set_show_title_buttons(true);
+    let title_label = gtk::Label::new(Some("Settings"));
+    title_label.add_css_class("title");
+    header.set_title_widget(Some(&title_label));
+    dialog.set_titlebar(Some(&header));
+
+    let main_box = gtk::Box::new(gtk::Orientation::Vertical, 16);
+    main_box.add_css_class("dialog-content");
+    main_box.set_margin_start(24);
+    main_box.set_margin_end(24);
+    main_box.set_margin_top(24);
+    main_box.set_margin_bottom(24);
+    dialog.set_child(Some(&main_box));
+
+    let settings_list = gtk::ListBox::new();
+    settings_list.add_css_class("boxed-list");
+    settings_list.set_selection_mode(gtk::SelectionMode::None);
+    main_box.append(&settings_list);
+
+    let autostart_row = gtk::ListBoxRow::new();
+    let row_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    row_box.set_margin_start(16);
+    row_box.set_margin_end(16);
+    row_box.set_margin_top(12);
+    row_box.set_margin_bottom(12);
+
+    let text_vbox = gtk::Box::new(gtk::Orientation::Vertical, 2);
+    text_vbox.set_hexpand(true);
+    text_vbox.set_halign(gtk::Align::Start);
+
+    let row_title = gtk::Label::new(Some("Start on Boot"));
+    row_title.add_css_class("status-label");
+    row_title.set_halign(gtk::Align::Start);
+    text_vbox.append(&row_title);
+
+    let row_subtitle = gtk::Label::new(Some("Automatically launch daemon at startup"));
+    row_subtitle.add_css_class("action-label");
+    row_subtitle.set_halign(gtk::Align::Start);
+    text_vbox.append(&row_subtitle);
+
+    row_box.append(&text_vbox);
+
+    let autostart_switch = gtk::Switch::new();
+    autostart_switch.set_valign(gtk::Align::Center);
+
+    let autostart_file = get_autostart_file_path();
+    let is_autostart = autostart_file.map(|p| p.exists()).unwrap_or(false);
+    autostart_switch.set_active(is_autostart);
+
+    autostart_switch.connect_state_set(move |_, state| {
+        set_autostart_enabled(state);
+        glib::Propagation::Proceed
+    });
+
+    row_box.append(&autostart_switch);
+    autostart_row.set_child(Some(&row_box));
+    settings_list.append(&autostart_row);
+
+    dialog.present();
+}
+
 fn build_ui(app: &gtk::Application) {
     let window = gtk::ApplicationWindow::new(app);
     window.set_title(Some("Gestos"));
@@ -2242,61 +2311,29 @@ fn build_ui(app: &gtk::Application) {
     let about_btn = gtk::Button::from_icon_name("help-about-symbolic");
     header.pack_end(&about_btn);
 
+    // 3. Settings button (Middle action on the right)
+    let settings_btn = gtk::Button::from_icon_name("preferences-system-symbolic");
+    settings_btn.set_tooltip_text(Some("Settings"));
+    header.pack_end(&settings_btn);
+
+    // 4. Daemon Switch (Leftmost action on the right)
+    let daemon_switch = gtk::Switch::new();
+    daemon_switch.set_valign(gtk::Align::Center);
+    header.pack_end(&daemon_switch);
+
     // Content VBox
     let content_vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
     content_vbox.add_css_class("main-window-content");
     window.set_child(Some(&content_vbox));
 
-    // 3. Status Boxed List (for daemon status controls, styled exactly like GNOME's Do Not Disturb row)
-    let daemon_list = gtk::ListBox::new();
-    daemon_list.set_margin_start(56);
-    daemon_list.set_margin_end(56);
-    daemon_list.set_margin_top(16);
-    daemon_list.set_margin_bottom(8);
-    daemon_list.add_css_class("boxed-list");
-    daemon_list.set_selection_mode(gtk::SelectionMode::None);
-
-    let daemon_row = gtk::ListBoxRow::new();
-    let row_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-    row_box.set_margin_start(16);
-    row_box.set_margin_end(16);
-    row_box.set_margin_top(12);
-    row_box.set_margin_bottom(12);
-
-    let text_vbox = gtk::Box::new(gtk::Orientation::Vertical, 2);
-    text_vbox.set_hexpand(true);
-    text_vbox.set_halign(gtk::Align::Start);
-
-    let title_label = gtk::Label::new(Some("MyGestures Daemon"));
-    title_label.add_css_class("status-label");
-    title_label.set_halign(gtk::Align::Start);
-    text_vbox.append(&title_label);
-
-    let subtitle_label = gtk::Label::new(Some(
-        "Run background daemon service to monitor mouse gestures",
-    ));
-    subtitle_label.add_css_class("action-label");
-    subtitle_label.set_halign(gtk::Align::Start);
-    text_vbox.append(&subtitle_label);
-
-    row_box.append(&text_vbox);
-
-    let daemon_switch = gtk::Switch::new();
-    daemon_switch.set_valign(gtk::Align::Center);
-    row_box.append(&daemon_switch);
-
-    daemon_row.set_child(Some(&row_box));
-    daemon_list.append(&daemon_row);
-    content_vbox.append(&daemon_list);
-
-    // 4. Search Entry
+    // 5. Search Entry
     let search_entry = gtk::SearchEntry::new();
     search_entry.set_halign(gtk::Align::Center);
     search_entry.set_width_request(360);
     search_entry.set_placeholder_text(Some("Search gestures..."));
     search_entry.set_margin_start(56);
     search_entry.set_margin_end(56);
-    search_entry.set_margin_top(8);
+    search_entry.set_margin_top(24);
     search_entry.set_margin_bottom(12);
     content_vbox.append(&search_entry);
 
@@ -2379,6 +2416,12 @@ fn build_ui(app: &gtk::Application) {
         dialog.present();
     });
 
+    // Connect settings button
+    let window_settings_clone = state.borrow().window.clone();
+    settings_btn.connect_clicked(move |_| {
+        open_settings_window(&window_settings_clone);
+    });
+
     // Connect daemon switch state controller
     let state_clone4 = Rc::clone(&state);
     let handler_id = state
@@ -2389,10 +2432,8 @@ fn build_ui(app: &gtk::Application) {
                 if let Err(err) = start_daemon(state_clone4.borrow().dbus_conn.as_ref()) {
                     show_error_dialog(&state_clone4.borrow().window, &err);
                 }
-                set_autostart_enabled(true);
             } else {
                 stop_daemon(state_clone4.borrow().dbus_conn.as_ref());
-                set_autostart_enabled(false);
             }
 
             let state_borrow = state_clone4.borrow();
