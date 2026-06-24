@@ -639,7 +639,7 @@ fn get_action_category_icon(action: &ActionType) -> (&'static str, &'static str)
         | ActionType::Maximize
         | ActionType::Restore
         | ActionType::ToggleMaximized
-        | ActionType::ToggleFullscreen => ("preferences-system-windows-symbolic", "icon-bg-blue"),
+        | ActionType::ToggleFullscreen => ("window-new-symbolic", "icon-bg-blue"),
         ActionType::WorkspaceLeft
         | ActionType::WorkspaceRight
         | ActionType::WorkspaceUp
