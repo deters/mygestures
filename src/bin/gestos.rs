@@ -1933,7 +1933,8 @@ fn build_ui(app: &gtk::Application) {
     window.set_titlebar(Some(&header));
 
     // 1. Add gesture button (Primary action on the left)
-    let add_gest_btn = gtk::Button::from_icon_name("list-add-symbolic");
+    let add_gest_btn = gtk::Button::with_label("New");
+    add_gest_btn.add_css_class("suggested-action");
     add_gest_btn.set_tooltip_text(Some("Add Gesture"));
     header.pack_start(&add_gest_btn);
 
