@@ -422,6 +422,13 @@ impl WaylandContext {
             ActionType::Screenshot => uinput_handler("Print"),
             ActionType::ScreenshotWindow => uinput_handler("Alt_L+Print"),
             ActionType::ScreenshotArea => uinput_handler("Shift_L+Print"),
+            ActionType::Kde(comp, short) => {
+                let cmd = format!(
+                    "dbus-send --session --type=method_call --dest=org.kde.kglobalaccel /component/{} org.kde.kglobalaccel.Component.invokeShortcut string:\"{}\"",
+                    comp, short
+                );
+                self.run_user_cmd(&cmd);
+            }
             _ => {}
         }
     }

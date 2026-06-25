@@ -43,6 +43,7 @@ pub enum ActionType {
     ScreenshotWindow,
     ScreenshotArea,
     Gnome(String),
+    Kde(String, String),
     Abort,
 }
 
@@ -97,6 +98,12 @@ impl ActionType {
             "screenshot-window" => Some(ActionType::ScreenshotWindow),
             "screenshot-area" => Some(ActionType::ScreenshotArea),
             "gnome" => Some(ActionType::Gnome(arg)),
+            "kde" => {
+                let mut parts = arg.splitn(2, [' ', '\t']);
+                let comp = parts.next()?.to_string();
+                let short = parts.next()?.to_string();
+                Some(ActionType::Kde(comp, short))
+            }
             "disabled" | "abort" => Some(ActionType::Abort),
             _ => None,
         }
@@ -149,6 +156,7 @@ impl std::fmt::Display for ActionType {
             ActionType::ScreenshotWindow => write!(f, "screenshot-window"),
             ActionType::ScreenshotArea => write!(f, "screenshot-area"),
             ActionType::Gnome(arg) => write!(f, "gnome {}", arg),
+            ActionType::Kde(comp, short) => write!(f, "kde {} {}", comp, short),
             ActionType::Abort => write!(f, "abort"),
         }
     }

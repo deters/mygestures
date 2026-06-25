@@ -25,11 +25,13 @@ const CATEGORY_NAMES: &[&str] = &[
     "Applications",
     "GNOME Actions (Native)",
     "Other/Internal",
+    "KDE Actions (Native)",
 ];
 
 fn action_matches(a: &ActionType, opt: &EditorActionOption) -> bool {
     match (a, &opt.action_type) {
         (ActionType::Gnome(k1), ActionType::Gnome(k2)) => k1 == k2,
+        (ActionType::Kde(c1, s1), ActionType::Kde(c2, s2)) => c1 == c2 && s1 == s2,
         (ActionType::Execute(cmd1), ActionType::Execute(cmd2)) => {
             if opt.category == 6 {
                 // Custom GNOME shortcut command must match exactly
@@ -271,6 +273,82 @@ fn get_static_action_options() -> Vec<EditorActionOption> {
             tooltip: "Ignore gesture matching".to_string(),
         },
     ]
+}
+
+fn fetch_kde_action_options() -> Vec<EditorActionOption> {
+    let mut options = Vec::new();
+
+    // Check if KDE is running to avoid unnecessary D-Bus calls/timeouts on other DEs
+    let is_kde = std::env::var("XDG_CURRENT_DESKTOP")
+        .map(|d| d.to_lowercase().contains("kde"))
+        .unwrap_or(false);
+    if !is_kde {
+        return options;
+    }
+
+    let conn = match zbus::blocking::Connection::session() {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Warning: Failed to connect to D-Bus session bus: {}", e);
+            return options;
+        }
+    };
+
+    let kglobalaccel_proxy = match zbus::blocking::Proxy::new(
+        &conn,
+        "org.kde.kglobalaccel",
+        "/kglobalaccel",
+        "org.kde.KGlobalAccel",
+    ) {
+        Ok(p) => p,
+        Err(_) => return options,
+    };
+
+    let component_paths: Vec<zbus::zvariant::OwnedObjectPath> = match kglobalaccel_proxy.call("allComponents", &()) {
+        Ok(paths) => paths,
+        Err(_) => {
+            return options;
+        }
+    };
+
+    for path in component_paths {
+        let path_str = path.as_str();
+        let comp_name = match path_str.rsplit('/').next() {
+            Some(name) => name.to_string(),
+            None => continue,
+        };
+
+        let proxy = match zbus::blocking::Proxy::new(
+            &conn,
+            "org.kde.kglobalaccel",
+            path_str,
+            "org.kde.kglobalaccel.Component",
+        ) {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+
+        let friendly_name: String = proxy.get_property("friendlyName").unwrap_or_else(|_| comp_name.clone());
+
+        let shortcuts: Vec<String> = match proxy.call("shortcutNames", &()) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+
+        for shortcut in shortcuts {
+            if shortcut.is_empty() {
+                continue;
+            }
+            options.push(EditorActionOption {
+                category: 8,
+                action_type: ActionType::Kde(comp_name.clone(), shortcut.clone()),
+                name: format!("{} - {}", friendly_name, shortcut),
+                tooltip: format!("KDE action: {} of component {}", shortcut, comp_name),
+            });
+        }
+    }
+
+    options
 }
 
 fn fetch_gnome_action_options() -> Vec<EditorActionOption> {
@@ -633,6 +711,7 @@ fn get_action_category_icon(action: &ActionType) -> (&'static str, &'static str)
             "icon-bg-orange",
         ),
         ActionType::Gnome(_) => ("preferences-system-symbolic", "icon-bg-blue"),
+        ActionType::Kde(_, _) => ("preferences-system-symbolic", "icon-bg-blue"),
         ActionType::Iconify => ("window-minimize-symbolic", "icon-bg-blue"),
         ActionType::Kill => ("window-close-symbolic", "icon-bg-blue"),
         ActionType::Maximize | ActionType::ToggleMaximized => ("window-maximize-symbolic", "icon-bg-blue"),
@@ -836,6 +915,9 @@ fn get_action_human_readable(action: &ActionType) -> String {
                 None => "GNOME Action".to_string(),
                 Some(c) => c.to_uppercase().collect::<String>() + chars.as_str()
             }
+        }
+        ActionType::Kde(comp, short) => {
+            format!("{} - {}", comp, short)
         }
         ActionType::Abort => "Abort Gesture".to_string(),
     }
@@ -1305,6 +1387,7 @@ fn get_category_icon(category: usize) -> &'static str {
         4 => "preferences-system-symbolic",                      // System & Settings
         5 => "application-x-executable-symbolic",                // Applications
         6 => "preferences-system-symbolic",                      // GNOME Actions
+        8 => "preferences-system-symbolic",                      // KDE Actions
         _ => "system-run-symbolic",                              // Other/Internal
     }
 }
@@ -1837,6 +1920,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     // Build options list
     let mut all_options = get_static_action_options();
     all_options.extend(fetch_gnome_action_options());
+    all_options.extend(fetch_kde_action_options());
 
     // Sort all_options: first by category, then alphabetically by name (case-insensitive) within each category.
     all_options.sort_by(|a, b| {
