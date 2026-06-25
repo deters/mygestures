@@ -2268,7 +2268,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     dialog.present();
 }
 
-fn show_confirm_dialog<W: IsA<gtk::Window>, F: Fn() + 'static>(
+fn show_confirm_dialog<W: IsA<gtk::Window>, F: FnOnce() + 'static>(
     parent: &W,
     title: &str,
     message: &str,
@@ -2312,8 +2312,11 @@ fn show_confirm_dialog<W: IsA<gtk::Window>, F: Fn() + 'static>(
         confirm_btn.add_css_class("suggested-action");
     }
     let dialog_confirm_clone = dialog.clone();
+    let on_confirm_cell = Rc::new(RefCell::new(Some(on_confirm)));
     confirm_btn.connect_clicked(move |_| {
-        on_confirm();
+        if let Some(on_confirm) = on_confirm_cell.borrow_mut().take() {
+            on_confirm();
+        }
         dialog_confirm_clone.destroy();
     });
     btn_box.append(&confirm_btn);
@@ -2445,7 +2448,7 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
             Some("_Export"),
             Some("_Cancel"),
         );
-        chooser.set_current_name(Some("mygestures.yaml"));
+        chooser.set_current_name("mygestures.yaml");
         
         let filter = gtk::FileFilter::new();
         filter.set_name(Some("YAML Files"));
