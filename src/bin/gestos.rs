@@ -856,27 +856,6 @@ fn create_gesture_row(gesture: &Gesture, state_rc: &Rc<RefCell<AppState>>) -> gt
     drag_handle.set_valign(gtk::Align::Center);
     main_hbox.append(&drag_handle);
 
-    // 1. Icon Category Holder
-    let (icon_name, bg_class) = if !gesture.actions.is_empty() {
-        get_action_category_icon(&gesture.actions[0])
-    } else {
-        ("system-run-symbolic", "icon-bg-blue")
-    };
-
-    let icon_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    icon_box.add_css_class("icon-holder");
-    icon_box.add_css_class(bg_class);
-    icon_box.set_valign(gtk::Align::Center);
-    let icon = gtk::Image::from_icon_name(icon_name);
-    icon.set_icon_size(gtk::IconSize::Large);
-    icon_box.append(&icon);
-    main_hbox.append(&icon_box);
-
-    // 2. Info text label
-    let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    vbox.set_hexpand(true);
-    vbox.set_valign(gtk::Align::Center);
-
     let has_keypress = if !gesture.actions.is_empty() {
         if let ActionType::Keypress(ref keys) = gesture.actions[0] {
             Some(keys)
@@ -886,6 +865,29 @@ fn create_gesture_row(gesture: &Gesture, state_rc: &Rc<RefCell<AppState>>) -> gt
     } else {
         None
     };
+
+    // 1. Icon Category Holder (only if not a keypress action)
+    if has_keypress.is_none() {
+        let (icon_name, bg_class) = if !gesture.actions.is_empty() {
+            get_action_category_icon(&gesture.actions[0])
+        } else {
+            ("system-run-symbolic", "icon-bg-blue")
+        };
+
+        let icon_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        icon_box.add_css_class("icon-holder");
+        icon_box.add_css_class(bg_class);
+        icon_box.set_valign(gtk::Align::Center);
+        let icon = gtk::Image::from_icon_name(icon_name);
+        icon.set_icon_size(gtk::IconSize::Large);
+        icon_box.append(&icon);
+        main_hbox.append(&icon_box);
+    }
+
+    // 2. Info text label
+    let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    vbox.set_hexpand(true);
+    vbox.set_valign(gtk::Align::Center);
 
     if let Some(keys) = has_keypress {
         let row_hbox = gtk::Box::new(gtk::Orientation::Horizontal, 6);
