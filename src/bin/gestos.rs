@@ -1838,6 +1838,15 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let mut all_options = get_static_action_options();
     all_options.extend(fetch_gnome_action_options());
 
+    // Sort all_options: first by category, then alphabetically by name (case-insensitive) within each category.
+    all_options.sort_by(|a, b| {
+        match a.category.cmp(&b.category) {
+            std::cmp::Ordering::Equal => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+            other => other,
+        }
+    });
+
+
     // Find initial matching option
     let mut selected_cat = 0;
     let mut selected_act = 0;
