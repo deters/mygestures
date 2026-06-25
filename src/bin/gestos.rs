@@ -2448,6 +2448,10 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
             Some("_Export"),
             Some("_Cancel"),
         );
+        if let Ok(home) = std::env::var("HOME") {
+            let file = gio::File::for_path(home);
+            let _ = chooser.set_current_folder(Some(&file));
+        }
         chooser.set_current_name("mygestures.yaml");
         
         let filter = gtk::FileFilter::new();
@@ -2523,6 +2527,10 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
             Some("_Import"),
             Some("_Cancel"),
         );
+        if let Ok(home) = std::env::var("HOME") {
+            let file = gio::File::for_path(home);
+            let _ = chooser.set_current_folder(Some(&file));
+        }
         
         let filter = gtk::FileFilter::new();
         filter.set_name(Some("YAML Files"));
