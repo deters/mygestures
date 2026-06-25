@@ -2448,7 +2448,10 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
             Some("_Export"),
             Some("_Cancel"),
         );
-        if let Ok(home) = std::env::var("HOME") {
+        if let Ok(cwd) = std::env::current_dir() {
+            let file = gio::File::for_path(cwd);
+            let _ = chooser.set_current_folder(Some(&file));
+        } else if let Ok(home) = std::env::var("HOME") {
             let file = gio::File::for_path(home);
             let _ = chooser.set_current_folder(Some(&file));
         }
@@ -2527,7 +2530,10 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
             Some("_Import"),
             Some("_Cancel"),
         );
-        if let Ok(home) = std::env::var("HOME") {
+        if let Ok(cwd) = std::env::current_dir() {
+            let file = gio::File::for_path(cwd);
+            let _ = chooser.set_current_folder(Some(&file));
+        } else if let Ok(home) = std::env::var("HOME") {
             let file = gio::File::for_path(home);
             let _ = chooser.set_current_folder(Some(&file));
         }
