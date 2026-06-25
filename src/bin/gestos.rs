@@ -2439,11 +2439,11 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
     let export_btn = gtk::Button::with_label("Export...");
     export_btn.set_valign(gtk::Align::Center);
     
-    let dialog_clone = dialog.clone();
+    let parent_clone = parent.clone();
     export_btn.connect_clicked(move |_| {
         let chooser = gtk::FileChooserNative::new(
             Some("Export Configuration"),
-            Some(&dialog_clone),
+            Some(&parent_clone),
             gtk::FileChooserAction::Save,
             Some("_Export"),
             Some("_Cancel"),
@@ -2460,7 +2460,7 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
         filter.add_pattern("*.yml");
         chooser.add_filter(&filter);
 
-        let dialog_err_clone = dialog_clone.clone();
+        let parent_err_clone = parent_clone.clone();
         chooser.connect_response(move |c, response| {
             if response == gtk::ResponseType::Accept {
                 if let Some(file) = c.file() {
@@ -2468,14 +2468,14 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
                         let config_path = mygestures::config::get_default_config_path();
                         if config_path.exists() {
                             if let Err(e) = std::fs::copy(&config_path, &path) {
-                                show_error_dialog(&dialog_err_clone, &format!("Failed to export config: {}", e));
+                                show_error_dialog(&parent_err_clone, &format!("Failed to export config: {}", e));
                             }
                         } else {
                             let default_cfg = Configuration::load_from_defaults();
                             let mut temp_cfg = default_cfg;
                             temp_cfg.user_config_path = path;
                             if let Err(e) = temp_cfg.save_to_file() {
-                                show_error_dialog(&dialog_err_clone, &format!("Failed to export config: {}", e));
+                                show_error_dialog(&parent_err_clone, &format!("Failed to export config: {}", e));
                             }
                         }
                     }
@@ -2517,12 +2517,12 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
     let import_btn = gtk::Button::with_label("Import...");
     import_btn.set_valign(gtk::Align::Center);
 
-    let dialog_clone = dialog.clone();
+    let parent_clone = parent.clone();
     let state_rc_clone = Rc::clone(state_rc);
     import_btn.connect_clicked(move |_| {
         let chooser = gtk::FileChooserNative::new(
             Some("Import Configuration"),
-            Some(&dialog_clone),
+            Some(&parent_clone),
             gtk::FileChooserAction::Open,
             Some("_Import"),
             Some("_Cancel"),
@@ -2538,17 +2538,17 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
         filter.add_pattern("*.yml");
         chooser.add_filter(&filter);
 
-        let dialog_err_clone = dialog_clone.clone();
+        let parent_err_clone = parent_clone.clone();
         let state_rc_inner = Rc::clone(&state_rc_clone);
         chooser.connect_response(move |c, response| {
             if response == gtk::ResponseType::Accept {
                 if let Some(file) = c.file() {
                     if let Some(path) = file.path() {
                         if let Some(mut new_config) = Configuration::load_from_file(&path) {
-                            let dialog_confirm = dialog_err_clone.clone();
+                            let parent_confirm = parent_err_clone.clone();
                             let state_rc_confirm = Rc::clone(&state_rc_inner);
                             show_confirm_dialog(
-                                &dialog_err_clone,
+                                &parent_err_clone,
                                 "Confirm Import",
                                 "Are you sure you want to import this configuration? This will overwrite your existing gestures.",
                                 "Import",
@@ -2556,7 +2556,7 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
                                 move || {
                                     let default_path = mygestures::config::get_default_config_path();
                                     if let Err(e) = std::fs::copy(&path, &default_path) {
-                                        show_error_dialog(&dialog_confirm, &format!("Failed to copy config file: {}", e));
+                                        show_error_dialog(&parent_confirm, &format!("Failed to copy config file: {}", e));
                                     } else {
                                         new_config.user_config_path = default_path;
                                         let mut state = state_rc_confirm.borrow_mut();
@@ -2564,12 +2564,12 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
                                         drop(state);
                                         refresh_gesture_list(&state_rc_confirm, None);
                                         let state = state_rc_confirm.borrow();
-                                        reload_daemon(state.dbus_conn.as_ref(), Some(&dialog_confirm));
+                                        reload_daemon(state.dbus_conn.as_ref(), Some(&parent_confirm));
                                     }
                                 }
                             );
                         } else {
-                            show_error_dialog(&dialog_err_clone, "Invalid configuration file. Please select a valid YAML mygestures configuration.");
+                            show_error_dialog(&parent_err_clone, "Invalid configuration file. Please select a valid YAML mygestures configuration.");
                         }
                     }
                 }
@@ -2611,13 +2611,13 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
     reset_btn.set_valign(gtk::Align::Center);
     reset_btn.add_css_class("destructive-action");
 
-    let dialog_clone = dialog.clone();
+    let parent_clone = parent.clone();
     let state_rc_clone2 = Rc::clone(state_rc);
     reset_btn.connect_clicked(move |_| {
-        let dialog_confirm = dialog_clone.clone();
+        let parent_confirm = parent_clone.clone();
         let state_rc_inner = Rc::clone(&state_rc_clone2);
         show_confirm_dialog(
-            &dialog_clone,
+            &parent_clone,
             "Reset to Defaults",
             "Are you sure you want to reset all gesture settings to defaults? This action cannot be undone.",
             "Reset",
@@ -2628,7 +2628,7 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
                     let _ = std::fs::remove_file(&default_path);
                 }
                 if let Err(e) = mygestures::config::initialize_user_config_if_missing() {
-                    show_error_dialog(&dialog_confirm, &format!("Failed to reset config: {}", e));
+                    show_error_dialog(&parent_confirm, &format!("Failed to reset config: {}", e));
                     return;
                 }
                 let new_config = Configuration::load_from_defaults();
@@ -2637,7 +2637,7 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
                 drop(state);
                 refresh_gesture_list(&state_rc_inner, None);
                 let state = state_rc_inner.borrow();
-                reload_daemon(state.dbus_conn.as_ref(), Some(&dialog_confirm));
+                reload_daemon(state.dbus_conn.as_ref(), Some(&parent_confirm));
             }
         );
     });
