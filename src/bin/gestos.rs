@@ -6,6 +6,7 @@ use mygestures::protractor::{match_gesture, Point2D};
 use std::cell::RefCell;
 use std::process::Command;
 use std::rc::Rc;
+use futures_util::StreamExt;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -682,6 +683,15 @@ fn get_autostart_file_path() -> Option<std::path::PathBuf> {
     })
 }
 
+fn get_overlay_autostart_file_path() -> Option<std::path::PathBuf> {
+    std::env::var("HOME").ok().map(|home| {
+        std::path::PathBuf::from(home)
+            .join(".config")
+            .join("autostart")
+            .join("gestos-overlay.desktop")
+    })
+}
+
 fn set_autostart_enabled(enabled: bool) {
     if let Some(path) = get_autostart_file_path() {
         if enabled {
@@ -699,6 +709,34 @@ fn set_autostart_enabled(enabled: bool) {
             let _ = std::fs::write(&path, content);
         } else if path.exists() {
             let _ = std::fs::remove_file(&path);
+        }
+    }
+}
+
+fn set_overlay_enabled(enabled: bool) {
+    if let Some(path) = get_overlay_autostart_file_path() {
+        if enabled {
+            if let Some(parent) = path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            let content = "[Desktop Entry]\n\
+                           Type=Application\n\
+                           Name=Gestos Overlay\n\
+                           Comment=Gesture visualization overlay\n\
+                           Exec=gestos --overlay\n\
+                           Icon=gestos\n\
+                           Terminal=false\n\
+                           X-GNOME-Autostart-enabled=true\n";
+            let _ = std::fs::write(&path, content);
+
+            // Start the overlay process immediately
+            let _ = Command::new("gestos").arg("--overlay").spawn();
+        } else {
+            if path.exists() {
+                let _ = std::fs::remove_file(&path);
+            }
+            // Kill any running overlay instance
+            let _ = Command::new("pkill").args(["-f", "gestos --overlay"]).status();
         }
     }
 }
@@ -2492,6 +2530,46 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
     autostart_row.set_child(Some(&row_box));
     general_list.append(&autostart_row);
 
+    // Overlay (Gesture Trail) row
+    let overlay_row = gtk::ListBoxRow::new();
+    let overlay_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    overlay_box.set_margin_start(16);
+    overlay_box.set_margin_end(16);
+    overlay_box.set_margin_top(12);
+    overlay_box.set_margin_bottom(12);
+
+    let overlay_text_vbox = gtk::Box::new(gtk::Orientation::Vertical, 2);
+    overlay_text_vbox.set_hexpand(true);
+    overlay_text_vbox.set_halign(gtk::Align::Start);
+
+    let overlay_title = gtk::Label::new(Some("Show Gesture Trail"));
+    overlay_title.add_css_class("status-label");
+    overlay_title.set_halign(gtk::Align::Start);
+    overlay_text_vbox.append(&overlay_title);
+
+    let overlay_subtitle = gtk::Label::new(Some("Show visual feedback trail while drawing"));
+    overlay_subtitle.add_css_class("action-label");
+    overlay_subtitle.set_halign(gtk::Align::Start);
+    overlay_text_vbox.append(&overlay_subtitle);
+
+    overlay_box.append(&overlay_text_vbox);
+
+    let overlay_switch = gtk::Switch::new();
+    overlay_switch.set_valign(gtk::Align::Center);
+
+    let overlay_file = get_overlay_autostart_file_path();
+    let is_overlay_enabled = overlay_file.map(|p| p.exists()).unwrap_or(false);
+    overlay_switch.set_active(is_overlay_enabled);
+
+    overlay_switch.connect_state_set(move |_, state| {
+        set_overlay_enabled(state);
+        glib::Propagation::Proceed
+    });
+
+    overlay_box.append(&overlay_switch);
+    overlay_row.set_child(Some(&overlay_box));
+    general_list.append(&overlay_row);
+
     // --- Backup & Restore Section ---
     let maintenance_header = gtk::Label::new(Some("Backup & Restore"));
     maintenance_header.add_css_class("section-header");
@@ -2984,11 +3062,236 @@ fn build_ui(app: &gtk::Application) {
     state.borrow().window.present();
 }
 
+enum OverlayEvent {
+    Started(f64, f64),
+    Updated(f64, f64),
+    Ended,
+}
+
+#[zbus::proxy(
+    interface = "org.mygestures.Daemon",
+    default_service = "org.mygestures.Daemon",
+    default_path = "/org/mygestures/Daemon"
+)]
+trait Daemon {
+    #[zbus(signal)]
+    fn gesture_started(&self, x: f64, y: f64) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    fn gesture_updated(&self, x: f64, y: f64) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    fn gesture_ended(&self) -> zbus::Result<()>;
+}
+
+struct TrailData {
+    points: Vec<Point2D>,
+    opacity: f64,
+}
+
+fn build_overlay_ui(app: &gtk::Application) {
+    let window = gtk::ApplicationWindow::new(app);
+    window.set_decorated(false);
+    window.set_accept_focus(false);
+    window.set_focus_on_map(false);
+
+    // CSS styling for transparency
+    let provider = gtk::CssProvider::new();
+    provider.load_from_data(
+        "window { background-color: rgba(0, 0, 0, 0); }\n\
+         drawingarea { background-color: rgba(0, 0, 0, 0); }"
+    );
+    if let Some(display) = gdk::Display::default() {
+        gtk::style_context_add_provider_for_display(
+            &display,
+            &provider,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+    }
+
+    let drawing_area = gtk::DrawingArea::new();
+    window.set_child(Some(&drawing_area));
+
+    // Empty input region on realize (click-through)
+    window.connect_realize(|w| {
+        if let Some(surface) = w.surface() {
+            let region = cairo::Region::create();
+            surface.set_input_region(&region);
+        }
+    });
+
+    window.fullscreen();
+
+    let trail_data = Rc::new(RefCell::new(TrailData {
+        points: Vec::new(),
+        opacity: 0.0,
+    }));
+
+    let trail_draw = trail_data.clone();
+    drawing_area.set_draw_func(move |_, cr, width, height| {
+        let data = trail_draw.borrow();
+        if data.points.len() < 2 {
+            return;
+        }
+
+        cr.save().unwrap();
+
+        let start_pt = &data.points[0];
+        let anchor_x = width as f64 / 2.0;
+        let anchor_y = height as f64 / 2.0;
+
+        cr.set_source_rgba(0.0, 0.7, 1.0, data.opacity * 0.85); // Neon cyan glow
+        cr.set_line_width(6.0);
+        cr.set_line_cap(cairo::LineCap::Round);
+        cr.set_line_join(cairo::LineJoin::Round);
+
+        cr.move_to(anchor_x, anchor_y);
+        for pt in &data.points[1..] {
+            let dx = pt.x - start_pt.x;
+            let dy = pt.y - start_pt.y;
+            cr.line_to(anchor_x + dx, anchor_y + dy);
+        }
+
+        cr.stroke().unwrap();
+        cr.restore().unwrap();
+    });
+
+    let (tx, rx) = glib::MainContext::channel::<OverlayEvent>(glib::Priority::default());
+
+    let trail_clone = trail_data.clone();
+    let area_clone = drawing_area.clone();
+    let window_clone = window.clone();
+    let fade_timeout_id = Rc::new(RefCell::new(None::<glib::SourceId>));
+    let fade_timeout_clone = fade_timeout_id.clone();
+
+    rx.attach(None, move |event| {
+        match event {
+            OverlayEvent::Started(x, y) => {
+                if let Some(source_id) = fade_timeout_clone.borrow_mut().take() {
+                    source_id.remove();
+                }
+
+                let mut data = trail_clone.borrow_mut();
+                data.points.clear();
+                data.points.push(Point2D { x, y });
+                data.opacity = 1.0;
+
+                window_clone.present();
+                area_clone.queue_draw();
+            }
+            OverlayEvent::Updated(x, y) => {
+                let mut data = trail_clone.borrow_mut();
+                data.points.push(Point2D { x, y });
+                area_clone.queue_draw();
+            }
+            OverlayEvent::Ended => {
+                let trail_timer = trail_clone.clone();
+                let area_timer = area_clone.clone();
+                let window_timer = window_clone.clone();
+                let fade_timeout_timer = fade_timeout_clone.clone();
+
+                let source_id = glib::timeout_add_local(std::time::Duration::from_millis(16), move || {
+                    let mut data = trail_timer.borrow_mut();
+                    data.opacity -= 0.05;
+                    if data.opacity <= 0.0 {
+                        data.points.clear();
+                        window_timer.hide();
+                        *fade_timeout_timer.borrow_mut() = None;
+                        glib::ControlFlow::Break
+                    } else {
+                        area_timer.queue_draw();
+                        glib::ControlFlow::Continue
+                    }
+                });
+
+                *fade_timeout_clone.borrow_mut() = Some(source_id);
+            }
+        }
+        glib::ControlFlow::Continue
+    });
+
+    // Spawn async receiver
+    glib::MainContext::default().spawn_local(async move {
+        let connection = match zbus::Connection::session().await {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Failed to connect to D-Bus session: {}", e);
+                return;
+            }
+        };
+
+        let proxy = match DaemonProxy::new(&connection).await {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("Failed to create Daemon D-Bus proxy: {}", e);
+                return;
+            }
+        };
+
+        let mut started_stream = match proxy.receive_gesture_started().await {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("Failed to receive GestureStarted: {}", e);
+                return;
+            }
+        };
+        let tx_started = tx.clone();
+        glib::MainContext::default().spawn_local(async move {
+            while let Some(signal) = started_stream.next().await {
+                if let Ok(args) = signal.args::<(f64, f64)>() {
+                    let _ = tx_started.send(OverlayEvent::Started(args.0, args.1));
+                }
+            }
+        });
+
+        let mut updated_stream = match proxy.receive_gesture_updated().await {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("Failed to receive GestureUpdated: {}", e);
+                return;
+            }
+        };
+        let tx_updated = tx.clone();
+        glib::MainContext::default().spawn_local(async move {
+            while let Some(signal) = updated_stream.next().await {
+                if let Ok(args) = signal.args::<(f64, f64)>() {
+                    let _ = tx_updated.send(OverlayEvent::Updated(args.0, args.1));
+                }
+            }
+        });
+
+        let mut ended_stream = match proxy.receive_gesture_ended().await {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("Failed to receive GestureEnded: {}", e);
+                return;
+            }
+        };
+        let tx_ended = tx.clone();
+        glib::MainContext::default().spawn_local(async move {
+            while let Some(_signal) = ended_stream.next().await {
+                let _ = tx_ended.send(OverlayEvent::Ended);
+            }
+        });
+    });
+}
+
 fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    let is_overlay = args.iter().any(|arg| arg == "--overlay");
+
     let app = gtk::Application::builder()
-        .application_id("org.mygestures.gestos")
+        .application_id(if is_overlay {
+            "org.mygestures.gestos.overlay"
+        } else {
+            "org.mygestures.gestos"
+        })
         .build();
 
-    app.connect_activate(build_ui);
+    if is_overlay {
+        app.connect_activate(build_overlay_ui);
+    } else {
+        app.connect_activate(build_ui);
+    }
     app.run();
 }

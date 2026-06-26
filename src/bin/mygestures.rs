@@ -69,6 +69,15 @@ impl DaemonDbus {
         }
         std::process::exit(0);
     }
+
+    #[zbus(signal)]
+    fn gesture_started(&self, x: f64, y: f64) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    fn gesture_updated(&self, x: f64, y: f64) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    fn gesture_ended(&self) -> zbus::Result<()>;
 }
 
 fn find_mouse_device() -> Option<PathBuf> {
@@ -169,6 +178,8 @@ fn run_grabber(
     use evdev::{Device, EventType, KeyCode};
     use mygestures::protractor::{match_gesture, Point2D};
     use mygestures::uinput::UinputDevice;
+
+    let dbus_conn = zbus::blocking::Connection::session().ok();
 
     println!("Attempting to open device: {}", device_path);
     let mut dev = Device::open(device_path)?;
@@ -309,6 +320,15 @@ fn run_grabber(
                         "Gesture drawing started at ({:.1}, {:.1})",
                         virtual_x, virtual_y
                     );
+                    if let Some(ref conn) = dbus_conn {
+                        let _ = conn.emit_signal(
+                            None::<zbus::names::BusName>,
+                            "/org/mygestures/Daemon",
+                            "org.mygestures.Daemon",
+                            "GestureStarted",
+                            &(virtual_x, virtual_y),
+                        );
+                    }
                 } else if ev_value == 0 {
                     // End gesture movement
                     is_drawing = false;
@@ -325,6 +345,16 @@ fn run_grabber(
                         "Gesture drawing finished. Path points: {}",
                         captured_points.len()
                     );
+
+                    if let Some(ref conn) = dbus_conn {
+                        let _ = conn.emit_signal(
+                            None::<zbus::names::BusName>,
+                            "/org/mygestures/Daemon",
+                            "org.mygestures.Daemon",
+                            "GestureEnded",
+                            &(),
+                        );
+                    }
 
                     // Calculate path length
                     let len = mygestures::protractor::path_length(&captured_points);
@@ -411,6 +441,15 @@ fn run_grabber(
                                 x: virtual_x,
                                 y: virtual_y,
                             });
+                            if let Some(ref conn) = dbus_conn {
+                                let _ = conn.emit_signal(
+                                    None::<zbus::names::BusName>,
+                                    "/org/mygestures/Daemon",
+                                    "org.mygestures.Daemon",
+                                    "GestureUpdated",
+                                    &(virtual_x, virtual_y),
+                                );
+                            }
                         }
                     }
                     moved = false;
