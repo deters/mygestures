@@ -3175,8 +3175,7 @@ fn build_overlay_ui(app: &gtk::Application) {
     // CSS styling for transparency and OSD notification box
     let provider = gtk::CssProvider::new();
     provider.load_from_data(
-        "window { background-color: rgba(0, 0, 0, 0); }\n\
-         drawingarea { background-color: rgba(0, 0, 0, 0); }\n\
+        "window, window.background, drawingarea { background-color: rgba(0, 0, 0, 0); background: none; }\n\
          .osd-notification {\n\
              background-color: rgba(30, 30, 30, 0.85);\n\
              border: 1px solid rgba(255, 255, 255, 0.15);\n\
