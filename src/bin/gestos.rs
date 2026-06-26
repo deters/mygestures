@@ -3167,9 +3167,11 @@ struct TrailData {
 }
 
 fn build_overlay_ui(app: &gtk::Application) {
-    let window = gtk::ApplicationWindow::new(app);
-    window.set_decorated(false);
-    window.set_focusable(false);
+    let window = gtk::ApplicationWindow::builder()
+        .application(app)
+        .decorated(false)
+        .build();
+    window.set_property("accept-focus", false);
 
     // CSS styling for transparency and OSD notification box
     let provider = gtk::CssProvider::new();
@@ -3485,6 +3487,7 @@ fn build_overlay_ui(app: &gtk::Application) {
             }
         });
     });
+    window.present();
 }
 
 fn main() {
