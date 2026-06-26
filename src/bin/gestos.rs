@@ -3171,7 +3171,6 @@ fn build_overlay_ui(app: &gtk::Application) {
         .application(app)
         .decorated(false)
         .build();
-    window.set_property("accept-focus", false);
 
     // CSS styling for transparency and OSD notification box
     let provider = gtk::CssProvider::new();
@@ -3317,7 +3316,7 @@ fn build_overlay_ui(app: &gtk::Application) {
                     data.points.push(Point2D { x, y });
                     data.opacity = 1.0;
 
-                    window_clone.present();
+                    window_clone.set_visible(true);
                     area_clone.queue_draw();
                 }
                 OverlayEvent::Updated(x, y) => {
@@ -3362,7 +3361,7 @@ fn build_overlay_ui(app: &gtk::Application) {
 
                         osd_box_clone.set_opacity(1.0);
                         osd_box_clone.set_visible(true);
-                        window_clone.present();
+                        window_clone.set_visible(true);
 
                         let osd_box_fade = osd_box_clone.clone();
                         let osd_timeout_fade = osd_timeout_clone.clone();
@@ -3487,7 +3486,7 @@ fn build_overlay_ui(app: &gtk::Application) {
             }
         });
     });
-    window.present();
+    window.set_visible(true);
 }
 
 fn main() {
