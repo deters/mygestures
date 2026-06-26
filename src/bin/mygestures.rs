@@ -71,13 +71,16 @@ impl DaemonDbus {
     }
 
     #[zbus(signal)]
-    fn gesture_started(&self, x: f64, y: f64) -> zbus::Result<()>;
+    async fn gesture_started(&self, ctxt: &zbus::object_server::SignalContext<'_>, x: f64, y: f64) -> zbus::Result<()>;
 
     #[zbus(signal)]
-    fn gesture_updated(&self, x: f64, y: f64) -> zbus::Result<()>;
+    async fn gesture_updated(&self, ctxt: &zbus::object_server::SignalContext<'_>, x: f64, y: f64) -> zbus::Result<()>;
 
     #[zbus(signal)]
-    fn gesture_ended(&self) -> zbus::Result<()>;
+    async fn gesture_ended(&self, ctxt: &zbus::object_server::SignalContext<'_>) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn action_executed(&self, ctxt: &zbus::object_server::SignalContext<'_>, gesture_name: String, action_desc: String, icon_name: String) -> zbus::Result<()>;
 }
 
 fn find_mouse_device() -> Option<PathBuf> {
@@ -373,6 +376,26 @@ fn run_grabber(
                                 config.gestures.iter().find(|g| g.name == matched_name)
                             {
                                 println!("Matched gesture: {}", gesture.name);
+
+                                let mut action_descs = Vec::new();
+                                for action in &gesture.actions {
+                                    action_descs.push(action.get_description());
+                                }
+                                let action_desc = action_descs.join(", ");
+                                let icon_name = gesture.actions.first()
+                                    .map(|a| a.get_icon_name().to_string())
+                                    .unwrap_or_else(|| "system-run-symbolic".to_string());
+
+                                if let Some(ref conn) = dbus_conn {
+                                    let _ = conn.emit_signal(
+                                        None::<zbus::names::BusName>,
+                                        "/org/mygestures/Daemon",
+                                        "org.mygestures.Daemon",
+                                        "ActionExecuted",
+                                        &(gesture.name.clone(), action_desc, icon_name),
+                                    );
+                                }
+
                                 for action in &gesture.actions {
                                     if let ActionType::Click(btn) = action {
                                         if let Some(ref mut u) = uinput {

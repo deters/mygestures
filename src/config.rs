@@ -108,7 +108,90 @@ impl ActionType {
             _ => None,
         }
     }
+
+    pub fn get_icon_name(&self) -> &'static str {
+        match self {
+            ActionType::Execute(_) => "utilities-terminal-symbolic",
+            ActionType::Keypress(_) => "preferences-desktop-keyboard-shortcuts-symbolic",
+            ActionType::Gnome(_) => "preferences-system-symbolic",
+            ActionType::Kde(_, _) => "preferences-system-symbolic",
+            ActionType::Iconify => "window-minimize-symbolic",
+            ActionType::Kill => "window-close-symbolic",
+            ActionType::Maximize | ActionType::ToggleMaximized => "window-maximize-symbolic",
+            ActionType::Restore => "window-restore-symbolic",
+            ActionType::ToggleFullscreen => "view-fullscreen-symbolic",
+            ActionType::Lower | ActionType::Raise => "window-new-symbolic",
+            ActionType::WorkspaceLeft
+            | ActionType::WorkspaceRight
+            | ActionType::WorkspaceUp
+            | ActionType::WorkspaceDown => "go-next-symbolic",
+            ActionType::VolumeUp | ActionType::VolumeDown | ActionType::VolumeMute => {
+                "audio-volume-high-symbolic"
+            }
+            ActionType::MediaPlay | ActionType::MediaNext | ActionType::MediaPrev => {
+                "media-playback-start-symbolic"
+            }
+            ActionType::Terminal => "utilities-terminal-symbolic",
+            ActionType::Www => "web-browser-symbolic",
+            ActionType::Home => "user-home-symbolic",
+            ActionType::Email => "mail-unread-symbolic",
+            ActionType::Search => "system-search-symbolic",
+            ActionType::Calculator => "accessories-calculator-symbolic",
+            ActionType::ControlCenter => "preferences-system-symbolic",
+            ActionType::LockScreen => "system-lock-screen-symbolic",
+            ActionType::Logout => "system-log-out-symbolic",
+            ActionType::Screenshot | ActionType::ScreenshotWindow | ActionType::ScreenshotArea => {
+                "camera-photo-symbolic"
+            }
+            _ => "system-run-symbolic",
+        }
+    }
+
+    pub fn get_description(&self) -> String {
+        match self {
+            ActionType::Iconify => "Minimize Window".to_string(),
+            ActionType::Kill => "Close Window".to_string(),
+            ActionType::Lower => "Lower Window".to_string(),
+            ActionType::Raise => "Raise Window".to_string(),
+            ActionType::Maximize => "Maximize Window".to_string(),
+            ActionType::Restore => "Restore Window".to_string(),
+            ActionType::ToggleMaximized => "Toggle Maximize".to_string(),
+            ActionType::Keypress(keys) => format!("Press keys: {}", keys),
+            ActionType::Execute(cmd) => format!("Run: {}", cmd),
+            ActionType::WorkspaceLeft => "Workspace Left".to_string(),
+            ActionType::WorkspaceRight => "Workspace Right".to_string(),
+            ActionType::WorkspaceUp => "Workspace Up".to_string(),
+            ActionType::WorkspaceDown => "Workspace Down".to_string(),
+            ActionType::ShowOverview => "Show Overview".to_string(),
+            ActionType::ShowAppGrid => "Show App Grid".to_string(),
+            ActionType::Click(btn) => format!("Click Button {}", btn.unwrap_or(1)),
+            ActionType::ToggleFullscreen => "Toggle Fullscreen".to_string(),
+            ActionType::ShowDesktop => "Show Desktop".to_string(),
+            ActionType::LockScreen => "Lock Screen".to_string(),
+            ActionType::Terminal => "Open Terminal".to_string(),
+            ActionType::VolumeUp => "Volume Up".to_string(),
+            ActionType::VolumeDown => "Volume Down".to_string(),
+            ActionType::VolumeMute => "Mute Volume".to_string(),
+            ActionType::MediaPlay => "Play/Pause Media".to_string(),
+            ActionType::MediaNext => "Next Track".to_string(),
+            ActionType::MediaPrev => "Previous Track".to_string(),
+            ActionType::Www => "Open Web Browser".to_string(),
+            ActionType::Home => "Open Home Folder".to_string(),
+            ActionType::Email => "Open Email Client".to_string(),
+            ActionType::Search => "Search".to_string(),
+            ActionType::Calculator => "Open Calculator".to_string(),
+            ActionType::ControlCenter => "Open Control Center".to_string(),
+            ActionType::Logout => "Log Out".to_string(),
+            ActionType::Screenshot => "Take Screenshot".to_string(),
+            ActionType::ScreenshotWindow => "Screenshot Window".to_string(),
+            ActionType::ScreenshotArea => "Screenshot Area".to_string(),
+            ActionType::Gnome(cmd) => format!("GNOME: {}", cmd),
+            ActionType::Kde(comp, method) => format!("KDE: {} {}", comp, method),
+            ActionType::Abort => "Abort".to_string(),
+        }
+    }
 }
+
 
 impl std::fmt::Display for ActionType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

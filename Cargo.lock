@@ -902,6 +902,8 @@ version = "4.2.1"
 dependencies = [
  "env_logger",
  "evdev",
+ "futures-channel",
+ "futures-util",
  "gtk4",
  "libc",
  "log",
