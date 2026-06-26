@@ -2604,6 +2604,7 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
 
     overlay_box.append(&overlay_switch);
     overlay_row.set_child(Some(&overlay_box));
+    overlay_row.set_visible(false); // HIDE FOR NOW
     general_list.append(&overlay_row);
 
     // Action Notifications (OSD) row
@@ -2641,6 +2642,7 @@ fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
 
     osd_box.append(&osd_switch);
     osd_row.set_child(Some(&osd_box));
+    osd_row.set_visible(false); // HIDE FOR NOW
     general_list.append(&osd_row);
 
     // --- Backup & Restore Section ---
