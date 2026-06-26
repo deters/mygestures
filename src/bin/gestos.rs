@@ -753,6 +753,13 @@ fn get_osd_enabled_file_path() -> std::path::PathBuf {
 }
 
 fn is_osd_enabled() -> bool {
+    let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|arg| arg == "--no-osd") {
+        return false;
+    }
+    if args.iter().any(|arg| arg == "--osd") {
+        return true;
+    }
     let path = get_osd_enabled_file_path();
     if !path.exists() {
         true
