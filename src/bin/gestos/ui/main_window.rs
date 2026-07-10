@@ -251,7 +251,9 @@ pub fn build_ui(app: &gtk::Application) {
 
     // Connect about button
     let window_clone = state.borrow().window.clone();
+    let popover_about_clone = popover.clone();
     about_btn.connect_clicked(move |_| {
+        popover_about_clone.popdown();
         let dialog = gtk::AboutDialog::new();
         dialog.set_transient_for(Some(&window_clone));
         dialog.set_program_name(Some("Gestos"));
@@ -265,7 +267,9 @@ pub fn build_ui(app: &gtk::Application) {
 
     // Connect settings button
     let state_settings_clone = Rc::clone(&state);
+    let popover_settings_clone = popover.clone();
     settings_btn.connect_clicked(move |_| {
+        popover_settings_clone.popdown();
         open_settings_window(&state_settings_clone);
     });
 
