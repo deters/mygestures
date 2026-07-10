@@ -1683,31 +1683,7 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
 
 
 
-    // Row 2: Category
-    let category_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-    category_row.add_css_class("settings-row");
-
-    let category_icon = gtk::Image::from_icon_name("open-menu-symbolic");
-    category_icon.set_valign(gtk::Align::Center);
-    category_row.append(&category_icon);
-
-    let category_label = gtk::Label::new(Some("Category"));
-    category_label.set_halign(gtk::Align::Start);
-    category_label.add_css_class("status-label");
-    category_row.append(&category_label);
-
-    let category_spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    category_spacer.set_hexpand(true);
-    category_row.append(&category_spacer);
-
-    let category_dropdown = gtk::DropDown::from_strings(CATEGORY_NAMES);
-    category_dropdown.set_halign(gtk::Align::End);
-    category_dropdown.set_size_request(220, -1);
-    category_row.append(&category_dropdown);
-
-    settings_list.append(&category_row);
-
-    // Row 3: Action
+    // Row 2: Action Selection
     let action_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
     action_row.add_css_class("settings-row");
 
@@ -1724,10 +1700,11 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     action_spacer.set_hexpand(true);
     action_row.append(&action_spacer);
 
-    let action_dropdown = gtk::DropDown::new(None::<gtk::StringList>, None::<gtk::Expression>);
-    action_dropdown.set_halign(gtk::Align::End);
-    action_dropdown.set_size_request(220, -1);
-    action_row.append(&action_dropdown);
+    let action_select_btn = gtk::MenuButton::new();
+    action_select_btn.set_halign(gtk::Align::End);
+    action_select_btn.set_size_request(220, -1);
+    action_select_btn.set_label("Select Action...");
+    action_row.append(&action_select_btn);
 
     settings_list.append(&action_row);
 
@@ -1769,152 +1746,132 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     action_details_row.append(&entry_container);
     settings_list.append(&action_details_row);
 
-    let current_options: Rc<RefCell<Vec<EditorActionOption>>> = Rc::new(RefCell::new(Vec::new()));
+    let selected_action: Rc<RefCell<Option<EditorActionOption>>> = Rc::new(RefCell::new(None));
 
-    // Custom List Item Factories for Category Dropdown
-    let cat_list_factory = gtk::SignalListItemFactory::new();
-    cat_list_factory.connect_setup(|_, list_item| {
+    let action_popover = gtk::Popover::new();
+    action_popover.set_autohide(true);
+    action_popover.set_position(gtk::PositionType::Bottom);
+
+    let popover_vbox = gtk::Box::new(gtk::Orientation::Vertical, 6);
+    popover_vbox.set_margin_top(6);
+    popover_vbox.set_margin_bottom(6);
+    popover_vbox.set_margin_start(6);
+    popover_vbox.set_margin_end(6);
+
+    let search_entry = gtk::SearchEntry::new();
+    search_entry.set_hexpand(true);
+    search_entry.set_placeholder_text(Some("Search actions..."));
+    popover_vbox.append(&search_entry);
+
+    let scrolled_window = gtk::ScrolledWindow::new();
+    scrolled_window.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
+    scrolled_window.set_min_content_height(350);
+    scrolled_window.set_min_content_width(320);
+    popover_vbox.append(&scrolled_window);
+
+    let list_store = gio::ListStore::new::<glib::BoxedAnyObject>();
+
+    let mut all_options = get_static_action_options();
+    all_options.extend(fetch_gnome_action_options());
+    all_options.extend(fetch_kde_action_options());
+    all_options.sort_by(|a, b| {
+        match a.category.cmp(&b.category) {
+            std::cmp::Ordering::Equal => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+            other => other,
+        }
+    });
+
+    for opt in &all_options {
+        list_store.append(&glib::BoxedAnyObject::new(opt.clone()));
+    }
+
+    let filter_text = Rc::new(RefCell::new(String::new()));
+    let custom_filter = gtk::CustomFilter::new({
+        let filter_text = Rc::clone(&filter_text);
+        move |item| {
+            let query = filter_text.borrow().to_lowercase();
+            if query.is_empty() { return true; }
+            let boxed = item.downcast_ref::<glib::BoxedAnyObject>().unwrap();
+            let opt = boxed.borrow::<EditorActionOption>();
+            let cat_name = CATEGORY_NAMES.get(opt.category).unwrap_or(&"").to_lowercase();
+            let act_name = opt.name.to_lowercase();
+            cat_name.contains(&query) || act_name.contains(&query)
+        }
+    });
+
+    let filter_model = gtk::FilterListModel::new(Some(list_store.clone()), Some(custom_filter.clone()));
+    let selection_model = gtk::SingleSelection::new(Some(filter_model.clone()));
+    selection_model.set_autoselect(false); // Don't auto select
+
+    let factory = gtk::SignalListItemFactory::new();
+    factory.connect_setup(|_, list_item| {
         let box_ = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        box_.set_margin_start(4);
-        box_.set_margin_end(4);
-        box_.set_margin_top(4);
-        box_.set_margin_bottom(4);
+        box_.set_margin_top(6);
+        box_.set_margin_bottom(6);
+        box_.set_margin_start(6);
+        box_.set_margin_end(6);
 
         let img = gtk::Image::new();
-        img.set_icon_size(gtk::IconSize::Normal);
+        img.set_icon_size(gtk::IconSize::Large);
         img.set_valign(gtk::Align::Center);
 
-        let label = gtk::Label::new(None);
-        label.set_valign(gtk::Align::Center);
+        let text_vbox = gtk::Box::new(gtk::Orientation::Vertical, 2);
+        text_vbox.set_valign(gtk::Align::Center);
+
+        let cat_label = gtk::Label::new(None);
+        cat_label.set_halign(gtk::Align::Start);
+        cat_label.add_css_class("action-label"); // Dimmed subtitle
+
+        let act_label = gtk::Label::new(None);
+        act_label.set_halign(gtk::Align::Start);
+        act_label.add_css_class("status-label");
+        act_label.set_wrap(true);
+        act_label.set_max_width_chars(30);
+
+        text_vbox.append(&cat_label);
+        text_vbox.append(&act_label);
 
         box_.append(&img);
-        box_.append(&label);
+        box_.append(&text_vbox);
         list_item.set_child(Some(&box_));
     });
-    cat_list_factory.connect_bind(|_, list_item| {
+
+    factory.connect_bind(|_, list_item| {
+        let item = list_item.item().unwrap();
+        let boxed = item.downcast_ref::<glib::BoxedAnyObject>().unwrap();
+        let opt = boxed.borrow::<EditorActionOption>();
+
         let child = list_item.child().unwrap();
         let box_ = child.downcast::<gtk::Box>().unwrap();
         let img = box_.first_child().unwrap().downcast::<gtk::Image>().unwrap();
-        let label = img.next_sibling().unwrap().downcast::<gtk::Label>().unwrap();
+        let text_vbox = img.next_sibling().unwrap().downcast::<gtk::Box>().unwrap();
+        let cat_label = text_vbox.first_child().unwrap().downcast::<gtk::Label>().unwrap();
+        let act_label = cat_label.next_sibling().unwrap().downcast::<gtk::Label>().unwrap();
 
-        let pos = list_item.position() as usize;
-        let icon_name = get_category_icon(pos);
+        let (icon_name, _) = get_action_category_icon(&opt.action_type);
         img.set_icon_name(Some(icon_name));
-        if pos < CATEGORY_NAMES.len() {
-            label.set_text(CATEGORY_NAMES[pos]);
-        }
+        cat_label.set_text(CATEGORY_NAMES.get(opt.category).unwrap_or(&"Unknown"));
+        act_label.set_text(&opt.name);
     });
 
-    let cat_button_factory = gtk::SignalListItemFactory::new();
-    cat_button_factory.connect_setup(|_, list_item| {
-        let box_ = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        let img = gtk::Image::new();
-        img.set_icon_size(gtk::IconSize::Normal);
-        img.set_valign(gtk::Align::Center);
+    let list_view = gtk::ListView::new(Some(selection_model.clone()), Some(factory.clone()));
+    list_view.add_css_class("boxed-list");
+    scrolled_window.set_child(Some(&list_view));
+    action_popover.set_child(Some(&popover_vbox));
+    action_select_btn.set_popover(Some(&action_popover));
 
-        let label = gtk::Label::new(None);
-        label.set_valign(gtk::Align::Center);
-
-        box_.append(&img);
-        box_.append(&label);
-        list_item.set_child(Some(&box_));
+    let filter_clone = custom_filter.clone();
+    let text_clone = Rc::clone(&filter_text);
+    search_entry.connect_search_changed(move |entry| {
+        *text_clone.borrow_mut() = entry.text().to_string();
+        filter_clone.changed(gtk::FilterChange::Different);
     });
-    cat_button_factory.connect_bind(|_, list_item| {
-        let child = list_item.child().unwrap();
-        let box_ = child.downcast::<gtk::Box>().unwrap();
-        let img = box_.first_child().unwrap().downcast::<gtk::Image>().unwrap();
-        let label = img.next_sibling().unwrap().downcast::<gtk::Label>().unwrap();
-
-        let pos = list_item.position() as usize;
-        let icon_name = get_category_icon(pos);
-        img.set_icon_name(Some(icon_name));
-        if pos < CATEGORY_NAMES.len() {
-            label.set_text(CATEGORY_NAMES[pos]);
-        }
-    });
-
-    category_dropdown.set_list_factory(Some(&cat_list_factory));
-    category_dropdown.set_factory(Some(&cat_button_factory));
-
-    // Custom List Item Factories for Action Dropdown
-    let act_list_factory = gtk::SignalListItemFactory::new();
-    act_list_factory.connect_setup(|_, list_item| {
-        let box_ = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        box_.set_margin_start(4);
-        box_.set_margin_end(4);
-        box_.set_margin_top(4);
-        box_.set_margin_bottom(4);
-
-        let img = gtk::Image::new();
-        img.set_icon_size(gtk::IconSize::Normal);
-        img.set_valign(gtk::Align::Center);
-
-        let label = gtk::Label::new(None);
-        label.set_valign(gtk::Align::Center);
-
-        box_.append(&img);
-        box_.append(&label);
-        list_item.set_child(Some(&box_));
-    });
-
-    let current_opts_bind = Rc::clone(&current_options);
-    act_list_factory.connect_bind(move |_, list_item| {
-        let child = list_item.child().unwrap();
-        let box_ = child.downcast::<gtk::Box>().unwrap();
-        let img = box_.first_child().unwrap().downcast::<gtk::Image>().unwrap();
-        let label = img.next_sibling().unwrap().downcast::<gtk::Label>().unwrap();
-
-        let pos = list_item.position() as usize;
-        let opts = current_opts_bind.borrow();
-        if pos < opts.len() {
-            let opt = &opts[pos];
-            let (icon_name, _) = get_action_category_icon(&opt.action_type);
-            img.set_icon_name(Some(icon_name));
-            label.set_text(&opt.name);
-        }
-    });
-
-    let act_button_factory = gtk::SignalListItemFactory::new();
-    act_button_factory.connect_setup(|_, list_item| {
-        let box_ = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        let img = gtk::Image::new();
-        img.set_icon_size(gtk::IconSize::Normal);
-        img.set_valign(gtk::Align::Center);
-
-        let label = gtk::Label::new(None);
-        label.set_valign(gtk::Align::Center);
-
-        box_.append(&img);
-        box_.append(&label);
-        list_item.set_child(Some(&box_));
-    });
-
-    let current_opts_btn_bind = Rc::clone(&current_options);
-    act_button_factory.connect_bind(move |_, list_item| {
-        let child = list_item.child().unwrap();
-        let box_ = child.downcast::<gtk::Box>().unwrap();
-        let img = box_.first_child().unwrap().downcast::<gtk::Image>().unwrap();
-        let label = img.next_sibling().unwrap().downcast::<gtk::Label>().unwrap();
-
-        let pos = list_item.position() as usize;
-        let opts = current_opts_btn_bind.borrow();
-        if pos < opts.len() {
-            let opt = &opts[pos];
-            let (icon_name, _) = get_action_category_icon(&opt.action_type);
-            img.set_icon_name(Some(icon_name));
-            label.set_text(&opt.name);
-        }
-    });
-
-    action_dropdown.set_list_factory(Some(&act_list_factory));
-    action_dropdown.set_factory(Some(&act_button_factory));
 
     // Helper to dynamically update the gesture name if not customized
     let update_default_name = Rc::new({
         let name_entry = name_entry.clone();
-        let action_dropdown = action_dropdown.clone();
         let action_details_entry = action_details_entry.clone();
-        let current_options = Rc::clone(&current_options);
+        let selected_action = Rc::clone(&selected_action);
         let is_name_customized = Rc::clone(&is_name_customized);
         let is_updating_programmatically = Rc::clone(&is_updating_programmatically);
 
@@ -1922,17 +1879,10 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             if *is_name_customized.borrow() {
                 return;
             }
-            let act_idx = action_dropdown.selected();
-            if act_idx == gtk::INVALID_LIST_POSITION {
-                return;
-            }
-            let act_idx = act_idx as usize;
-            let opts = current_options.borrow();
-            if act_idx < opts.len() {
-                let opt = &opts[act_idx];
+            if let Some(opt) = selected_action.borrow().as_ref() {
                 let detail = action_details_entry.text().to_string();
                 let default_name = get_default_gesture_name(opt, &detail);
-
+                
                 *is_updating_programmatically.borrow_mut() = true;
                 name_entry.set_text(&default_name);
                 *is_updating_programmatically.borrow_mut() = false;
@@ -1991,49 +1941,90 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         })
     };
 
-    // Build options list
-    let mut all_options = get_static_action_options();
-    all_options.extend(fetch_gnome_action_options());
-    all_options.extend(fetch_kde_action_options());
+    let btn_clone = action_select_btn.clone();
+    let row_clone = action_details_row.clone();
+    let action_icon_act = action_icon.clone();
+    let action_details_icon_act = action_details_icon.clone();
+    let entry_clone = action_details_entry.clone();
+    let label_clone = action_details_label.clone();
+    let sdb_clone_act = shortcut_display_box.clone();
+    let record_btn_clone_act = record_btn.clone();
+    let udn_clone = Rc::clone(&update_default_name);
+    let selected_action_clone = Rc::clone(&selected_action);
+    let popover_clone = action_popover.clone();
+    let list_store_clone = list_store.clone();
 
-    // Sort all_options: first by category, then alphabetically by name (case-insensitive) within each category.
-    all_options.sort_by(|a, b| {
-        match a.category.cmp(&b.category) {
-            std::cmp::Ordering::Equal => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-            other => other,
+    selection_model.connect_selection_changed(move |sel, _, _| {
+        let item = match sel.selected_item() {
+            Some(i) => i,
+            None => return,
+        };
+        let boxed = item.downcast_ref::<glib::BoxedAnyObject>().unwrap();
+        let opt = boxed.borrow::<EditorActionOption>().clone();
+        
+        btn_clone.set_label(&opt.name);
+        *selected_action_clone.borrow_mut() = Some(opt.clone());
+
+        let show_entry = match &opt.action_type {
+            ActionType::Keypress(_) => true,
+            ActionType::Execute(_) if opt.category == 7 => true,
+            ActionType::Click(_) => true,
+            _ => false,
+        };
+        row_clone.set_visible(show_entry);
+
+        let (act_icon, _) = get_action_category_icon(&opt.action_type);
+        action_icon_act.set_icon_name(Some(act_icon));
+
+        let details_icon_name = match &opt.action_type {
+            ActionType::Keypress(_) => "preferences-desktop-keyboard-shortcuts-symbolic",
+            ActionType::Execute(_) => "utilities-terminal-symbolic",
+            ActionType::Click(_) => "input-mouse-symbolic",
+            _ => "system-run-symbolic",
+        };
+        action_details_icon_act.set_icon_name(Some(details_icon_name));
+
+        let is_keypress = matches!(&opt.action_type, ActionType::Keypress(_));
+        entry_clone.set_visible(!is_keypress);
+        sdb_clone_act.set_visible(is_keypress);
+        record_btn_clone_act.set_visible(is_keypress);
+
+        match &opt.action_type {
+            ActionType::Keypress(_) => label_clone.set_text("Keys to Send"),
+            ActionType::Execute(_) => {
+                label_clone.set_text("Command to Execute");
+                entry_clone.set_placeholder_text(Some("e.g. firefox"));
+            }
+            ActionType::Click(_) => {
+                label_clone.set_text("Mouse Button");
+                entry_clone.set_placeholder_text(Some("e.g. 1 (Left), 2 (Middle), 3 (Right)"));
+            }
+            _ => {}
         }
+        
+        udn_clone();
+        popover_clone.popdown();
     });
 
+    let udn_clone4 = Rc::clone(&update_default_name);
+    let usd_clone_change = Rc::clone(&update_shortcut_display);
+    action_details_entry.connect_changed(move |_| {
+        udn_clone4();
+        usd_clone_change();
+    });
 
     // Find initial matching option
-    let mut selected_cat = 0;
-    let mut selected_act = 0;
-
     if let Some(ref g) = target_gesture {
         if !g.actions.is_empty() {
             let a = &g.actions[0];
-            if let Some(found_opt) = all_options.iter().find(|opt| action_matches(a, opt)) {
-                selected_cat = found_opt.category;
-
-                // Get the filtered options for this category
-                let filtered: Vec<EditorActionOption> = all_options
-                    .iter()
-                    .filter(|opt| opt.category == selected_cat)
-                    .cloned()
-                    .collect();
-
-                // Find index of option within the filtered list
-                if let Some(act_idx) = filtered.iter().position(|opt| action_matches(a, opt)) {
-                    selected_act = act_idx;
-                }
-
-                // If the action contains input text details, populate it
+            if let Some(pos) = all_options.iter().position(|opt| action_matches(a, opt)) {
+                selection_model.set_selected(pos as u32);
+                
                 match a {
-                    ActionType::Keypress(combo) => {
-                        action_details_entry.set_text(combo);
-                    }
+                    ActionType::Keypress(combo) => action_details_entry.set_text(combo),
                     ActionType::Execute(cmd) => {
-                        if selected_cat == 7 {
+                        let opt = &all_options[pos];
+                        if opt.category == 7 {
                             action_details_entry.set_text(cmd);
                         }
                     }
@@ -2045,230 +2036,14 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
                 }
             }
         }
-    }
-
-    // Filter options for initial category and set model/selections
-    let initial_filtered: Vec<EditorActionOption> = all_options
-        .iter()
-        .filter(|opt| opt.category == selected_cat)
-        .cloned()
-        .collect();
-
-    *current_options.borrow_mut() = initial_filtered.clone();
-
-    let action_names: Vec<String> = initial_filtered
-        .iter()
-        .map(|opt| opt.name.clone())
-        .collect();
-    let action_refs: Vec<&str> = action_names.iter().map(|s| s.as_str()).collect();
-    let action_model = gtk::StringList::new(&action_refs);
-    action_dropdown.set_model(Some(&action_model));
-
-    category_dropdown.set_selected(selected_cat as u32);
-    action_dropdown.set_selected(selected_act as u32);
-
-    // Initialize details entry visibility, label, placeholder, and record button
-    if selected_act < initial_filtered.len() {
-        let opt = &initial_filtered[selected_act];
-        let show_entry = match &opt.action_type {
-            ActionType::Keypress(_) => true,
-            ActionType::Execute(_) if opt.category == 7 => true,
-            ActionType::Click(_) => true,
-            _ => false,
-        };
-        action_details_row.set_visible(show_entry);
-
-        let (act_icon, _) = get_action_category_icon(&opt.action_type);
-        action_icon.set_icon_name(Some(act_icon));
-
-        let details_icon_name = match &opt.action_type {
-            ActionType::Keypress(_) => "preferences-desktop-keyboard-shortcuts-symbolic",
-            ActionType::Execute(_) => "utilities-terminal-symbolic",
-            ActionType::Click(_) => "input-mouse-symbolic",
-            _ => "system-run-symbolic",
-        };
-        action_details_icon.set_icon_name(Some(details_icon_name));
-
-        let is_keypress = matches!(&opt.action_type, ActionType::Keypress(_));
-        action_details_entry.set_visible(!is_keypress);
-        shortcut_display_box.set_visible(is_keypress);
-        record_btn.set_visible(is_keypress);
-
-        match &opt.action_type {
-            ActionType::Keypress(_) => {
-                action_details_label.set_text("Keys to Send");
-            }
-            ActionType::Execute(_) => {
-                action_details_label.set_text("Command to Execute");
-                action_details_entry.set_placeholder_text(Some("e.g. firefox"));
-            }
-            ActionType::Click(_) => {
-                action_details_label.set_text("Mouse Button");
-                action_details_entry
-                    .set_placeholder_text(Some("e.g. 1 (Left), 2 (Middle), 3 (Right)"));
-            }
-            _ => {}
-        }
+    } else {
+        selection_model.set_selected(0);
+        let udn_init = Rc::clone(&update_default_name);
+        udn_init();
     }
 
     let usd_init = Rc::clone(&update_shortcut_display);
     usd_init(); // Set initial keycaps if keys exist
-
-    let udn_clone = Rc::clone(&update_default_name);
-    if target_gesture.is_none() {
-        udn_clone();
-    }
-
-    let udn_clone4 = Rc::clone(&update_default_name);
-    let usd_clone_change = Rc::clone(&update_shortcut_display);
-    action_details_entry.connect_changed(move |_| {
-        udn_clone4();
-        usd_clone_change();
-    });
-
-    // Connect category changed signal
-    let all_options_clone = all_options.clone();
-    let current_opts_clone = Rc::clone(&current_options);
-    let action_dropdown_clone = action_dropdown.clone();
-    let entry_clone = action_details_entry.clone();
-    let label_clone = action_details_label.clone();
-    let row_clone = action_details_row.clone();
-    let record_btn_clone_cat = record_btn.clone();
-    let udn_clone3 = Rc::clone(&update_default_name);
-    let sdb_clone_cat = shortcut_display_box.clone();
-    let action_icon_cat = action_icon.clone();
-    let action_details_icon_cat = action_details_icon.clone();
-
-    category_dropdown.connect_selected_notify(move |cat_dd| {
-        let cat_idx = cat_dd.selected();
-        if cat_idx == gtk::INVALID_LIST_POSITION {
-            return;
-        }
-        let cat_idx = cat_idx as usize;
-        let filtered: Vec<EditorActionOption> = all_options_clone
-            .iter()
-            .filter(|opt| opt.category == cat_idx)
-            .cloned()
-            .collect();
-
-        *current_opts_clone.borrow_mut() = filtered.clone();
-
-        let action_names: Vec<String> = filtered.iter().map(|opt| opt.name.clone()).collect();
-        let action_refs: Vec<&str> = action_names.iter().map(|s| s.as_str()).collect();
-        let action_model = gtk::StringList::new(&action_refs);
-        action_dropdown_clone.set_model(Some(&action_model));
-
-        action_dropdown_clone.set_selected(0);
-
-        // Manually update details entry visibility/placeholder/label/record_btn for index 0
-        if !filtered.is_empty() {
-            let opt = &filtered[0];
-            let show_entry = match &opt.action_type {
-                ActionType::Keypress(_) => true,
-                ActionType::Execute(_) if opt.category == 7 => true,
-                ActionType::Click(_) => true,
-                _ => false,
-            };
-            row_clone.set_visible(show_entry);
-
-            let (act_icon, _) = get_action_category_icon(&opt.action_type);
-            action_icon_cat.set_icon_name(Some(act_icon));
-
-            let details_icon_name = match &opt.action_type {
-                ActionType::Keypress(_) => "preferences-desktop-keyboard-shortcuts-symbolic",
-                ActionType::Execute(_) => "utilities-terminal-symbolic",
-                ActionType::Click(_) => "input-mouse-symbolic",
-                _ => "system-run-symbolic",
-            };
-            action_details_icon_cat.set_icon_name(Some(details_icon_name));
-
-            let is_keypress = matches!(&opt.action_type, ActionType::Keypress(_));
-            entry_clone.set_visible(!is_keypress);
-            sdb_clone_cat.set_visible(is_keypress);
-            record_btn_clone_cat.set_visible(is_keypress);
-
-            match &opt.action_type {
-                ActionType::Keypress(_) => {
-                    label_clone.set_text("Keys to Send");
-                }
-                ActionType::Execute(_) => {
-                    label_clone.set_text("Command to Execute");
-                    entry_clone.set_placeholder_text(Some("e.g. firefox"));
-                }
-                ActionType::Click(_) => {
-                    label_clone.set_text("Mouse Button");
-                    entry_clone.set_placeholder_text(Some("e.g. 1 (Left), 2 (Middle), 3 (Right)"));
-                }
-                _ => {}
-            }
-        }
-
-        udn_clone3();
-    });
-
-    // Connect action changed signal
-    let current_opts_clone2 = Rc::clone(&current_options);
-    let entry_clone2 = action_details_entry.clone();
-    let label_clone2 = action_details_label.clone();
-    let row_clone2 = action_details_row.clone();
-    let record_btn_clone_act = record_btn.clone();
-    let udn_clone2 = Rc::clone(&update_default_name);
-    let sdb_clone_act = shortcut_display_box.clone();
-    let action_icon_act = action_icon.clone();
-    let action_details_icon_act = action_details_icon.clone();
-
-    action_dropdown.connect_selected_notify(move |act_dd| {
-        let act_idx = act_dd.selected();
-        if act_idx == gtk::INVALID_LIST_POSITION {
-            return;
-        }
-        let act_idx = act_idx as usize;
-
-        let opts = current_opts_clone2.borrow();
-        if act_idx < opts.len() {
-            let opt = &opts[act_idx];
-            let show_entry = match &opt.action_type {
-                ActionType::Keypress(_) => true,
-                ActionType::Execute(_) if opt.category == 7 => true,
-                ActionType::Click(_) => true,
-                _ => false,
-            };
-            row_clone2.set_visible(show_entry);
-
-            let (act_icon, _) = get_action_category_icon(&opt.action_type);
-            action_icon_act.set_icon_name(Some(act_icon));
-
-            let details_icon_name = match &opt.action_type {
-                ActionType::Keypress(_) => "preferences-desktop-keyboard-shortcuts-symbolic",
-                ActionType::Execute(_) => "utilities-terminal-symbolic",
-                ActionType::Click(_) => "input-mouse-symbolic",
-                _ => "system-run-symbolic",
-            };
-            action_details_icon_act.set_icon_name(Some(details_icon_name));
-
-            let is_keypress = matches!(&opt.action_type, ActionType::Keypress(_));
-            entry_clone2.set_visible(!is_keypress);
-            sdb_clone_act.set_visible(is_keypress);
-            record_btn_clone_act.set_visible(is_keypress);
-
-            match &opt.action_type {
-                ActionType::Keypress(_) => {
-                    label_clone2.set_text("Keys to Send");
-                }
-                ActionType::Execute(_) => {
-                    label_clone2.set_text("Command to Execute");
-                    entry_clone2.set_placeholder_text(Some("e.g. firefox"));
-                }
-                ActionType::Click(_) => {
-                    label_clone2.set_text("Mouse Button");
-                    entry_clone2.set_placeholder_text(Some("e.g. 1 (Left), 2 (Middle), 3 (Right)"));
-                }
-                _ => {}
-            }
-        }
-
-        udn_clone2();
-    });
 
     // Save and Cancel buttons
     let cancel_btn = gtk::Button::with_label("Cancel");
@@ -2285,8 +2060,8 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let is_edit = target_gesture.is_some();
     let target_id = target_gesture.as_ref().map(|g| g.id.clone());
     let dialog_clone2 = dialog.clone();
+    let selected_action_save = Rc::clone(&selected_action);
 
-    let current_opts_save = Rc::clone(&current_options);
     save_btn.connect_clicked(move |_| {
         let name = name_entry.text().to_string();
         if name.trim().is_empty() {
@@ -2307,19 +2082,12 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             .collect::<Vec<_>>()
             .join(" ");
 
-        let act_idx = action_dropdown.selected();
-        if act_idx == gtk::INVALID_LIST_POSITION {
-            println!("Gesture save failed: Invalid action selection.");
+        let opt = if let Some(opt) = selected_action_save.borrow().as_ref() {
+            opt.clone()
+        } else {
+            println!("Gesture save failed: No action selected.");
             return;
-        }
-        let act_idx = act_idx as usize;
-
-        let opts = current_opts_save.borrow();
-        if act_idx >= opts.len() {
-            println!("Gesture save failed: Selected action index out of bounds.");
-            return;
-        }
-        let opt = &opts[act_idx];
+        };
         let detail = action_details_entry.text().to_string();
 
         let action = match &opt.action_type {
