@@ -88,6 +88,11 @@ pub fn build_ui(app: &gtk::Application) {
     settings_btn.set_tooltip_text(Some("Settings"));
     header.pack_end(&settings_btn);
 
+    let search_toggle_btn = gtk::ToggleButton::new();
+    search_toggle_btn.set_icon_name("system-search-symbolic");
+    search_toggle_btn.set_tooltip_text(Some("Search"));
+    header.pack_end(&search_toggle_btn);
+
     // 4. Daemon Switch (Leftmost action on the right)
     let daemon_switch = gtk::Switch::new();
     daemon_switch.set_valign(gtk::Align::Center);
@@ -98,16 +103,24 @@ pub fn build_ui(app: &gtk::Application) {
     content_vbox.add_css_class("main-window-content");
     window.set_child(Some(&content_vbox));
 
-    // 5. Search Entry
+    // 5. Search Bar & Entry
+    let search_bar = gtk::SearchBar::new();
+    search_bar.set_key_capture_widget(Some(&window));
+    
     let search_entry = gtk::SearchEntry::new();
     search_entry.set_halign(gtk::Align::Center);
-    search_entry.set_width_request(360);
+    search_entry.set_width_request(400);
     search_entry.set_placeholder_text(Some("Search gestures..."));
-    search_entry.set_margin_start(56);
-    search_entry.set_margin_end(56);
-    search_entry.set_margin_top(24);
-    search_entry.set_margin_bottom(12);
-    content_vbox.append(&search_entry);
+    
+    search_bar.set_child(Some(&search_entry));
+    
+    // Bind toggle button to search bar visibility
+    search_bar
+        .bind_property("search-mode-enabled", &search_toggle_btn, "active")
+        .bidirectional()
+        .build();
+    
+    content_vbox.append(&search_bar);
 
     let scrolled = gtk::ScrolledWindow::new();
     scrolled.set_vexpand(true);
