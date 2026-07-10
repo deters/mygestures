@@ -459,10 +459,6 @@ pub fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Opt
     let list_view = gtk::ListView::new(Some(selection_model.clone()), Some(factory.clone()));
     list_view.set_single_click_activate(true);
     list_view.add_css_class("boxed-list");
-    let popover_activate_clone = action_popover.clone();
-    list_view.connect_activate(move |_, _| {
-        popover_activate_clone.popdown();
-    });
     scrolled_window.set_child(Some(&list_view));
     action_popover.set_child(Some(&popover_vbox));
     action_select_btn.set_popover(Some(&action_popover));
@@ -560,8 +556,11 @@ pub fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Opt
     let udn_clone = Rc::clone(&update_default_name);
     let selected_action_clone = Rc::clone(&selected_action);
 
-    selection_model.connect_selection_changed(move |sel, _, _| {
-        let item = match sel.selected_item() {
+    let popover_activate_clone = action_popover.clone();
+    let selection_model_clone = selection_model.clone();
+    list_view.connect_activate(move |_, position| {
+        popover_activate_clone.popdown();
+        let item = match selection_model_clone.item(position) {
             Some(i) => i,
             None => return,
         };
