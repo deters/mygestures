@@ -14,7 +14,7 @@ path = "src/bin/mygestures.rs"
 
 [[bin]]
 name = "gestos"
-path = "src/bin/gestos.rs"
+path = "src/bin/gestos/main.rs"
 
 [dependencies]
 gtk4 = { version = "0.9", features = ["v4_6"] }
