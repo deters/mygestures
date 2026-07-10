@@ -1687,8 +1687,22 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
 
     let action_select_btn = gtk::MenuButton::new();
     action_select_btn.set_halign(gtk::Align::End);
-    action_select_btn.set_size_request(220, -1);
-    action_select_btn.set_label("Select Action...");
+    action_select_btn.set_size_request(240, -1);
+    
+    let btn_content = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let action_select_icon = gtk::Image::new();
+    let action_select_label = gtk::Label::new(Some("Select Action..."));
+    action_select_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+    action_select_label.set_hexpand(true);
+    action_select_label.set_halign(gtk::Align::Start);
+    
+    let arrow_icon = gtk::Image::from_icon_name("pan-down-symbolic");
+    
+    btn_content.append(&action_select_icon);
+    btn_content.append(&action_select_label);
+    btn_content.append(&arrow_icon);
+    
+    action_select_btn.set_child(Some(&btn_content));
     action_row.append(&action_select_btn);
 
     settings_list.append(&action_row);
@@ -1935,7 +1949,8 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         })
     };
 
-    let btn_clone = action_select_btn.clone();
+    let btn_label_clone = action_select_label.clone();
+    let btn_icon_clone = action_select_icon.clone();
     let row_clone = action_details_row.clone();
     let action_icon_act = action_icon.clone();
     let action_details_icon_act = action_details_icon.clone();
@@ -1955,7 +1970,9 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         let boxed = item.downcast_ref::<glib::BoxedAnyObject>().unwrap();
         let opt = boxed.borrow::<EditorActionOption>().clone();
         
-        btn_clone.set_label(&opt.name);
+        btn_label_clone.set_text(&opt.name);
+        let (icon_name, _) = get_action_category_icon(&opt.action_type);
+        btn_icon_clone.set_icon_name(Some(icon_name));
         *selected_action_clone.borrow_mut() = Some(opt.clone());
 
         let show_entry = match &opt.action_type {
@@ -2058,9 +2075,9 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             }
             _ => {}
         }
-        action_select_btn.set_label(&opt.name);
+        action_select_label.set_text(&opt.name);
         let (icon_name, _) = get_action_category_icon(&opt.action_type);
-        action_select_btn.set_icon_name(icon_name);
+        action_select_icon.set_icon_name(Some(icon_name));
     }
 
     let usd_init = Rc::clone(&update_shortcut_display);
