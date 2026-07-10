@@ -14,6 +14,19 @@ pub fn open_shortcut_recorder(
     dialog.set_transient_for(Some(parent));
     dialog.set_modal(true);
     dialog.set_default_size(440, 300);
+    dialog.set_resizable(false);
+
+    let esc_controller = gtk::EventControllerKey::new();
+    let dialog_esc = dialog.clone();
+    esc_controller.connect_key_pressed(move |_, keyval, _, _| {
+        if keyval == gtk::gdk::Key::Escape {
+            dialog_esc.destroy();
+            glib::Propagation::Stop
+        } else {
+            glib::Propagation::Proceed
+        }
+    });
+    dialog.add_controller(esc_controller);
 
     let header = gtk::HeaderBar::new();
     header.set_show_title_buttons(true); // Initially show close button
@@ -23,7 +36,7 @@ pub fn open_shortcut_recorder(
     dialog.set_titlebar(Some(&header));
 
     // Cancel button (initially hidden)
-    let cancel_btn = gtk::Button::with_label("Cancel");
+    let cancel_btn = gtk::Button::with_mnemonic("_Cancel");
     cancel_btn.set_visible(false);
     let dialog_cancel_clone = dialog.clone();
     cancel_btn.connect_clicked(move |_| {
@@ -32,10 +45,12 @@ pub fn open_shortcut_recorder(
     header.pack_start(&cancel_btn);
 
     // Set button (initially hidden and insensitive)
-    let set_btn = gtk::Button::with_label("Set");
+    let set_btn = gtk::Button::with_mnemonic("_Set");
+    set_btn.set_receives_default(true);
     set_btn.add_css_class("suggested-action");
     set_btn.set_visible(false);
     set_btn.set_sensitive(false);
+    dialog.set_default_widget(Some(&set_btn));
     header.pack_end(&set_btn);
 
     let wrapper = gtk::Box::new(gtk::Orientation::Vertical, 0);

@@ -5,17 +5,31 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use mygestures::config::{ActionType, Gesture};
 use mygestures::protractor::Point2D;
-use crate::state::AppState;
+use crate::state::{AppState, EditorActionOption};
 use crate::ui::main_window::refresh_gesture_list;
 
 pub fn show_error_dialog<W: IsA<gtk::Window>>(parent: &W, message: &str) {
     let dialog = gtk::Window::new();
     dialog.set_transient_for(Some(parent));
     dialog.set_modal(true);
-    dialog.set_title(Some("Daemon Startup Error"));
-    dialog.set_default_size(420, -1);
+    dialog.set_destroy_with_parent(true);
+    dialog.set_title(Some("Error"));
+    dialog.set_default_size(350, 100);
+    dialog.set_resizable(false);
+    
+    let esc_controller = gtk::EventControllerKey::new();
+    let dialog_esc = dialog.clone();
+    esc_controller.connect_key_pressed(move |_, keyval, _, _| {
+        if keyval == gtk::gdk::Key::Escape {
+            dialog_esc.destroy();
+            glib::Propagation::Stop
+        } else {
+            glib::Propagation::Proceed
+        }
+    });
+    dialog.add_controller(esc_controller);
 
-    let vbox = gtk::Box::new(gtk::Orientation::Vertical, 16);
+    let vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
     vbox.add_css_class("dialog-content");
     vbox.set_margin_top(16);
     vbox.set_margin_bottom(16);
@@ -49,8 +63,10 @@ pub fn show_error_dialog<W: IsA<gtk::Window>>(parent: &W, message: &str) {
 
     let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     button_box.set_halign(gtk::Align::End);
-    let ok_button = gtk::Button::with_label("OK");
+    button_box.set_margin_top(12);
+    let ok_button = gtk::Button::with_mnemonic("_OK");
     ok_button.set_width_request(80);
+    ok_button.set_receives_default(true);
 
     let dialog_clone = dialog.clone();
     ok_button.connect_clicked(move |_| {
@@ -60,6 +76,7 @@ pub fn show_error_dialog<W: IsA<gtk::Window>>(parent: &W, message: &str) {
     vbox.append(&button_box);
 
     dialog.set_child(Some(&vbox));
+    dialog.set_default_widget(Some(&ok_button));
     dialog.present();
 }
 pub fn get_action_category_icon(action: &ActionType) -> (&'static str, &'static str) {
@@ -438,10 +455,24 @@ pub fn show_confirm_dialog<W: IsA<gtk::Window>, F: FnOnce() + 'static>(
     let dialog = gtk::Window::new();
     dialog.set_transient_for(Some(parent));
     dialog.set_modal(true);
+    dialog.set_destroy_with_parent(true);
     dialog.set_title(Some(title));
-    dialog.set_default_size(320, -1);
+    dialog.set_default_size(350, 120);
+    dialog.set_resizable(false);
+    
+    let esc_controller = gtk::EventControllerKey::new();
+    let dialog_esc = dialog.clone();
+    esc_controller.connect_key_pressed(move |_, keyval, _, _| {
+        if keyval == gtk::gdk::Key::Escape {
+            dialog_esc.destroy();
+            glib::Propagation::Stop
+        } else {
+            glib::Propagation::Proceed
+        }
+    });
+    dialog.add_controller(esc_controller);
 
-    let main_box = gtk::Box::new(gtk::Orientation::Vertical, 16);
+    let main_box = gtk::Box::new(gtk::Orientation::Vertical, 18);
     main_box.add_css_class("dialog-content");
     main_box.set_margin_start(24);
     main_box.set_margin_end(24);
@@ -457,14 +488,17 @@ pub fn show_confirm_dialog<W: IsA<gtk::Window>, F: FnOnce() + 'static>(
     let btn_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
     btn_box.set_halign(gtk::Align::End);
 
-    let cancel_btn = gtk::Button::with_label("Cancel");
+    let cancel_btn = gtk::Button::with_mnemonic("_Cancel");
     let dialog_cancel_clone = dialog.clone();
     cancel_btn.connect_clicked(move |_| {
         dialog_cancel_clone.destroy();
     });
     btn_box.append(&cancel_btn);
 
-    let confirm_btn = gtk::Button::with_label(confirm_label);
+    // If a custom label isn't using a mnemonic, we could try to add one, but let's just use it as is for now.
+    // Assuming confirm_label might have a mnemonic, we use with_mnemonic.
+    let confirm_btn = gtk::Button::with_mnemonic(confirm_label);
+    confirm_btn.set_receives_default(true);
     if is_destructive {
         confirm_btn.add_css_class("destructive-action");
     } else {
@@ -481,5 +515,6 @@ pub fn show_confirm_dialog<W: IsA<gtk::Window>, F: FnOnce() + 'static>(
     btn_box.append(&confirm_btn);
 
     main_box.append(&btn_box);
+    dialog.set_default_widget(Some(&confirm_btn));
     dialog.present();
 }

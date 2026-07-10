@@ -74,7 +74,7 @@ pub fn build_ui(app: &gtk::Application) {
     window.set_titlebar(Some(&header));
 
     // 1. Add gesture button (Primary action on the left)
-    let add_gest_btn = gtk::Button::with_label("New Gesture");
+    let add_gest_btn = gtk::Button::with_mnemonic("_New Gesture");
     add_gest_btn.add_css_class("suggested-action");
     add_gest_btn.set_tooltip_text(Some("Add Gesture"));
     header.pack_start(&add_gest_btn);
@@ -260,6 +260,30 @@ pub fn build_ui(app: &gtk::Application) {
         }
         glib::ControlFlow::Continue
     });
+
+    // Global Keyboard Shortcuts
+    let key_controller = gtk::EventControllerKey::new();
+    let state_shortcut_clone = Rc::clone(&state);
+    let window_shortcut_clone = state.borrow().window.clone();
+    key_controller.connect_key_pressed(move |_, keyval, _, state_modifier| {
+        let is_ctrl = state_modifier.contains(gtk::gdk::ModifierType::CONTROL_MASK) 
+                   || state_modifier.contains(gtk::gdk::ModifierType::META_MASK); // meta/cmd on mac
+        
+        if is_ctrl && keyval == gtk::gdk::Key::n {
+            open_gesture_editor(&state_shortcut_clone, None);
+            return glib::Propagation::Stop;
+        }
+        if is_ctrl && keyval == gtk::gdk::Key::comma {
+            open_settings_window(&state_shortcut_clone);
+            return glib::Propagation::Stop;
+        }
+        if is_ctrl && keyval == gtk::gdk::Key::q {
+            window_shortcut_clone.destroy();
+            return glib::Propagation::Stop;
+        }
+        glib::Propagation::Proceed
+    });
+    state.borrow().window.add_controller(key_controller);
 
     // Stylesheet injection
     let provider = gtk::CssProvider::new();

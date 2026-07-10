@@ -17,6 +17,18 @@ pub fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
     dialog.set_modal(true);
     dialog.set_title(Some("Settings"));
     dialog.set_default_size(380, -1);
+    
+    let esc_controller = gtk::EventControllerKey::new();
+    let dialog_esc = dialog.clone();
+    esc_controller.connect_key_pressed(move |_, keyval, _, _| {
+        if keyval == gtk::gdk::Key::Escape {
+            dialog_esc.destroy();
+            glib::Propagation::Stop
+        } else {
+            glib::Propagation::Proceed
+        }
+    });
+    dialog.add_controller(esc_controller);
 
     let header = gtk::HeaderBar::new();
     header.set_show_title_buttons(true);
@@ -200,7 +212,7 @@ pub fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
 
     export_box.append(&export_text_vbox);
 
-    let export_btn = gtk::Button::with_label("Export...");
+    let export_btn = gtk::Button::with_mnemonic("_Export...");
     export_btn.set_valign(gtk::Align::Center);
     
     let parent_clone = parent.clone();
@@ -281,7 +293,7 @@ pub fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
 
     import_box.append(&import_text_vbox);
 
-    let import_btn = gtk::Button::with_label("Import...");
+    let import_btn = gtk::Button::with_mnemonic("_Import...");
     import_btn.set_valign(gtk::Align::Center);
 
     let parent_clone = parent.clone();
@@ -377,7 +389,7 @@ pub fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {
 
     reset_box.append(&reset_text_vbox);
 
-    let reset_btn = gtk::Button::with_label("Reset...");
+    let reset_btn = gtk::Button::with_mnemonic("_Reset...");
     reset_btn.set_valign(gtk::Align::Center);
     reset_btn.add_css_class("destructive-action");
 

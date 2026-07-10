@@ -45,20 +45,25 @@ pub fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Opt
     let dialog = gtk::Window::new();
     dialog.set_transient_for(Some(&state.window));
     dialog.set_modal(true);
-    dialog.set_title(Some(if target_gesture.is_some() {
-        "Edit Gesture"
-    } else {
-        "Add Gesture"
-    }));
-    dialog.set_default_size(480, 620);
+    let title_text = if target_gesture.is_some() { "Edit Gesture" } else { "Add Gesture" };
+    dialog.set_title(Some(title_text));
+    dialog.set_default_size(700, 500);
+
+    let esc_controller = gtk::EventControllerKey::new();
+    let dialog_esc = dialog.clone();
+    esc_controller.connect_key_pressed(move |_, keyval, _, _| {
+        if keyval == gtk::gdk::Key::Escape {
+            dialog_esc.destroy();
+            glib::Propagation::Stop
+        } else {
+            glib::Propagation::Proceed
+        }
+    });
+    dialog.add_controller(esc_controller);
 
     let dialog_header = gtk::HeaderBar::new();
     dialog_header.set_show_title_buttons(false);
-    let dialog_title = gtk::Label::new(Some(if target_gesture.is_some() {
-        "Edit Gesture"
-    } else {
-        "Add Gesture"
-    }));
+    let dialog_title = gtk::Label::new(Some(title_text));
     dialog_title.add_css_class("title");
     dialog_header.set_title_widget(Some(&dialog_title));
     dialog.set_titlebar(Some(&dialog_header));
@@ -673,15 +678,16 @@ pub fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Opt
     usd_init(); // Set initial keycaps if keys exist
 
     // Save and Cancel buttons
-    let cancel_btn = gtk::Button::with_label("Cancel");
+    let cancel_btn = gtk::Button::with_mnemonic("_Cancel");
     let dialog_clone = dialog.clone();
     cancel_btn.connect_clicked(move |_| {
         dialog_clone.destroy();
     });
     dialog_header.pack_start(&cancel_btn);
 
-    let save_btn = gtk::Button::with_label("Save");
+    let save_btn = gtk::Button::with_mnemonic("_Save");
     save_btn.add_css_class("suggested-action");
+    save_btn.set_receives_default(true);
 
     let state_clone = Rc::clone(state_rc);
     let is_edit = target_gesture.is_some();
@@ -802,7 +808,7 @@ pub fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Opt
     dialog_header.pack_end(&save_btn);
 
     if let Some(ref gest) = target_gesture {
-        let delete_btn = gtk::Button::with_label("Delete Gesture");
+        let delete_btn = gtk::Button::with_mnemonic("_Delete Gesture");
         delete_btn.add_css_class("destructive-action");
         delete_btn.set_margin_top(8);
 
@@ -827,5 +833,6 @@ pub fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Opt
         main_box.append(&delete_btn);
     }
 
+    dialog.set_default_widget(Some(&save_btn));
     dialog.present();
 }
