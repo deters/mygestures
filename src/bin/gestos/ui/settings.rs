@@ -1,5 +1,5 @@
 use gtk::prelude::*;
-use gtk::{gdk, gio, glib};
+use gtk::{gio, glib};
 use mygestures::config::Configuration;
 use crate::ui::main_window::refresh_gesture_list;
 use crate::ui::components::{show_error_dialog, show_confirm_dialog};
@@ -7,7 +7,7 @@ use gtk4 as gtk;
 use std::rc::Rc;
 use std::cell::RefCell;
 use crate::state::AppState;
-use crate::daemon::{reload_daemon, start_daemon, stop_daemon, is_daemon_running};
+use crate::daemon::reload_daemon;
 use crate::system::{is_osd_enabled, set_osd_enabled, get_autostart_file_path, get_overlay_autostart_file_path, set_autostart_enabled, set_overlay_enabled};
 
 pub fn open_settings_window(state_rc: &Rc<RefCell<AppState>>) {

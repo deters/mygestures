@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::process::Command;
 
 pub fn get_autostart_file_path() -> Option<std::path::PathBuf> {

@@ -1,11 +1,9 @@
 use gtk::prelude::*;
-use gtk::{gdk, gio, glib};
+use gtk::{gio, glib};
 use mygestures::protractor::match_gesture;
 use gtk4 as gtk;
 use std::rc::Rc;
 use std::cell::RefCell;
-use std::path::PathBuf;
-use std::process::Command;
 use mygestures::config::{ActionType, Gesture};
 use mygestures::config::generate_unique_id;
 use crate::state::{AppState, EditorActionOption, CATEGORY_NAMES};

@@ -1,5 +1,5 @@
 use gtk::prelude::*;
-use gtk::{gdk, gio, glib};
+use gtk::{gdk, glib};
 use crate::ui::components::{get_action_human_readable, show_error_dialog};
 use gtk4 as gtk;
 use std::rc::Rc;
@@ -8,8 +8,8 @@ use mygestures::config::{Configuration, Gesture};
 use crate::state::AppState;
 use crate::ui::editor::open_gesture_editor;
 use crate::ui::settings::open_settings_window;
-use crate::ui::components::{create_gesture_row, show_confirm_dialog};
-use crate::daemon::{start_daemon, stop_daemon, reload_daemon, is_daemon_running};
+use crate::ui::components::create_gesture_row;
+use crate::daemon::{start_daemon, stop_daemon, is_daemon_running};
 
 pub fn get_visible_gestures(state: &AppState) -> Vec<Gesture> {
     let filter = state.search_entry.text().to_lowercase();

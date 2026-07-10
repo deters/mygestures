@@ -1,11 +1,11 @@
 use gtk::prelude::*;
-use gtk::{cairo, gdk, gio, glib};
+use gtk::{cairo, gdk, glib};
 use gtk4 as gtk;
 use std::rc::Rc;
 use std::cell::RefCell;
 use mygestures::config::{ActionType, Gesture};
 use mygestures::protractor::Point2D;
-use crate::state::{AppState, EditorActionOption};
+use crate::state::AppState;
 use crate::ui::main_window::refresh_gesture_list;
 
 pub fn show_error_dialog<W: IsA<gtk::Window>>(parent: &W, message: &str) {

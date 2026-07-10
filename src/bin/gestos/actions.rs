@@ -3,7 +3,6 @@ use mygestures::config::ActionType;
 use gtk::prelude::*;
 use gtk4 as gtk;
 use gtk::gio;
-use std::process::Command;
 
 pub fn action_matches(a: &ActionType, opt: &EditorActionOption) -> bool {
     match (a, &opt.action_type) {

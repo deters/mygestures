@@ -1,6 +1,4 @@
-use mygestures::config::{ActionType, Configuration, Gesture};
-use std::cell::RefCell;
-use std::rc::Rc;
+use mygestures::config::{ActionType, Configuration};
 use gtk4 as gtk;
 use gtk::glib;
 #[allow(dead_code)]

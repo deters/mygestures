@@ -1,13 +1,11 @@
 use gtk::prelude::*;
-use gtk::{cairo, gdk, gio, glib};
+use gtk::{cairo, gdk, glib};
 use crate::system::is_osd_enabled;
 use gtk4 as gtk;
 use futures_util::StreamExt;
 use std::rc::Rc;
 use std::cell::RefCell;
-use mygestures::config::Gesture;
 use mygestures::protractor::Point2D;
-use crate::ui::components::draw_gesture_path;
 
 enum OverlayEvent {
     Started(f64, f64),

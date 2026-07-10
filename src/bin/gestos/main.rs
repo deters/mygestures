@@ -5,12 +5,8 @@ mod system;
 mod ui;
 
 use gtk::prelude::*;
-use gtk::{gio, glib};
+use gtk::glib;
 use gtk4 as gtk;
-use std::rc::Rc;
-use std::cell::RefCell;
-use mygestures::config::Configuration;
-use state::AppState;
 use ui::main_window::build_ui;
 use ui::overlay::build_overlay_ui;
 
