@@ -1447,23 +1447,8 @@ fn open_shortcut_recorder(
 
         glib::Propagation::Stop
     });
-
     dialog.add_controller(key_controller);
     dialog.present();
-}
-
-fn get_category_icon(category: usize) -> &'static str {
-    match category {
-        0 => "preferences-desktop-keyboard-shortcuts-symbolic", // Input Emulation
-        1 => "window-new-symbolic",                              // Window Management
-        2 => "view-grid-symbolic",                               // Workspaces & Overview
-        3 => "audio-volume-high-symbolic",                       // Media & Audio
-        4 => "preferences-system-symbolic",                      // System & Settings
-        5 => "application-x-executable-symbolic",                // Applications
-        6 => "preferences-system-symbolic",                      // GNOME Actions
-        8 => "preferences-system-symbolic",                      // KDE Actions
-        _ => "system-run-symbolic",                              // Other/Internal
-    }
 }
 
 fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<Gesture>) {
@@ -1795,8 +1780,17 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
             let opt = boxed.borrow::<EditorActionOption>();
             let cat_name = CATEGORY_NAMES.get(opt.category).unwrap_or(&"").to_lowercase();
             let act_name = opt.name.to_lowercase();
-            cat_name.contains(&query) || act_name.contains(&query)
+            
+            // Allow matching multiple words in any order across category and action names
+            query.split_whitespace().all(|token| {
+                cat_name.contains(token) || act_name.contains(token)
+            })
         }
+    });
+
+    let search_entry_focus = search_entry.clone();
+    action_popover.connect_map(move |_| {
+        search_entry_focus.grab_focus();
     });
 
     let filter_model = gtk::FilterListModel::new(Some(list_store.clone()), Some(custom_filter.clone()));
@@ -1952,7 +1946,6 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     let udn_clone = Rc::clone(&update_default_name);
     let selected_action_clone = Rc::clone(&selected_action);
     let popover_clone = action_popover.clone();
-    let list_store_clone = list_store.clone();
 
     selection_model.connect_selection_changed(move |sel, _, _| {
         let item = match sel.selected_item() {
