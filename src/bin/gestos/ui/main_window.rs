@@ -79,24 +79,58 @@ pub fn build_ui(app: &gtk::Application) {
     add_gest_btn.set_tooltip_text(Some("Add Gesture"));
     header.pack_start(&add_gest_btn);
 
-    // 2. About button (Secondary action on the right)
-    let about_btn = gtk::Button::from_icon_name("help-about-symbolic");
-    header.pack_end(&about_btn);
+    // 2. Primary Menu (Hamburger button)
+    let menu_btn = gtk::MenuButton::new();
+    menu_btn.set_icon_name("open-menu-symbolic");
+    menu_btn.set_tooltip_text(Some("Main Menu"));
+    
+    let popover = gtk::Popover::new();
+    let menu_vbox = gtk::Box::new(gtk::Orientation::Vertical, 4);
+    menu_vbox.set_margin_start(6);
+    menu_vbox.set_margin_end(6);
+    menu_vbox.set_margin_top(6);
+    menu_vbox.set_margin_bottom(6);
+    
+    // Daemon Row
+    let daemon_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    daemon_row.set_margin_start(6);
+    daemon_row.set_margin_end(6);
+    daemon_row.set_margin_top(6);
+    daemon_row.set_margin_bottom(6);
+    let daemon_lbl = gtk::Label::new(Some("Background Daemon"));
+    daemon_lbl.set_hexpand(true);
+    daemon_lbl.set_halign(gtk::Align::Start);
+    daemon_row.append(&daemon_lbl);
+    
+    let daemon_switch = gtk::Switch::new();
+    daemon_switch.set_valign(gtk::Align::Center);
+    daemon_row.append(&daemon_switch);
+    menu_vbox.append(&daemon_row);
+    
+    menu_vbox.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
+    
+    // Settings Button
+    let settings_btn = gtk::Button::with_label("Preferences");
+    settings_btn.add_css_class("flat");
+    settings_btn.set_halign(gtk::Align::Fill);
+    menu_vbox.append(&settings_btn);
+    
+    // About Button
+    let about_btn = gtk::Button::with_label("About Gestos");
+    about_btn.add_css_class("flat");
+    about_btn.set_halign(gtk::Align::Fill);
+    menu_vbox.append(&about_btn);
+    
+    popover.set_child(Some(&menu_vbox));
+    menu_btn.set_popover(Some(&popover));
+    
+    header.pack_end(&menu_btn);
 
-    // 3. Settings button (Middle action on the right)
-    let settings_btn = gtk::Button::from_icon_name("preferences-system-symbolic");
-    settings_btn.set_tooltip_text(Some("Settings"));
-    header.pack_end(&settings_btn);
-
+    // 3. Search button
     let search_toggle_btn = gtk::ToggleButton::new();
     search_toggle_btn.set_icon_name("system-search-symbolic");
     search_toggle_btn.set_tooltip_text(Some("Search"));
     header.pack_end(&search_toggle_btn);
-
-    // 4. Daemon Switch (Leftmost action on the right)
-    let daemon_switch = gtk::Switch::new();
-    daemon_switch.set_valign(gtk::Align::Center);
-    header.pack_end(&daemon_switch);
 
     // Content VBox
     let content_vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
