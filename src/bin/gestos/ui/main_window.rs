@@ -129,9 +129,12 @@ pub fn build_ui(app: &gtk::Application) {
     let list_container = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
     let main_list = gtk::ListBox::new();
-    main_list.set_margin_start(56);
-    main_list.set_margin_end(56);
-    main_list.set_margin_bottom(56);
+    main_list.set_halign(gtk::Align::Center);
+    main_list.set_width_request(500);
+    main_list.set_margin_top(24);
+    main_list.set_margin_bottom(24);
+    main_list.set_margin_start(24);
+    main_list.set_margin_end(24);
     main_list.add_css_class("boxed-list");
     main_list.set_selection_mode(gtk::SelectionMode::None);
     list_container.append(&main_list);
@@ -139,8 +142,8 @@ pub fn build_ui(app: &gtk::Application) {
     let empty_state_box = gtk::Box::new(gtk::Orientation::Vertical, 16);
     empty_state_box.set_valign(gtk::Align::Center);
     empty_state_box.set_halign(gtk::Align::Center);
-    empty_state_box.set_margin_top(80);
-    empty_state_box.set_margin_bottom(80);
+    empty_state_box.set_margin_top(72);
+    empty_state_box.set_margin_bottom(72);
 
     let empty_icon = gtk::Image::from_icon_name("view-list-bullet-symbolic");
     empty_icon.set_pixel_size(80);
