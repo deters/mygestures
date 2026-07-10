@@ -31,7 +31,18 @@ cargo_sources = files(
   'src/uinput.rs',
   'src/wayland.rs',
   'src/bin/mygestures.rs',
-  'src/bin/gestos.rs',
+  'src/bin/gestos/actions.rs',
+  'src/bin/gestos/ui/shortcut_recorder.rs',
+  'src/bin/gestos/ui/overlay.rs',
+  'src/bin/gestos/ui/main_window.rs',
+  'src/bin/gestos/ui/mod.rs',
+  'src/bin/gestos/ui/components.rs',
+  'src/bin/gestos/ui/editor.rs',
+  'src/bin/gestos/ui/settings.rs',
+  'src/bin/gestos/system.rs',
+  'src/bin/gestos/daemon.rs',
+  'src/bin/gestos/state.rs',
+  'src/bin/gestos/main.rs',
 )
 
 # Custom target for Cargo build
