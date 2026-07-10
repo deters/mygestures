@@ -457,6 +457,7 @@ pub fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Opt
     });
 
     let list_view = gtk::ListView::new(Some(selection_model.clone()), Some(factory.clone()));
+    list_view.set_single_click_activate(true);
     list_view.add_css_class("boxed-list");
     let popover_activate_clone = action_popover.clone();
     list_view.connect_activate(move |_, _| {
