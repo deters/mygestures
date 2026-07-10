@@ -2007,11 +2007,13 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
     });
 
     // Find initial matching option
+    let mut initial_opt = None;
     if let Some(ref g) = target_gesture {
         if !g.actions.is_empty() {
             let a = &g.actions[0];
             if let Some(pos) = all_options.iter().position(|opt| action_matches(a, opt)) {
                 selection_model.set_selected(pos as u32);
+                initial_opt = Some(all_options[pos].clone());
                 
                 match a {
                     ActionType::Keypress(combo) => action_details_entry.set_text(combo),
@@ -2031,8 +2033,34 @@ fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Option<
         }
     } else {
         selection_model.set_selected(0);
+        initial_opt = Some(all_options[0].clone());
         let udn_init = Rc::clone(&update_default_name);
         udn_init();
+    }
+
+    // Explicitly update UI visibility to prevent "text input instead of key presentation" bug
+    if let Some(opt) = initial_opt {
+        *selected_action.borrow_mut() = Some(opt.clone());
+        let is_keypress = matches!(&opt.action_type, ActionType::Keypress(_));
+        action_details_entry.set_visible(!is_keypress);
+        shortcut_display_box.set_visible(is_keypress);
+        record_btn.set_visible(is_keypress);
+
+        match &opt.action_type {
+            ActionType::Keypress(_) => action_details_label.set_text("Keys to Send"),
+            ActionType::Execute(_) => {
+                action_details_label.set_text("Command to Execute");
+                action_details_entry.set_placeholder_text(Some("e.g. firefox"));
+            }
+            ActionType::Click(_) => {
+                action_details_label.set_text("Mouse Button");
+                action_details_entry.set_placeholder_text(Some("e.g. 1 (Left), 2 (Middle), 3 (Right)"));
+            }
+            _ => {}
+        }
+        action_select_btn.set_label(&opt.name);
+        let (icon_name, _) = get_action_category_icon(&opt.action_type);
+        action_select_btn.set_icon_name(icon_name);
     }
 
     let usd_init = Rc::clone(&update_shortcut_display);
