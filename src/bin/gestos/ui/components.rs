@@ -391,6 +391,8 @@ pub fn create_gesture_row(gesture: &Gesture, state_rc: &Rc<RefCell<AppState>>) -
     preview_frame.set_valign(gtk::Align::Center);
 
     let preview_canvas = gtk::DrawingArea::new();
+    preview_canvas.set_hexpand(true);
+    preview_canvas.set_vexpand(true);
     let pts_clone = gesture.points.clone();
     preview_canvas.set_draw_func(move |_, cr, width, height| {
         draw_gesture_path(cr, &pts_clone, width as f64, height as f64, true, true);
@@ -432,7 +434,7 @@ pub fn create_gesture_row(gesture: &Gesture, state_rc: &Rc<RefCell<AppState>>) -
                         println!("Failed to save config on reorder: {}", e);
                     }
                     let state_clone_inner = Rc::clone(&state_clone);
-                    glib::idle_add_local_once(move || {
+                    glib::timeout_add_local_once(std::time::Duration::from_millis(50), move || {
                         refresh_gesture_list(&state_clone_inner, Some(&name_clone));
                     });
                 }
