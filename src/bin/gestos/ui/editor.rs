@@ -458,6 +458,10 @@ pub fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Opt
 
     let list_view = gtk::ListView::new(Some(selection_model.clone()), Some(factory.clone()));
     list_view.add_css_class("boxed-list");
+    let popover_activate_clone = action_popover.clone();
+    list_view.connect_activate(move |_, _| {
+        popover_activate_clone.popdown();
+    });
     scrolled_window.set_child(Some(&list_view));
     action_popover.set_child(Some(&popover_vbox));
     action_select_btn.set_popover(Some(&action_popover));
@@ -554,7 +558,6 @@ pub fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Opt
     let record_btn_clone_act = record_btn.clone();
     let udn_clone = Rc::clone(&update_default_name);
     let selected_action_clone = Rc::clone(&selected_action);
-    let popover_clone = action_popover.clone();
 
     selection_model.connect_selection_changed(move |sel, _, _| {
         let item = match sel.selected_item() {
@@ -607,7 +610,6 @@ pub fn open_gesture_editor(state_rc: &Rc<RefCell<AppState>>, target_gesture: Opt
         }
         
         udn_clone();
-        popover_clone.popdown();
     });
 
     let udn_clone4 = Rc::clone(&update_default_name);
